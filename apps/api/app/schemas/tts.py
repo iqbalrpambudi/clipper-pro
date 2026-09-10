@@ -1,0 +1,49 @@
+from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
+
+
+class VoiceInfo(BaseModel):
+    id: str
+    name: str
+    provider: str  # gemini | edge
+    gender: str
+    sample_text: str
+    sample_audio_url: Optional[str] = None
+    description: str
+
+
+class CostEstimateRequest(BaseModel):
+    text: str
+    provider: str = "gemini"
+
+
+class CostEstimateResponse(BaseModel):
+    char_count: int
+    word_count: int
+    estimated_duration_sec: float
+    estimated_cost_usd: float
+    currency: str = "USD"
+    provider: str
+
+
+class TTSGenerateRequest(BaseModel):
+    provider: Optional[str] = None  # None = use project/config default
+    voice: Optional[str] = None
+    rate: str = "+0%"
+    pitch: str = "+0Hz"
+
+
+class AudioTrackResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    project_id: str
+    narration_id: str
+    provider: str
+    voice: str
+    rate: str
+    pitch: str
+    audio_url: Optional[str] = None
+    duration: float
+    estimated_cost: float
+    status: str
