@@ -19,6 +19,7 @@ class SubtitleStyleBase(BaseModel):
     display_mode: str = "per_word"  # per_word | full_sentence | burst
     burst_word_count: int = 2
     highlight_animation: str = "scale"  # scale | color | box | none
+    scale_factor: float = 1.5
     emoji_enabled: bool = True
 
 

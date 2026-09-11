@@ -167,7 +167,12 @@ async def render_timeline_video(
         # Video filter: add subtitles if ass file provided
         if ass_subtitle_path and Path(ass_subtitle_path).exists():
             esc_ass = _escape_filter_path(ass_subtitle_path)
-            filter_chains.append(f"ass='{esc_ass}'")
+            fonts_dir = Path(__file__).resolve().parent.parent / "fonts"
+            if fonts_dir.exists():
+                esc_fonts = _escape_filter_path(str(fonts_dir))
+                filter_chains.append(f"ass='{esc_ass}':fontsdir='{esc_fonts}'")
+            else:
+                filter_chains.append(f"ass='{esc_ass}'")
 
         if filter_chains:
             vf_arg = [",".join(filter_chains)]

@@ -55,6 +55,7 @@ class SubtitleStyle(Base):
     display_mode: Mapped[str] = mapped_column(String(20), default="per_word")  # per_word | full_sentence | burst
     burst_word_count: Mapped[int] = mapped_column(Integer, default=2)  # 2 or 3
     highlight_animation: Mapped[str] = mapped_column(String(20), default="scale")  # scale | color | box | none
+    scale_factor: Mapped[float] = mapped_column(Float, default=1.5)
     emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

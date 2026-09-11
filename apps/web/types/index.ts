@@ -133,6 +133,7 @@ export interface SubtitleStyle {
   display_mode: "per_word" | "full_sentence" | "burst";
   burst_word_count: number;
   highlight_animation: "scale" | "color" | "box" | "none";
+  scale_factor?: number;
   emoji_enabled: boolean;
 }
 

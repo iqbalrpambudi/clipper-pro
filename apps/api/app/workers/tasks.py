@@ -294,15 +294,28 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             "box_opacity": style.box_opacity if style else 0.0,
             "position": style.position if style else "bottom",
             "offset_y": style.offset_y if style else 0,
+            "offset_x": style.offset_x if style else 0,
             "display_mode": style.display_mode if style else "per_word",
             "burst_word_count": style.burst_word_count if style else 2,
             "highlight_animation": style.highlight_animation if style else "scale",
+            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.5,
             "emoji_enabled": style.emoji_enabled if style else True,
         }
 
         ass_file_path = None
         if narration and narration.segments:
-            ass_content = generate_ass_subtitles(narration.segments, style_dict)
+            play_res_x, play_res_y = 1080, 1920
+            if project.aspect_ratio == "16:9":
+                play_res_x, play_res_y = 1920, 1080
+            elif project.aspect_ratio == "1:1":
+                play_res_x, play_res_y = 1080, 1080
+
+            ass_content = generate_ass_subtitles(
+                narration.segments,
+                style_dict,
+                play_res_x=play_res_x,
+                play_res_y=play_res_y,
+            )
             ass_file = renders_dir / f"subtitles_{job.id}.ass"
             with open(ass_file, "w", encoding="utf-8") as f:
                 f.write(ass_content)

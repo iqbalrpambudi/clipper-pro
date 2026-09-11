@@ -53,6 +53,11 @@ class NarrationUpdateRequest(BaseModel):
     segments: Optional[List[Dict[str, Any]]] = None
 
 
+class SegmentsUpdateRequest(BaseModel):
+    segments: List[Dict[str, Any]]
+
+
+
 class NarrationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

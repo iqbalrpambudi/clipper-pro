@@ -23,13 +23,14 @@ import {
 import { ScenePreviewModal } from "../media/ScenePreviewModal";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Timeline, TimelineClip, Scene, AudioTrack } from "@/types";
+import { Project, Timeline, TimelineClip, Scene, AudioTrack, Narration } from "@/types";
 
 interface TimelineTabProps {
   project: Project & {
     timeline?: Timeline | null;
     scenes: Scene[];
     audio?: AudioTrack | null;
+    narration?: Narration | null;
   };
 }
 
@@ -473,18 +474,54 @@ export function TimelineTab({ project }: TimelineTabProps) {
           </div>
         </div>
 
-        {/* Track 3: Subtitle Karaoke */}
+        {/* Track 3: Subtitle Karaoke (Interactive Track) */}
         <div className="pt-2 border-t border-surface-border">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
             <span className="font-semibold text-slate-300 flex items-center gap-1.5">
               <Subtitles className="w-3.5 h-3.5 text-accent-yellow" /> Track 3: Subtitle Karaoke ASS
             </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("subtitles")}
+              className="text-[11px] text-brand-400 hover:text-brand-300 transition flex items-center gap-1 hover:underline"
+            >
+              <span>Edit di Subtitle Studio</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
 
-          <div className="h-8 bg-accent-yellow/10 border border-accent-yellow/20 rounded-xl px-4 flex items-center justify-between text-xs text-accent-yellow">
-            <span>Sinkronisasi Milidetik Word-Level</span>
-            <span className="text-[10px] uppercase font-mono">ASS Karaoke Enabled</span>
-          </div>
+          {project.narration?.segments && project.narration.segments.length > 0 ? (
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+              {(project.narration.segments as any[]).map((seg: any, sIdx: number) => {
+                const durSec = ((seg.end_ms - seg.start_ms) / 1000).toFixed(1);
+                return (
+                  <div
+                    key={seg.id || sIdx}
+                    onClick={() => setActiveTab("subtitles")}
+                    className="min-w-[140px] max-w-[220px] shrink-0 p-2.5 rounded-xl bg-accent-yellow/10 border border-accent-yellow/25 hover:border-accent-yellow/60 transition cursor-pointer flex flex-col justify-between group"
+                    title="Klik untuk kustomisasi subtitle di Studio"
+                  >
+                    <div className="flex items-center justify-between text-[10px] text-accent-yellow/80 mb-1">
+                      <span className="font-bold">#{sIdx + 1}</span>
+                      <span className="font-mono text-[9px]">{durSec}s • {seg.words?.length || 0} kata</span>
+                    </div>
+                    <p className="text-[11px] text-white font-medium line-clamp-2 leading-tight">
+                      {seg.text}
+                    </p>
+                    <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 pt-1.5 mt-1 border-t border-accent-yellow/15">
+                      <span>{(seg.start_ms / 1000).toFixed(1)}s</span>
+                      <span>{(seg.end_ms / 1000).toFixed(1)}s</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="h-9 bg-accent-yellow/10 border border-accent-yellow/20 rounded-xl px-4 flex items-center justify-between text-xs text-accent-yellow">
+              <span>Belum ada segmen narasi subtitle</span>
+              <span className="text-[10px] uppercase font-mono">Menunggu TTS</span>
+            </div>
+          )}
         </div>
       </div>
 

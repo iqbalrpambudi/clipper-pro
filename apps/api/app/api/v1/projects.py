@@ -231,6 +231,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "display_mode": proj.subtitle_style.display_mode,
             "burst_word_count": proj.subtitle_style.burst_word_count,
             "highlight_animation": proj.subtitle_style.highlight_animation,
+            "scale_factor": proj.subtitle_style.scale_factor if proj.subtitle_style.scale_factor is not None else 1.5,
             "emoji_enabled": proj.subtitle_style.emoji_enabled,
         }
 

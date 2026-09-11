@@ -7,6 +7,7 @@ from app.models.narration import Narration, NarrationTemplate
 from app.schemas.narration import (
     NarrationGenerateRequest,
     NarrationUpdateRequest,
+    SegmentsUpdateRequest,
     NarrationResponse,
 )
 from app.services.ai_adapters.factory import get_active_llm_adapter
@@ -128,3 +129,30 @@ async def update_narration(
     await db.commit()
     await db.refresh(narration)
     return NarrationResponse.model_validate(narration)
+
+
+@router.put("/segments", response_model=NarrationResponse)
+async def update_narration_segments(
+    project_id: str,
+    payload: SegmentsUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(
+        select(Narration)
+        .where(Narration.project_id == project_id)
+        .order_by(Narration.created_at.desc())
+    )
+    narration = res.scalars().first()
+    if not narration:
+        raise HTTPException(status_code=404, detail="Narasi tidak ditemukan")
+
+    narration.segments = payload.segments
+    # Keep raw_text synchronized
+    reconstructed = " ".join(seg.get("text", "").strip() for seg in payload.segments if seg.get("text"))
+    if reconstructed:
+        narration.raw_text = reconstructed
+
+    await db.commit()
+    await db.refresh(narration)
+    return NarrationResponse.model_validate(narration)
+
