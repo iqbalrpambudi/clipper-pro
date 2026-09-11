@@ -31,7 +31,7 @@ interface RenderTabProps {
 
 export function RenderTab({ project }: RenderTabProps) {
   const queryClient = useQueryClient();
-  const { showToast } = useStudioStore();
+  const { showToast, activeTask } = useStudioStore();
 
   const [bgMode, setBgMode] = useState(project.background_fill?.mode || "blur");
   const [resolution, setResolution] = useState(project.resolution || "1080p");
@@ -43,11 +43,16 @@ export function RenderTab({ project }: RenderTabProps) {
     refetchInterval: (query) => {
       const jobs = query.state.data || [];
       const hasActiveJob = jobs.some(
-        (j: any) => j.status === "pending" || j.status === "processing"
+        (j: any) =>
+          j.status === "pending" ||
+          j.status === "processing" ||
+          j.status === "rendering" ||
+          j.status === "queued"
       );
       return hasActiveJob ? 1500 : false;
     },
   });
+
 
   const updateProjectMutation = useMutation({
     mutationFn: (data: any) => api.updateProject(project.id, data),
@@ -208,7 +213,10 @@ export function RenderTab({ project }: RenderTabProps) {
                       )}
                       {job.status === "rendering" && (
                         <span className="text-amber-400 font-semibold flex items-center gap-1">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> {job.progress}%
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                          {activeTask?.task_type === "render" && (!activeTask.data?.job_id || activeTask.data?.job_id === job.id)
+                            ? `${activeTask.progress}%`
+                            : `${job.progress}%`}
                         </span>
                       )}
                       {job.status === "queued" && (
@@ -222,20 +230,39 @@ export function RenderTab({ project }: RenderTabProps) {
                     </div>
                   </div>
 
-                  {job.status === "rendering" && (
-                    <div className="w-full bg-surface-card rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-brand-500 h-full transition-all duration-300"
-                        style={{ width: `${job.progress}%` }}
-                      />
-                    </div>
-                  )}
+                  {(() => {
+                    const isCurrentActive =
+                      activeTask?.task_type === "render" &&
+                      (!activeTask.data?.job_id || activeTask.data?.job_id === job.id);
+                    const currentProgress =
+                      isCurrentActive && activeTask.status === "progress"
+                        ? activeTask.progress
+                        : job.progress;
+                    const currentLog =
+                      isCurrentActive && activeTask.status === "progress"
+                        ? activeTask.message
+                        : job.log_output;
 
-                  {job.log_output && (
-                    <p className="text-[11px] text-slate-400 italic font-mono truncate">
-                      {job.log_output}
-                    </p>
-                  )}
+                    return (
+                      <>
+                        {job.status === "rendering" && (
+                          <div className="w-full bg-surface-card rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-brand-500 h-full transition-all duration-300"
+                              style={{ width: `${currentProgress}%` }}
+                            />
+                          </div>
+                        )}
+
+                        {currentLog && (
+                          <p className="text-[11px] text-slate-400 italic font-mono truncate">
+                            {currentLog}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+
 
                   {job.status === "completed" && job.output_url && (
                     <div className="pt-2 border-t border-surface-border/60 flex items-center justify-between">

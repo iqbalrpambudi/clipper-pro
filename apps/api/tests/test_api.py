@@ -277,3 +277,20 @@ def test_ass_font_metric_compensation():
     assert r"\an5\pos(960,540)" in ass_landscape
 
 
+@pytest.mark.asyncio
+async def test_publish_project_event():
+    from app.core.events import publish_project_event
+
+    # Publishing an event shouldn't raise exception even if redis is disconnected or in test env
+    await publish_project_event(
+        project_id="test-proj-123",
+        task_type="scene_detect",
+        status="progress",
+        progress=50,
+        stage="testing",
+        message="Running unit test",
+        data={"key": "val"},
+    )
+
+
+

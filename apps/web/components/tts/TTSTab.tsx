@@ -28,7 +28,7 @@ interface TTSTabProps {
 
 export function TTSTab({ project }: TTSTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, setActiveTab } = useStudioStore();
+  const { showToast, setActiveTab, activeTask } = useStudioStore();
 
   const [selectedVoice, setSelectedVoice] = useState("Puck");
   const [provider, setProvider] = useState("gemini");
@@ -38,7 +38,7 @@ export function TTSTab({ project }: TTSTabProps) {
   const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Live Progress State for TTS Generation & Auto-Refresh
+  // Live Progress State for TTS Generation (driven by SSE activeTask)
   const [isGeneratingTTS, setIsGeneratingTTS] = useState(
     project.audio?.status === "generating"
   );
@@ -54,53 +54,52 @@ export function TTSTab({ project }: TTSTabProps) {
     };
   }, []);
 
-  // Auto-track TTS Generation Progress & Auto-Refresh
+  // Listen to real-time TTS task events from worker
+  useEffect(() => {
+    if (activeTask && activeTask.task_type === "tts_align") {
+      if (activeTask.status === "progress") {
+        setIsGeneratingTTS(true);
+        setGenerationProgress(activeTask.progress);
+        setGenerationStepText(activeTask.message);
+      } else if (activeTask.status === "success") {
+        setGenerationProgress(100);
+        setGenerationStepText(activeTask.message || "Audio narasi & timeline selesai disiapkan!");
+        const timeout = setTimeout(() => {
+          setIsGeneratingTTS(false);
+          setGenerationProgress(0);
+        }, 1500);
+        return () => clearTimeout(timeout);
+      } else if (activeTask.status === "error") {
+        setGenerationProgress(0);
+        setGenerationStepText(activeTask.error || activeTask.message || "Gagal membuat audio narasi");
+        const timeout = setTimeout(() => {
+          setIsGeneratingTTS(false);
+        }, 4000);
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, [activeTask]);
+
+  // Elapsed second counter during active generation
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
-    let poller: NodeJS.Timeout | null = null;
-
     if (isGeneratingTTS) {
       timer = setInterval(() => {
-        setGenerationElapsed((prev) => {
-          const next = prev + 1;
-          if (next <= 2) {
-            setGenerationProgress(18);
-            setGenerationStepText("Menghubungi AI Speech synthesizer...");
-          } else if (next <= 5) {
-            setGenerationProgress(45);
-            setGenerationStepText("Mensintesis audio narasi dengan suara " + selectedVoice + "...");
-          } else if (next <= 8) {
-            setGenerationProgress(75);
-            setGenerationStepText("Menjalankan forced word-level alignment & timestamping...");
-          } else if (next <= 12) {
-            setGenerationProgress(88);
-            setGenerationStepText("Memproses sinkronisasi segmen kata...");
-          } else {
-            setGenerationProgress((p) => Math.min(94, p + 1));
-            setGenerationStepText("Menyelesaikan penyimpanan trek audio...");
-          }
-          return next;
-        });
+        setGenerationElapsed((prev) => prev + 1);
       }, 1000);
-
-      // Active rapid poller to guarantee instant auto-refresh
-      poller = setInterval(() => {
-        queryClient.refetchQueries({ queryKey: ["project", project.id] });
-      }, 1500);
+    } else {
+      setGenerationElapsed(0);
     }
-
     return () => {
       if (timer) clearInterval(timer);
-      if (poller) clearInterval(poller);
     };
-  }, [isGeneratingTTS, project.id, queryClient, selectedVoice]);
+  }, [isGeneratingTTS]);
 
   // Detect completion when project.audio changes to ready
   useEffect(() => {
     if (isGeneratingTTS && project.audio && (project.audio.status === "ready" || project.audio.audio_url)) {
       setGenerationProgress(100);
       setGenerationStepText("Audio narasi & forced alignment berhasil dibuat!");
-      showToast("Audio narasi siap dimainkan!", "success");
       const timeout = setTimeout(() => {
         setIsGeneratingTTS(false);
         setGenerationProgress(0);
@@ -108,7 +107,8 @@ export function TTSTab({ project }: TTSTabProps) {
       }, 1200);
       return () => clearTimeout(timeout);
     }
-  }, [project.audio, isGeneratingTTS, showToast]);
+  }, [project.audio, isGeneratingTTS]);
+
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],

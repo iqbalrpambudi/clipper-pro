@@ -31,7 +31,7 @@ interface MediaPoolTabProps {
 
 export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const queryClient = useQueryClient();
-  const { showToast } = useStudioStore();
+  const { showToast, activeTask } = useStudioStore();
   const [isYTOpen, setIsYTOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState("");
   const [ytInfo, setYtInfo] = useState<any>(null);
@@ -41,14 +41,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
 
-  // Live Progress State for Scene Retagging & Auto-Refresh
+  // Live Progress State for Scene Retagging (driven by SSE activeTask)
   const [retagProgress, setRetagProgress] = useState(0);
   const [retagStepText, setRetagStepText] = useState("");
   const [retagElapsed, setRetagElapsed] = useState(0);
-
-
-
-
 
   const { data: modelConfig } = useQuery({
     queryKey: ["model-config"],
@@ -87,34 +83,34 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
     },
   });
 
-  // Progress Timer for Retagging
+  // Sync real-time progress events from SSE for scene_retag
+  useEffect(() => {
+    if (activeTask && activeTask.task_type === "scene_retag") {
+      if (activeTask.status === "progress") {
+        setRetagProgress(activeTask.progress);
+        setRetagStepText(activeTask.message);
+      } else if (activeTask.status === "success") {
+        setRetagProgress(100);
+        setRetagStepText(activeTask.message || "Tagging selesai!");
+      }
+    }
+  }, [activeTask]);
+
+  // Elapsed second counter during active retagging
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (retagMutation.isPending) {
       timer = setInterval(() => {
-        setRetagElapsed((prev) => {
-          const next = prev + 1;
-          if (next <= 3) {
-            setRetagProgress(15);
-            setRetagStepText("Menyiapkan thumbnail batch & adapter vision AI...");
-          } else if (next <= 8) {
-            setRetagProgress(45);
-            setRetagStepText("Menganalisis batch scene multimodal dengan AI Vision...");
-          } else if (next <= 16) {
-            setRetagProgress(75);
-            setRetagStepText("Mengekstrak deskripsi visual & hashtag kata kunci...");
-          } else {
-            setRetagProgress((p) => Math.min(92, p + 1));
-            setRetagStepText("Menyinkronkan hasil tagging ke timeline & galeri...");
-          }
-          return next;
-        });
+        setRetagElapsed((prev) => prev + 1);
       }, 1000);
+    } else {
+      setRetagElapsed(0);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
   }, [retagMutation.isPending]);
+
 
   // Upload Mutation
   const handleFileUpload = async (files: FileList | null) => {
@@ -281,20 +277,60 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   {vid.status === "downloading" && (
                     <div className="mb-3">
                       <div className="flex items-center justify-between text-[10px] text-amber-400 mb-1">
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Mendownload video...
+                        <span className="flex items-center gap-1 truncate max-w-[200px]">
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          {activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
+                            ? activeTask.message
+                            : "Mendownload video..."}
                         </span>
-                        <span>{vid.progress}%</span>
+                        <span>
+                          {activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
+                            ? `${activeTask.progress}%`
+                            : `${vid.progress}%`}
+                        </span>
                       </div>
-                      <div className="w-full bg-surface rounded-full h-1 overflow-hidden">
-                        <div className="bg-amber-400 h-full transition-all" style={{ width: `${vid.progress}%` }} />
+                      <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-amber-400 h-full transition-all duration-300"
+                          style={{
+                            width: `${
+                              activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
+                                ? activeTask.progress
+                                : vid.progress
+                            }%`,
+                          }}
+                        />
                       </div>
                     </div>
                   )}
 
                   {vid.status === "processing" && (
-                    <div className="mb-3 text-[10px] text-brand-400 flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Menganalisis scene & vision AI...
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-[10px] text-brand-400 mb-1">
+                        <span className="flex items-center gap-1 truncate max-w-[200px]">
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          {activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
+                            ? activeTask.message
+                            : "Menganalisis scene & vision AI..."}
+                        </span>
+                        <span>
+                          {activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
+                            ? `${activeTask.progress}%`
+                            : `${vid.progress || 10}%`}
+                        </span>
+                      </div>
+                      <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-brand-500 h-full transition-all duration-300"
+                          style={{
+                            width: `${
+                              activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
+                                ? activeTask.progress
+                                : (vid.progress || 10)
+                            }%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -303,6 +339,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <AlertCircle className="w-3 h-3 shrink-0" /> {vid.error_message || "Gagal memproses"}
                     </div>
                   )}
+
                 </div>
 
                 <div className="pt-3 border-t border-surface-border/60 flex items-center justify-between text-xs text-slate-400">

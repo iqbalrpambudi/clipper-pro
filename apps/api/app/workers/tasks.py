@@ -10,6 +10,7 @@ from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline, SubtitleStyle
 from app.models.config import ModelConfig
 from app.core.security import decrypt_secret
+from app.core.events import publish_project_event
 from app.services.ytdlp import download_video
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
@@ -21,6 +22,7 @@ from app.services.subtitle_ass import generate_ass_subtitles
 from app.services.renderer import render_timeline_video
 
 log = logging.getLogger(__name__)
+
 
 
 async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
@@ -35,15 +37,35 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
         video.progress = 5
         await db.commit()
 
+        await publish_project_event(
+            video.project_id,
+            task_type="youtube_download",
+            status="progress",
+            progress=5,
+            stage="starting",
+            message="Menghubungkan ke YouTube via yt-dlp...",
+            data={"video_id": video_id, "filename": video.filename},
+        )
+
         out_dir = storage.get_videos_dir(video.project_id)
         out_file = out_dir / f"yt_{video.id}.mp4"
 
         async def _progress(pct: int):
+            bounded_pct = max(5, min(pct, 95))
             async with SessionLocal() as inner_db:
                 v = await inner_db.get(SourceVideo, video_id)
                 if v:
-                    v.progress = max(5, min(pct, 95))
+                    v.progress = bounded_pct
                     await inner_db.commit()
+            await publish_project_event(
+                video.project_id,
+                task_type="youtube_download",
+                status="progress",
+                progress=bounded_pct,
+                stage="downloading",
+                message=f"Mendownload video YouTube ({bounded_pct}%)...",
+                data={"video_id": video_id, "filename": video.filename},
+            )
 
         try:
             downloaded_path = await download_video(
@@ -63,6 +85,16 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
             video.progress = 100
             await db.commit()
 
+            await publish_project_event(
+                video.project_id,
+                task_type="youtube_download",
+                status="success",
+                progress=100,
+                stage="downloaded",
+                message=f"Video YouTube '{video.filename}' berhasil didownload! Memulai analisis scene...",
+                data={"video_id": video_id, "duration": meta["duration"]},
+            )
+
             # Auto trigger scene detection for downloaded video
             await detect_scenes_job(ctx, video_id)
 
@@ -71,6 +103,18 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
             video.status = "failed"
             video.error_message = str(e)
             await db.commit()
+
+            await publish_project_event(
+                video.project_id,
+                task_type="youtube_download",
+                status="error",
+                progress=0,
+                stage="failed",
+                message=f"Gagal mendownload video dari YouTube: {str(e)}",
+                error=str(e),
+                data={"video_id": video_id},
+            )
+
 
 
 async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
@@ -81,16 +125,39 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
             return
 
         video.status = "processing"
+        video.progress = 10
         await db.commit()
+
+        await publish_project_event(
+            video.project_id,
+            task_type="scene_detect",
+            status="progress",
+            progress=10,
+            stage="detecting_cuts",
+            message=f"Mendeteksi transisi & pergantian scene visual pada '{video.filename}'...",
+            data={"video_id": video_id},
+        )
 
         scene_out_dir = storage.get_scenes_dir(video.project_id)
 
         try:
             scenes_data = await detect_scenes(video.file_path, str(scene_out_dir))
+            total_scenes = len(scenes_data)
 
             adapter = await get_active_vision_adapter(db)
+            vision_name = getattr(adapter, "vision_model", "AI Vision")
 
-            for item in scenes_data:
+            await publish_project_event(
+                video.project_id,
+                task_type="scene_detect",
+                status="progress",
+                progress=25,
+                stage="vision_analysis",
+                message=f"{total_scenes} scene terdeteksi. Memulai tagging visual dengan {vision_name}...",
+                data={"video_id": video_id, "total_scenes": total_scenes},
+            )
+
+            for idx, item in enumerate(scenes_data):
                 # Analyze keyframes
                 description, tags, embedding = await analyze_scene(
                     adapter, item.get("keyframe_paths", [item["thumbnail_path"]])
@@ -111,15 +178,49 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 )
                 db.add(sc)
 
+                # Report incremental progress for vision analysis
+                pct = 25 + int(((idx + 1) / max(1, total_scenes)) * 70)
+                await publish_project_event(
+                    video.project_id,
+                    task_type="scene_detect",
+                    status="progress",
+                    progress=pct,
+                    stage="vision_tagging",
+                    message=f"Menganalisis visual AI scene {idx + 1} dari {total_scenes}...",
+                    data={"video_id": video_id, "current": idx + 1, "total": total_scenes},
+                )
+
             video.status = "ready"
             video.progress = 100
             await db.commit()
+
+            await publish_project_event(
+                video.project_id,
+                task_type="scene_detect",
+                status="success",
+                progress=100,
+                stage="completed",
+                message=f"Deteksi scene selesai! {total_scenes} scene visual siap digunakan di Media Pool.",
+                data={"video_id": video_id, "total_scenes": total_scenes},
+            )
 
         except Exception as e:
             log.exception("Scene detection failed for video %s", video_id)
             video.status = "failed"
             video.error_message = str(e)
             await db.commit()
+
+            await publish_project_event(
+                video.project_id,
+                task_type="scene_detect",
+                status="error",
+                progress=0,
+                stage="failed",
+                message=f"Gagal mendeteksi/menganalisis scene: {str(e)}",
+                error=str(e),
+                data={"video_id": video_id},
+            )
+
 
 
 async def generate_tts_and_align_job(
@@ -139,6 +240,16 @@ async def generate_tts_and_align_job(
 
         narration.status = "tts_generating"
         await db.commit()
+
+        await publish_project_event(
+            project_id,
+            task_type="tts_align",
+            status="progress",
+            progress=15,
+            stage="tts_synthesizing",
+            message=f"Mensintesis audio narasi AI dengan {provider.upper()} ({voice})...",
+            data={"narration_id": narration_id, "provider": provider, "voice": voice},
+        )
 
         audio_dir = storage.get_audio_dir(project_id)
         audio_file = audio_dir / f"tts_{narration.id}.mp3"
@@ -165,6 +276,16 @@ async def generate_tts_and_align_job(
                 api_key=api_key,
             )
 
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="progress",
+                progress=50,
+                stage="forced_alignment",
+                message="Audio selesai. Menjalankan forced word-level alignment & timestamping...",
+                data={"narration_id": narration_id, "duration": duration},
+            )
+
             # Step 2: Alignment
             aligned_segments = await align_audio_with_text(
                 audio_path=str(audio_file),
@@ -178,20 +299,48 @@ async def generate_tts_and_align_job(
             # Cost estimation
             cost_est = estimate_tts_cost(narration.raw_text, provider)
 
-            track = AudioTrack(
-                project_id=project_id,
-                narration_id=narration.id,
-                provider=provider,
-                voice=voice,
-                rate=rate,
-                pitch=pitch,
-                file_path=str(audio_file),
-                duration=duration,
-                estimated_cost=cost_est.estimated_cost_usd,
-                status="ready",
+            # Find existing generating AudioTrack or create new
+            track_res = await db.execute(
+                select(AudioTrack)
+                .where(AudioTrack.project_id == project_id, AudioTrack.narration_id == narration.id)
+                .order_by(AudioTrack.created_at.desc())
             )
-            db.add(track)
+            track = track_res.scalars().first()
+            if not track:
+                track = AudioTrack(
+                    project_id=project_id,
+                    narration_id=narration.id,
+                    provider=provider,
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                    file_path=str(audio_file),
+                    duration=duration,
+                    estimated_cost=cost_est.estimated_cost_usd,
+                    status="ready",
+                )
+                db.add(track)
+            else:
+                track.provider = provider
+                track.voice = voice
+                track.rate = rate
+                track.pitch = pitch
+                track.file_path = str(audio_file)
+                track.duration = duration
+                track.estimated_cost = cost_est.estimated_cost_usd
+                track.status = "ready"
+
             await db.commit()
+
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="progress",
+                progress=75,
+                stage="matching_scenes",
+                message="Mencocokkan segmen naskah audio dengan klip scene visual...",
+                data={"narration_id": narration_id, "duration": duration},
+            )
 
             # Auto create / update initial timeline matching
             adapter = await get_active_llm_adapter(db)
@@ -210,8 +359,10 @@ async def generate_tts_and_align_job(
                 for s in scenes_res.scalars().all()
             ]
 
+            clips_count = 0
             if all_scenes:
                 clips = await match_scenes_to_segments(adapter, aligned_segments, all_scenes)
+                clips_count = len(clips)
                 t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
                 timeline = t_res.scalar_one_or_none()
                 if not timeline:
@@ -222,10 +373,41 @@ async def generate_tts_and_align_job(
                     timeline.total_duration = duration
                 await db.commit()
 
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="success",
+                progress=100,
+                stage="completed",
+                message="Suara, transkrip karaoke kata, dan susunan klip timeline siap!",
+                data={"narration_id": narration_id, "duration": duration, "clips_count": clips_count},
+            )
+
         except Exception as e:
             log.exception("TTS/Alignment failed for narration %s", narration_id)
             narration.status = "failed"
+            # Update any existing audio track to failed status
+            t_res = await db.execute(
+                select(AudioTrack)
+                .where(AudioTrack.project_id == project_id, AudioTrack.narration_id == narration.id)
+                .order_by(AudioTrack.created_at.desc())
+            )
+            failed_track = t_res.scalars().first()
+            if failed_track:
+                failed_track.status = "failed"
             await db.commit()
+
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="error",
+                progress=0,
+                stage="failed",
+                message=f"Gagal memproses suara/alignment: {str(e)}",
+                error=str(e),
+                data={"narration_id": narration_id},
+            )
+
 
 
 async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
@@ -241,8 +423,18 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
 
         job.status = "rendering"
         job.progress = 5
-        job.log_output = "Memulai proses rendering..."
+        job.log_output = "Memulai proses rendering FFmpeg..."
         await db.commit()
+
+        await publish_project_event(
+            project.id,
+            task_type="render",
+            status="progress",
+            progress=5,
+            stage="starting",
+            message=f"Memulai proses rendering video ({job.render_type})...",
+            data={"job_id": render_job_id, "render_type": job.render_type},
+        )
 
         renders_dir = storage.get_renders_dir(project.id)
         out_ext = "mp4"
@@ -255,6 +447,16 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             job.status = "failed"
             job.error_message = "Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu."
             await db.commit()
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="error",
+                progress=0,
+                stage="failed",
+                message="Timeline klip kosong. Lakukan pencocokan scene terlebih dahulu.",
+                error="Timeline klip kosong",
+                data={"job_id": render_job_id},
+            )
             return
 
         # Fetch source videos map
@@ -328,6 +530,15 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     j.progress = pct
                     j.log_output = msg
                     await inner_db.commit()
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="progress",
+                progress=pct,
+                stage="rendering_frames",
+                message=msg or f"Memproses render video ({pct}%)...",
+                data={"job_id": render_job_id, "render_type": job.render_type},
+            )
 
         try:
             final_mp4 = await render_timeline_video(
@@ -350,9 +561,35 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             job.log_output = "Video berhasil dirender."
             await db.commit()
 
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="success",
+                progress=100,
+                stage="completed",
+                message=f"Video ({job.render_type}) berhasil dirender dan siap diputar!",
+                data={
+                    "job_id": render_job_id,
+                    "render_type": job.render_type,
+                    "output_url": storage.to_relative_url(final_mp4),
+                },
+            )
+
         except Exception as e:
             log.exception("Render job %s failed", render_job_id)
             job.status = "failed"
             job.error_message = str(e)
             job.log_output = f"Error saat rendering: {e}"
             await db.commit()
+
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="error",
+                progress=0,
+                stage="failed",
+                message=f"Gagal saat rendering: {str(e)}",
+                error=str(e),
+                data={"job_id": render_job_id},
+            )
+

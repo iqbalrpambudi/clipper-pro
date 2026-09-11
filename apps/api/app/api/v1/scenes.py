@@ -14,8 +14,10 @@ from app.schemas.project import SceneResponse
 from app.services.ai_adapters.factory import get_active_vision_adapter
 from app.services.vision_tagger import analyze_scene
 from app.workers.tasks import detect_scenes_job
+from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
+
 
 
 @router.get("", response_model=List[SceneResponse])
@@ -150,6 +152,18 @@ async def retag_project_scenes(
 
         await db.commit()
 
+        # Publish incremental batch progress
+        pct = min(98, int(((i + len(batch)) / max(1, len(scenes_to_process))) * 100))
+        await publish_project_event(
+            project_id,
+            task_type="scene_retag",
+            status="progress",
+            progress=pct,
+            stage="batch_tagging",
+            message=f"Menganalisis batch scene {i + 1}-{min(i + batch_size, len(scenes_to_process))} dari {len(scenes_to_process)} dengan {vision_model_name}...",
+            data={"processed": processed_count, "total": len(scenes_to_process)},
+        )
+
         # Pacing between batches to comfortably comply with rate limits
         if i + batch_size < len(scenes_to_process):
             await asyncio.sleep(1.8)
@@ -169,6 +183,16 @@ async def retag_project_scenes(
         timeline.clips = updated_clips
         await db.commit()
 
+    await publish_project_event(
+        project_id,
+        task_type="scene_retag",
+        status="success",
+        progress=100,
+        stage="completed",
+        message=f"Berhasil tagging {processed_count} scene dengan model {vision_model_name}!",
+        data={"count": processed_count, "total": len(all_scenes)},
+    )
+
     return {
         "message": f"Berhasil menganalisis dan tagging {processed_count} scene ({payload.mode} mode) dengan model {vision_model_name}",
         "count": processed_count,
@@ -176,3 +200,4 @@ async def retag_project_scenes(
         "model": vision_model_name,
         "mode": payload.mode,
     }
+

@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore, StudioTab } from "@/lib/store";
+import { useProjectEvents } from "@/hooks/useProjectEvents";
+import { GlobalTaskIndicator } from "@/components/common/GlobalTaskIndicator";
 import { MediaPoolTab } from "@/components/media/MediaPoolTab";
 import { NarrationTab } from "@/components/narration/NarrationTab";
 import { TTSTab } from "@/components/tts/TTSTab";
@@ -33,6 +35,9 @@ export default function ProjectStudioPage({ params }: PageProps) {
   const { id } = use(params);
   const { activeTab, setActiveTab } = useStudioStore();
 
+  // Establish SSE real-time connection for worker tasks
+  useProjectEvents(id);
+
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: () => api.getProject(id),
@@ -44,14 +49,20 @@ export default function ProjectStudioPage({ params }: PageProps) {
       );
       const isAudioBusy = p?.audio?.status === "generating" || p?.audio?.status === "processing";
       const isRenderBusy = p?.render_jobs?.some(
-        (j: any) => j.status === "processing" || j.status === "pending"
+        (j: any) =>
+          j.status === "processing" ||
+          j.status === "pending" ||
+          j.status === "rendering" ||
+          j.status === "queued"
       );
-      const isNarrationBusy = p?.narration?.status === "generating";
+      const isNarrationBusy =
+        p?.narration?.status === "generating" || p?.narration?.status === "tts_generating";
 
-      // Rapid reactive polling (1.5s) while any background AI task is active
-      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 1500 : false;
+      // Fallback polling (2.5s) if any background task is still flagged in DB
+      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 2500 : false;
     },
   });
+
 
   if (isLoading) {
     return (
@@ -189,8 +200,12 @@ export default function ProjectStudioPage({ params }: PageProps) {
         </div>
       </header>
 
+      {/* Global Real-Time Worker Task Progress Indicator */}
+      <GlobalTaskIndicator />
+
       {/* Main Tab Body */}
       <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
+
         {activeTab === "media" && <MediaPoolTab project={project} />}
         {activeTab === "narration" && <NarrationTab project={project} />}
         {activeTab === "tts" && <TTSTab project={project} />}
