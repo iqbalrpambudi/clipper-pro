@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.db import get_db
 from app.models.narration import NarrationTemplate
-from app.schemas.narration import TemplateResponse, TemplateCreate
+from app.schemas.narration import TemplateResponse, TemplateCreate, TemplateUpdate
 from app.services.narrative import DEFAULT_TEMPLATES
 
 router = APIRouter(prefix="/templates", tags=["templates"])
@@ -58,6 +58,59 @@ async def create_custom_template(
         is_builtin=False,
     )
     db.add(template)
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+@router.put("/{template_id}", response_model=TemplateResponse)
+async def update_template(
+    template_id: str,
+    payload: TemplateUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    template = await db.get(NarrationTemplate, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template tidak ditemukan")
+
+    if payload.name is not None:
+        template.name = payload.name
+    if payload.description is not None:
+        template.description = payload.description
+    if payload.system_prompt is not None:
+        template.system_prompt = payload.system_prompt
+    if payload.user_prompt_template is not None:
+        template.user_prompt_template = payload.user_prompt_template
+    if payload.default_tone is not None:
+        template.default_tone = payload.default_tone
+    if payload.default_voice is not None:
+        template.default_voice = payload.default_voice
+
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+@router.post("/{template_id}/reset", response_model=TemplateResponse)
+async def reset_template(
+    template_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    template = await db.get(NarrationTemplate, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template tidak ditemukan")
+
+    default_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == template_id), None)
+    if not default_data:
+        raise HTTPException(status_code=400, detail="Template bukan template bawaan yang dapat di-reset")
+
+    template.name = default_data["name"]
+    template.description = default_data["description"]
+    template.system_prompt = default_data["system_prompt"]
+    template.user_prompt_template = default_data["user_prompt_template"]
+    template.default_tone = default_data["default_tone"]
+    template.default_voice = default_data["default_voice"]
+
     await db.commit()
     await db.refresh(template)
     return template

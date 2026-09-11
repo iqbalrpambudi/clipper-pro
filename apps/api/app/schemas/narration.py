@@ -40,6 +40,15 @@ class TemplateCreate(BaseModel):
     default_voice: str = "Puck"
 
 
+class TemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_prompt_template: Optional[str] = None
+    default_tone: Optional[str] = None
+    default_voice: Optional[str] = None
+
+
 class NarrationGenerateRequest(BaseModel):
     template_id: str = "fakta_unik"
     topic: Optional[str] = None
