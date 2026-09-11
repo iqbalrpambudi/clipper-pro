@@ -39,7 +39,14 @@ export function RenderTab({ project }: RenderTabProps) {
   const { data: renderJobs = [], refetch: refetchJobs } = useQuery({
     queryKey: ["render-jobs", project.id],
     queryFn: () => api.getRenderJobs(project.id),
-    refetchInterval: 3000, // Poll every 3s while page is open
+    staleTime: 5000,
+    refetchInterval: (query) => {
+      const jobs = query.state.data || [];
+      const hasActiveJob = jobs.some(
+        (j: any) => j.status === "pending" || j.status === "processing"
+      );
+      return hasActiveJob ? 1500 : false;
+    },
   });
 
   const updateProjectMutation = useMutation({
@@ -51,8 +58,9 @@ export function RenderTab({ project }: RenderTabProps) {
 
   const renderFinalMutation = useMutation({
     mutationFn: () => api.renderFinal(project.id),
-    onSuccess: () => {
-      refetchJobs();
+    onSuccess: async () => {
+      await refetchJobs();
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast("Job render final dimulai di background!", "success");
     },
     onError: (err: any) => {
@@ -62,8 +70,9 @@ export function RenderTab({ project }: RenderTabProps) {
 
   const renderPreviewMutation = useMutation({
     mutationFn: () => api.renderPreview(project.id),
-    onSuccess: () => {
-      refetchJobs();
+    onSuccess: async () => {
+      await refetchJobs();
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast("Job preview cepat dimulai di background!", "info");
     },
     onError: (err: any) => {

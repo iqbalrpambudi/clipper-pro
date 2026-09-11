@@ -36,7 +36,21 @@ export default function ProjectStudioPage({ params }: PageProps) {
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: () => api.getProject(id),
-    refetchInterval: 5000,
+    staleTime: 10000,
+    refetchInterval: (query) => {
+      const p = query.state.data;
+      const isVideoBusy = p?.source_videos?.some(
+        (v: any) => v.status === "processing" || v.status === "pending" || v.status === "downloading"
+      );
+      const isAudioBusy = p?.audio?.status === "generating" || p?.audio?.status === "processing";
+      const isRenderBusy = p?.render_jobs?.some(
+        (j: any) => j.status === "processing" || j.status === "pending"
+      );
+      const isNarrationBusy = p?.narration?.status === "generating";
+
+      // Rapid reactive polling (1.5s) while any background AI task is active
+      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 1500 : false;
+    },
   });
 
   if (isLoading) {

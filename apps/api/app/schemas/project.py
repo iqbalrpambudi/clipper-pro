@@ -60,6 +60,7 @@ class SceneResponse(BaseModel):
     end_time: float
     duration: float
     thumbnail_url: Optional[str] = None
+    video_url: Optional[str] = None
     description: Optional[str] = None
     tags: List[str] = []
     status: str

@@ -42,6 +42,7 @@ export interface Scene {
   end_time: number;
   duration: number;
   thumbnail_url?: string | null;
+  video_url?: string | null;
   description?: string | null;
   tags: string[];
   status: string;
@@ -100,6 +101,7 @@ export interface TimelineClip {
   speed: number;
   transition?: string | null;
   thumbnail_url?: string | null;
+  video_url?: string | null;
   text?: string | null;
   background_fill_override?: any;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   UploadCloud,
   Youtube,
@@ -14,7 +14,10 @@ import {
   Loader2,
   CheckCircle2,
   Tag,
+  Play,
+  RefreshCw,
 } from "lucide-react";
+import { ScenePreviewModal } from "./ScenePreviewModal";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, SourceVideo, Scene } from "@/types";
@@ -35,6 +38,83 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [isInspecting, setIsInspecting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewScene, setPreviewScene] = useState<Scene | null>(null);
+  const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
+
+  // Live Progress State for Scene Retagging & Auto-Refresh
+  const [retagProgress, setRetagProgress] = useState(0);
+  const [retagStepText, setRetagStepText] = useState("");
+  const [retagElapsed, setRetagElapsed] = useState(0);
+
+
+
+
+
+  const { data: modelConfig } = useQuery({
+    queryKey: ["model-config"],
+    queryFn: api.getModelConfig,
+  });
+
+  const untaggedCount = project.scenes.filter(
+    (s) => !s.description || s.description === "Cuplikan video aksi/aktivitas"
+  ).length;
+
+  const retagMutation = useMutation({
+    mutationFn: (mode: "quick" | "force") => {
+      setRetaggingMode(mode);
+      setRetagProgress(10);
+      setRetagElapsed(0);
+      setRetagStepText(`Memulai ${mode === "quick" ? "Quick Tagging (Incremental)" : "Force Tagging (Semua)"}...`);
+      return api.retagScenes(project.id, mode);
+    },
+    onSuccess: async (res) => {
+      setRetagProgress(100);
+      setRetagStepText("Tagging selesai!");
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
+      await queryClient.refetchQueries({ queryKey: ["scenes", project.id] });
+      showToast(res.message || `Berhasil tagging ${res.count} scene!`, "success");
+      setTimeout(() => {
+        setRetagProgress(0);
+        setRetagElapsed(0);
+      }, 800);
+    },
+    onError: (err: any) => {
+      setRetagProgress(0);
+      showToast(err.message || "Gagal tagging ulang scene", "error");
+    },
+    onSettled: () => {
+      setRetaggingMode(null);
+    },
+  });
+
+  // Progress Timer for Retagging
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (retagMutation.isPending) {
+      timer = setInterval(() => {
+        setRetagElapsed((prev) => {
+          const next = prev + 1;
+          if (next <= 3) {
+            setRetagProgress(15);
+            setRetagStepText("Menyiapkan thumbnail batch & adapter vision AI...");
+          } else if (next <= 8) {
+            setRetagProgress(45);
+            setRetagStepText("Menganalisis batch scene multimodal dengan AI Vision...");
+          } else if (next <= 16) {
+            setRetagProgress(75);
+            setRetagStepText("Mengekstrak deskripsi visual & hashtag kata kunci...");
+          } else {
+            setRetagProgress((p) => Math.min(92, p + 1));
+            setRetagStepText("Menyinkronkan hasil tagging ke timeline & galeri...");
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [retagMutation.isPending]);
 
   // Upload Mutation
   const handleFileUpload = async (files: FileList | null) => {
@@ -240,14 +320,91 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
       {/* Scene Gallery Drawer */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <Sparkles className="w-4 h-4 text-accent-yellow" />
             <h3 className="text-base font-bold text-white tracking-tight">
               Galeri Scene & AI Tagging ({project.scenes.length} Scenes)
             </h3>
+            {modelConfig?.vision_model && (
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-surface border border-surface-border text-slate-300 font-mono">
+                Vision: <strong className="text-brand-300">{modelConfig.vision_model}</strong>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick Tagging (Incremental) */}
+            <button
+              type="button"
+              onClick={() => retagMutation.mutate("quick")}
+              disabled={retagMutation.isPending || untaggedCount === 0}
+              className="px-3.5 py-1.5 rounded-xl bg-accent-yellow/15 hover:bg-accent-yellow/25 border border-accent-yellow/40 text-accent-yellow text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              title="Hanya tagging scene yang belum memiliki tag AI (cepat & hemat kuota)"
+            >
+              {retagMutation.isPending && retaggingMode === "quick" ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Menganalisis ({untaggedCount} sisa)...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Quick Tagging ({untaggedCount} sisa)</span>
+                </>
+              )}
+            </button>
+
+            {/* Force Tagging (All) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Tagging ulang seluruh ${project.scenes.length} scene dari awal menggunakan model vision ${modelConfig?.vision_model || "aktif"}?`)) {
+                  retagMutation.mutate("force");
+                }
+              }}
+              disabled={retagMutation.isPending || project.scenes.length === 0}
+              className="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-border border border-surface-border hover:border-slate-500 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              title="Analisis ulang seluruh scene dari awal dengan model Vision aktif di Settings"
+            >
+              {retagMutation.isPending && retaggingMode === "force" ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-400" />
+                  <span>Force Tagging ({project.scenes.length} scene)...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Force Tagging (Semua)</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Live Progress Card for Retagging */}
+        {retagMutation.isPending && (
+          <div className="p-4 rounded-xl bg-surface border border-brand-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-brand-500/5 mb-4">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-brand-300 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
+                <span className="truncate max-w-sm sm:max-w-md">{retagStepText || "Sedang menganalisis scene..."}</span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+                <span>{Math.floor(retagElapsed / 60)}:{String(retagElapsed % 60).padStart(2, "0")}</span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
+                  {Math.round(retagProgress)}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+              <div
+                className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                style={{ width: `${Math.max(5, retagProgress)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {project.scenes.length === 0 ? (
           <div className="glass-panel rounded-xl p-8 text-center border border-surface-border">
@@ -262,7 +419,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 key={scene.id}
                 className="glass-panel rounded-xl overflow-hidden border border-surface-border hover:border-accent-yellow/40 transition group flex flex-col"
               >
-                <div className="relative aspect-video bg-black/50 overflow-hidden">
+                <div
+                  className="relative aspect-video bg-black/50 overflow-hidden cursor-pointer"
+                  onClick={() => setPreviewScene(scene)}
+                >
                   {scene.thumbnail_url ? (
                     <img
                       src={scene.thumbnail_url}
@@ -274,25 +434,50 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <Film className="w-6 h-6" />
                     </div>
                   )}
+
+                  {/* Play overlay on hover */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <span className="w-9 h-9 rounded-full bg-brand-600/90 text-white flex items-center justify-center shadow-lg shadow-black/60 transform group-hover:scale-110 transition">
+                      <Play className="w-4 h-4 ml-0.5" />
+                    </span>
+                  </div>
+
                   <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">
                     {scene.duration}s
                   </span>
+                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-slate-200">
+                    #{scene.scene_index + 1}
+                  </span>
                 </div>
 
-                <div className="p-2.5 flex-1 flex flex-col justify-between">
-                  <p className="text-[11px] text-slate-200 line-clamp-2 leading-tight mb-2">
-                    {scene.description || "Scene visual"}
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {scene.tags?.slice(0, 2).map((t, i) => (
-                      <span
-                        key={i}
-                        className="text-[9px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-slate-400"
-                      >
-                        #{t}
-                      </span>
-                    ))}
+                <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] text-slate-200 line-clamp-2 leading-tight mb-2">
+                      {scene.description || "Scene visual"}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {scene.tags?.slice(0, 2).map((t, i) => (
+                        <span
+                          key={i}
+                          className="text-[9px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-slate-400"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewScene(scene);
+                    }}
+                    className="w-full py-1 rounded-lg bg-surface hover:bg-brand-500/20 text-slate-300 hover:text-brand-300 border border-surface-border hover:border-brand-500/30 text-[10px] font-medium flex items-center justify-center gap-1 transition"
+                  >
+                    <Play className="w-3 h-3" />
+                    <span>Preview Klip</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -382,6 +567,21 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             </div>
           </div>
         </div>
+      )}
+      {/* Modal: Scene Video Preview */}
+      {previewScene && (
+        <ScenePreviewModal
+          isOpen={Boolean(previewScene)}
+          onClose={() => setPreviewScene(null)}
+          videoUrl={previewScene.video_url}
+          thumbnailUrl={previewScene.thumbnail_url}
+          startTime={previewScene.start_time}
+          endTime={previewScene.end_time}
+          title={`Scene #${previewScene.scene_index + 1}`}
+          description={previewScene.description}
+          tags={previewScene.tags}
+          sceneIndex={previewScene.scene_index}
+        />
       )}
     </div>
   );

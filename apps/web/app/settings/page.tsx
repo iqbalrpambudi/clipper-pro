@@ -24,14 +24,16 @@ export default function SettingsPage() {
   const { showToast } = useStudioStore();
 
   const [baseUrl, setBaseUrl] = useState("");
-  const [chatModel, setChatModel] = useState("gemini-2.0-flash");
-  const [visionModel, setVisionModel] = useState("gemini-2.0-flash");
+  const [chatModel, setChatModel] = useState("gemini-2.5-flash");
+  const [visionModel, setVisionModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [ttsProvider, setTtsProvider] = useState("gemini");
   const [ttsApiKey, setTtsApiKey] = useState("");
 
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["model-config"],
@@ -41,11 +43,35 @@ export default function SettingsPage() {
   useEffect(() => {
     if (config) {
       setBaseUrl(config.base_url || "");
-      setChatModel(config.chat_model || "gemini-2.0-flash");
-      setVisionModel(config.vision_model || "gemini-2.0-flash");
+      setChatModel(config.chat_model || "gemini-2.5-flash");
+      setVisionModel(config.vision_model || "gemini-2.5-flash");
       setTtsProvider(config.tts_provider || "gemini");
     }
   }, [config]);
+
+  const handleFetchModels = async () => {
+    setIsFetchingModels(true);
+    try {
+      const res = await api.getAvailableModels(baseUrl.trim(), apiKey.trim());
+      if (res.models && res.models.length > 0) {
+        setAvailableModels(res.models);
+        showToast(`Ditemukan ${res.models.length} model dari endpoint!`, "success");
+      } else {
+        showToast("Tidak ada model yang ditemukan dari endpoint", "info");
+      }
+    } catch (e: any) {
+      showToast(e.message || "Gagal mengambil daftar model", "error");
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
+  const applyPreset = (preset: { base_url: string; chat_model: string; vision_model: string }) => {
+    setBaseUrl(preset.base_url);
+    setChatModel(preset.chat_model);
+    setVisionModel(preset.vision_model);
+    showToast(`Preset "${preset.chat_model}" diterapkan!`, "info");
+  };
 
   const saveMutation = useMutation({
     mutationFn: api.saveModelConfig,
@@ -138,32 +164,97 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Konfigurasi endpoint dan model untuk narrative generation serta vision tagging. Anda dapat menggunakan Google Gemini API, OpenAI, DeepSeek, Groq, atau self-hosted endpoint (Ollama/vLLM).
+              Konfigurasi endpoint dan model untuk narrative generation serta vision tagging. Anda dapat menggunakan <strong>9Router</strong>, Google Gemini API, OpenAI, DeepSeek, atau self-hosted endpoint.
             </p>
 
-            <div className="space-y-4 pt-2">
+            {/* Quick Provider Presets */}
+            <div className="bg-surface/60 rounded-xl p-3 border border-surface-border space-y-2">
+              <span className="text-[11px] font-semibold text-slate-400 block">Preset Cepat:</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPreset({ base_url: "http://localhost:20128/v1", chat_model: "gemini", vision_model: "gemini" })}
+                  className="px-3 py-1.5 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-300 text-xs font-medium transition flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3 h-3 text-brand-400" />
+                  <span>9Router (gemini)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset({ base_url: "http://localhost:20128/v1", chat_model: "kr/claude-sonnet-4.5", vision_model: "gemini" })}
+                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
+                >
+                  9Router (Claude Sonnet 4.5)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset({ base_url: "https://generativelanguage.googleapis.com/v1beta/openai/", chat_model: "gemini-2.5-flash", vision_model: "gemini-2.5-flash" })}
+                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
+                >
+                  Google Gemini Direct
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset({ base_url: "https://api.openai.com/v1", chat_model: "gpt-4o-mini", vision_model: "gpt-4o-mini" })}
+                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
+                >
+                  OpenAI Official (gpt-4o-mini)
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  API Base URL (Opsional jika memakai default Google / OpenAI)
+                  API Base URL (Contoh: http://localhost:20128/v1 untuk 9Router)
                 </label>
                 <input
                   type="text"
-                  placeholder="https://generativelanguage.googleapis.com/v1beta/openai/ atau https://api.openai.com/v1"
+                  placeholder="http://localhost:20128/v1 atau https://api.openai.com/v1"
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
                   className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
                 />
               </div>
 
+              {/* Datalist for Available Models */}
+              <datalist id="available-models-list">
+                {availableModels.length > 0 ? (
+                  availableModels.map((m) => (
+                    <option key={m} value={m} />
+                  ))
+                ) : (
+                  <>
+                    <option value="gemini-2.5-flash" />
+                    <option value="gemini-2.5-pro" />
+                    <option value="gemini-flash-latest" />
+                    <option value="gpt-4o" />
+                    <option value="gpt-4o-mini" />
+                  </>
+                )}
+              </datalist>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Chat Model (Narration Script)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Chat Model (Naskah Narasi)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleFetchModels}
+                      disabled={isFetchingModels}
+                      className="text-[10px] text-brand-400 hover:text-brand-300 flex items-center gap-1 font-mono disabled:opacity-50"
+                    >
+                      {isFetchingModels ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <RefreshCw className="w-2.5 h-2.5" />}
+                      <span>{availableModels.length > 0 ? `${availableModels.length} Model` : "Tarik Model"}</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
-                    placeholder="gemini-2.0-flash atau gpt-4o-mini"
+                    list="available-models-list"
+                    placeholder="gemini atau gpt-4o-mini"
                     value={chatModel}
                     onChange={(e) => setChatModel(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
@@ -171,13 +262,19 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Vision Model (Scene Tagging)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Vision Model (Tagging Scene Video)
+                    </label>
+                    {availableModels.length > 0 && (
+                      <span className="text-[10px] text-slate-400 font-mono">Datalist aktif</span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     required
-                    placeholder="gemini-2.0-flash atau gpt-4o-mini"
+                    list="available-models-list"
+                    placeholder="gemini atau gpt-4o-mini"
                     value={visionModel}
                     onChange={(e) => setVisionModel(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
@@ -188,7 +285,7 @@ export default function SettingsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-300">
-                    API Key (Disimpan Terenkripsi Fernet)
+                    API Key (Disimpan Terenkripsi Fernet — Kosongkan jika 9Router tidak memerlukan auth)
                   </label>
                   {config?.has_api_key && (
                     <span className="text-[10px] text-emerald-400 font-mono">
@@ -198,7 +295,7 @@ export default function SettingsPage() {
                 </div>
                 <input
                   type="password"
-                  placeholder={config?.has_api_key ? "Ketik untuk mengganti API key..." : "Masukkan API key AI..."}
+                  placeholder={config?.has_api_key ? "Ketik untuk mengganti API key..." : "Masukkan API key AI (opsional untuk 9Router)..."}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"

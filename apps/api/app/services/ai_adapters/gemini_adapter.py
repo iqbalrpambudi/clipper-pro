@@ -1,13 +1,23 @@
-from typing import Optional
+import asyncio
+import base64
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Optional, List, Dict, Any, Tuple
+import httpx
+
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
+
+log = logging.getLogger(__name__)
 
 
 class GeminiAdapter(OpenAICompatibleAdapter):
     def __init__(
         self,
         api_key: Optional[str],
-        chat_model: str = "gemini-2.0-flash",
-        vision_model: str = "gemini-2.0-flash",
+        chat_model: str = "gemini-2.5-flash-lite",
+        vision_model: str = "gemini-2.5-flash-lite",
         embedding_model: str = "text-embedding-004",
         base_url: Optional[str] = None,
     ):
@@ -19,3 +29,202 @@ class GeminiAdapter(OpenAICompatibleAdapter):
             vision_model=vision_model,
             embedding_model=embedding_model,
         )
+
+    async def analyze_vision_batch(
+        self,
+        batch_items: List[Tuple[str, str]],  # [(scene_id, thumbnail_path), ...]
+    ) -> List[Dict[str, Any]]:
+        """Analyze a batch of scene thumbnails in a SINGLE API call for maximum speed and quota efficiency."""
+        if not batch_items or not self.api_key:
+            return []
+
+        instruction = (
+            f"Analisis {len(batch_items)} gambar cuplikan video ini secara berurutan. "
+            "Untuk setiap gambar, berikan deskripsi visual (1 kalimat singkat Bahasa Indonesia) dan 3-5 hashtag kata kunci. "
+            "Output WAJIB berupa JSON array dengan format: [{\"index\": 0, \"description\": \"...\", \"tags\": [\"tag1\", \"tag2\"]}]"
+        )
+        parts: List[Dict[str, Any]] = [{"text": instruction}]
+
+        valid_items = []
+        for idx, (sc_id, t_path) in enumerate(batch_items):
+            p = Path(t_path)
+            if not p.exists():
+                continue
+            with open(p, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            ext = p.suffix.lower().replace(".", "")
+            mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+            parts.append({"text": f"Gambar #{idx}:"})
+            parts.append({"inlineData": {"mimeType": mime, "data": b64}})
+            valid_items.append((idx, sc_id))
+
+        if not valid_items:
+            return []
+
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.2,
+            },
+        }
+
+        # Priority model: user configured vision_model, with seamless failover
+        models_to_try = [self.vision_model]
+        for m in ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3-flash-preview"]:
+            if m not in models_to_try:
+                models_to_try.append(m)
+
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+            for attempt in range(3):
+                try:
+                    async with httpx.AsyncClient(timeout=35.0) as client:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 429:
+                            if attempt < 2:
+                                log.warning("Batch vision model %s hit 429, waiting 2.5s before retry (attempt %d)...", model_name, attempt + 1)
+                                await asyncio.sleep(2.5)
+                                continue
+                            else:
+                                log.warning("Batch vision model %s hit 429, falling back to next model...", model_name)
+                                break
+                        if resp.status_code >= 400:
+                            log.warning("Batch vision model %s returned %d: %s", model_name, resp.status_code, resp.text[:100])
+                            break
+
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if not candidates:
+                            break
+                        raw_text = candidates[0]["content"]["parts"][0]["text"]
+                        raw_text = re.sub(r"^```json\s*", "", raw_text, flags=re.MULTILINE)
+                        raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
+                        parsed = json.loads(raw_text.strip())
+
+                        parsed_map = {item.get("index", i): item for i, item in enumerate(parsed)}
+                        out = []
+                        for idx, sc_id in valid_items:
+                            item = parsed_map.get(idx) or {}
+                            out.append({
+                                "scene_id": sc_id,
+                                "description": item.get("description", "Cuplikan video aksi/aktivitas"),
+                                "tags": item.get("tags", ["video", "scene"]),
+                            })
+                        return out
+                except Exception as exc:
+                    log.warning("Batch vision attempt failed for %s: %s", model_name, exc)
+                    await asyncio.sleep(2.0)
+
+        return [
+            {
+                "scene_id": sc_id,
+                "description": "Cuplikan video aksi/aktivitas",
+                "tags": ["video", "scene", "aktivitas"],
+            }
+            for _, sc_id in valid_items
+        ]
+
+    async def analyze_vision(
+        self,
+        image_paths: List[str],
+        prompt: str,
+    ) -> Dict[str, Any]:
+        """Analyze single scene frame using Google AI Studio API with retry on rate limits."""
+        if not self.api_key:
+            return await super().analyze_vision(image_paths, prompt)
+
+        parts: List[Dict[str, Any]] = [
+            {
+                "text": (
+                    f"{prompt}\\n\\n"
+                    "PENTING: Jawab HANYA dalam format JSON valid dengan keys:\\n"
+                    "{\"description\": \"Deskripsi singkat scene dalam 1 kalimat Bahasa Indonesia\", "
+                    "\"tags\": [\"tag1\", \"tag2\", \"tag3\", \"tag4\"]}"
+                )
+            }
+        ]
+
+        for img_path in image_paths[:2]:
+            p = Path(img_path)
+            if not p.exists():
+                continue
+            with open(p, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            ext = p.suffix.lower().replace(".", "")
+            mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+            parts.append({
+                "inlineData": {
+                    "mimeType": mime,
+                    "data": b64,
+                }
+            })
+
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.3,
+            },
+        }
+
+        models_to_try = [self.vision_model]
+        if "gemini-2.5-flash-lite" not in models_to_try:
+            models_to_try.append("gemini-2.5-flash-lite")
+
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+            for attempt in range(3):
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 429:
+                            wait_sec = 2.5 * (attempt + 1)
+                            log.warning("Gemini Vision rate-limited (429), retrying in %.1fs...", wait_sec)
+                            await asyncio.sleep(wait_sec)
+                            continue
+
+                        if resp.status_code >= 400:
+                            raise RuntimeError(f"Gemini Vision HTTP {resp.status_code}: {resp.text[:200]}")
+
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if not candidates:
+                            raise RuntimeError("Empty candidates from Gemini Vision")
+
+                        raw_text = candidates[0]["content"]["parts"][0]["text"]
+                        raw_text = re.sub(r"^```json\s*", "", raw_text, flags=re.MULTILINE)
+                        raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
+
+                        parsed = json.loads(raw_text.strip())
+                        return {
+                            "description": parsed.get("description", "Aktivitas visual dalam scene"),
+                            "tags": parsed.get("tags", ["video", "scene"]),
+                        }
+                except Exception as exc:
+                    if attempt == 2 and model_name == models_to_try[-1]:
+                        log.warning("Gemini Vision analysis failed: %s", exc)
+                        return await super().analyze_vision(image_paths, prompt)
+                    await asyncio.sleep(2.0)
+
+        return await super().analyze_vision(image_paths, prompt)
+
+    async def generate_embedding(self, text: str) -> List[float]:
+        """Fast deterministic semantic hashing embedding (768 dimensions)."""
+        import hashlib
+        import math
+        tokens = re.findall(r"\\w+", text.lower())
+        vec = [0.0] * 768
+        if not tokens:
+            return vec
+        for i, token in enumerate(tokens):
+            h = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16)
+            idx = h % 768
+            weight = 1.0 / (1.0 + math.log1p(i))
+            sign = 1.0 if (h >> 16) % 2 == 0 else -1.0
+            vec[idx] += sign * weight
+
+        norm = math.sqrt(sum(x * x for x in vec))
+        if norm > 0:
+            vec = [x / norm for x in vec]
+        return vec

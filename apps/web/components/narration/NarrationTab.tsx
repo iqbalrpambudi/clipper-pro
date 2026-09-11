@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
+  Loader2,
   BookOpen,
   Edit3,
   CheckCircle2,
@@ -38,6 +39,12 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const [rawText, setRawText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
+  // Live Progress State for Narration Generation & Auto-Refresh
+  const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
+  const [narrationProgress, setNarrationProgress] = useState(0);
+  const [narrationStepText, setNarrationStepText] = useState("");
+  const [narrationElapsed, setNarrationElapsed] = useState(0);
+
   const { data: templates = [] } = useQuery({
     queryKey: ["templates"],
     queryFn: api.getTemplates,
@@ -53,21 +60,64 @@ export function NarrationTab({ project }: NarrationTabProps) {
     }
   }, [project.narration]);
 
+  // Progress Timer for Narration Generation
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (isGeneratingNarration) {
+      timer = setInterval(() => {
+        setNarrationElapsed((prev) => {
+          const next = prev + 1;
+          if (next <= 2) {
+            setNarrationProgress(20);
+            setNarrationStepText("Menganalisis ringkasan scene video & durasi...");
+          } else if (next <= 4) {
+            setNarrationProgress(50);
+            setNarrationStepText("Menyusun hook awal & alur narasi storytelling...");
+          } else if (next <= 7) {
+            setNarrationProgress(75);
+            setNarrationStepText("Memformat segmentasi kalimat & kata kunci...");
+          } else {
+            setNarrationProgress((p) => Math.min(92, p + 1));
+            setNarrationStepText("Menyelesaikan validasi naskah dengan AI...");
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isGeneratingNarration]);
+
   const generateMutation = useMutation({
-    mutationFn: () =>
-      api.generateNarration(project.id, {
+    mutationFn: () => {
+      setIsGeneratingNarration(true);
+      setNarrationProgress(12);
+      setNarrationElapsed(0);
+      setNarrationStepText("Menghubungi AI Model naskah...");
+      return api.generateNarration(project.id, {
         template_id: selectedTemplateId,
         topic,
         tone,
         target_duration: targetDuration,
-      }),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      });
+    },
+    onSuccess: async (data) => {
+      setNarrationProgress(100);
+      setNarrationStepText("Naskah narasi berhasil dibuat!");
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       setRawText(data.raw_text);
       setIsEditing(false);
       showToast("Naskah narasi berhasil dibuat dengan AI!", "success");
+      setTimeout(() => {
+        setIsGeneratingNarration(false);
+        setNarrationProgress(0);
+        setNarrationElapsed(0);
+      }, 800);
     },
     onError: (err: any) => {
+      setIsGeneratingNarration(false);
+      setNarrationProgress(0);
       showToast(err.message || "Gagal generate naskah", "error");
     },
   });
@@ -199,14 +249,52 @@ export function NarrationTab({ project }: NarrationTabProps) {
           />
         </div>
 
-        <div className="pt-3 border-t border-surface-border flex justify-end">
+        {/* Live Progress Card for Narration */}
+        {isGeneratingNarration && (
+          <div className="p-4 rounded-xl bg-surface border border-brand-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-brand-500/5">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-brand-300 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
+                <span className="truncate max-w-sm sm:max-w-md">{narrationStepText || "Sedang menyusun naskah..."}</span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+                <span>{Math.floor(narrationElapsed / 60)}:{String(narrationElapsed % 60).padStart(2, "0")}</span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
+                  {Math.round(narrationProgress)}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+              <div
+                className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                style={{ width: Math.max(5, narrationProgress) + "%" }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="pt-3 border-t border-surface-border flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">
+            {isGeneratingNarration
+              ? "AI sedang menyusun naskah storytelling dan segmentasi..."
+              : "Naskah akan disesuaikan otomatis dengan durasi dan template terpilih."}
+          </span>
           <button
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-brand-500/25 flex items-center gap-2 transition transform active:scale-95"
+            disabled={generateMutation.isPending || isGeneratingNarration}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-brand-500/25 flex items-center gap-2 transition transform active:scale-95 disabled:opacity-50"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>{generateMutation.isPending ? "Menghasilkan Naskah AI..." : "Generate Naskah Sekarang"}</span>
+            {isGeneratingNarration ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Menghasilkan Naskah ({Math.round(narrationProgress)}%)...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>Generate Naskah Sekarang</span>
+              </>
+            )}
           </button>
         </div>
       </div>

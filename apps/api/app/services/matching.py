@@ -4,14 +4,21 @@ from typing import List, Dict, Any, Optional
 from app.services.ai_adapters.base import BaseLLMAdapter
 
 
-def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    a = np.array(v1, dtype=np.float32)
-    b = np.array(v2, dtype=np.float32)
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
+def cosine_similarity(v1: Any, v2: Any) -> float:
+    if v1 is None or v2 is None:
         return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
+    try:
+        a = np.asarray(v1, dtype=np.float32)
+        b = np.asarray(v2, dtype=np.float32)
+        if a.size == 0 or b.size == 0:
+            return 0.0
+        norm_a = float(np.linalg.norm(a))
+        norm_b = float(np.linalg.norm(b))
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        return float(np.dot(a, b) / (norm_a * norm_b))
+    except Exception:
+        return 0.0
 
 
 async def match_scenes_to_segments(
@@ -21,7 +28,7 @@ async def match_scenes_to_segments(
     default_bg_fill: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Match each narration sentence segment to the most semantically relevant scene."""
-    if not scenes:
+    if not scenes or not segments:
         return []
 
     # Pre-generate embeddings for segments
@@ -43,7 +50,9 @@ async def match_scenes_to_segments(
         scored_scenes = []
         for sc in scenes:
             sc_emb = sc.get("embedding")
-            sim = cosine_similarity(seg_emb, sc_emb) if sc_emb else 0.0
+            sim = 0.0
+            if sc_emb is not None and seg_emb is not None:
+                sim = cosine_similarity(seg_emb, sc_emb)
 
             # Slight bonus for unused scenes to maintain visual variety
             penalty = 0.85 if sc["id"] in used_scene_ids else 1.0
@@ -57,10 +66,12 @@ async def match_scenes_to_segments(
         scene_dur = best_scene.get("duration", 4.0)
         scene_start = best_scene.get("start_time", 0.0)
 
-        # If scene is long enough, trim clip to match segment duration
+        # Metode A: Center-Weighted Slice Extraction (Pusatkan potongan untuk hindari bleed awal & akhir)
         if scene_dur >= target_duration:
-            clip_start = scene_start
-            clip_end = scene_start + target_duration
+            slack = scene_dur - target_duration
+            center_offset = round(slack / 2.0, 2)
+            clip_start = round(scene_start + center_offset, 2)
+            clip_end = round(clip_start + target_duration, 2)
             clips.append({
                 "id": str(uuid.uuid4()),
                 "segment_id": seg["id"],
@@ -76,46 +87,67 @@ async def match_scenes_to_segments(
                 "background_fill_override": None,
             })
         else:
-            # Scene is shorter than segment duration:
-            # Chain next best scene if available
-            time_remaining = target_duration
-            cur_time_cursor = start_sec
+            # Scene lebih pendek dari kebutuhan segmen narasi:
+            time_remaining = round(target_duration - scene_dur, 2)
 
-            # Add primary clip
-            clips.append({
-                "id": str(uuid.uuid4()),
-                "segment_id": seg["id"],
-                "scene_id": best_scene["id"],
-                "source_video_id": best_scene["source_video_id"],
-                "timeline_start": round(cur_time_cursor, 2),
-                "timeline_end": round(cur_time_cursor + scene_dur, 2),
-                "clip_start": round(scene_start, 2),
-                "clip_end": round(best_scene.get("end_time", scene_start + scene_dur), 2),
-                "speed": 1.0,
-                "text": seg["text"],
-                "thumbnail_url": best_scene.get("thumbnail_url"),
-                "background_fill_override": None,
-            })
-            time_remaining -= scene_dur
-            cur_time_cursor += scene_dur
-
-            # Fill remainder with 2nd best scene
-            if len(scored_scenes) > 1 and time_remaining > 0.5:
-                second_scene = scored_scenes[1][1]
-                s2_start = second_scene.get("start_time", 0.0)
+            # Jika selisih kecil (<= 0.8s), terapkan smart speed stretch (0.85x - 0.98x)
+            # agar TIDAK membuat potongan mikro 0.3s yang mengganggu mata penonton!
+            if time_remaining <= 0.8:
+                speed_factor = round(scene_dur / target_duration, 2)
                 clips.append({
                     "id": str(uuid.uuid4()),
                     "segment_id": seg["id"],
-                    "scene_id": second_scene["id"],
-                    "source_video_id": second_scene["source_video_id"],
-                    "timeline_start": round(cur_time_cursor, 2),
+                    "scene_id": best_scene["id"],
+                    "source_video_id": best_scene["source_video_id"],
+                    "timeline_start": round(start_sec, 2),
                     "timeline_end": round(end_sec, 2),
-                    "clip_start": round(s2_start, 2),
-                    "clip_end": round(s2_start + time_remaining, 2),
-                    "speed": 1.0,
+                    "clip_start": round(scene_start, 2),
+                    "clip_end": round(best_scene.get("end_time", scene_start + scene_dur), 2),
+                    "speed": max(0.8, min(1.0, speed_factor)),
                     "text": seg["text"],
-                    "thumbnail_url": second_scene.get("thumbnail_url"),
+                    "thumbnail_url": best_scene.get("thumbnail_url"),
                     "background_fill_override": None,
                 })
+            else:
+                # Jika selisih besar (> 0.8s), tambahkan scene utama lalu isi sisa dengan scene ke-2 (juga center-weighted)
+                cur_time_cursor = start_sec
+                clips.append({
+                    "id": str(uuid.uuid4()),
+                    "segment_id": seg["id"],
+                    "scene_id": best_scene["id"],
+                    "source_video_id": best_scene["source_video_id"],
+                    "timeline_start": round(cur_time_cursor, 2),
+                    "timeline_end": round(cur_time_cursor + scene_dur, 2),
+                    "clip_start": round(scene_start, 2),
+                    "clip_end": round(best_scene.get("end_time", scene_start + scene_dur), 2),
+                    "speed": 1.0,
+                    "text": seg["text"],
+                    "thumbnail_url": best_scene.get("thumbnail_url"),
+                    "background_fill_override": None,
+                })
+                cur_time_cursor += scene_dur
+
+                if len(scored_scenes) > 1:
+                    second_scene = scored_scenes[1][1]
+                    s2_dur = second_scene.get("duration", 4.0)
+                    s2_start = second_scene.get("start_time", 0.0)
+                    s2_slack = max(0.0, s2_dur - time_remaining)
+                    s2_offset = round(s2_slack / 2.0, 2)
+                    c2_start = round(s2_start + s2_offset, 2)
+                    c2_end = round(c2_start + time_remaining, 2)
+                    clips.append({
+                        "id": str(uuid.uuid4()),
+                        "segment_id": seg["id"],
+                        "scene_id": second_scene["id"],
+                        "source_video_id": second_scene["source_video_id"],
+                        "timeline_start": round(cur_time_cursor, 2),
+                        "timeline_end": round(end_sec, 2),
+                        "clip_start": round(c2_start, 2),
+                        "clip_end": round(c2_end, 2),
+                        "speed": 1.0,
+                        "text": seg["text"],
+                        "thumbnail_url": second_scene.get("thumbnail_url"),
+                        "background_fill_override": None,
+                    })
 
     return clips

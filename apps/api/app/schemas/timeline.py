@@ -15,6 +15,7 @@ class ClipSchema(BaseModel):
     transition: Optional[str] = None
     background_fill_override: Optional[Dict[str, Any]] = None
     thumbnail_url: Optional[str] = None
+    video_url: Optional[str] = None
     text: Optional[str] = None
 
 

@@ -35,7 +35,8 @@ async def get_video_metadata(video_path: str) -> Dict[str, Any]:
         raise RuntimeError(f"Gagal membaca metadata video: {stderr.decode()}")
 
     data = json.loads(stdout.decode())
-    stream = data.get("streams", [{}])[0]
+    streams = data.get("streams") or [{}]
+    stream = streams[0] if streams else {}
     fmt = data.get("format", {})
 
     width = int(stream.get("width", 1920))

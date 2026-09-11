@@ -62,3 +62,28 @@ def test_generate_ass_subtitles():
     assert "[V4+ Styles]" in ass_text
     assert "Dialogue:" in ass_text
     assert "RAHASIA" in ass_text or "rahasia" in ass_text
+
+
+def test_openai_adapter_sse_and_json_parsing():
+    from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
+
+    adapter = OpenAICompatibleAdapter(base_url="http://localhost:20128/v1", api_key="dummy")
+
+    # 1. Standard JSON
+    json_text = '{"choices": [{"message": {"content": "Halo dunia"}}]}'
+    assert adapter._extract_content_from_response(json_text) == "Halo dunia"
+
+    # 2. SSE streaming format (e.g. from 9Router)
+    sse_text = (
+        'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"Halo "}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"Dunia!"}}]}\n\n'
+        'data: [DONE]\n\n'
+    )
+    assert adapter._extract_content_from_response(sse_text) == "Halo Dunia!"
+
+    # 3. Model error in JSON
+    error_text = '{"error": {"message": "Model not available"}}'
+    with pytest.raises(RuntimeError, match="Model not available"):
+        adapter._extract_content_from_response(error_text)
+

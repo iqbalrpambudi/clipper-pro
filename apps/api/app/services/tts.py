@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import edge_tts
@@ -10,6 +11,26 @@ from app.core.config import get_settings
 from app.schemas.tts import VoiceInfo, CostEstimateResponse
 from app.services.scene_detector import get_video_metadata
 
+async def get_audio_duration(file_path: str) -> float:
+    """Accurately probe audio duration in seconds using ffprobe."""
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        file_path,
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await proc.communicate()
+    try:
+        return round(float(stdout.decode().strip()), 3)
+    except Exception:
+        return 0.0
+
 log = logging.getLogger(__name__)
 
 AVAILABLE_VOICES: List[VoiceInfo] = [
@@ -17,7 +38,7 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         id="Puck",
         name="Puck (Gemini)",
         provider="gemini",
-        gender="Male",
+        gender="Neutral",
         sample_text="Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!",
         sample_audio_url=None,
         description="Energetik, bersahabat, sangat cocok untuk konten viral & fakta unik.",
@@ -59,6 +80,33 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         description="Ekspresif, santai, memikat untuk cerita visual dan lifestyle.",
     ),
     VoiceInfo(
+        id="Leda",
+        name="Leda (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Halo semuanya! Hari ini kita bakal bahas hal super seru yang wajib kamu tonton.",
+        sample_audio_url=None,
+        description="Ceria, bersemangat, sangat cocok untuk video santai dan edukasi modern.",
+    ),
+    VoiceInfo(
+        id="Orpheus",
+        name="Orpheus (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Simak analisa mendalam berikut untuk memahami apa yang sebenarnya terjadi.",
+        sample_audio_url=None,
+        description="Percaya diri, elegan, sangat cocok untuk dokumenter dan narasi ulasan.",
+    ),
+    VoiceInfo(
+        id="Zephyr",
+        name="Zephyr (Gemini)",
+        provider="gemini",
+        gender="Neutral",
+        sample_text="Tarik nafas perlahan, dan nikmati momen berharga dalam perjalanan ini.",
+        sample_audio_url=None,
+        description="Lembut, menenangkan, ideal untuk vlog perjalanan & relaksasi.",
+    ),
+    VoiceInfo(
         id="id-ID-GadisNeural",
         name="Gadis (Edge Natural)",
         provider="edge",
@@ -85,7 +133,7 @@ def estimate_tts_cost(text: str, provider: str = "gemini") -> CostEstimateRespon
     # Speech rate average ~ 14 chars/sec in Indonesian
     est_duration_sec = round(char_count / 14.5, 1)
 
-    # Gemini 2.5 Flash TTS pricing ~ $0.000004 per char (or ~$0.004 per 1k chars)
+    # Gemini 2.5 Flash TTS pricing ~ $0.000004 per char
     # Edge-TTS is free ($0.0)
     rate_per_char = 0.000004 if provider.lower() == "gemini" else 0.0
     est_cost = round(char_count * rate_per_char, 4)
@@ -114,9 +162,7 @@ async def generate_edge_tts(
     communicate = edge_tts.Communicate(text, voice=voice, rate=rate, pitch=pitch)
     await communicate.save(str(out_p))
 
-    # Read audio duration via ffprobe
-    meta = await get_video_metadata(str(out_p))
-    return meta["duration"]
+    return await get_audio_duration(str(out_p))
 
 
 async def generate_gemini_tts(
@@ -126,46 +172,139 @@ async def generate_gemini_tts(
     voice: str = "Puck",
     model: str = "gemini-2.5-flash-preview-tts",
 ) -> float:
-    """Generate audio via Gemini API."""
+    """Generate audio via Gemini API multimodal audio endpoint (:generateContent)."""
     settings = get_settings()
-    key = api_key or settings.GEMINI_API_KEY or settings.AI_API_KEY
+    key = (api_key or "").strip() or (settings.GEMINI_API_KEY or "").strip() or (settings.AI_API_KEY or "").strip()
 
     if not key:
-        log.warning("No Gemini API key provided for TTS, falling back to Edge-TTS")
-        return await generate_edge_tts(text, output_path, voice="id-ID-GadisNeural")
+        log.warning("No Gemini API key configured for TTS, falling back to Edge-TTS")
+        edge_voice = "id-ID-ArdiNeural" if voice in ("Puck", "Charon", "Fenrir", "Orpheus") else "id-ID-GadisNeural"
+        return await generate_edge_tts(text, output_path, voice=edge_voice)
 
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateAudio?key={key}"
+    clean_model = model.strip().removeprefix("models/")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent?key={key}"
     payload = {
-        "text": text,
-        "voiceConfig": {
-            "prebuiltVoiceConfig": {
-                "voiceName": voice,
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": (
+                            "Please read aloud the following text exactly as written with natural pacing, "
+                            "clarity, and expressive storytelling tone, with no additional commentary:\n\n"
+                            f"{text}"
+                        )
+                    }
+                ]
             }
+        ],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {
+                        "voiceName": voice,
+                    }
+                }
+            },
         },
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             resp = await client.post(url, json=payload)
             if resp.status_code == 200:
                 data = resp.json()
-                audio_b64 = data.get("audioContent") or data.get("audio", {}).get("data")
-                if audio_b64:
-                    with open(out_p, "wb") as f:
-                        f.write(base64.b64decode(audio_b64))
-                    meta = await get_video_metadata(str(out_p))
-                    return meta["duration"]
+                candidates = data.get("candidates") or []
+                inline_data = None
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for part in parts:
+                        if "inlineData" in part:
+                            inline_data = part["inlineData"]
+                            break
 
-            log.warning("Gemini TTS endpoint returned status %s: %s, falling back to Edge-TTS", resp.status_code, resp.text[:200])
+                if inline_data and "data" in inline_data:
+                    raw_bytes = base64.b64decode(inline_data["data"])
+                    mime_type = inline_data.get("mimeType", "")
+
+                    # If PCM audio (24kHz 16-bit mono), transcode to MP3 using ffmpeg
+                    if "pcm" in mime_type or (
+                        not raw_bytes.startswith(b"RIFF")
+                        and not raw_bytes.startswith(b"ID3")
+                        and not raw_bytes.startswith(b"\xff\xfb")
+                    ):
+                        proc = await asyncio.create_subprocess_exec(
+                            "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+                            "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        _, stderr = await proc.communicate(input=raw_bytes)
+                        if proc.returncode != 0:
+                            raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
+                    else:
+                        out_p.write_bytes(raw_bytes)
+
+                    return await get_audio_duration(str(out_p))
+                else:
+                    log.error("Gemini response did not contain audio inlineData: %s", str(data)[:300])
+            else:
+                log.error("Gemini TTS API error HTTP %s: %s", resp.status_code, resp.text[:300])
     except Exception as e:
-        log.warning("Gemini TTS request exception: %s, falling back to Edge-TTS", e)
+        log.exception("Gemini TTS request exception: %s", e)
 
-    # Clean fallback to Edge-TTS
-    edge_voice = "id-ID-ArdiNeural" if voice in ("Puck", "Charon", "Fenrir") else "id-ID-GadisNeural"
+    # Fallback to Edge-TTS if Gemini request fails
+    log.warning("Gemini TTS synthesis failed. Falling back to Edge-TTS for voice %s", voice)
+    edge_voice = "id-ID-ArdiNeural" if voice in ("Puck", "Charon", "Fenrir", "Orpheus") else "id-ID-GadisNeural"
     return await generate_edge_tts(text, output_path, voice=edge_voice)
+
+
+async def get_or_generate_voice_sample(
+    provider: str = "gemini",
+    voice: str = "Puck",
+    model: str = "gemini-2.5-flash-preview-tts",
+    api_key: Optional[str] = None,
+) -> Path:
+    """Generate or return cached 2-3s sample audio for the specified voice."""
+    settings = get_settings()
+    storage_base = Path(settings.STORAGE_PATH)
+    cache_dir = storage_base / "cache" / "voice_samples"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
+    clean_voice = re.sub(r"[^\w\-]", "", voice)
+    sample_path = cache_dir / f"sample_{clean_prov}_{clean_voice}.mp3"
+
+    if sample_path.exists() and sample_path.stat().st_size > 1000:
+        return sample_path
+
+    # Find matching sample text
+    sample_text = "Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!"
+    for v in AVAILABLE_VOICES:
+        if v.id == voice:
+            sample_text = v.sample_text
+            break
+
+    if clean_prov == "gemini":
+        await generate_gemini_tts(
+            sample_text,
+            str(sample_path),
+            api_key=api_key,
+            voice=voice,
+            model=model,
+        )
+    else:
+        await generate_edge_tts(
+            sample_text,
+            str(sample_path),
+            voice=voice,
+        )
+
+    return sample_path
 
 
 async def generate_speech_audio(

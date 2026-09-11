@@ -5,7 +5,7 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://api:8080";
+    const apiUrl = process.env.INTERNAL_API_URL || "http://api:8080";
     return [
       {
         source: "/api/:path*",

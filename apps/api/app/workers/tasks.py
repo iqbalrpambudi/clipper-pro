@@ -8,9 +8,11 @@ from app.core.storage import storage
 from app.models.project import Project, SourceVideo, Scene, RenderJob
 from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline, SubtitleStyle
+from app.models.config import ModelConfig
+from app.core.security import decrypt_secret
 from app.services.ytdlp import download_video
 from app.services.scene_detector import detect_scenes, get_video_metadata
-from app.services.ai_adapters.factory import get_active_llm_adapter
+from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
 from app.services.vision_tagger import analyze_scene
 from app.services.tts import generate_speech_audio, estimate_tts_cost
 from app.services.alignment import align_audio_with_text
@@ -86,7 +88,7 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
         try:
             scenes_data = await detect_scenes(video.file_path, str(scene_out_dir))
 
-            adapter = await get_active_llm_adapter(db)
+            adapter = await get_active_vision_adapter(db)
 
             for item in scenes_data:
                 # Analyze keyframes
@@ -142,6 +144,16 @@ async def generate_tts_and_align_job(
         audio_file = audio_dir / f"tts_{narration.id}.mp3"
 
         try:
+            # Retrieve active ModelConfig for decrypted API key
+            res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+            cfg = res_cfg.scalar_one_or_none()
+            api_key = None
+            if cfg:
+                if cfg.tts_api_key_encrypted:
+                    api_key = decrypt_secret(cfg.tts_api_key_encrypted)
+                elif cfg.api_key_encrypted:
+                    api_key = decrypt_secret(cfg.api_key_encrypted)
+
             # Step 1: TTS generation
             duration = await generate_speech_audio(
                 text=narration.raw_text,
@@ -150,6 +162,7 @@ async def generate_tts_and_align_job(
                 voice=voice,
                 rate=rate,
                 pitch=pitch,
+                api_key=api_key,
             )
 
             # Step 2: Alignment

@@ -1,12 +1,15 @@
 import asyncio
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from arq import create_pool
 from app.core.db import get_db
 from app.core.redis import get_redis_settings
 from app.core.storage import storage
+from app.core.security import decrypt_secret
+from app.models.config import ModelConfig
 from app.models.project import Project
 from app.models.narration import Narration, AudioTrack
 from app.schemas.tts import (
@@ -16,7 +19,7 @@ from app.schemas.tts import (
     TTSGenerateRequest,
     AudioTrackResponse,
 )
-from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost
+from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.workers.tasks import generate_tts_and_align_job
 
 router = APIRouter(tags=["tts"])
@@ -25,6 +28,37 @@ router = APIRouter(tags=["tts"])
 @router.get("/tts/voices", response_model=List[VoiceInfo])
 async def list_voices():
     return AVAILABLE_VOICES
+
+
+@router.get("/tts/sample")
+async def get_voice_sample(
+    provider: str = "gemini",
+    voice: str = "Puck",
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve real 2-3s sample audio for the specified voice."""
+    res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+    cfg = res.scalar_one_or_none()
+    api_key = ""
+    if cfg:
+        if cfg.tts_api_key_encrypted:
+            api_key = decrypt_secret(cfg.tts_api_key_encrypted)
+        elif cfg.api_key_encrypted:
+            api_key = decrypt_secret(cfg.api_key_encrypted)
+
+    try:
+        sample_path = await get_or_generate_voice_sample(
+            provider=provider,
+            voice=voice,
+            api_key=api_key or None,
+        )
+        return FileResponse(
+            path=str(sample_path),
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memuat sampel suara: {e}")
 
 
 @router.post("/tts/estimate-cost", response_model=CostEstimateResponse)

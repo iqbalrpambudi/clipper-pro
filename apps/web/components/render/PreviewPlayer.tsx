@@ -15,6 +15,7 @@ interface PreviewPlayerProps {
 
 export function PreviewPlayer({ project }: PreviewPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [durationSec, setDurationSec] = useState(project.timeline?.total_duration || 30);
@@ -28,6 +29,14 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
   const activeClip = clips.find(
     (c) => currentTimeSec >= c.timeline_start && currentTimeSec <= c.timeline_end
   ) || clips[0];
+
+  // Calculate target playback position in source video for activeClip
+  const clipProgress = activeClip
+    ? Math.max(0, currentTimeSec - activeClip.timeline_start)
+    : 0;
+  const targetVideoTime = activeClip
+    ? activeClip.clip_start + clipProgress * (activeClip.speed || 1)
+    : 0;
 
   // Find active subtitle text and active word at current time
   const curMs = currentTimeSec * 1000;
@@ -56,6 +65,15 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
       }
     }
   }
+
+  // Update total duration when project updates
+  useEffect(() => {
+    if (project.timeline?.total_duration) {
+      setDurationSec(project.timeline.total_duration);
+    } else if (project.audio?.duration) {
+      setDurationSec(project.audio.duration);
+    }
+  }, [project.timeline?.total_duration, project.audio?.duration]);
 
   // Audio sync
   useEffect(() => {
@@ -88,13 +106,73 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
     };
   }, []);
 
+  // Timer fallback if no audio track exists yet (e.g. previewing timeline early)
+  useEffect(() => {
+    if (project.audio?.audio_url) return;
+    if (!isPlaying) return;
+
+    let lastTime = performance.now();
+    const interval = setInterval(() => {
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+      setCurrentTimeSec((cur) => {
+        const next = cur + delta;
+        if (next >= durationSec) {
+          setIsPlaying(false);
+          return 0;
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, project.audio?.audio_url, durationSec]);
+
+  // Sync video element with active clip & currentTimeSec
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !activeClip?.video_url) return;
+
+    // Check if source changed
+    const currentSrc = video.getAttribute("src");
+    if (currentSrc !== activeClip.video_url) {
+      video.src = activeClip.video_url;
+    }
+
+    // Sync time drift if greater than 0.3s
+    if (Math.abs(video.currentTime - targetVideoTime) > 0.35) {
+      video.currentTime = targetVideoTime;
+    }
+
+    // Sync play state
+    if (isPlaying && video.paused) {
+      video.play().catch(() => {});
+    } else if (!isPlaying && !video.paused) {
+      video.pause();
+    }
+  }, [
+    activeClip?.video_url,
+    activeClip?.id,
+    isPlaying,
+    Math.floor(currentTimeSec * 2), // sync check twice per sec
+    targetVideoTime,
+  ]);
+
   const togglePlay = () => {
-    if (!audioRef.current) return;
     if (isPlaying) {
-      audioRef.current.pause();
+      if (audioRef.current) audioRef.current.pause();
+      if (videoRef.current) videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      if (audioRef.current) {
+        audioRef.current.currentTime = currentTimeSec;
+        audioRef.current.play().catch(() => {});
+      }
+      if (videoRef.current) {
+        videoRef.current.currentTime = targetVideoTime;
+        videoRef.current.play().catch(() => {});
+      }
       setIsPlaying(true);
     }
   };
@@ -104,6 +182,11 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
     setCurrentTimeSec(t);
     if (audioRef.current) {
       audioRef.current.currentTime = t;
+    }
+    const seekClip = clips.find((c) => t >= c.timeline_start && t <= c.timeline_end) || clips[0];
+    if (seekClip && videoRef.current) {
+      const offset = Math.max(0, t - seekClip.timeline_start);
+      videoRef.current.currentTime = seekClip.clip_start + offset * (seekClip.speed || 1);
     }
   };
 
@@ -131,8 +214,17 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
         )}
 
         {/* Center Main Video Content */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
-          {activeClip?.thumbnail_url ? (
+        <div className="relative z-10 w-full h-full flex items-center justify-center p-1 overflow-hidden">
+          {activeClip?.video_url ? (
+            <video
+              ref={videoRef}
+              src={activeClip.video_url}
+              playsInline
+              muted
+              poster={activeClip.thumbnail_url || undefined}
+              className="w-full max-h-full object-contain rounded-lg shadow-2xl"
+            />
+          ) : activeClip?.thumbnail_url ? (
             <img
               src={activeClip.thumbnail_url}
               alt="Scene preview"
@@ -163,7 +255,7 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
           {subtitleStyle?.display_mode === "burst" && burstWords.length > 0 ? (
             <div
               style={{
-                fontFamily: subtitleStyle?.font_family || "Montserrat",
+                fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
                 fontSize: `${(subtitleStyle?.font_size || 56) / 3.2}px`,
                 fontWeight: subtitleStyle?.font_weight.toLowerCase() === "bold" ? "bold" : "normal",
                 color: subtitleStyle?.primary_color || "#FFFFFF",
@@ -193,7 +285,7 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
           ) : subtitleStyle?.display_mode === "per_word" && activeWord ? (
             <div
               style={{
-                fontFamily: subtitleStyle?.font_family || "Montserrat",
+                fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
                 fontSize: `${(subtitleStyle?.font_size || 56) / 3.0}px`,
                 fontWeight: subtitleStyle?.font_weight.toLowerCase() === "bold" ? "bold" : "normal",
                 color: subtitleStyle?.highlight_color || "#FFE600",
@@ -208,7 +300,7 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
           ) : activeSegment ? (
             <div
               style={{
-                fontFamily: subtitleStyle?.font_family || "Inter",
+                fontFamily: `"${subtitleStyle?.font_family || "Inter"}", sans-serif`,
                 fontSize: `${(subtitleStyle?.font_size || 56) / 3.8}px`,
                 color: subtitleStyle?.primary_color || "#FFFFFF",
                 textShadow: `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`,
@@ -265,6 +357,9 @@ export function PreviewPlayer({ project }: PreviewPlayerProps) {
             onClick={() => {
               setCurrentTimeSec(0);
               if (audioRef.current) audioRef.current.currentTime = 0;
+              if (videoRef.current && activeClip) {
+                videoRef.current.currentTime = activeClip.clip_start;
+              }
             }}
             className="p-2 text-slate-400 hover:text-white transition"
             title="Reset to Start"

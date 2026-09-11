@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.db import get_db
 from app.core.storage import storage
-from app.models.project import Project, Scene
+from app.models.project import Project, Scene, SourceVideo
 from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline
 from app.schemas.timeline import TimelineUpdateRequest, TimelineResponse
@@ -72,12 +72,16 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
     await db.commit()
     await db.refresh(timeline)
 
-    # Attach thumbnails to response
+    # Attach thumbnails and video_url to response
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in v_res.scalars().all()}
     scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in scenes}
+    scenes_video_map = {s.id: video_url_map.get(s.source_video_id) for s in scenes}
     res_clips = []
     for c in timeline.clips:
         c_copy = dict(c)
         c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
         res_clips.append(c_copy)
 
     return TimelineResponse(
@@ -95,13 +99,18 @@ async def get_timeline(project_id: str, db: AsyncSession = Depends(get_db)):
     if not timeline:
         raise HTTPException(status_code=404, detail="Timeline belum dibuat")
 
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in v_res.scalars().all()}
     s_res = await db.execute(select(Scene).where(Scene.project_id == project_id))
-    scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in s_res.scalars().all()}
+    all_scenes = s_res.scalars().all()
+    scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in all_scenes}
+    scenes_video_map = {s.id: video_url_map.get(s.source_video_id) for s in all_scenes}
 
     res_clips = []
     for c in timeline.clips or []:
         c_copy = dict(c)
         c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
         res_clips.append(c_copy)
 
     return TimelineResponse(
@@ -131,9 +140,25 @@ async def update_timeline(
     await db.commit()
     await db.refresh(timeline)
 
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in v_res.scalars().all()}
+    s_res = await db.execute(select(Scene).where(Scene.project_id == project_id))
+    all_scenes = s_res.scalars().all()
+    scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in all_scenes}
+    scenes_video_map = {s.id: video_url_map.get(s.source_video_id) for s in all_scenes}
+
+    res_clips = []
+    for c in timeline.clips or []:
+        c_copy = dict(c)
+        if not c_copy.get("thumbnail_url"):
+            c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
+        if not c_copy.get("video_url"):
+            c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+        res_clips.append(c_copy)
+
     return TimelineResponse(
         id=timeline.id,
         project_id=timeline.project_id,
-        clips=timeline.clips,
+        clips=res_clips,
         total_duration=timeline.total_duration,
     )

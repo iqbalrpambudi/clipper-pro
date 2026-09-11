@@ -1,4 +1,6 @@
+import re
 import time
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -123,12 +125,18 @@ async def test_model_connection(
 
     start_time = time.time()
     try:
-        if (base_url and "googleapis.com" in base_url) or "gemini" in chat_model.lower():
+        if base_url and "googleapis.com" in base_url:
             adapter = GeminiAdapter(
                 api_key=api_key,
                 chat_model=chat_model,
                 vision_model=vision_model,
                 base_url=base_url,
+            )
+        elif not base_url and "gemini" in chat_model.lower():
+            adapter = GeminiAdapter(
+                api_key=api_key,
+                chat_model=chat_model,
+                vision_model=vision_model,
             )
         else:
             adapter = OpenAICompatibleAdapter(
@@ -158,3 +166,70 @@ async def test_model_connection(
             latency_ms=latency,
             message=f"Gagal terhubung ke model: {str(e)}",
         )
+
+
+
+_MODELS_CACHE: dict = {}
+_MODELS_CACHE_TTL: float = 300.0  # 5 minutes
+
+@router.get("/models")
+async def list_available_models(
+    base_url: str = "",
+    api_key: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Fetch list of available models from OpenAI-compatible endpoint or 9Router.
+    """
+    target_url = base_url.strip()
+    target_key = api_key.strip()
+
+    if not target_url:
+        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+        cfg = res.scalar_one_or_none()
+        if cfg and cfg.base_url:
+            target_url = cfg.base_url
+            if not target_key and cfg.api_key_encrypted:
+                target_key = decrypt_secret(cfg.api_key_encrypted)
+
+    if not target_url:
+        return {
+            "models": [
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gpt-4o",
+                "gpt-4o-mini",
+                "claude-3-5-sonnet-20241022",
+            ]
+        }
+
+    raw_url = target_url.rstrip("/")
+    raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
+    if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
+        raw_url = f"{raw_url}/v1"
+
+    headers = {"Content-Type": "application/json"}
+    if target_key:
+        headers["Authorization"] = f"Bearer {target_key}"
+
+    cache_key = f"{raw_url}::{target_key}"
+    now = time.time()
+    if cache_key in _MODELS_CACHE:
+        cached_time, cached_models = _MODELS_CACHE[cache_key]
+        if now - cached_time < _MODELS_CACHE_TTL:
+            return {"models": cached_models}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{raw_url}/models", headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_models = data.get("data", [])
+                models = [m["id"] for m in raw_models if isinstance(m, dict) and "id" in m]
+                _MODELS_CACHE[cache_key] = (now, models)
+                return {"models": models}
+    except Exception as e:
+        pass
+
+    return {"models": []}
+

@@ -157,7 +157,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     <span
                       style={{
                         color: p.primary_color,
-                        fontFamily: p.font_family,
+                        fontFamily: `"${p.font_family}", sans-serif`,
                         fontWeight: p.font_weight.toLowerCase() === "bold" ? "bold" : "normal",
                         textShadow: `-2px -2px 0 ${p.outline_color}, 2px -2px 0 ${p.outline_color}, -2px 2px 0 ${p.outline_color}, 2px 2px 0 ${p.outline_color}`,
                         backgroundColor: p.box_opacity > 0 ? p.box_color : "transparent",
@@ -214,7 +214,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
         <div className="p-6 rounded-xl bg-black/80 border border-surface-border flex items-center justify-center min-h-[100px]">
           <div
             style={{
-              fontFamily: style.font_family,
+              fontFamily: `"${style.font_family}", sans-serif`,
               fontSize: `${Math.max(style.font_size / 2.5, 18)}px`,
               fontWeight: style.font_weight.toLowerCase() === "bold" ? "bold" : "normal",
               color: style.primary_color,
@@ -237,13 +237,20 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
             <label className="block text-slate-400 font-semibold mb-1">Font Family</label>
             <select
               value={style.font_family}
-              onChange={(e) => setStyle({ ...style, font_family: e.target.value })}
+              onChange={(e) => {
+                const updated = { ...style, font_family: e.target.value };
+                setStyle(updated);
+                updateStyleMutation.mutate(updated);
+              }}
               className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500"
             >
               <option value="Montserrat">Montserrat (Bold Modern)</option>
               <option value="Bebas Neue">Bebas Neue (Punch Hormozi)</option>
               <option value="Poppins">Poppins (Clean & Crisp)</option>
               <option value="Inter">Inter (Minimalist Regular)</option>
+              <option value="Anton">Anton (Bold Poster)</option>
+              <option value="Oswald">Oswald (Condensed Strong)</option>
+              <option value="Roboto">Roboto (Clean Neutral)</option>
               <option value="Impact">Impact (Heavy Punch)</option>
             </select>
           </div>

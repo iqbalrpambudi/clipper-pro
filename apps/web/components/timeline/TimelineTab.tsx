@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
+  Loader2,
   Film,
   Volume2,
   Subtitles,
@@ -13,7 +14,13 @@ import {
   Layers,
   Check,
   RotateCcw,
+  Play,
+  Scissors,
+  Sliders,
+  Maximize2,
+  AlertCircle,
 } from "lucide-react";
+import { ScenePreviewModal } from "../media/ScenePreviewModal";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, Timeline, TimelineClip, Scene, AudioTrack } from "@/types";
@@ -31,16 +38,107 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const { showToast, setActiveTab, currentTime, setCurrentTime } = useStudioStore();
 
   const [selectedClipIndex, setSelectedClipIndex] = useState<number | null>(null);
+  const [previewData, setPreviewData] = useState<{
+    videoUrl?: string | null;
+    thumbnailUrl?: string | null;
+    startTime: number;
+    endTime: number;
+    title: string;
+    description?: string | null;
+    tags?: string[];
+  } | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>(project.timeline?.clips || []);
 
+  // Filter state for Scene Drawer in Timeline (All, Used in Timeline, Available)
+  const [sceneDrawerFilter, setSceneDrawerFilter] = useState<"all" | "used" | "available">("all");
+
+  // Map scene_id -> list of 1-indexed clip positions in the timeline
+  const usedSceneMap = useMemo(() => {
+    const map = new Map<string, number[]>();
+    clips.forEach((clip, index) => {
+      if (clip.scene_id) {
+        const list = map.get(clip.scene_id) || [];
+        list.push(index + 1);
+        map.set(clip.scene_id, list);
+      }
+    });
+    return map;
+  }, [clips]);
+
+  const usedCount = useMemo(() => {
+    return project.scenes.filter((s) => usedSceneMap.has(s.id)).length;
+  }, [project.scenes, usedSceneMap]);
+
+  const availableCount = project.scenes.length - usedCount;
+
+  const filteredScenes = useMemo(() => {
+    if (sceneDrawerFilter === "used") {
+      return project.scenes.filter((s) => usedSceneMap.has(s.id));
+    }
+    if (sceneDrawerFilter === "available") {
+      return project.scenes.filter((s) => !usedSceneMap.has(s.id));
+    }
+    return project.scenes;
+  }, [project.scenes, sceneDrawerFilter, usedSceneMap]);
+
+  // Live Progress State for Auto-Match & Auto-Refresh
+  const [isAutoMatching, setIsAutoMatching] = useState(false);
+  const [matchProgress, setMatchProgress] = useState(0);
+  const [matchStepText, setMatchStepText] = useState("");
+  const [matchElapsed, setMatchElapsed] = useState(0);
+
+  // Progress Timer for Auto-Match
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (isAutoMatching) {
+      timer = setInterval(() => {
+        setMatchElapsed((prev) => {
+          const next = prev + 1;
+          if (next <= 2) {
+            setMatchProgress(25);
+            setMatchStepText("Mengekstrak segmen narasi & timing kata...");
+          } else if (next <= 4) {
+            setMatchProgress(55);
+            setMatchStepText("Menganalisis kemiripan semantik AI antara naskah dan scene...");
+          } else if (next <= 7) {
+            setMatchProgress(80);
+            setMatchStepText("Menghitung durasi cut & sinkronisasi transisi...");
+          } else {
+            setMatchProgress((p) => Math.min(92, p + 1));
+            setMatchStepText("Menyusun susunan klip visual Track 1...");
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isAutoMatching]);
+
   const autoMatchMutation = useMutation({
-    mutationFn: () => api.autoMatchTimeline(project.id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    mutationFn: () => {
+      setIsAutoMatching(true);
+      setMatchProgress(15);
+      setMatchElapsed(0);
+      setMatchStepText("Mempersiapkan data scene & naskah...");
+      return api.autoMatchTimeline(project.id);
+    },
+    onSuccess: async (data) => {
+      setMatchProgress(100);
+      setMatchStepText("Scene berhasil dicocokkan otomatis!");
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       setClips(data.clips);
       showToast("Scene berhasil dicocokkan otomatis dengan naskah!", "success");
+      setTimeout(() => {
+        setIsAutoMatching(false);
+        setMatchProgress(0);
+        setMatchElapsed(0);
+      }, 800);
     },
     onError: (err: any) => {
+      setIsAutoMatching(false);
+      setMatchProgress(0);
       showToast(err.message || "Gagal mencocokkan scene", "error");
     },
   });
@@ -56,6 +154,124 @@ export function TimelineTab({ project }: TimelineTabProps) {
     },
   });
 
+  // Metode A: Auto Trim Center Massal (Semua Klip)
+  const handleAutoTrimCenterAll = () => {
+    let modifiedCount = 0;
+    const updatedClips = clips.map((clip) => {
+      const originalScene = project.scenes.find((s) => s.id === clip.scene_id);
+      if (!originalScene) return clip;
+
+      const clipDuration = Number((clip.clip_end - clip.clip_start).toFixed(2));
+      const sceneDuration = originalScene.duration;
+
+      // Jika scene asli lebih panjang dari klip yang dibutuhkan, pusatkan potongannya
+      if (sceneDuration > clipDuration) {
+        const slack = sceneDuration - clipDuration;
+        const centerOffset = Number((slack / 2.0).toFixed(2));
+        const newClipStart = Number((originalScene.start_time + centerOffset).toFixed(2));
+        const newClipEnd = Number((newClipStart + clipDuration).toFixed(2));
+
+        if (newClipStart !== clip.clip_start || newClipEnd !== clip.clip_end) {
+          modifiedCount++;
+          return {
+            ...clip,
+            clip_start: newClipStart,
+            clip_end: newClipEnd,
+          };
+        }
+      }
+      return clip;
+    });
+
+    setClips(updatedClips);
+    saveTimelineMutation.mutate();
+    if (modifiedCount > 0) {
+      showToast(`${modifiedCount} klip berhasil di-center trim (aman dari transisi awal/akhir)!`, "success");
+    } else {
+      showToast("Semua klip sudah berada di posisi tengah yang aman", "info");
+    }
+  };
+
+  // Metode C: Precision Trim Handlers untuk klip yang sedang dipilih
+  const updateSelectedClipTrim = (updates: { clip_start?: number; clip_end?: number }) => {
+    if (selectedClipIndex === null) return;
+    const updated = [...clips];
+    const target = { ...updated[selectedClipIndex] };
+    const originalScene = project.scenes.find((s) => s.id === target.scene_id);
+
+    const minAllowedStart = originalScene ? originalScene.start_time : 0;
+    const maxAllowedEnd = originalScene ? originalScene.end_time : (target.clip_start + 20);
+
+    let newStart = updates.clip_start !== undefined ? updates.clip_start : target.clip_start;
+    let newEnd = updates.clip_end !== undefined ? updates.clip_end : target.clip_end;
+
+    // Pastikan batas aman
+    newStart = Math.max(minAllowedStart, newStart);
+    newEnd = Math.min(maxAllowedEnd, newEnd);
+
+    // Durasi minimum klip 0.5s
+    if (newEnd - newStart < 0.5) {
+      if (updates.clip_start !== undefined) {
+        newStart = Number((newEnd - 0.5).toFixed(2));
+      } else {
+        newEnd = Number((newStart + 0.5).toFixed(2));
+      }
+    }
+
+    target.clip_start = Number(newStart.toFixed(2));
+    target.clip_end = Number(newEnd.toFixed(2));
+    updated[selectedClipIndex] = target;
+    setClips(updated);
+  };
+
+  const handleTrimHead = (delta: number = 0.3) => {
+    if (selectedClipIndex === null) return;
+    const target = clips[selectedClipIndex];
+    const newStart = Number((target.clip_start + delta).toFixed(2));
+    updateSelectedClipTrim({ clip_start: newStart });
+    showToast(`Titik awal klip dimajukan +${delta}s (head bleed terpotong)!`, "info");
+  };
+
+  const handleTrimTail = (delta: number = 0.3) => {
+    if (selectedClipIndex === null) return;
+    const target = clips[selectedClipIndex];
+    const newEnd = Number((target.clip_end - delta).toFixed(2));
+    updateSelectedClipTrim({ clip_end: newEnd });
+    showToast(`Titik akhir klip dimundurkan -${delta}s (tail bleed terpotong)!`, "info");
+  };
+
+  const handleCenterSelectedClip = () => {
+    if (selectedClipIndex === null) return;
+    const target = clips[selectedClipIndex];
+    const originalScene = project.scenes.find((s) => s.id === target.scene_id);
+    if (!originalScene) return;
+
+    const clipDur = Number((target.clip_end - target.clip_start).toFixed(2));
+    const slack = originalScene.duration - clipDur;
+    if (slack > 0) {
+      const offset = Number((slack / 2.0).toFixed(2));
+      const newStart = Number((originalScene.start_time + offset).toFixed(2));
+      const newEnd = Number((newStart + clipDur).toFixed(2));
+      updateSelectedClipTrim({ clip_start: newStart, clip_end: newEnd });
+      showToast("Klip ini berhasil dipusatkan (center-trim)!", "success");
+    } else {
+      showToast("Durasi scene asli pas dengan klip", "info");
+    }
+  };
+
+  const handleResetSelectedClipTrim = () => {
+    if (selectedClipIndex === null) return;
+    const target = clips[selectedClipIndex];
+    const originalScene = project.scenes.find((s) => s.id === target.scene_id);
+    if (!originalScene) return;
+
+    updateSelectedClipTrim({
+      clip_start: originalScene.start_time,
+      clip_end: originalScene.end_time,
+    });
+    showToast("Rentang klip dikembalikan ke ukuran penuh scene asli", "info");
+  };
+
   const handleSwapScene = (scene: Scene) => {
     if (selectedClipIndex === null) {
       showToast("Pilih slot klip pada timeline terlebih dahulu untuk mengganti scene", "info");
@@ -66,13 +282,19 @@ export function TimelineTab({ project }: TimelineTabProps) {
     const target = updated[selectedClipIndex];
     const duration = target.timeline_end - target.timeline_start;
 
+    // Center-weighted extraction for swapped scene
+    const slack = Math.max(0, scene.duration - duration);
+    const offset = Number((slack / 2.0).toFixed(2));
+    const cStart = Number((scene.start_time + offset).toFixed(2));
+    const cEnd = Number((cStart + duration).toFixed(2));
+
     updated[selectedClipIndex] = {
       ...target,
       scene_id: scene.id,
       source_video_id: scene.source_video_id,
       thumbnail_url: scene.thumbnail_url,
-      clip_start: scene.start_time,
-      clip_end: scene.start_time + duration,
+      clip_start: cStart,
+      clip_end: cEnd,
     };
 
     setClips(updated);
@@ -96,7 +318,19 @@ export function TimelineTab({ project }: TimelineTabProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Metode A: Auto Trim Center Button */}
+          <button
+            type="button"
+            onClick={handleAutoTrimCenterAll}
+            disabled={clips.length === 0 || saveTimelineMutation.isPending}
+            className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+            title="Pusatkan potongan semua klip tepat di tengah scene asli (otomatis hindari transisi bocor di awal/akhir)"
+          >
+            <Scissors className="w-3.5 h-3.5 text-emerald-400" />
+            <span>🎯 Auto Trim Center (Semua)</span>
+          </button>
+
           <button
             onClick={() => autoMatchMutation.mutate()}
             disabled={autoMatchMutation.isPending}
@@ -115,6 +349,30 @@ export function TimelineTab({ project }: TimelineTabProps) {
           </button>
         </div>
       </div>
+
+      {/* Live Progress Card for Auto-Match */}
+      {isAutoMatching && (
+        <div className="p-4 rounded-xl bg-surface border border-brand-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-brand-500/5">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-brand-300 font-semibold">
+              <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
+              <span className="truncate max-w-sm sm:max-w-md">{matchStepText || "Sedang mencocokkan scene..."}</span>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+              <span>{Math.floor(matchElapsed / 60)}:{String(matchElapsed % 60).padStart(2, "0")}</span>
+              <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
+                {Math.round(matchProgress)}%
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+            <div
+              className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+              style={{ width: Math.max(5, matchProgress) + "%" }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Multi-Track Timeline Visualizer */}
       <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
@@ -141,7 +399,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                       : "border-surface-border bg-surface hover:border-slate-500"
                   }`}
                 >
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-black/60 mb-2">
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-black/60 mb-2 group/thumb">
                     {clip.thumbnail_url ? (
                       <img
                         src={clip.thumbnail_url}
@@ -153,10 +411,33 @@ export function TimelineTab({ project }: TimelineTabProps) {
                         <Film className="w-5 h-5" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-white">
+
+                    {/* Quick Preview Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewData({
+                          videoUrl: clip.video_url,
+                          thumbnailUrl: clip.thumbnail_url,
+                          startTime: clip.clip_start,
+                          endTime: clip.clip_end,
+                          title: `Klip #${idx + 1}`,
+                          description: clip.text || `Klip visual #${idx + 1}`,
+                        });
+                      }}
+                      className="absolute inset-0 bg-black/45 opacity-0 group-hover/thumb:opacity-100 transition flex items-center justify-center cursor-pointer"
+                      title="Preview Potongan Klip Ini"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition">
+                        <Play className="w-3.5 h-3.5 ml-0.5" />
+                      </span>
+                    </button>
+
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-white pointer-events-none">
                       #{idx + 1}
                     </span>
-                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white">
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white pointer-events-none">
                       {dur}s
                     </span>
                   </div>
@@ -207,9 +488,170 @@ export function TimelineTab({ project }: TimelineTabProps) {
         </div>
       </div>
 
+      {/* Metode C: Precision Clip Trim Panel for Selected Clip */}
+      {selectedClipIndex !== null && clips[selectedClipIndex] && (() => {
+        const curClip = clips[selectedClipIndex];
+        const origScene = project.scenes.find((s) => s.id === curClip.scene_id);
+        const clipDur = Number((curClip.clip_end - curClip.clip_start).toFixed(2));
+        const sceneMin = origScene ? origScene.start_time : 0;
+        const sceneMax = origScene ? origScene.end_time : (curClip.clip_start + 10);
+        const sceneDur = origScene ? origScene.duration : clipDur;
+
+        return (
+          <div className="glass-panel rounded-2xl p-6 border border-brand-500/50 space-y-4 shadow-xl shadow-brand-500/5 animate-fadeIn bg-surface/90">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-border/80 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-300 font-bold text-xs">
+                  #{selectedClipIndex + 1}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Scissors className="w-4 h-4 text-accent-yellow" />
+                    Koreksi Presisi Potongan Klip #{selectedClipIndex + 1} (Metode C)
+                  </h4>
+                  <p className="text-xs text-slate-300 line-clamp-1">
+                    {curClip.text || "Potongan visual scene"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="px-2.5 py-1 rounded-lg bg-surface border border-surface-border text-slate-300 font-mono">
+                  Durasi Klip: <strong className="text-brand-300">{clipDur}s</strong>
+                </span>
+                {origScene && (
+                  <span className="px-2.5 py-1 rounded-lg bg-surface border border-surface-border text-slate-400 font-mono text-[11px]">
+                    Scene Asli: {origScene.start_time.toFixed(1)}s – {origScene.end_time.toFixed(1)}s ({sceneDur.toFixed(1)}s)
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPreviewData({
+                    videoUrl: curClip.video_url,
+                    thumbnailUrl: curClip.thumbnail_url,
+                    startTime: curClip.clip_start,
+                    endTime: curClip.clip_end,
+                    title: `Preview Trim Klip #${selectedClipIndex + 1}`,
+                    description: `Rentang potong aktif: ${curClip.clip_start.toFixed(2)}s – ${curClip.clip_end.toFixed(2)}s (${clipDur}s)`,
+                  })}
+                  className="px-3 py-1 rounded-lg bg-brand-600/30 border border-brand-500/50 hover:bg-brand-500/40 text-brand-200 font-semibold flex items-center gap-1.5 transition"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>Preview Trim</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Trim Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleTrimHead(0.3)}
+                className="px-3 py-2 rounded-xl bg-surface hover:bg-surface-border border border-surface-border hover:border-brand-500/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition"
+                title="Pangkas 0.3 detik di awal klip untuk menghilangkan kebocoran shot/transisi pohon di awal"
+              >
+                <Scissors className="w-3.5 h-3.5 text-accent-yellow" />
+                <span>✂️ Pangkas Depan (+0.3s)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTrimTail(0.3)}
+                className="px-3 py-2 rounded-xl bg-surface hover:bg-surface-border border border-surface-border hover:border-brand-500/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition"
+                title="Pangkas 0.3 detik di akhir klip untuk menghilangkan kebocoran shot/transisi pohon di akhir"
+              >
+                <Scissors className="w-3.5 h-3.5 text-rose-400 rotate-180" />
+                <span>✂️ Pangkas Belakang (-0.3s)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCenterSelectedClip}
+                className="px-3 py-2 rounded-xl bg-surface hover:bg-surface-border border border-surface-border hover:border-emerald-500/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition"
+                title="Ambil bagian tengah persis dari scene sumber yang paling aman dari kebocoran"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>🎯 Pusatkan Klip Ini</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetSelectedClipTrim}
+                className="px-3 py-2 rounded-xl bg-surface hover:bg-surface-border border border-surface-border text-xs font-semibold text-slate-400 hover:text-white flex items-center justify-center gap-2 transition"
+                title="Kembalikan titik potong ke batas awal dan akhir scene asli"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                <span>↺ Reset ke Asli</span>
+              </button>
+            </div>
+
+            {/* Precision Slider Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1.5 p-3 rounded-xl bg-surface/60 border border-surface-border/60">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Sliders className="w-3 h-3 text-brand-400" /> Titik Awal Klip (In-Point)
+                  </label>
+                  <span className="font-mono font-bold text-brand-300">{curClip.clip_start.toFixed(2)}s</span>
+                </div>
+                <input
+                  type="range"
+                  min={sceneMin}
+                  max={Number((curClip.clip_end - 0.5).toFixed(2))}
+                  step={0.05}
+                  value={curClip.clip_start}
+                  onChange={(e) => updateSelectedClipTrim({ clip_start: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-surface-card rounded-lg cursor-pointer accent-brand-500"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                  <span>Mulai: {sceneMin.toFixed(1)}s</span>
+                  <span>Maks: {(curClip.clip_end - 0.5).toFixed(1)}s</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-surface/60 border border-surface-border/60">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Sliders className="w-3 h-3 text-brand-400" /> Titik Akhir Klip (Out-Point)
+                  </label>
+                  <span className="font-mono font-bold text-brand-300">{curClip.clip_end.toFixed(2)}s</span>
+                </div>
+                <input
+                  type="range"
+                  min={Number((curClip.clip_start + 0.5).toFixed(2))}
+                  max={sceneMax}
+                  step={0.05}
+                  value={curClip.clip_end}
+                  onChange={(e) => updateSelectedClipTrim({ clip_end: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-surface-card rounded-lg cursor-pointer accent-brand-500"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                  <span>Min: {(curClip.clip_start + 0.5).toFixed(1)}s</span>
+                  <span>Akhir: {sceneMax.toFixed(1)}s</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+              <p>
+                💡 <em>Gunakan tombol pangkas di atas atau geser slider untuk memotong sisa potongan yang tidak pas. Jangan lupa klik <strong>Simpan Timeline</strong> setelah selesai.</em>
+              </p>
+              <button
+                type="button"
+                onClick={() => saveTimelineMutation.mutate()}
+                disabled={saveTimelineMutation.isPending}
+                className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition"
+              >
+                {saveTimelineMutation.isPending ? "Menyimpan..." : "Simpan Koreksi Klip"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Media Pool Drawer for Manual Swap */}
       <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <Film className="w-4 h-4 text-brand-400" />
@@ -221,45 +663,180 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 : "Klik salah satu klip di timeline di atas, lalu klik scene di bawah untuk mengganti."}
             </p>
           </div>
+
+          {/* Filter Pills for Scene Drawer */}
+          <div className="flex items-center gap-1 bg-surface-card p-1 rounded-xl border border-surface-border">
+            <button
+              type="button"
+              onClick={() => setSceneDrawerFilter("all")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                sceneDrawerFilter === "all"
+                  ? "bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span>Semua</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-surface-border">
+                {project.scenes.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSceneDrawerFilter("used")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                sceneDrawerFilter === "used"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+              <span>Di Timeline</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-surface-border text-emerald-400 font-bold">
+                {usedCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSceneDrawerFilter("available")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                sceneDrawerFilter === "available"
+                  ? "bg-slate-700/50 text-white border border-slate-600 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span>Tersedia</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-surface-border text-slate-300">
+                {availableCount}
+              </span>
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 max-h-72 overflow-y-auto pr-1">
-          {project.scenes.map((sc) => (
-            <div
-              key={sc.id}
-              onClick={() => handleSwapScene(sc)}
-              className="glass-panel rounded-xl overflow-hidden border border-surface-border hover:border-brand-500 cursor-pointer transition flex flex-col group"
-            >
-              <div className="relative aspect-video bg-black/60 overflow-hidden">
-                {sc.thumbnail_url ? (
-                  <img
-                    src={sc.thumbnail_url}
-                    alt={sc.description || "scene"}
-                    className="w-full h-full object-cover group-hover:scale-105 transition"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-600">
-                    <Film className="w-5 h-5" />
-                  </div>
-                )}
-                <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white">
-                  {sc.duration}s
-                </span>
-              </div>
-              <div className="p-2 flex-1 flex flex-col justify-between">
-                <p className="text-[10px] text-slate-200 line-clamp-2 leading-tight mb-1">
-                  {sc.description || "Scene"}
-                </p>
-                <button
-                  type="button"
-                  className="w-full py-1 text-[9px] font-bold rounded bg-brand-500/20 text-brand-300 border border-brand-500/30 group-hover:bg-brand-500 group-hover:text-white transition text-center"
+        {filteredScenes.length === 0 ? (
+          <div className="p-8 text-center border border-surface-border/50 rounded-xl bg-surface/40">
+            <p className="text-xs text-slate-400">
+              {sceneDrawerFilter === "used"
+                ? "Belum ada scene yang digunakan pada timeline saat ini."
+                : "Semua scene dari video telah terpakai di timeline."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 max-h-80 overflow-y-auto pr-1">
+            {filteredScenes.map((sc) => {
+              const isUsed = usedSceneMap.has(sc.id);
+              const clipIndices = usedSceneMap.get(sc.id) || [];
+              const isCurrentlySelectedClipScene =
+                selectedClipIndex !== null && clips[selectedClipIndex]?.scene_id === sc.id;
+
+              return (
+                <div
+                  key={sc.id}
+                  onClick={() => handleSwapScene(sc)}
+                  className={`glass-panel rounded-xl overflow-hidden cursor-pointer transition flex flex-col group ${
+                    isCurrentlySelectedClipScene
+                      ? "border-accent-yellow bg-accent-yellow/10 ring-2 ring-accent-yellow/40 shadow-lg shadow-accent-yellow/10"
+                      : isUsed
+                      ? "border-emerald-500/50 hover:border-emerald-400 bg-surface/85 shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/20"
+                      : "border-surface-border hover:border-brand-500"
+                  }`}
                 >
-                  Pilih Scene Ini
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <div className="relative aspect-video bg-black/60 overflow-hidden group/sc">
+                    {sc.thumbnail_url ? (
+                      <img
+                        src={sc.thumbnail_url}
+                        alt={sc.description || "scene"}
+                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-600">
+                        <Film className="w-5 h-5" />
+                      </div>
+                    )}
+
+                    {/* Preview scene button in drawer */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewData({
+                          videoUrl: sc.video_url,
+                          thumbnailUrl: sc.thumbnail_url,
+                          startTime: sc.start_time,
+                          endTime: sc.end_time,
+                          title: `Scene #${sc.scene_index + 1}`,
+                          description: sc.description,
+                          tags: sc.tags,
+                        });
+                      }}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover/sc:opacity-100 transition flex items-center justify-center"
+                      title="Preview Scene Ini Sebelum Swap"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-black/70 hover:bg-brand-600 border border-white/20 text-white flex items-center justify-center shadow-md transform hover:scale-110 transition">
+                        <Play className="w-3.5 h-3.5 ml-0.5" />
+                      </span>
+                    </button>
+
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white pointer-events-none">
+                      {sc.duration}s
+                    </span>
+
+                    {/* Top Badges: Scene Index & Timeline Badge */}
+                    <div className="absolute top-1 left-1 flex items-center gap-1 max-w-[90%]">
+                      <span className="px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-slate-200 shrink-0">
+                        #{sc.scene_index + 1}
+                      </span>
+                      {isUsed && (
+                        <span
+                          className="px-1.5 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-400/70 text-[9px] font-bold text-emerald-300 flex items-center gap-0.5 shadow-md truncate backdrop-blur-sm"
+                          title={`Terpakai di Timeline pada Klip #${clipIndices.join(", #")}`}
+                        >
+                          <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3] shrink-0" />
+                          <span className="truncate">Klip #{clipIndices.slice(0, 2).join(", #")}{clipIndices.length > 2 ? "..." : ""}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2 flex-1 flex flex-col justify-between gap-1.5">
+                    <p className="text-[10px] text-slate-200 line-clamp-2 leading-tight">
+                      {sc.description || "Scene"}
+                    </p>
+
+                    <div className="space-y-1">
+                      {isUsed && (
+                        <div className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/25 text-center">
+                          <span className="text-[8.5px] font-semibold text-emerald-300 flex items-center justify-center gap-0.5 truncate">
+                            <Check className="w-2.5 h-2.5 stroke-[3] shrink-0" />
+                            <span>Klip #{clipIndices.join(", #")}</span>
+                          </span>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className={`w-full py-1 text-[9px] font-bold rounded transition text-center ${
+                          isCurrentlySelectedClipScene
+                            ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40 font-extrabold"
+                            : isUsed
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 group-hover:bg-emerald-500 group-hover:text-white"
+                            : "bg-brand-500/20 text-brand-300 border border-brand-500/30 group-hover:bg-brand-500 group-hover:text-white"
+                        }`}
+                      >
+                        {isCurrentlySelectedClipScene
+                          ? "✓ Klip Aktif Ini"
+                          : selectedClipIndex !== null
+                          ? isUsed
+                            ? `Swap Klip #${selectedClipIndex + 1} (Terpakai)`
+                            : `Swap Klip #${selectedClipIndex + 1}`
+                          : "Pilih Scene Ini"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="pt-4 flex justify-end">
           <button
@@ -271,6 +848,20 @@ export function TimelineTab({ project }: TimelineTabProps) {
           </button>
         </div>
       </div>
+      {/* Scene Preview Modal */}
+      {previewData && (
+        <ScenePreviewModal
+          isOpen={Boolean(previewData)}
+          onClose={() => setPreviewData(null)}
+          videoUrl={previewData.videoUrl}
+          thumbnailUrl={previewData.thumbnailUrl}
+          startTime={previewData.startTime}
+          endTime={previewData.endTime}
+          title={previewData.title}
+          description={previewData.description}
+          tags={previewData.tags}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Volume2,
@@ -35,6 +35,80 @@ export function TTSTab({ project }: TTSTabProps) {
   const [rate, setRate] = useState("+0%");
   const [pitch, setPitch] = useState("+0Hz");
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
+  const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Live Progress State for TTS Generation & Auto-Refresh
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(
+    project.audio?.status === "generating"
+  );
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStepText, setGenerationStepText] = useState("");
+  const [generationElapsed, setGenerationElapsed] = useState(0);
+
+  useEffect(() => {
+    return () => {
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Auto-track TTS Generation Progress & Auto-Refresh
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    let poller: NodeJS.Timeout | null = null;
+
+    if (isGeneratingTTS) {
+      timer = setInterval(() => {
+        setGenerationElapsed((prev) => {
+          const next = prev + 1;
+          if (next <= 2) {
+            setGenerationProgress(18);
+            setGenerationStepText("Menghubungi AI Speech synthesizer...");
+          } else if (next <= 5) {
+            setGenerationProgress(45);
+            setGenerationStepText("Mensintesis audio narasi dengan suara " + selectedVoice + "...");
+          } else if (next <= 8) {
+            setGenerationProgress(75);
+            setGenerationStepText("Menjalankan forced word-level alignment & timestamping...");
+          } else if (next <= 12) {
+            setGenerationProgress(88);
+            setGenerationStepText("Memproses sinkronisasi segmen kata...");
+          } else {
+            setGenerationProgress((p) => Math.min(94, p + 1));
+            setGenerationStepText("Menyelesaikan penyimpanan trek audio...");
+          }
+          return next;
+        });
+      }, 1000);
+
+      // Active rapid poller to guarantee instant auto-refresh
+      poller = setInterval(() => {
+        queryClient.refetchQueries({ queryKey: ["project", project.id] });
+      }, 1500);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+      if (poller) clearInterval(poller);
+    };
+  }, [isGeneratingTTS, project.id, queryClient, selectedVoice]);
+
+  // Detect completion when project.audio changes to ready
+  useEffect(() => {
+    if (isGeneratingTTS && project.audio && (project.audio.status === "ready" || project.audio.audio_url)) {
+      setGenerationProgress(100);
+      setGenerationStepText("Audio narasi & forced alignment berhasil dibuat!");
+      showToast("Audio narasi siap dimainkan!", "success");
+      const timeout = setTimeout(() => {
+        setIsGeneratingTTS(false);
+        setGenerationProgress(0);
+        setGenerationElapsed(0);
+      }, 1200);
+      return () => clearTimeout(timeout);
+    }
+  }, [project.audio, isGeneratingTTS, showToast]);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],
@@ -50,39 +124,67 @@ export function TTSTab({ project }: TTSTabProps) {
   });
 
   const generateTTSMutation = useMutation({
-    mutationFn: () =>
-      api.generateTTS(project.id, {
+    mutationFn: () => {
+      setIsGeneratingTTS(true);
+      setGenerationProgress(10);
+      setGenerationElapsed(0);
+      setGenerationStepText("Memulai sintesis audio AI...");
+      return api.generateTTS(project.id, {
         provider,
         voice: selectedVoice,
         rate,
         pitch,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Pembuatan audio TTS & forced alignment dimulai di background!", "info");
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
     },
     onError: (err: any) => {
+      setIsGeneratingTTS(false);
+      setGenerationProgress(0);
       showToast(err.message || "Gagal generate audio TTS", "error");
     },
   });
 
   const playVoiceSample = (voiceId: string) => {
-    // Play quick browser speech synthesis or tone if no sample file
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      if (sampleAudioPlaying === voiceId) {
-        setSampleAudioPlaying(null);
-        return;
+    if (sampleAudioPlaying === voiceId) {
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
       }
-      const v = voices.find((x) => x.id === voiceId);
-      const text = v?.sample_text || "Ini adalah contoh suara narasi short video.";
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = "id-ID";
-      utter.onend = () => setSampleAudioPlaying(null);
-      utter.onerror = () => setSampleAudioPlaying(null);
-      setSampleAudioPlaying(voiceId);
-      window.speechSynthesis.speak(utter);
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+      return;
     }
+
+    if (!sampleAudioRef.current) {
+      sampleAudioRef.current = new Audio();
+    }
+
+    const audio = sampleAudioRef.current;
+    audio.pause();
+    setSampleAudioPlaying(voiceId);
+    setLoadingSampleVoiceId(voiceId);
+
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}`;
+    audio.src = sampleUrl;
+    audio.oncanplay = () => {
+      setLoadingSampleVoiceId(null);
+    };
+    audio.onended = () => {
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+    };
+    audio.onerror = () => {
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+      showToast("Gagal memutar sampel audio untuk " + voiceId, "error");
+    };
+
+    audio.play().catch((e) => {
+      console.warn("Audio play blocked or failed:", e);
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+    });
   };
 
   return (
@@ -166,10 +268,26 @@ export function TTSTab({ project }: TTSTabProps) {
                         e.stopPropagation();
                         playVoiceSample(v.id);
                       }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-white/10 text-xs text-brand-400 font-medium transition"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                        isPlayingSample
+                          ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
+                          : "bg-surface hover:bg-white/10 text-brand-400"
+                      }`}
                     >
-                      {isPlayingSample ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                      <span>{isPlayingSample ? "Stop" : "Dengar Sample"}</span>
+                      {loadingSampleVoiceId === v.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-brand-400" />
+                      ) : isPlayingSample ? (
+                        <Pause className="w-3 h-3 fill-current" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-current" />
+                      )}
+                      <span>
+                        {loadingSampleVoiceId === v.id
+                          ? "Memuat..."
+                          : isPlayingSample
+                          ? "Stop"
+                          : "Dengar Sample"}
+                      </span>
                     </button>
                     <span className="text-[10px] text-slate-500 font-mono">ID: {v.id}</span>
                   </div>
@@ -232,18 +350,52 @@ export function TTSTab({ project }: TTSTabProps) {
           </div>
         </div>
 
-        <div className="pt-3 border-t border-surface-border flex justify-end">
+        {/* Live Progress Card for TTS */}
+        {isGeneratingTTS && (
+          <div className="p-4 rounded-xl bg-surface border border-brand-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-brand-500/5">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-brand-300 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
+                <span className="truncate max-w-sm sm:max-w-md">{generationStepText || "Sedang memproses audio..."}</span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+                <span>{Math.floor(generationElapsed / 60)}:{String(generationElapsed % 60).padStart(2, "0")}</span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
+                  {Math.round(generationProgress)}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+              <div
+                className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                style={{ width: Math.max(5, generationProgress) + "%" }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="pt-3 border-t border-surface-border flex items-center justify-between">
+          <span className="text-[11px] text-slate-400">
+            {isGeneratingTTS
+              ? "Sedang mensintesis audio narasi secara otomatis..."
+              : "Audio & word timestamp akan dibuat otomatis saat tombol diklik."}
+          </span>
           <button
             onClick={() => generateTTSMutation.mutate()}
-            disabled={generateTTSMutation.isPending || !narrationText}
+            disabled={generateTTSMutation.isPending || isGeneratingTTS || !narrationText}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-brand-500/25 flex items-center gap-2 transition transform active:scale-95 disabled:opacity-50"
           >
-            {generateTTSMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+            {isGeneratingTTS ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Membuat Audio ({Math.round(generationProgress)}%)...</span>
+              </>
             ) : (
-              <Sparkles className="w-4 h-4" />
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>Generate Suara & Jalankan Alignment</span>
+              </>
             )}
-            <span>Generate Suara & Jalankan Alignment</span>
           </button>
         </div>
       </div>

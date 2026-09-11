@@ -19,9 +19,12 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         vision_model: str = "gpt-4o-mini",
         embedding_model: str = "text-embedding-3-small",
     ):
-        self.base_url = (base_url or "https://api.openai.com/v1").rstrip("/")
-        if not self.base_url.endswith("/v1") and "googleapis.com" not in self.base_url:
-            self.base_url = f"{self.base_url}/v1"
+        raw_url = (base_url or "https://api.openai.com/v1").rstrip("/")
+        # In Docker containers, localhost/127.0.0.1 on the host is reached via host.docker.internal
+        raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
+        if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
+            raw_url = f"{raw_url}/v1"
+        self.base_url = raw_url
         self.api_key = api_key or ""
         self.chat_model = chat_model
         self.vision_model = vision_model or chat_model
@@ -32,6 +35,57 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
+
+    def _extract_content_from_response(self, text: str) -> str:
+        """
+        Extract generated text from either standard JSON chat completion response
+        or SSE (Server-Sent Events) formatted streaming chunks.
+        """
+        text = text.strip()
+        if not text:
+            raise ValueError("Model endpoint returned an empty response")
+
+        # Check if response is SSE (Server-Sent Events) formatted
+        if text.startswith("data:") or "\ndata:" in text:
+            collected = []
+            for line in text.split("\n"):
+                line = line.strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == "[DONE]":
+                    continue
+                try:
+                    chunk = json.loads(data_str)
+                    choices = chunk.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content") or delta.get("text") or ""
+                        if content:
+                            collected.append(content)
+                except Exception:
+                    continue
+            if collected:
+                return "".join(collected).strip()
+
+        # Regular JSON format
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON returned from model endpoint: {text[:250]}") from e
+
+        if "error" in data:
+            err = data["error"]
+            err_msg = err.get("message") if isinstance(err, dict) else str(err)
+            raise RuntimeError(f"Model error: {err_msg}")
+
+        choices = data.get("choices", [])
+        if not choices:
+            raise ValueError(f"No choices in model response: {text[:250]}")
+
+        message = choices[0].get("message", {})
+        content = message.get("content") or choices[0].get("text") or ""
+        return str(content).strip()
 
     async def generate_chat(
         self,
@@ -48,6 +102,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             "model": self.chat_model,
             "messages": messages,
             "temperature": 0.7,
+            "stream": False,
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
@@ -58,9 +113,17 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 headers=self._get_headers(),
                 json=payload,
             )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"].strip()
+            if resp.status_code >= 400:
+                err_text = resp.text.strip()
+                try:
+                    err_json = resp.json()
+                    if "error" in err_json:
+                        err_text = err_json["error"].get("message", err_text)
+                except Exception:
+                    pass
+                raise RuntimeError(f"Model endpoint error (HTTP {resp.status_code}): {err_text[:300]}")
+
+            return self._extract_content_from_response(resp.text)
 
     async def analyze_vision(
         self,
@@ -93,6 +156,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.4,
+            "stream": False,
         }
 
         try:
@@ -102,9 +166,14 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                     headers=self._get_headers(),
                     json=payload,
                 )
-                resp.raise_for_status()
-                data = resp.json()
-                raw_text = data["choices"][0]["message"]["content"]
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+                raw_text = self._extract_content_from_response(resp.text)
+
+                # Clean markdown code fences if present
+                raw_text = re.sub(r"^```json\s*", "", raw_text, flags=re.MULTILINE)
+                raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
+
                 parsed = json.loads(raw_text)
                 return {
                     "description": parsed.get("description", "Aktivitas visual dalam scene"),

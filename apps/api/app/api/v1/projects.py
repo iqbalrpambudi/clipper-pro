@@ -143,6 +143,8 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         for v in proj.source_videos
     ]
 
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in proj.source_videos}
+
     resp.scenes = [
         SceneResponse(
             id=s.id,
@@ -153,6 +155,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             end_time=s.end_time,
             duration=s.duration,
             thumbnail_url=storage.to_relative_url(s.thumbnail_path),
+            video_url=video_url_map.get(s.source_video_id),
             description=s.description,
             tags=s.tags or [],
             status=s.status,
@@ -190,14 +193,17 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "status": latest_a.status,
         }
 
-    # Timeline with scene thumbnails populated
+    # Timeline with scene thumbnails and video_urls populated
     if proj.timeline:
         scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in proj.scenes}
+        scenes_video_map = {s.id: video_url_map.get(s.source_video_id) for s in proj.scenes}
         clips = []
         for c in proj.timeline.clips or []:
             c_copy = dict(c)
             if not c_copy.get("thumbnail_url"):
                 c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
+            if not c_copy.get("video_url"):
+                c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
             clips.append(c_copy)
 
         resp.timeline = {
