@@ -6,6 +6,7 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
+from app.core.frame_math import sec_to_frame, frame_to_sec, snap_to_frame, COMPOSITION_FPS
 
 log = logging.getLogger(__name__)
 
@@ -64,20 +65,24 @@ async def render_timeline_video(
                 log.warning("Source video file %s not found for clip %s", src_file, clip["id"])
                 continue
 
-            clip_start = clip.get("clip_start", 0.0)
-            clip_end = clip.get("clip_end", clip_start + 3.0)
+            clip_start = snap_to_frame(float(clip.get("clip_start", 0.0)))
+            clip_end = snap_to_frame(float(clip.get("clip_end", clip_start + 3.0)))
             clip_speed = float(clip.get("speed", 1.0) or 1.0)
-            duration = max(clip_end - clip_start, 0.5)
+            source_dur = max(clip_end - clip_start, 0.4)
 
-            # Target output duration on the timeline
-            timeline_start = clip.get("timeline_start", 0.0)
-            timeline_end = clip.get("timeline_end", timeline_start + duration)
-            target_out_dur = round(max(0.4, timeline_end - timeline_start), 3)
+            # Target output duration on the 30 FPS timeline
+            timeline_start = snap_to_frame(float(clip.get("timeline_start", 0.0)))
+            timeline_end = snap_to_frame(float(clip.get("timeline_end", timeline_start + source_dur)))
+            target_out_frames = max(12, sec_to_frame(timeline_end - timeline_start))
+            target_out_dur = frame_to_sec(target_out_frames)
 
             chunk_out = temp_dir / f"chunk_{idx:04d}.mp4"
 
-            # Anti-Bleeding read safety margin (~33ms / 1 frame at 30fps)
-            safe_read_duration = max(0.4, round(duration - 0.033, 3)) if duration > 0.8 else round(duration, 3)
+            # Frame-accurate read duration based on target frames & speed
+            read_frames = max(12, int(round(target_out_frames * clip_speed)))
+            source_max_frames = sec_to_frame(source_dur)
+            actual_read_frames = min(read_frames, source_max_frames)
+            safe_read_duration = frame_to_sec(actual_read_frames)
 
             # Transformative post-processing filters (Ken Burns Dynamic Zoom & Micro Color Grade)
             post_filters = []
@@ -127,16 +132,17 @@ async def render_timeline_video(
             cut_cmd = [
                 "ffmpeg",
                 "-y",
+                "-accurate_seek",
                 "-ss",
-                str(clip_start),
+                f"{clip_start:.4f}",
                 "-t",
-                str(safe_read_duration),
+                f"{safe_read_duration:.4f}",
                 "-i",
                 src_file,
                 "-filter_complex",
                 vf_filter,
                 "-t",
-                str(target_out_dur),
+                f"{target_out_dur:.4f}",
                 "-fps_mode",
                 "cfr",
                 "-c:v",

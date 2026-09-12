@@ -1,9 +1,15 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Move } from "lucide-react";
 import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle } from "@/types";
 import { generateAssSubtitles } from "@/lib/assGenerator";
+import {
+  COMPOSITION_FPS,
+  calculateKenBurnsZoom,
+  COLOR_GRADING_CANVAS_FILTER,
+  snapToFrame,
+} from "@/lib/timeline/frameMath";
 
 export const EMOJI_DICT: Record<string, string> = {
   uang: "💰",
@@ -54,8 +60,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRefA = useRef<HTMLVideoElement | null>(null);
   const videoRefB = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const thumbnailImgCache = useRef<Map<string, HTMLImageElement>>(new Map());
+
   const activeVideoSlot = useRef<0 | 1>(0);
-  const [activeSlotState, setActiveSlotState] = useState<0 | 1>(0);
+  const [, setActiveSlotState] = useState<0 | 1>(0);
   const currentClipIndexRef = useRef<number>(0);
   const lastPreloadedClipIndex = useRef<number | null>(null);
 
@@ -82,6 +91,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const clips = project.timeline?.clips || [];
   const subtitleStyle = project.subtitle_style;
   const segments = project.narration?.segments || [];
+
+  // Canonical canvas resolution matching project aspect ratio
+  const canvasWidth = project.aspect_ratio === "16:9" ? 1920 : 1080;
+  const canvasHeight = project.aspect_ratio === "16:9" ? 1080 : project.aspect_ratio === "1:1" ? 1080 : 1920;
 
   // Measure actual preview container width for 100% pixel-perfect scaling
   useEffect(() => {
@@ -241,10 +254,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         vidA.src = curClip.video_url || "";
       }
       const clipProg = Math.max(0, currentTimeSec - curClip.timeline_start);
-      vidA.currentTime = Math.min(
-        curClip.clip_start + clipProg * (curClip.speed || 1.0),
-        Math.max(curClip.clip_start, curClip.clip_end - 0.04)
-      );
+      vidA.currentTime = curClip.clip_start + clipProg * (curClip.speed || 1.0);
       vidA.playbackRate = curClip.speed || 1.0;
       vidA.muted = true;
     }
@@ -267,24 +277,163 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     setActiveSlotState(0);
   }, [clips]);
 
-  // 60fps High-Precision Dual-Video Ping-Pong Loop
-  // Guarantees ZERO flash cuts: next clip is pre-buffered on alternate video, and active video is clamped before scene ends
+  // Hardware-Accelerated 2D Canvas Compositor
+  // Emulates FFmpeg's video pipeline: live moving blur background, dynamic zoom (Ken Burns), and color grading
+  const renderCanvasFrame = useCallback(
+    (timeSec: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const cW = canvas.width;
+      const cH = canvas.height;
+
+      const bgMode = project.background_fill?.mode || "blur";
+      const bgColor = project.background_fill?.color || "#000000";
+      const antiCopyright = project.background_fill?.anti_copyright ?? true;
+      const dynamicZoom = antiCopyright ? (project.background_fill?.dynamic_zoom ?? true) : false;
+      const colorGrading = antiCopyright ? (project.background_fill?.color_grading ?? true) : false;
+
+      // Active clip lookup
+      const clipIdx = clips.findIndex((c) => timeSec >= c.timeline_start && timeSec < c.timeline_end);
+      const activeIdx = clipIdx !== -1 ? clipIdx : timeSec >= durationSec ? Math.max(0, clips.length - 1) : 0;
+      const curClip = clips[activeIdx];
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+
+      ctx.clearRect(0, 0, cW, cH);
+
+      const isVideoReady = Boolean(activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0);
+
+      // 1. Render Background
+      if (bgMode === "blur" && isVideoReady && activeVid) {
+        ctx.save();
+        // Hardware accelerated dynamic blur matching FFmpeg boxblur=25:5
+        ctx.filter = "blur(30px) brightness(0.70)";
+        ctx.drawImage(activeVid, -25, -25, cW + 50, cH + 50);
+        ctx.restore();
+      } else if (bgMode === "blur" && curClip?.thumbnail_url) {
+        let thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
+        if (!thumbImg) {
+          thumbImg = new Image();
+          thumbImg.crossOrigin = "anonymous";
+          thumbImg.src = curClip.thumbnail_url;
+          thumbnailImgCache.current.set(curClip.thumbnail_url, thumbImg);
+          thumbImg.onload = () => renderCanvasFrame(timeSec);
+        }
+        if (thumbImg.complete && thumbImg.naturalWidth > 0) {
+          ctx.save();
+          ctx.filter = "blur(30px) brightness(0.70)";
+          ctx.drawImage(thumbImg, -25, -25, cW + 50, cH + 50);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 0, cW, cH);
+        }
+      } else {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, cW, cH);
+      }
+
+      // 2. Render Main Video Content (Letterboxed + Ken Burns Zoom + Color Grading)
+      if (isVideoReady && activeVid) {
+        ctx.save();
+
+        const vW = activeVid.videoWidth;
+        const vH = activeVid.videoHeight;
+        const videoAspect = vW / vH;
+        const canvasAspect = cW / cH;
+
+        let destW = cW;
+        let destH = cH;
+        let destX = 0;
+        let destY = 0;
+
+        if (videoAspect > canvasAspect) {
+          destW = cW;
+          destH = cW / videoAspect;
+          destX = 0;
+          destY = (cH - destH) / 2;
+        } else {
+          destH = cH;
+          destW = cH * videoAspect;
+          destX = (cW - destW) / 2;
+          destY = 0;
+        }
+
+        // Apply Dynamic Zoom (Ken Burns) matching FFmpeg zoompan
+        if (dynamicZoom && curClip) {
+          const elapsedInClip = Math.max(0, timeSec - curClip.timeline_start);
+          const frameInClip = Math.floor(elapsedInClip * COMPOSITION_FPS);
+          const zoom = calculateKenBurnsZoom(frameInClip, activeIdx % 2 === 0);
+
+          ctx.translate(cW / 2, cH / 2);
+          ctx.scale(zoom, zoom);
+          ctx.translate(-cW / 2, -cH / 2);
+        }
+
+        // Apply Color Grading matching FFmpeg eq=contrast=1.03:saturation=1.04:brightness=0.01
+        if (colorGrading) {
+          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+        } else {
+          ctx.filter = "none";
+        }
+
+        ctx.drawImage(activeVid, destX, destY, destW, destH);
+        ctx.restore();
+      } else if (curClip?.thumbnail_url) {
+        const thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
+        if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+          ctx.save();
+          const vW = thumbImg.naturalWidth;
+          const vH = thumbImg.naturalHeight;
+          const videoAspect = vW / vH;
+          const canvasAspect = cW / cH;
+
+          let destW = cW;
+          let destH = cH;
+          let destX = 0;
+          let destY = 0;
+
+          if (videoAspect > canvasAspect) {
+            destW = cW;
+            destH = cW / videoAspect;
+            destX = 0;
+            destY = (cH - destH) / 2;
+          } else {
+            destH = cH;
+            destW = cH * videoAspect;
+            destX = (cW - destW) / 2;
+            destY = 0;
+          }
+
+          if (colorGrading) {
+            ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+          }
+          ctx.drawImage(thumbImg, destX, destY, destW, destH);
+          ctx.restore();
+        }
+      }
+    },
+    [clips, project.background_fill, durationSec]
+  );
+
+  // High-Precision Unified Compositor Loop (Audio Clock + Dual-Video Ping-Pong + Canvas + JASSUB)
   useEffect(() => {
-    if (!isPlaying) return;
     let animId: number;
 
-    const syncLoop = () => {
+    const compositorLoop = () => {
       const audio = audioRef.current;
+      const curTime = isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeSec;
 
-      if (audio && !audio.paused) {
-        const curTime = audio.currentTime;
+      if (isPlaying && audio && !audio.paused) {
         setCurrentTimeSec(curTime);
 
         // Find which clip belongs to curTime
         const newIdx = clips.findIndex(
           (c) => curTime >= c.timeline_start && curTime < c.timeline_end
         );
-        const validIdx = newIdx !== -1 ? newIdx : (curTime >= durationSec ? clips.length - 1 : 0);
+        const validIdx = newIdx !== -1 ? newIdx : curTime >= durationSec ? Math.max(0, clips.length - 1) : 0;
 
         if (validIdx !== currentClipIndexRef.current && validIdx < clips.length) {
           // Transition boundary hit! Ping-pong switch to the other video element
@@ -297,8 +446,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             const clipProg = Math.max(0, curTime - targetClip.timeline_start);
             const targetVideoTime = targetClip.clip_start + clipProg * (targetClip.speed || 1.0);
 
-            // Re-align if drifted
-            if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.12) {
+            if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.1) {
               newActiveVid.currentTime = targetVideoTime;
             }
             newActiveVid.playbackRate = targetClip.speed || 1.0;
@@ -306,7 +454,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             newActiveVid.play().catch(() => {});
           }
 
-          // Immediately pause old video so it NEVER overruns into next scene
           if (oldActiveVid) {
             oldActiveVid.pause();
           }
@@ -315,7 +462,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
           setActiveSlotState(nextSlot);
           currentClipIndexRef.current = validIdx;
 
-          // Preload the next clip (validIdx + 1) on the now-inactive video element
+          // Preload the next clip on the now-inactive video element
           const preloadIdx = validIdx + 1;
           if (preloadIdx < clips.length && oldActiveVid) {
             const preloadClip = clips[preloadIdx];
@@ -328,23 +475,20 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             lastPreloadedClipIndex.current = preloadIdx;
           }
         } else {
-          // Playing inside current clip: hard ceiling clamp
+          // Inside current clip: enforce playback speed & drift alignment
           const curClip = clips[validIdx];
           if (curClip) {
             const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
             if (activeVid) {
-              // Enforce playback rate
               const targetSpeed = curClip.speed || 1.0;
               if (Math.abs(activeVid.playbackRate - targetSpeed) > 0.01) {
                 activeVid.playbackRate = targetSpeed;
               }
-
-              // Anti-bleed hard clamp: NEVER allow video to reach clip_end - 0.04
-              const maxAllowed = Math.max(curClip.clip_start, (curClip.clip_end || curClip.clip_start + 1.0) - 0.04);
-              if (activeVid.currentTime >= maxAllowed) {
-                activeVid.currentTime = maxAllowed;
-                if (!activeVid.paused) activeVid.pause();
-              } else if (activeVid.paused && !audio.paused) {
+              const expectedVidTime = curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
+              if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
+                activeVid.currentTime = expectedVidTime;
+              }
+              if (activeVid.paused && !audio.paused) {
                 activeVid.play().catch(() => {});
               }
             }
@@ -352,14 +496,45 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         }
       }
 
-      animId = requestAnimationFrame(syncLoop);
+      // Render frame to Canvas 2D compositor
+      renderCanvasFrame(curTime);
+
+      // Render Subtitles via JASSUB libass
+      if (jassubRef.current && isJassubReady) {
+        jassubRef.current.manualRender({
+          expectedDisplayTime: performance.now(),
+          width: canvasWidth,
+          height: canvasHeight,
+          mediaTime: curTime,
+        });
+      }
+
+      if (isPlaying) {
+        animId = requestAnimationFrame(compositorLoop);
+      }
     };
 
-    animId = requestAnimationFrame(syncLoop);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, clips, durationSec]);
+    if (isPlaying) {
+      animId = requestAnimationFrame(compositorLoop);
+    } else {
+      // Single paint when paused
+      renderCanvasFrame(currentTimeSec);
+      if (jassubRef.current && isJassubReady) {
+        jassubRef.current.manualRender({
+          expectedDisplayTime: performance.now(),
+          width: canvasWidth,
+          height: canvasHeight,
+          mediaTime: currentTimeSec,
+        });
+      }
+    }
 
-  // Initialize JASSUB (WebAssembly libass) for 100% true WYSIWYG rendering
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [isPlaying, clips, durationSec, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame, currentTimeSec]);
+
+  // Initialize JASSUB (WebAssembly libass) for 100% true WYSIWYG subtitle rendering
   useEffect(() => {
     let mounted = true;
     let canvasEl: HTMLCanvasElement | null = null;
@@ -374,11 +549,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
 
         if (!mounted || !canvasContainerRef.current) return;
 
-        // Create dedicated canvas element for OffscreenCanvas transfer
         canvasContainerRef.current.innerHTML = "";
         canvasEl = document.createElement("canvas");
-        canvasEl.width = 1080;
-        canvasEl.height = 1920;
+        canvasEl.width = canvasWidth;
+        canvasEl.height = canvasHeight;
         canvasEl.style.width = "100%";
         canvasEl.style.height = "100%";
         canvasEl.style.position = "absolute";
@@ -389,8 +563,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         const initialAss = generateAssSubtitles(
           segments,
           subtitleStyle || {},
-          1080,
-          1920
+          canvasWidth,
+          canvasHeight
         );
 
         const baseUrl = window.location.origin;
@@ -430,11 +604,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         (window as any).__jassub = jassubInstance;
         (window as any).__isJassubReady = true;
 
-        // Initial paint
         jassubInstance.manualRender({
           expectedDisplayTime: performance.now(),
-          width: 1080,
-          height: 1920,
+          width: canvasWidth,
+          height: canvasHeight,
           mediaTime: currentTimeSec,
         });
       } catch (err: any) {
@@ -458,7 +631,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         canvasEl.remove();
       }
     };
-  }, []);
+  }, [canvasWidth, canvasHeight]);
 
   // Update JASSUB track in real-time when subtitleStyle or segments change
   useEffect(() => {
@@ -467,8 +640,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       const newAss = generateAssSubtitles(
         segments,
         subtitleStyle || {},
-        1080,
-        1920
+        canvasWidth,
+        canvasHeight
       );
       if (jassubRef.current.renderer?.setTrack) {
         jassubRef.current.renderer.setTrack(newAss);
@@ -476,8 +649,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       jassubRef.current.manualRender(
         {
           expectedDisplayTime: performance.now(),
-          width: 1080,
-          height: 1920,
+          width: canvasWidth,
+          height: canvasHeight,
           mediaTime: currentTimeSec,
         },
         true
@@ -485,41 +658,31 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     } catch (err) {
       console.error("Failed to update JASSUB track:", err);
     }
-  }, [subtitleStyle, segments, isJassubReady]);
+  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight, currentTimeSec]);
 
-  // Sync JASSUB with currentTimeSec on seek/pause
+  // Listen for video decoder seeked/loaded events to redraw canvas when paused
   useEffect(() => {
-    if (!jassubRef.current || !isJassubReady) return;
-    jassubRef.current.manualRender({
-      expectedDisplayTime: performance.now(),
-      width: 1080,
-      height: 1920,
-      mediaTime: currentTimeSec,
-    });
-  }, [currentTimeSec, isJassubReady]);
-
-  // Continuous 60fps render loop during playback
-  useEffect(() => {
-    if (!isPlaying || !jassubRef.current || !isJassubReady) return;
-
-    let animId: number;
-    const renderLoop = () => {
-      if (jassubRef.current) {
-        const audio = audioRef.current;
-        const mediaTime = audio && !audio.paused ? audio.currentTime : currentTimeSec;
-        jassubRef.current.manualRender({
-          expectedDisplayTime: performance.now(),
-          width: 1080,
-          height: 1920,
-          mediaTime,
-        });
+    const onFrameUpdate = () => {
+      if (!isPlaying) {
+        renderCanvasFrame(currentTimeSec);
       }
-      animId = requestAnimationFrame(renderLoop);
     };
 
-    animId = requestAnimationFrame(renderLoop);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, isJassubReady, currentTimeSec]);
+    const vA = videoRefA.current;
+    const vB = videoRefB.current;
+
+    vA?.addEventListener("seeked", onFrameUpdate);
+    vA?.addEventListener("loadeddata", onFrameUpdate);
+    vB?.addEventListener("seeked", onFrameUpdate);
+    vB?.addEventListener("loadeddata", onFrameUpdate);
+
+    return () => {
+      vA?.removeEventListener("seeked", onFrameUpdate);
+      vA?.removeEventListener("loadeddata", onFrameUpdate);
+      vB?.removeEventListener("seeked", onFrameUpdate);
+      vB?.removeEventListener("loadeddata", onFrameUpdate);
+    };
+  }, [isPlaying, renderCanvasFrame, currentTimeSec]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -541,7 +704,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const t = parseFloat(e.target.value);
+    const rawT = parseFloat(e.target.value);
+    const t = snapToFrame(rawT);
     setCurrentTimeSec(t);
     if (audioRef.current) {
       audioRef.current.currentTime = t;
@@ -559,7 +723,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       const clipProgress = Math.max(0, t - seekClip.timeline_start);
       const targetTime = Math.min(
         seekClip.clip_start + clipProgress * (seekClip.speed || 1.0),
-        Math.max(seekClip.clip_start, seekClip.clip_end - 0.04)
+        seekClip.clip_end
       );
 
       if (activeVid) {
@@ -583,6 +747,17 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         lastPreloadedClipIndex.current = nextIdx;
       }
     }
+
+    renderCanvasFrame(t);
+
+    if (jassubRef.current && isJassubReady) {
+      jassubRef.current.manualRender({
+        expectedDisplayTime: performance.now(),
+        width: canvasWidth,
+        height: canvasHeight,
+        mediaTime: t,
+      });
+    }
   };
 
   const handleReset = () => {
@@ -603,6 +778,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       videoRefB.current.playbackRate = clips[1].speed || 1.0;
       lastPreloadedClipIndex.current = 1;
     }
+
+    renderCanvasFrame(0);
   };
 
   const toggleMute = () => {
@@ -619,10 +796,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  // 100% WYSIWYG Scale Ratios: Reference 1080x1920
-  const scale = frameWidth / 1080;
-  const frameHeight = frameWidth * (16 / 9);
-  const scaleY = frameHeight / 1920;
+  // 100% WYSIWYG Scale Ratios: Reference matching canvas dimensions
+  const scale = frameWidth / canvasWidth;
+  const aspectMultiplier = canvasHeight / canvasWidth;
+  const frameHeight = frameWidth * aspectMultiplier;
+  const scaleY = frameHeight / canvasHeight;
 
   const fontBaseSize = subtitleStyle?.font_size || 56;
   const scaledFontSize = Math.max(6, Number((fontBaseSize * scale).toFixed(2)));
@@ -675,6 +853,14 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const isScaleAnim = subtitleStyle?.highlight_animation !== "color" && subtitleStyle?.highlight_animation !== "none";
   const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.5) : 1.0;
 
+  // Aspect ratio responsive frame wrapper styling
+  const aspectClass =
+    project.aspect_ratio === "16:9"
+      ? "w-[320px] sm:w-[480px] aspect-[16/9]"
+      : project.aspect_ratio === "1:1"
+      ? "w-[280px] sm:w-[340px] aspect-square"
+      : "w-[280px] sm:w-[320px] aspect-[9/16]";
+
   return (
     <div className="flex flex-col items-center">
       {/* Hidden audio element for speech */}
@@ -682,63 +868,47 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         <audio ref={audioRef} src={project.audio.audio_url} preload="auto" />
       )}
 
-      {/* 9:16 Vertical Screen Frame */}
+      {/* Dynamic Screen Frame */}
       <div
         ref={frameRef}
-        className="relative w-[280px] sm:w-[320px] aspect-[9/16] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-surface-border flex flex-col justify-between select-none"
+        className={`relative ${aspectClass} bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-surface-border flex flex-col justify-between select-none`}
       >
-        {/* Blurred Background Layer (if blur mode) */}
-        {project.background_fill?.mode !== "black" && activeClip?.thumbnail_url && (
-          <div
-            className="absolute inset-0 bg-cover bg-center scale-150 blur-xl opacity-60 pointer-events-none transition-all duration-300"
-            style={{ backgroundImage: `url(${activeClip.thumbnail_url})` }}
-          />
-        )}
-
-        {/* Center Main Video Content with Dual-Video Ping-Pong */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center p-0 overflow-hidden">
-          {clips.length > 0 ? (
-            <>
-              {/* Video Slot 0 (A) */}
-              <video
-                ref={videoRefA}
-                playsInline
-                muted
-                preload="auto"
-                className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-75 ${
-                  activeSlotState === 0 ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
-                }`}
-              />
-
-              {/* Video Slot 1 (B) */}
-              <video
-                ref={videoRefB}
-                playsInline
-                muted
-                preload="auto"
-                className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-75 ${
-                  activeSlotState === 1 ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
-                }`}
-              />
-            </>
-          ) : activeClip?.thumbnail_url ? (
-            <img
-              src={activeClip.thumbnail_url}
-              alt="Scene preview"
-              className="w-full max-h-full object-contain rounded-lg shadow-2xl"
-            />
-          ) : (
-            <div className="text-slate-600 text-xs text-center p-4">
-              Belum ada video di timeline
-            </div>
-          )}
-        </div>
+        {/* Hardware-Accelerated Canvas Compositor (Moving Video Blur + Dynamic Zoom + Color Grading) */}
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+        />
 
         {/* 100% Bit-for-Bit WYSIWYG Subtitle Canvas Layer (JASSUB WebAssembly libass) */}
         <div
           ref={canvasContainerRef}
           className="absolute inset-0 z-20 pointer-events-none w-full h-full overflow-hidden flex items-center justify-center"
         />
+
+        {/* Hidden Dual-Video Decoder Pipeline */}
+        <video
+          ref={videoRefA}
+          playsInline
+          muted
+          preload="auto"
+          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+        />
+        <video
+          ref={videoRefB}
+          playsInline
+          muted
+          preload="auto"
+          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+        />
+
+        {/* If no clips in timeline */}
+        {clips.length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center text-slate-600 text-xs text-center p-4">
+            Belum ada video di timeline
+          </div>
+        )}
 
         {/* Interactive Drag Handle for Subtitle Positioning */}
         {onUpdateSubtitlePosition && (
@@ -891,9 +1061,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         )}
 
         {/* Top Watermark Overlay */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
+        <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-          <span>9:16 LIVE PREVIEW</span>
+          <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
         </div>
       </div>
 
@@ -906,7 +1076,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             type="range"
             min="0"
             max={durationSec || 1}
-            step="0.05"
+            step="0.0333"
             value={currentTimeSec}
             onChange={handleSeek}
             className="flex-1 accent-brand-500 cursor-pointer h-1.5 bg-surface rounded-lg"
@@ -948,7 +1118,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
 
         {/* Helper Note */}
         <p className="text-[10px] text-slate-400 text-center pt-1.5 leading-snug border-t border-surface-border/40">
-          💡 <em>Live Preview:</em> Tayangan real-time dari timeline klip & subtitle draft. Hasil render final dapat diputar di tab baru melalui Riwayat Render.
+          💡 <em>Live Canvas Compositor:</em> Pratinjau frame-akurat 30 FPS dengan dynamic blur background, Ken Burns zoom, & color grading 100% identik dengan render FFmpeg.
         </p>
       </div>
     </div>

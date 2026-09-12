@@ -2,6 +2,7 @@ import uuid
 import numpy as np
 from typing import List, Dict, Any, Optional
 from app.services.ai_adapters.base import BaseLLMAdapter
+from app.core.frame_math import snap_to_frame, sec_to_frame, frame_to_sec, COMPOSITION_FPS
 
 
 def cosine_similarity(v1: Any, v2: Any) -> float:
@@ -52,25 +53,25 @@ def build_visual_shot_windows(
         else:
             prev_raw_end = segments[i - 1].get("end_ms", 0) / 1000.0
             if raw_start > prev_raw_end:
-                span_start = round((prev_raw_end + raw_start) / 2.0, 3)
+                span_start = snap_to_frame((prev_raw_end + raw_start) / 2.0)
             else:
-                span_start = round(raw_start, 3)
+                span_start = snap_to_frame(raw_start)
 
         if i == n_segs - 1:
-            span_end = round(max(raw_end, total_audio_duration_sec or raw_end), 3)
+            span_end = snap_to_frame(max(raw_end, total_audio_duration_sec or raw_end))
         else:
             next_raw_start = segments[i + 1].get("start_ms", 0) / 1000.0
             if next_raw_start > raw_end:
-                span_end = round((raw_end + next_raw_start) / 2.0, 3)
+                span_end = snap_to_frame((raw_end + next_raw_start) / 2.0)
             else:
-                span_end = round(raw_end, 3)
+                span_end = snap_to_frame(raw_end)
 
         seg_spans.append({
             "seg_id": seg.get("id", f"seg-{i+1}"),
             "text": seg.get("text", ""),
             "start_sec": span_start,
             "end_sec": span_end,
-            "duration": round(span_end - span_start, 3),
+            "duration": round(span_end - span_start, 4),
         })
 
     # Step 2: Group spans shorter than min_dur, and split spans longer than max_dur
@@ -84,11 +85,11 @@ def build_visual_shot_windows(
         # If single sentence span is very long (> max_dur), flush current and split
         if dur > max_dur:
             if curr_spans:
-                flush_end = curr_spans[-1]["end_sec"]
+                flush_end = snap_to_frame(curr_spans[-1]["end_sec"])
                 windows.append({
-                    "start_sec": round(w_start, 2),
-                    "end_sec": round(flush_end, 2),
-                    "duration": round(flush_end - w_start, 2),
+                    "start_sec": snap_to_frame(w_start),
+                    "end_sec": flush_end,
+                    "duration": round(flush_end - snap_to_frame(w_start), 4),
                     "text": " ".join(s["text"] for s in curr_spans),
                     "primary_segment_id": curr_spans[0]["seg_id"],
                 })
@@ -97,14 +98,14 @@ def build_visual_shot_windows(
 
             # Divide long span into balanced chunks between min_dur and max_dur
             num_chunks = max(2, int(round(dur / 3.2)))
-            chunk_len = round(dur / num_chunks, 3)
+            chunk_len = dur / num_chunks
             c_start = span["start_sec"]
             for c_idx in range(num_chunks):
-                c_end = span["end_sec"] if c_idx == num_chunks - 1 else round(c_start + chunk_len, 3)
+                c_end = span["end_sec"] if c_idx == num_chunks - 1 else snap_to_frame(c_start + chunk_len)
                 windows.append({
-                    "start_sec": round(c_start, 2),
-                    "end_sec": round(c_end, 2),
-                    "duration": round(c_end - c_start, 2),
+                    "start_sec": snap_to_frame(c_start),
+                    "end_sec": snap_to_frame(c_end),
+                    "duration": round(c_end - c_start, 4),
                     "text": span["text"],
                     "primary_segment_id": span["seg_id"],
                 })
@@ -113,13 +114,13 @@ def build_visual_shot_windows(
             continue
 
         curr_spans.append(span)
-        accum_dur = round(span["end_sec"] - w_start, 3)
+        accum_dur = round(span["end_sec"] - w_start, 4)
 
         if accum_dur >= min_dur:
             windows.append({
-                "start_sec": round(w_start, 2),
-                "end_sec": round(span["end_sec"], 2),
-                "duration": round(span["end_sec"] - w_start, 2),
+                "start_sec": snap_to_frame(w_start),
+                "end_sec": snap_to_frame(span["end_sec"]),
+                "duration": round(span["end_sec"] - w_start, 4),
                 "text": " ".join(s["text"] for s in curr_spans),
                 "primary_segment_id": curr_spans[0]["seg_id"],
             })
@@ -128,16 +129,16 @@ def build_visual_shot_windows(
 
     # Handle trailing spans
     if curr_spans:
-        trailing_end = curr_spans[-1]["end_sec"]
+        trailing_end = snap_to_frame(curr_spans[-1]["end_sec"])
         if windows and (trailing_end - w_start) < min_dur:
-            windows[-1]["end_sec"] = round(trailing_end, 2)
-            windows[-1]["duration"] = round(trailing_end - windows[-1]["start_sec"], 2)
+            windows[-1]["end_sec"] = trailing_end
+            windows[-1]["duration"] = round(trailing_end - windows[-1]["start_sec"], 4)
             windows[-1]["text"] += " " + " ".join(s["text"] for s in curr_spans)
         else:
             windows.append({
-                "start_sec": round(w_start, 2),
-                "end_sec": round(trailing_end, 2),
-                "duration": round(trailing_end - w_start, 2),
+                "start_sec": snap_to_frame(w_start),
+                "end_sec": trailing_end,
+                "duration": round(trailing_end - w_start, 4),
                 "text": " ".join(s["text"] for s in curr_spans),
                 "primary_segment_id": curr_spans[0]["seg_id"],
             })
@@ -147,7 +148,7 @@ def build_visual_shot_windows(
         windows[0]["start_sec"] = 0.0
         for k in range(len(windows) - 1):
             windows[k + 1]["start_sec"] = windows[k]["end_sec"]
-            windows[k + 1]["duration"] = round(windows[k + 1]["end_sec"] - windows[k + 1]["start_sec"], 2)
+            windows[k + 1]["duration"] = round(windows[k + 1]["end_sec"] - windows[k + 1]["start_sec"], 4)
 
     return windows
 
@@ -239,10 +240,10 @@ async def match_scenes_to_segments(
                 "segment_id": win["primary_segment_id"],
                 "scene_id": best_scene["id"],
                 "source_video_id": best_scene["source_video_id"],
-                "timeline_start": round(start_sec, 2),
-                "timeline_end": round(end_sec, 2),
-                "clip_start": round(clip_start, 3),
-                "clip_end": round(clip_end, 3),
+                "timeline_start": snap_to_frame(start_sec),
+                "timeline_end": snap_to_frame(end_sec),
+                "clip_start": snap_to_frame(clip_start),
+                "clip_end": snap_to_frame(clip_end),
                 "speed": 1.0,
                 "text": win["text"],
                 "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -262,10 +263,10 @@ async def match_scenes_to_segments(
                     "segment_id": win["primary_segment_id"],
                     "scene_id": best_scene["id"],
                     "source_video_id": best_scene["source_video_id"],
-                    "timeline_start": round(start_sec, 2),
-                    "timeline_end": round(end_sec, 2),
-                    "clip_start": safe_scene_start,
-                    "clip_end": safe_scene_end,
+                    "timeline_start": snap_to_frame(start_sec),
+                    "timeline_end": snap_to_frame(end_sec),
+                    "clip_start": snap_to_frame(safe_scene_start),
+                    "clip_end": snap_to_frame(safe_scene_end),
                     "speed": max(0.70, min(0.98, exact_speed)),
                     "text": win["text"],
                     "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -288,17 +289,17 @@ async def match_scenes_to_segments(
                     s1_offset = round(s1_slack / 2.0, 3)
                     c1_start = round(safe_scene_start + s1_offset, 3)
                     c1_end = min(round(c1_start + half_time, 3), safe_scene_end)
-                    mid_timeline = round(start_sec + half_time, 2)
+                    mid_timeline = snap_to_frame(start_sec + half_time)
 
                     clips.append({
                         "id": str(uuid.uuid4()),
                         "segment_id": win["primary_segment_id"],
                         "scene_id": best_scene["id"],
                         "source_video_id": best_scene["source_video_id"],
-                        "timeline_start": round(start_sec, 2),
+                        "timeline_start": snap_to_frame(start_sec),
                         "timeline_end": mid_timeline,
-                        "clip_start": round(c1_start, 3),
-                        "clip_end": round(c1_end, 3),
+                        "clip_start": snap_to_frame(c1_start),
+                        "clip_end": snap_to_frame(c1_end),
                         "speed": 1.0,
                         "text": win["text"],
                         "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -318,9 +319,9 @@ async def match_scenes_to_segments(
                         "scene_id": second_scene["id"],
                         "source_video_id": second_scene["source_video_id"],
                         "timeline_start": mid_timeline,
-                        "timeline_end": round(end_sec, 2),
-                        "clip_start": round(c2_start, 3),
-                        "clip_end": round(c2_end, 3),
+                        "timeline_end": snap_to_frame(end_sec),
+                        "clip_start": snap_to_frame(c2_start),
+                        "clip_end": snap_to_frame(c2_end),
                         "speed": 1.0,
                         "text": win["text"],
                         "thumbnail_url": second_scene.get("thumbnail_url"),
@@ -335,10 +336,10 @@ async def match_scenes_to_segments(
                         "segment_id": win["primary_segment_id"],
                         "scene_id": best_scene["id"],
                         "source_video_id": best_scene["source_video_id"],
-                        "timeline_start": round(start_sec, 2),
-                        "timeline_end": round(end_sec, 2),
-                        "clip_start": safe_scene_start,
-                        "clip_end": safe_scene_end,
+                        "timeline_start": snap_to_frame(start_sec),
+                        "timeline_end": snap_to_frame(end_sec),
+                        "clip_start": snap_to_frame(safe_scene_start),
+                        "clip_end": snap_to_frame(safe_scene_end),
                         "speed": max(0.70, min(0.98, exact_speed)),
                         "text": win["text"],
                         "thumbnail_url": best_scene.get("thumbnail_url"),
