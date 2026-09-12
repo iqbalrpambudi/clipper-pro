@@ -11,32 +11,7 @@ import {
   snapToFrame,
 } from "@/lib/timeline/frameMath";
 
-export const EMOJI_DICT: Record<string, string> = {
-  uang: "💰",
-  duit: "💵",
-  cuan: "💸",
-  kaya: "🤑",
-  api: "🔥",
-  panas: "🔥",
-  kaget: "😱",
-  misteri: "🕵️",
-  rahasia: "🤫",
-  otak: "🧠",
-  cerdas: "💡",
-  waktu: "⏱️",
-  cepat: "⚡",
-  juara: "🏆",
-  menang: "🥇",
-  bahaya: "⚠️",
-  awas: "🚨",
-  cinta: "❤️",
-  kopi: "☕",
-  makanan: "🍔",
-  dunia: "🌍",
-  bintang: "⭐",
-  target: "🎯",
-  sukses: "🚀",
-};
+
 
 export function hexToRgba(hex: string, alpha: number = 1.0): string {
   const clean = hex.replace("#", "");
@@ -970,30 +945,25 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
                 }}
                 className="uppercase tracking-wide inline-flex items-center justify-center flex-wrap"
               >
-                {activeBurstGroup.map((w, idx) => {
-                  const emoji = subtitleStyle?.emoji_enabled && EMOJI_DICT[w.cleanWord] ? ` ${EMOJI_DICT[w.cleanWord]}` : "";
-                  return (
-                    <span
-                      key={idx}
-                      style={{
-                        color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
-                        transform: w.isActive ? `scale(${zoomScale})` : "scale(1.0)",
-                        transformOrigin: "center bottom",
-                        transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
-                      }}
-                      className="mx-1 inline-block"
-                    >
-                      {w.word.toUpperCase()}{emoji}
-                    </span>
-                  );
-                })}
+                {activeBurstGroup.map((w, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
+                      transform: w.isActive ? `scale(${zoomScale})` : "scale(1.0)",
+                      transformOrigin: "center bottom",
+                      transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
+                    }}
+                    className="mx-1 inline-block"
+                  >
+                    {w.word.toUpperCase()}
+                  </span>
+                ))}
               </div>
             ) : subtitleStyle?.display_mode === "per_word" && activeWordIndex !== -1 && segWords[activeWordIndex] ? (
               /* 2. Per-word Mode */
               (() => {
                 const currentW = segWords[activeWordIndex];
-                const clean = currentW.word.toLowerCase().replace(/[^\w]/g, "");
-                const emoji = subtitleStyle?.emoji_enabled && EMOJI_DICT[clean] ? ` ${EMOJI_DICT[clean]}` : "";
                 return (
                   <div
                     style={{
@@ -1012,7 +982,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
                     }}
                     className="uppercase tracking-wider inline-block"
                   >
-                    {currentW.word.toUpperCase()}{emoji}
+                    {currentW.word.toUpperCase()}
                   </div>
                 );
               })()
@@ -1035,8 +1005,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
                 {segWords.length > 0 ? (
                   segWords.map((w, idx) => {
                     const isActive = idx === activeWordIndex;
-                    const clean = w.word.toLowerCase().replace(/[^\w]/g, "");
-                    const emoji = subtitleStyle?.emoji_enabled && EMOJI_DICT[clean] ? ` ${EMOJI_DICT[clean]}` : "";
                     return (
                       <span
                         key={idx}
@@ -1048,7 +1016,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
                         }}
                         className="mx-0.5 inline-block"
                       >
-                        {w.word}{emoji}
+                        {w.word}
                       </span>
                     );
                   })
@@ -1115,11 +1083,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             </button>
           </div>
         </div>
-
-        {/* Helper Note */}
-        <p className="text-[10px] text-slate-400 text-center pt-1.5 leading-snug border-t border-surface-border/40">
-          💡 <em>Live Canvas Compositor:</em> Pratinjau frame-akurat 30 FPS dengan dynamic blur background, Ken Burns zoom, & color grading 100% identik dengan render FFmpeg.
-        </p>
       </div>
     </div>
   );

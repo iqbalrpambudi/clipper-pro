@@ -281,7 +281,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                       }}
                       className="text-xs uppercase tracking-wider"
                     >
-                      KATA <span style={{ color: p.highlight_color }}>VIRAL</span> {p.emoji_enabled ? "🔥" : ""}
+                      KATA <span style={{ color: p.highlight_color }}>VIRAL</span>
                     </span>
                   </div>
 
@@ -665,24 +665,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Auto Emoji */}
-          <div className="flex items-center gap-3 pt-2">
-            <input
-              type="checkbox"
-              id="emojiToggle"
-              checked={style.emoji_enabled}
-              onChange={(e) => {
-                const updated = { ...style, emoji_enabled: e.target.checked };
-                setStyle(updated);
-                updateStyleMutation.mutate(updated);
-              }}
-              className="w-4 h-4 rounded text-brand-600 cursor-pointer accent-brand-500"
-            />
-            <label htmlFor="emojiToggle" className="text-slate-300 font-semibold cursor-pointer text-xs">
-              Sematkan Emoji Relevan Otomatis (mis. 🔥, 🚀, 💡, 💰)
-            </label>
           </div>
         </div>
       </div>

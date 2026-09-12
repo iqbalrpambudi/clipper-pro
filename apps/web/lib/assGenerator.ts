@@ -1,31 +1,6 @@
 import type { SentenceSegment, SubtitleStyle } from "../types";
 
-export const EMOJI_DICT: Record<string, string> = {
-  uang: "💰",
-  duit: "💵",
-  cuan: "💸",
-  kaya: "🤑",
-  api: "🔥",
-  panas: "🔥",
-  kaget: "😱",
-  misteri: "🕵️",
-  rahasia: "🤫",
-  otak: "🧠",
-  cerdas: "💡",
-  waktu: "⏱️",
-  cepat: "⚡",
-  juara: "🏆",
-  menang: "🥇",
-  bahaya: "⚠️",
-  awas: "🚨",
-  cinta: "❤️",
-  kopi: "☕",
-  makanan: "🍔",
-  dunia: "🌍",
-  bintang: "⭐",
-  target: "🎯",
-  sukses: "🚀",
-};
+
 
 // Exact font metric compensation ratios between CSS unitsPerEm and libass/FreeType winAscent+winDescent
 export const FONT_METRIC_COMPENSATION: Record<string, number> = {
@@ -155,7 +130,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const dialogueLines: string[] = [];
   const displayMode = styleConfig.display_mode || "per_word";
   const burstCount = Math.max(Number(styleConfig.burst_word_count || 2), 2);
-  const emojiEnabled = Boolean(styleConfig.emoji_enabled ?? true);
   const anim = styleConfig.highlight_animation || "scale";
   const isScaleAnim = anim !== "color" && anim !== "none";
 
@@ -177,12 +151,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       for (const w of words) {
         const wText = (w.word || "").trim();
         if (!wText) continue;
-        const wClean = wText.toLowerCase().replace(/[^\w]/g, "");
-        const emoji = emojiEnabled && EMOJI_DICT[wClean] ? ` ${EMOJI_DICT[wClean]}` : "";
         const startT = msToAssTime(w.start_ms);
         const endT = msToAssTime(Math.max(w.end_ms, w.start_ms + 150));
 
-        const coloredText = `${posTag}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${emoji}${scaleReset}`;
+        const coloredText = `${posTag}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`;
         dialogueLines.push(`Dialogue: 0,${startT},${endT},KaraokeDefault,,0,0,0,,${coloredText}`);
       }
     } else if (displayMode === "burst") {
@@ -217,17 +189,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           for (let m = 0; m < group.length; m++) {
             const w = group[m];
             const wText = (w.word || "").trim();
-            const wClean = wText.toLowerCase().replace(/[^\w]/g, "");
-            const emoji = emojiEnabled && EMOJI_DICT[wClean] ? ` ${EMOJI_DICT[wClean]}` : "";
 
             if (m === j) {
               if (anim === "none") {
-                lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}${emoji}`);
+                lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);
               } else {
-                lineParts.push(`{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${emoji}${scaleReset}`);
+                lineParts.push(`{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`);
               }
             } else {
-              lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}${emoji}`);
+              lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);
             }
           }
 
@@ -267,17 +237,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         for (let m = 0; m < words.length; m++) {
           const w = words[m];
           const wText = (w.word || "").trim();
-          const wClean = wText.toLowerCase().replace(/[^\w]/g, "");
-          const emoji = emojiEnabled && EMOJI_DICT[wClean] ? ` ${EMOJI_DICT[wClean]}` : "";
 
           if (m === j) {
             if (anim === "none") {
-              lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}${emoji}`);
+              lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}`);
             } else {
-              lineParts.push(`{\\c${highlightCol}}${popFx}${wText}${emoji}${scaleReset}`);
+              lineParts.push(`{\\c${highlightCol}}${popFx}${wText}${scaleReset}`);
             }
           } else {
-            lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}${emoji}`);
+            lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}`);
           }
         }
 

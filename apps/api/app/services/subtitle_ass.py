@@ -1,32 +1,7 @@
 import re
 from typing import List, Dict, Any, Optional
 
-EMOJI_DICT = {
-    "uang": "💰",
-    "duit": "💵",
-    "cuan": "💸",
-    "kaya": "🤑",
-    "api": "🔥",
-    "panas": "🔥",
-    "kaget": "😱",
-    "misteri": "🕵️",
-    "rahasia": "🤫",
-    "otak": "🧠",
-    "cerdas": "💡",
-    "waktu": "⏱️",
-    "cepat": "⚡",
-    "juara": "🏆",
-    "menang": "🥇",
-    "bahaya": "⚠️",
-    "awas": "🚨",
-    "cinta": "❤️",
-    "kopi": "☕",
-    "makanan": "🍔",
-    "dunia": "🌍",
-    "bintang": "⭐",
-    "target": "🎯",
-    "sukses": "🚀",
-}
+
 
 
 def hex_to_ass_color(hex_str: str, opacity: float = 1.0) -> str:
@@ -99,7 +74,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "display_mode": "per_word",
             "burst_word_count": 2,
             "highlight_animation": "scale",
-            "emoji_enabled": True,
+            "emoji_enabled": False,
         },
         {
             "id": "hormozi_punch",
@@ -121,7 +96,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "display_mode": "burst",
             "burst_word_count": 2,
             "highlight_animation": "scale",
-            "emoji_enabled": True,
+            "emoji_enabled": False,
         },
         {
             "id": "minimalist",
@@ -165,7 +140,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "display_mode": "burst",
             "burst_word_count": 3,
             "highlight_animation": "scale",
-            "emoji_enabled": True,
+            "emoji_enabled": False,
         },
     ]
 
@@ -262,7 +237,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     dialogue_lines = []
     display_mode = style_config.get("display_mode", "per_word")
     burst_count = max(int(style_config.get("burst_word_count", 2)), 2)
-    emoji_enabled = bool(style_config.get("emoji_enabled", True))
     anim = style_config.get("highlight_animation", "scale")
     is_scale_anim = anim not in ("color", "none")
     try:
@@ -287,12 +261,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 w_text = w["word"].strip()
                 if not w_text:
                     continue
-                w_clean = re.sub(r"[^\w]", "", w_text.lower())
-                emoji = f" {EMOJI_DICT[w_clean]}" if emoji_enabled and w_clean in EMOJI_DICT else ""
                 start_t = ms_to_ass_time(w["start_ms"])
                 end_t = ms_to_ass_time(max(w["end_ms"], w["start_ms"] + 150))
 
-                colored_text = f"{pos_tag}{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{emoji}{scale_reset}"
+                colored_text = f"{pos_tag}{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}"
                 dialogue_lines.append(
                     f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{colored_text}"
                 )
@@ -326,16 +298,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     line_parts = []
                     for m, w in enumerate(group):
                         w_text = w["word"].strip()
-                        w_clean = re.sub(r"[^\w]", "", w_text.lower())
-                        emoji = f" {EMOJI_DICT[w_clean]}" if emoji_enabled and w_clean in EMOJI_DICT else ""
                         
                         if m == j:
                             if anim == "none":
-                                line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}{emoji}")
+                                line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
                             else:
-                                line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{emoji}{scale_reset}")
+                                line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}")
                         else:
-                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}{emoji}")
+                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
 
                     dialogue_lines.append(
                         f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{' '.join(line_parts)}"
@@ -366,16 +336,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 line_parts = []
                 for m, w in enumerate(words):
                     w_text = w["word"].strip()
-                    w_clean = re.sub(r"[^\w]", "", w_text.lower())
-                    emoji = f" {EMOJI_DICT[w_clean]}" if emoji_enabled and w_clean in EMOJI_DICT else ""
 
                     if m == j:
                         if anim == "none":
-                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}{emoji}")
+                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
                         else:
-                            line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text}{emoji}{scale_reset}")
+                            line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text}{scale_reset}")
                     else:
-                        line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}{emoji}")
+                        line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
 
                 dialogue_lines.append(
                     f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{' '.join(line_parts)}"
