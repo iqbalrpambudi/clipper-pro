@@ -162,3 +162,14 @@ async def update_timeline(
         clips=res_clips,
         total_duration=timeline.total_duration,
     )
+
+
+@router.delete("", status_code=204)
+async def clear_timeline(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Clear/Delete the timeline for a project."""
+    t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
+    timeline = t_res.scalar_one_or_none()
+    if timeline:
+        await db.delete(timeline)
+        await db.commit()
+    return None

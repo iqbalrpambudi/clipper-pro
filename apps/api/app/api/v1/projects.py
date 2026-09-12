@@ -144,6 +144,19 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     ]
 
     video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in proj.source_videos}
+    video_order_map = {
+        v.id: idx
+        for idx, v in enumerate(sorted(proj.source_videos, key=lambda x: x.created_at))
+    }
+
+    sorted_scenes = sorted(
+        proj.scenes,
+        key=lambda s: (
+            video_order_map.get(s.source_video_id, 0),
+            s.scene_index,
+            s.start_time,
+        ),
+    )
 
     resp.scenes = [
         SceneResponse(
@@ -161,7 +174,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             status=s.status,
             created_at=s.created_at,
         )
-        for s in proj.scenes
+        for s in sorted_scenes
     ]
 
     # Latest narration

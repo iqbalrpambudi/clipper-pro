@@ -19,6 +19,7 @@ import {
   Sliders,
   Maximize2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { ScenePreviewModal } from "../media/ScenePreviewModal";
 import { api } from "@/lib/api";
@@ -72,15 +73,28 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
   const availableCount = project.scenes.length - usedCount;
 
+  const sortedAllScenes = useMemo(() => {
+    if (!project.scenes) return [];
+    return [...project.scenes].sort((a, b) => {
+      if (a.source_video_id !== b.source_video_id) {
+        return a.source_video_id.localeCompare(b.source_video_id);
+      }
+      if (a.scene_index !== b.scene_index) {
+        return a.scene_index - b.scene_index;
+      }
+      return a.start_time - b.start_time;
+    });
+  }, [project.scenes]);
+
   const filteredScenes = useMemo(() => {
     if (sceneDrawerFilter === "used") {
-      return project.scenes.filter((s) => usedSceneMap.has(s.id));
+      return sortedAllScenes.filter((s) => usedSceneMap.has(s.id));
     }
     if (sceneDrawerFilter === "available") {
-      return project.scenes.filter((s) => !usedSceneMap.has(s.id));
+      return sortedAllScenes.filter((s) => !usedSceneMap.has(s.id));
     }
-    return project.scenes;
-  }, [project.scenes, sceneDrawerFilter, usedSceneMap]);
+    return sortedAllScenes;
+  }, [sortedAllScenes, sceneDrawerFilter, usedSceneMap]);
 
   // Live Progress State for Auto-Match & Auto-Refresh
   const [isAutoMatching, setIsAutoMatching] = useState(false);
@@ -155,43 +169,21 @@ export function TimelineTab({ project }: TimelineTabProps) {
     },
   });
 
-  // Metode A: Auto Trim Center Massal (Semua Klip)
-  const handleAutoTrimCenterAll = () => {
-    let modifiedCount = 0;
-    const updatedClips = clips.map((clip) => {
-      const originalScene = project.scenes.find((s) => s.id === clip.scene_id);
-      if (!originalScene) return clip;
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
-      const clipDuration = Number((clip.clip_end - clip.clip_start).toFixed(2));
-      const sceneDuration = originalScene.duration;
-
-      // Jika scene asli lebih panjang dari klip yang dibutuhkan, pusatkan potongannya
-      if (sceneDuration > clipDuration) {
-        const slack = sceneDuration - clipDuration;
-        const centerOffset = Number((slack / 2.0).toFixed(2));
-        const newClipStart = Number((originalScene.start_time + centerOffset).toFixed(2));
-        const newClipEnd = Number((newClipStart + clipDuration).toFixed(2));
-
-        if (newClipStart !== clip.clip_start || newClipEnd !== clip.clip_end) {
-          modifiedCount++;
-          return {
-            ...clip,
-            clip_start: newClipStart,
-            clip_end: newClipEnd,
-          };
-        }
-      }
-      return clip;
-    });
-
-    setClips(updatedClips);
-    saveTimelineMutation.mutate();
-    if (modifiedCount > 0) {
-      showToast(`${modifiedCount} klip berhasil di-center trim (aman dari transisi awal/akhir)!`, "success");
-    } else {
-      showToast("Semua klip sudah berada di posisi tengah yang aman", "info");
-    }
-  };
+  const clearTimelineMutation = useMutation({
+    mutationFn: () => api.clearTimeline(project.id),
+    onSuccess: () => {
+      setClips([]);
+      setSelectedClipIndex(null);
+      setIsClearConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Timeline berhasil dikosongkan!", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal mengosongkan timeline", "error");
+    },
+  });
 
   // Metode C: Precision Trim Handlers untuk klip yang sedang dipilih
   const updateSelectedClipTrim = (updates: { clip_start?: number; clip_end?: number }) => {
@@ -320,17 +312,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Metode A: Auto Trim Center Button */}
-          <button
-            type="button"
-            onClick={handleAutoTrimCenterAll}
-            disabled={clips.length === 0 || saveTimelineMutation.isPending}
-            className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
-            title="Pusatkan potongan semua klip tepat di tengah scene asli (otomatis hindari transisi bocor di awal/akhir)"
-          >
-            <Scissors className="w-3.5 h-3.5 text-emerald-400" />
-            <span>🎯 Auto Trim Center (Semua)</span>
-          </button>
+          {clips.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsClearConfirmOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+              title="Kosongkan seluruh susunan klip pada timeline"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span>Kosongkan Timeline</span>
+            </button>
+          )}
 
           <button
             onClick={() => autoMatchMutation.mutate()}
@@ -840,15 +832,6 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     </p>
 
                     <div className="space-y-1">
-                      {isUsed && (
-                        <div className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/25 text-center">
-                          <span className="text-[8.5px] font-semibold text-emerald-300 flex items-center justify-center gap-0.5 truncate">
-                            <Check className="w-2.5 h-2.5 stroke-[3] shrink-0" />
-                            <span>Klip #{clipIndices.join(", #")}</span>
-                          </span>
-                        </div>
-                      )}
-
                       <button
                         type="button"
                         className={`w-full py-1 text-[9px] font-bold rounded transition text-center ${
@@ -898,6 +881,46 @@ export function TimelineTab({ project }: TimelineTabProps) {
           description={previewData.description}
           tags={previewData.tags}
         />
+      )}
+
+      {/* Modal: Confirm Clear Timeline */}
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-pop">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Kosongkan Timeline?</h3>
+                <p className="text-xs text-slate-400">Seluruh klip video pada timeline akan dihapus</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Apakah Anda yakin ingin mengosongkan seluruh susunan timeline? Anda dapat menyusun klip baru secara manual atau menggunakan <span className="font-semibold text-white">Auto-Match AI</span> kembali kapan saja.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border/60">
+              <button
+                type="button"
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={clearTimelineMutation.isPending}
+                onClick={() => clearTimelineMutation.mutate()}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition flex items-center gap-2"
+              >
+                {clearTimelineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span>Kosongkan Timeline</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

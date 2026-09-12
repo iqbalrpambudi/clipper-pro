@@ -216,8 +216,8 @@ export function ScenePreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-scale-pop">
-      <div className="relative w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      <div className="relative w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-pop">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-surface/50">
           <div className="flex items-center gap-2">

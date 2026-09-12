@@ -40,11 +40,19 @@ export function useProjectEvents(projectId: string) {
 
         setActiveTask(task);
 
+        // Auto-refresh queries for real-time sync during render or tasks
+        if (task.task_type === "render") {
+          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
+        }
+
         if (task.status === "success") {
           showToast(task.message || "Proses berhasil diselesaikan!", "success");
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.refetchQueries({ queryKey: ["project", projectId] });
           queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
+          queryClient.refetchQueries({ queryKey: ["render-jobs", projectId] });
           queryClient.invalidateQueries({ queryKey: ["scenes", projectId] });
+          queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
 
           // Retain success status briefly, then auto-dismiss
           clearTimerRef.current = setTimeout(() => {
@@ -53,8 +61,11 @@ export function useProjectEvents(projectId: string) {
         } else if (task.status === "error") {
           showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.refetchQueries({ queryKey: ["project", projectId] });
           queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
+          queryClient.refetchQueries({ queryKey: ["render-jobs", projectId] });
           queryClient.invalidateQueries({ queryKey: ["scenes", projectId] });
+          queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
 
           // Keep error visible longer so user can read what went wrong
           clearTimerRef.current = setTimeout(() => {

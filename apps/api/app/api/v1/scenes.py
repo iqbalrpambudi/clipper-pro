@@ -22,16 +22,28 @@ router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
 
 @router.get("", response_model=List[SceneResponse])
 async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db)):
+    v_res = await db.execute(
+        select(SourceVideo).where(SourceVideo.project_id == project_id).order_by(SourceVideo.created_at.asc())
+    )
+    source_videos = v_res.scalars().all()
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in source_videos}
+    video_order_map = {v.id: idx for idx, v in enumerate(source_videos)}
+
     res = await db.execute(
         select(Scene)
         .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        .order_by(Scene.scene_index.asc(), Scene.start_time.asc())
     )
     scenes = res.scalars().all()
-    v_res = await db.execute(
-        select(SourceVideo).where(SourceVideo.project_id == project_id)
+
+    sorted_scenes = sorted(
+        scenes,
+        key=lambda s: (
+            video_order_map.get(s.source_video_id, 0),
+            s.scene_index,
+            s.start_time,
+        ),
     )
-    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in v_res.scalars().all()}
 
     return [
         SceneResponse(
@@ -49,7 +61,7 @@ async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db
             status=s.status,
             created_at=s.created_at,
         )
-        for s in scenes
+        for s in sorted_scenes
     ]
 
 

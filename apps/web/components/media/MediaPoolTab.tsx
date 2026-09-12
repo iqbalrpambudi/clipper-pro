@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   UploadCloud,
   Youtube,
@@ -44,6 +44,27 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
+
+  // Urutkan scene sesuai urutan asli video: source video sequence, lalu scene_index dan start_time
+  const sortedScenes = useMemo(() => {
+    if (!project.scenes) return [];
+    const videoOrderMap = new Map<string, number>();
+    (project.source_videos || []).forEach((vid, idx) => {
+      videoOrderMap.set(vid.id, idx);
+    });
+
+    return [...project.scenes].sort((a, b) => {
+      const vOrderA = videoOrderMap.get(a.source_video_id) ?? 0;
+      const vOrderB = videoOrderMap.get(b.source_video_id) ?? 0;
+      if (vOrderA !== vOrderB) {
+        return vOrderA - vOrderB;
+      }
+      if (a.scene_index !== b.scene_index) {
+        return a.scene_index - b.scene_index;
+      }
+      return a.start_time - b.start_time;
+    });
+  }, [project.scenes, project.source_videos]);
 
   // Live Progress State for Scene Retagging (driven by SSE activeTask)
   const [retagProgress, setRetagProgress] = useState(0);
@@ -324,17 +345,21 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Dedicated Card Progress Bar: Downloading */}
                     {vid.status === "downloading" && (
-                      <div className="mb-3 space-y-1.5 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/15">
-                        <div className="flex items-center justify-between text-[11px] text-amber-400">
-                          <span className="flex items-center gap-1.5 truncate max-w-[200px] font-medium">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-amber-400" />
-                            <span className="truncate">{dlMessage}</span>
+                      <div className="mb-3 space-y-2 bg-amber-500/10 p-3 rounded-xl border border-amber-500/25">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0 text-amber-400 mt-0.5" />
+                            <p className="text-xs font-semibold text-amber-200 leading-snug">
+                              {dlMessage}
+                            </p>
+                          </div>
+                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                            {dlProgress}%
                           </span>
-                          <span className="font-mono font-bold text-amber-300">{dlProgress}%</span>
                         </div>
-                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+                        <div className="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-amber-500/20">
                           <div
-                            className="bg-gradient-to-r from-amber-500 to-rose-400 h-full transition-all duration-300 rounded-full animate-pulse"
+                            className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400 h-full transition-all duration-300 rounded-full animate-pulse"
                             style={{ width: `${Math.max(5, dlProgress)}%` }}
                           />
                         </div>
@@ -343,15 +368,19 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Dedicated Card Progress Bar: Scene Detection & Vision AI */}
                     {vid.status === "processing" && (
-                      <div className="mb-3 space-y-1.5 bg-brand-500/5 p-2.5 rounded-xl border border-brand-500/15">
-                        <div className="flex items-center justify-between text-[11px] text-brand-400">
-                          <span className="flex items-center gap-1.5 truncate max-w-[200px] font-medium">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-brand-400" />
-                            <span className="truncate">{detectMessage}</span>
+                      <div className="mb-3 space-y-2 bg-brand-500/10 p-3 rounded-xl border border-brand-500/25">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0 text-brand-400 mt-0.5" />
+                            <p className="text-xs font-semibold text-brand-200 leading-snug">
+                              {detectMessage}
+                            </p>
+                          </div>
+                          <span className="font-mono font-extrabold text-xs px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 border border-brand-500/30 shrink-0">
+                            {detectProgress}%
                           </span>
-                          <span className="font-mono font-bold text-brand-300">{detectProgress}%</span>
                         </div>
-                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+                        <div className="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-brand-500/20">
                           <div
                             className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full animate-pulse"
                             style={{ width: `${Math.max(5, detectProgress)}%` }}
@@ -490,7 +519,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {project.scenes.map((scene) => (
+            {sortedScenes.map((scene) => (
               <div
                 key={scene.id}
                 className="glass-panel rounded-xl overflow-hidden border border-surface-border hover:border-accent-yellow/40 transition group flex flex-col"
@@ -563,8 +592,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
       {/* Modal: YouTube Importer */}
       {isYTOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-lg bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl animate-scale-pop">
             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
               <Youtube className="w-5 h-5 text-rose-500" />
               Download Video dari YouTube
@@ -673,8 +702,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
       {/* Modal: Confirm Delete Video */}
       {videoToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-pop">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
                 <Trash2 className="w-5 h-5" />

@@ -39,17 +39,19 @@ export function RenderTab({ project }: RenderTabProps) {
   const { data: renderJobs = [], refetch: refetchJobs } = useQuery({
     queryKey: ["render-jobs", project.id],
     queryFn: () => api.getRenderJobs(project.id),
-    staleTime: 5000,
+    staleTime: 0,
     refetchInterval: (query) => {
       const jobs = query.state.data || [];
-      const hasActiveJob = jobs.some(
-        (j: any) =>
-          j.status === "pending" ||
-          j.status === "processing" ||
-          j.status === "rendering" ||
-          j.status === "queued"
-      );
-      return hasActiveJob ? 1500 : false;
+      const hasActiveJob =
+        activeTask?.task_type === "render" ||
+        jobs.some(
+          (j: any) =>
+            j.status === "pending" ||
+            j.status === "processing" ||
+            j.status === "rendering" ||
+            j.status === "queued"
+        );
+      return hasActiveJob ? 1500 : 4000;
     },
   });
 
@@ -87,11 +89,11 @@ export function RenderTab({ project }: RenderTabProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Left Column: Interactive WYSIWYG Vertical Video Player */}
+      {/* Left Column: Interactive Vertical Video Player */}
       <div className="lg:col-span-5 flex flex-col items-center">
         <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
           <Film className="w-4 h-4 text-brand-400" />
-          WYSIWYG Preview Player (9:16)
+          Live Preview Player (9:16)
         </h3>
         <PreviewPlayer project={project} />
       </div>

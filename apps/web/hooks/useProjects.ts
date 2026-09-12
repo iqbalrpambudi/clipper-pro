@@ -20,7 +20,7 @@ export function useProject(id: string) {
   return useQuery({
     queryKey: projectKeys.detail(id),
     queryFn: () => api.getProject(id),
-    staleTime: 10000,
+    staleTime: 3000,
     refetchInterval: (query) => {
       const p = query.state.data;
       const isVideoBusy = p?.source_videos?.some(
@@ -37,7 +37,7 @@ export function useProject(id: string) {
       const isNarrationBusy =
         p?.narration?.status === "generating" || p?.narration?.status === "tts_generating";
 
-      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 2500 : false;
+      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 2000 : false;
     },
   });
 }

@@ -16,6 +16,8 @@ import {
   Sliders,
   Type,
   Wand2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -193,7 +195,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-accent-yellow" />
             <h3 className="text-base font-bold text-white tracking-tight">
-              1. Preset Gaya Subtitle Siap Pakai (100% WYSIWYG)
+              1. Preset Gaya Subtitle Siap Pakai
             </h3>
           </div>
 
@@ -239,18 +241,18 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
           </div>
         </div>
 
-        {/* Preset Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Preset Cards Horizontally Scrolled */}
+        <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent">
           {presets.map((p) => {
             const isSelected = style.preset_name === (p.preset_name || p.id);
             return (
               <div
                 key={p.id}
                 onClick={() => handleApplyPreset(p)}
-                className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between min-w-[220px] max-w-[260px] shrink-0 ${
                   isSelected
-                    ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/15"
-                    : "border-surface-border hover:border-slate-500"
+                    ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/15 ring-1 ring-brand-500"
+                    : "border-surface-border hover:border-slate-500 hover:bg-surface/50"
                 }`}
               >
                 <div>
@@ -292,14 +294,14 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
         </div>
       </div>
 
-      {/* 2. Side-by-Side: Live WYSIWYG Player & Detailed Style Controls */}
+      {/* 2. Side-by-Side: Live Preview Player & Detailed Style Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Embedded 9:16 Live Preview with Direct Draggable Position */}
         <div className="lg:col-span-5 flex flex-col items-center glass-panel rounded-2xl p-6 border border-surface-border">
           <div className="w-full flex items-center justify-between mb-4">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-brand-400" />
-              Live WYSIWYG Player
+              Live Subtitle Player
             </h4>
             <span className="text-[10px] text-slate-400 font-mono">
               X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
@@ -697,28 +699,30 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               type="button"
               onClick={() => matchAudioMutation.mutate()}
               disabled={matchAudioMutation.isPending || !project.audio}
-              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-accent-yellow/20 to-amber-500/20 hover:from-accent-yellow/30 hover:to-amber-500/30 border border-accent-yellow/40 text-accent-yellow font-bold text-xs flex items-center gap-1.5 transition shadow-md shadow-accent-yellow/5 disabled:opacity-40"
+              className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 font-semibold text-xs flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
               title="Gunakan Whisper AI untuk mencocokkan kata transkrip dengan suara yang dibacakan pada audio"
             >
-              <Wand2 className={`w-3.5 h-3.5 ${matchAudioMutation.isPending ? "animate-spin" : ""}`} />
+              <Wand2 className={`w-3.5 h-3.5 ${matchAudioMutation.isPending ? "animate-spin" : "text-amber-400"}`} />
               <span>{matchAudioMutation.isPending ? "Mencocokkan Audio via Whisper..." : "Cocokkan Subtitle dengan Audio"}</span>
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (project.narration?.segments) {
                   setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
                   showToast("Daftar kata di-reset ke data tersimpan", "info");
                 }
               }}
-              className="px-3 py-1.5 rounded-lg border border-surface-border text-xs text-slate-300 hover:text-white bg-surface transition flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl border border-surface-border text-xs text-slate-300 hover:text-white bg-surface hover:bg-surface-border/40 transition flex items-center gap-1.5 shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
             </button>
             <button
+              type="button"
               onClick={() => updateSegmentsMutation.mutate(editableSegments)}
               disabled={updateSegmentsMutation.isPending}
-              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/20"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{updateSegmentsMutation.isPending ? "Menyimpan..." : "Simpan Koreksi Transkrip"}</span>
@@ -755,31 +759,33 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   {(seg.words || []).map((w: any, wIdx: number) => (
                     <div
                       key={w.id || wIdx}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/50 border border-surface-border text-xs group hover:border-brand-500/50 transition"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 border border-surface-border hover:border-brand-500/50 transition-all text-xs shadow-sm"
                     >
                       <input
                         type="text"
                         value={w.word}
                         onChange={(e) => handleWordChange(segIdx, wIdx, e.target.value)}
-                        className="bg-transparent text-white font-semibold focus:outline-none focus:bg-surface px-1 py-0.5 rounded w-20 text-xs"
+                        className="bg-surface/80 text-white font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 px-1.5 py-0.5 rounded w-20 text-xs border border-transparent focus:border-brand-500"
                       />
-                      <span className="font-mono text-[10px] text-slate-500">
+                      <span className="font-mono text-[10px] text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
                         {w.start_ms}ms
                       </span>
-                      <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-col gap-0.5 ml-0.5">
                         <button
+                          type="button"
                           onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", -50)}
-                          className="text-[8px] text-slate-400 hover:text-white"
+                          className="p-0.5 rounded bg-surface hover:bg-surface-border text-slate-400 hover:text-white transition flex items-center justify-center"
                           title="-50ms start"
                         >
-                          ▲
+                          <ChevronUp className="w-2.5 h-2.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", 50)}
-                          className="text-[8px] text-slate-400 hover:text-white"
+                          className="p-0.5 rounded bg-surface hover:bg-surface-border text-slate-400 hover:text-white transition flex items-center justify-center"
                           title="+50ms start"
                         >
-                          ▼
+                          <ChevronDown className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     </div>
@@ -793,8 +799,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
       {/* Modal: ASS Script Viewer */}
       {isAssModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh] animate-scale-pop">
             <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
               <FileCode className="w-4 h-4 text-brand-400" />
               Preview File Subtitle ASS (libass)
@@ -816,8 +822,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
       {/* Modal: Save as Preset */}
       {isSavePresetOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-pop">
             <h3 className="text-sm font-bold text-white">Simpan sebagai Preset Baru</h3>
             <input
               type="text"
