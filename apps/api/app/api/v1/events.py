@@ -24,6 +24,16 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
         # Initial connection acknowledgment
         yield f'data: {{"type": "connected", "project_id": "{project_id}"}}\n\n'
 
+        # Immediately replay currently active task if one is running (so page refresh shows progress bar immediately)
+        try:
+            cached_active = await redis.get(f"project:{project_id}:active_task")
+            if cached_active:
+                if isinstance(cached_active, bytes):
+                    cached_active = cached_active.decode("utf-8")
+                yield f"data: {cached_active}\n\n"
+        except Exception as e:
+            log.warning("Failed to replay cached active task for project %s: %s", project_id, e)
+
         heartbeat_counter = 0
 
         try:

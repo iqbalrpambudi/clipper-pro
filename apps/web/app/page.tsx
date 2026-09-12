@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
   Plus,
@@ -15,55 +13,38 @@ import {
   Ratio,
   ArrowRight,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react";
-import { api } from "@/lib/api";
-import { useStudioStore } from "@/lib/store";
+import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { showToast } = useStudioStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [resolution, setResolution] = useState("1080p");
   const [bgMode, setBgMode] = useState<"blur" | "black">("blur");
+  const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects"],
-    queryFn: api.getProjects,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: api.createProject,
-    onSuccess: (newProj) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      showToast("Project baru berhasil dibuat!", "success");
-      setIsCreateOpen(false);
-      setName("");
-      router.push(`/projects/${newProj.id}`);
-    },
-    onError: (err: any) => {
-      showToast(err.message || "Gagal membuat project", "error");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: api.deleteProject,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      showToast("Project berhasil dihapus", "info");
-    },
-  });
+  const { data: projects = [], isLoading } = useProjects();
+  const createMutation = useCreateProject();
+  const deleteMutation = useDeleteProject();
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createMutation.mutate({
-      name: name.trim(),
-      aspect_ratio: aspectRatio,
-      resolution,
-    });
+    createMutation.mutate(
+      {
+        name: name.trim(),
+        aspect_ratio: aspectRatio,
+        resolution,
+      },
+      {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          setName("");
+        },
+      }
+    );
   };
 
   return (
@@ -183,9 +164,7 @@ export default function DashboardPage() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (confirm(`Hapus project "${proj.name}"?`)) {
-                          deleteMutation.mutate(proj.id);
-                        }
+                        setProjectToDelete(proj);
                       }}
                       className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-white/5 transition"
                       title="Hapus Project"
@@ -335,6 +314,52 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirm Delete Project */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Hapus Project?</h3>
+                <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Apakah Anda yakin ingin menghapus project{" "}
+              <span className="font-semibold text-white">"{projectToDelete.name}"</span>? Seluruh media video, scene AI, dan naskah di dalamnya akan dihapus permanen.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border/60">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                id="confirm-delete-project-btn"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  const id = projectToDelete.id;
+                  setProjectToDelete(null);
+                  deleteMutation.mutate(id);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition flex items-center gap-2"
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span>Hapus Project</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

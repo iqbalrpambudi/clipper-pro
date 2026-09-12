@@ -17,10 +17,15 @@ import {
 import { useStudioStore, TaskEvent } from "@/lib/store";
 
 export function GlobalTaskIndicator() {
-  const { activeTask, setActiveTask } = useStudioStore();
+  const { activeTask, setActiveTask, activeTab } = useStudioStore();
   const [showDetails, setShowDetails] = useState(false);
 
   if (!activeTask) return null;
+
+  // On the Media Pool tab, video download and scene detection progress is shown directly on the video card (avoid duplicate progress bars)
+  if (activeTab === "media" && (activeTask.task_type === "youtube_download" || activeTask.task_type === "scene_detect")) {
+    return null;
+  }
 
   const getTaskMeta = (type: TaskEvent["task_type"]) => {
     switch (type) {

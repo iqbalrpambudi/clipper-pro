@@ -14,7 +14,7 @@ from app.core.events import publish_project_event
 from app.services.ytdlp import download_video
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
-from app.services.vision_tagger import analyze_scene
+from app.services.vision_tagger import analyze_scene, analyze_scenes_batch
 from app.services.tts import generate_speech_audio, estimate_tts_cost
 from app.services.alignment import align_audio_with_text
 from app.services.matching import match_scenes_to_segments
@@ -81,18 +81,30 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
             video.width = meta["width"]
             video.height = meta["height"]
             video.fps = meta["fps"]
-            video.status = "ready"
-            video.progress = 100
+
+            # If filename was default placeholder, update with actual YouTube title
+            if not video.filename or video.filename.startswith("Mendownload"):
+                try:
+                    yt_meta = await get_video_info(video.youtube_url)
+                    if yt_meta.title:
+                        clean_t = yt_meta.title.strip()
+                        video.filename = clean_t if clean_t.lower().endswith(".mp4") else f"{clean_t}.mp4"
+                except Exception as ex:
+                    log.debug("Could not resolve video title from yt-dlp metadata: %s", ex)
+
+            # Smooth direct transition to scene detection (do NOT set ready here)
+            video.status = "processing"
+            video.progress = 10
             await db.commit()
 
             await publish_project_event(
                 video.project_id,
-                task_type="youtube_download",
-                status="success",
-                progress=100,
-                stage="downloaded",
-                message=f"Video YouTube '{video.filename}' berhasil didownload! Memulai analisis scene...",
-                data={"video_id": video_id, "duration": meta["duration"]},
+                task_type="scene_detect",
+                status="progress",
+                progress=10,
+                stage="detecting_cuts",
+                message=f"Video '{video.filename}' berhasil didownload! Memulai analisis scene...",
+                data={"video_id": video_id, "duration": meta["duration"], "filename": video.filename},
             )
 
             # Auto trigger scene detection for downloaded video
@@ -157,37 +169,44 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 data={"video_id": video_id, "total_scenes": total_scenes},
             )
 
-            for idx, item in enumerate(scenes_data):
-                # Analyze keyframes
-                description, tags, embedding = await analyze_scene(
-                    adapter, item.get("keyframe_paths", [item["thumbnail_path"]])
-                )
+            BATCH_SIZE = 8
+            processed_count = 0
 
-                sc = Scene(
-                    project_id=video.project_id,
-                    source_video_id=video.id,
-                    scene_index=item["scene_index"],
-                    start_time=item["start_time"],
-                    end_time=item["end_time"],
-                    duration=item["duration"],
-                    thumbnail_path=item["thumbnail_path"],
-                    description=description,
-                    tags=tags,
-                    embedding=embedding,
-                    status="ready",
-                )
-                db.add(sc)
+            for i in range(0, total_scenes, BATCH_SIZE):
+                batch_slice = scenes_data[i : i + BATCH_SIZE]
+
+                # Analyze batch of scenes concurrently
+                batch_analysis = await analyze_scenes_batch(adapter, batch_slice)
+
+                for item, (description, tags, embedding) in zip(batch_slice, batch_analysis):
+                    sc = Scene(
+                        project_id=video.project_id,
+                        source_video_id=video.id,
+                        scene_index=item["scene_index"],
+                        start_time=item["start_time"],
+                        end_time=item["end_time"],
+                        duration=item["duration"],
+                        thumbnail_path=item["thumbnail_path"],
+                        description=description,
+                        tags=tags,
+                        embedding=embedding,
+                        status="ready",
+                    )
+                    db.add(sc)
+
+                await db.flush()
+                processed_count += len(batch_slice)
 
                 # Report incremental progress for vision analysis
-                pct = 25 + int(((idx + 1) / max(1, total_scenes)) * 70)
+                pct = 25 + int((processed_count / max(1, total_scenes)) * 70)
                 await publish_project_event(
                     video.project_id,
                     task_type="scene_detect",
                     status="progress",
                     progress=pct,
                     stage="vision_tagging",
-                    message=f"Menganalisis visual AI scene {idx + 1} dari {total_scenes}...",
-                    data={"video_id": video_id, "current": idx + 1, "total": total_scenes},
+                    message=f"Menganalisis visual AI scene {min(processed_count, total_scenes)} dari {total_scenes}...",
+                    data={"video_id": video_id, "current": min(processed_count, total_scenes), "total": total_scenes},
                 )
 
             video.status = "ready"

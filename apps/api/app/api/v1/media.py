@@ -24,6 +24,7 @@ from app.services.ytdlp import (
 )
 from app.services.scene_detector import get_video_metadata
 from app.workers.tasks import detect_scenes_job, download_youtube_job
+from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/media", tags=["media"])
 
@@ -184,18 +185,34 @@ async def trigger_youtube_download(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
+    initial_title = (payload.title or "").strip()
+    if initial_title:
+        initial_filename = initial_title if any(initial_title.lower().endswith(ext) for ext in [".mp4", ".mov", ".mkv", ".webm"]) else f"{initial_title}.mp4"
+    else:
+        initial_filename = "Mendownload dari YouTube..."
+
     video = SourceVideo(
         project_id=project_id,
         origin="ytdlp",
-        filename="Mendownload dari YouTube...",
+        filename=initial_filename,
         youtube_url=payload.url,
         selected_resolution=payload.format_id,
-        status="pending",
-        progress=0,
+        status="downloading",
+        progress=5,
     )
     db.add(video)
     await db.commit()
     await db.refresh(video)
+
+    await publish_project_event(
+        project_id,
+        task_type="youtube_download",
+        status="progress",
+        progress=5,
+        stage="downloading",
+        message=f"Memulai download video '{video.filename}'...",
+        data={"video_id": video.id, "filename": video.filename},
+    )
 
     await enqueue_task("download_youtube_job", video.id)
 
@@ -233,6 +250,34 @@ async def delete_source_video(
             Path(video.file_path).unlink(missing_ok=True)
         except Exception:
             pass
+
+    # Clean up scene thumbnail files from disk
+    from app.models.project import Scene
+    res = await db.execute(select(Scene).where(Scene.source_video_id == video_id))
+    for sc in res.scalars().all():
+        if sc.thumbnail_path:
+            tp = Path(sc.thumbnail_path)
+            if not tp.exists():
+                tp = storage.to_absolute_path(sc.thumbnail_path)
+            if tp and tp.exists():
+                try:
+                    tp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+    # Clear cached task in Redis if it belongs to this video
+    try:
+        from app.core.redis import get_redis_client
+        import json
+        redis_client = get_redis_client()
+        cache_key = f"project:{project_id}:active_task"
+        cached = await redis_client.get(cache_key)
+        if cached:
+            task_dict = json.loads(cached)
+            if task_dict.get("data", {}).get("video_id") == video_id:
+                await redis_client.delete(cache_key)
+    except Exception:
+        pass
 
     await db.delete(video)
     await db.commit()

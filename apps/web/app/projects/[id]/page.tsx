@@ -1,8 +1,7 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useEffect } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Film,
@@ -19,6 +18,7 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore, StudioTab } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
+import { useProject } from "@/hooks/useProjects";
 import { GlobalTaskIndicator } from "@/components/common/GlobalTaskIndicator";
 import { MediaPoolTab } from "@/components/media/MediaPoolTab";
 import { NarrationTab } from "@/components/narration/NarrationTab";
@@ -33,35 +33,91 @@ interface PageProps {
 
 export default function ProjectStudioPage({ params }: PageProps) {
   const { id } = use(params);
-  const { activeTab, setActiveTab } = useStudioStore();
+  const { activeTab, setActiveTab, activeTask, setActiveTask } = useStudioStore();
 
   // Establish SSE real-time connection for worker tasks
   useProjectEvents(id);
 
-  const { data: project, isLoading, error } = useQuery({
-    queryKey: ["project", id],
-    queryFn: () => api.getProject(id),
-    staleTime: 10000,
-    refetchInterval: (query) => {
-      const p = query.state.data;
-      const isVideoBusy = p?.source_videos?.some(
-        (v: any) => v.status === "processing" || v.status === "pending" || v.status === "downloading"
-      );
-      const isAudioBusy = p?.audio?.status === "generating" || p?.audio?.status === "processing";
-      const isRenderBusy = p?.render_jobs?.some(
-        (j: any) =>
-          j.status === "processing" ||
-          j.status === "pending" ||
-          j.status === "rendering" ||
-          j.status === "queued"
-      );
-      const isNarrationBusy =
-        p?.narration?.status === "generating" || p?.narration?.status === "tts_generating";
+  const { data: project, isLoading, error } = useProject(id);
 
-      // Fallback polling (2.5s) if any background task is still flagged in DB
-      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 2500 : false;
-    },
-  });
+  // Restore activeTask on page refresh from project database state if not yet set by SSE
+  useEffect(() => {
+    if (!project || activeTask) return;
+
+    const downloadingVid = project.source_videos?.find((v: any) => v.status === "downloading");
+    if (downloadingVid) {
+      setActiveTask({
+        project_id: project.id,
+        task_type: "youtube_download",
+        status: "progress",
+        progress: downloadingVid.progress || 15,
+        stage: "downloading",
+        message: `Mendownload video '${downloadingVid.filename}'...`,
+        error: null,
+        data: { video_id: downloadingVid.id, filename: downloadingVid.filename },
+      });
+      return;
+    }
+
+    const processingVid = project.source_videos?.find((v: any) => v.status === "processing" || v.status === "pending");
+    if (processingVid) {
+      setActiveTask({
+        project_id: project.id,
+        task_type: "scene_detect",
+        status: "progress",
+        progress: processingVid.progress || 25,
+        stage: "vision_tagging",
+        message: `Menganalisis visual AI scene '${processingVid.filename}'...`,
+        error: null,
+        data: { video_id: processingVid.id, filename: processingVid.filename },
+      });
+      return;
+    }
+
+    const activeJob = project.render_jobs?.find(
+      (j: any) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+    );
+    if (activeJob) {
+      setActiveTask({
+        project_id: project.id,
+        task_type: "render",
+        status: "progress",
+        progress: activeJob.progress || 10,
+        stage: "rendering",
+        message: "Sedang me-render video final...",
+        error: null,
+        data: { job_id: activeJob.id },
+      });
+      return;
+    }
+
+    if (project.narration?.status === "tts_generating") {
+      setActiveTask({
+        project_id: project.id,
+        task_type: "tts_align",
+        status: "progress",
+        progress: 25,
+        stage: "tts_synthesizing",
+        message: "Mensintesis audio narasi AI...",
+        error: null,
+        data: {},
+      });
+    }
+  }, [project, activeTask, setActiveTask]);
+
+  // Clean up activeTask if the task is already finished in DB
+  useEffect(() => {
+    if (!activeTask || !project) return;
+    if (activeTask.status === "progress") {
+      if (activeTask.task_type === "scene_detect") {
+        const vidId = activeTask.data?.video_id;
+        const vid = vidId ? project.source_videos?.find((v: any) => v.id === vidId) : null;
+        if (vid && vid.status === "ready") {
+          setActiveTask(null);
+        }
+      }
+    }
+  }, [project, activeTask, setActiveTask]);
 
 
   if (isLoading) {

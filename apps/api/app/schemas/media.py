@@ -25,6 +25,7 @@ class YTDownloadRequest(BaseModel):
     url: str
     format_id: Optional[str] = None
     selected_resolution: Optional[str] = None
+    title: Optional[str] = None
 
 
 class YTUpdateRequest(BaseModel):

@@ -45,7 +45,16 @@ async def publish_project_event(
     channel = f"project:{project_id}:events"
     try:
         redis = get_redis_client()
-        await redis.publish(channel, json.dumps(event_payload))
+        payload_json = json.dumps(event_payload)
+        await redis.publish(channel, payload_json)
+
+        # Cache active task in Redis so refreshed pages or new connections immediately see current progress
+        active_key = f"project:{project_id}:active_task"
+        if status in ("progress", "queued"):
+            await redis.set(active_key, payload_json, ex=1800)
+        elif status in ("success", "error"):
+            await redis.delete(active_key)
+
         log.debug("Published event to %s: [%s] %s (%d%%)", channel, task_type, message, progress)
     except Exception as e:
         log.warning("Failed to publish event to Redis channel %s: %s", channel, e)

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   UploadCloud,
   Youtube,
@@ -18,9 +17,16 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
-import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, SourceVideo, Scene } from "@/types";
+import {
+  useDeleteMedia,
+  useDownloadYT,
+  useUploadMedia,
+  useModelConfig,
+  useYTInfo,
+  useRetagScenes,
+} from "@/hooks/useMediaPool";
 
 interface MediaPoolTabProps {
   project: Project & {
@@ -30,12 +36,10 @@ interface MediaPoolTabProps {
 }
 
 export function MediaPoolTab({ project }: MediaPoolTabProps) {
-  const queryClient = useQueryClient();
-  const { showToast, activeTask } = useStudioStore();
+  const { showToast, activeTask, setActiveTask } = useStudioStore();
   const [isYTOpen, setIsYTOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState("");
   const [ytInfo, setYtInfo] = useState<any>(null);
-  const [isInspecting, setIsInspecting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
@@ -46,42 +50,13 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [retagStepText, setRetagStepText] = useState("");
   const [retagElapsed, setRetagElapsed] = useState(0);
 
-  const { data: modelConfig } = useQuery({
-    queryKey: ["model-config"],
-    queryFn: api.getModelConfig,
-  });
+  const { data: modelConfig } = useModelConfig();
+  const inspectYTMutation = useYTInfo(project.id);
+  const retagMutation = useRetagScenes(project.id);
 
   const untaggedCount = project.scenes.filter(
     (s) => !s.description || s.description === "Cuplikan video aksi/aktivitas"
   ).length;
-
-  const retagMutation = useMutation({
-    mutationFn: (mode: "quick" | "force") => {
-      setRetaggingMode(mode);
-      setRetagProgress(10);
-      setRetagElapsed(0);
-      setRetagStepText(`Memulai ${mode === "quick" ? "Quick Tagging (Incremental)" : "Force Tagging (Semua)"}...`);
-      return api.retagScenes(project.id, mode);
-    },
-    onSuccess: async (res) => {
-      setRetagProgress(100);
-      setRetagStepText("Tagging selesai!");
-      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
-      await queryClient.refetchQueries({ queryKey: ["scenes", project.id] });
-      showToast(res.message || `Berhasil tagging ${res.count} scene!`, "success");
-      setTimeout(() => {
-        setRetagProgress(0);
-        setRetagElapsed(0);
-      }, 800);
-    },
-    onError: (err: any) => {
-      setRetagProgress(0);
-      showToast(err.message || "Gagal tagging ulang scene", "error");
-    },
-    onSettled: () => {
-      setRetaggingMode(null);
-    },
-  });
 
   // Sync real-time progress events from SSE for scene_retag
   useEffect(() => {
@@ -112,67 +87,78 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   }, [retagMutation.isPending]);
 
 
+  const deleteMutation = useDeleteMedia(project.id);
+  const downloadYTMutation = useDownloadYT(project.id);
+  const uploadMediaMutation = useUploadMedia(project.id);
+
   // Upload Mutation
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setIsUploading(true);
-    setUploadProgress(20);
+    setUploadProgress(40);
 
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("files", f));
 
-    try {
-      setUploadProgress(60);
-      await api.uploadMedia(project.id, formData);
-      setUploadProgress(100);
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Video berhasil diunggah! Scene detection sedang berjalan di background.", "success");
-    } catch (err: any) {
-      showToast(err.message || "Gagal mengunggah video", "error");
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
+    uploadMediaMutation.mutate(formData, {
+      onSettled: () => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      },
+    });
   };
 
   // Inspect YouTube URL
-  const handleInspectYT = async (e: React.FormEvent) => {
+  const handleInspectYT = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ytUrl.trim()) return;
-    setIsInspecting(true);
     setYtInfo(null);
-    try {
-      const info = await api.getYTInfo(project.id, ytUrl.trim());
-      setYtInfo(info);
-    } catch (err: any) {
-      showToast(err.message || "Gagal mengambil info YouTube", "error");
-    } finally {
-      setIsInspecting(false);
-    }
+    inspectYTMutation.mutate(ytUrl.trim(), {
+      onSuccess: (info) => setYtInfo(info),
+    });
   };
 
-  // Download YouTube video
+  const handleRetag = (mode: "quick" | "force") => {
+    setRetaggingMode(mode);
+    setRetagProgress(10);
+    setRetagElapsed(0);
+    setRetagStepText(`Memulai ${mode === "quick" ? "Quick Tagging (Incremental)" : "Force Tagging (Semua)"}...`);
+    retagMutation.mutate(mode, {
+      onSuccess: () => {
+        setRetagProgress(100);
+        setRetagStepText("Tagging selesai!");
+        setTimeout(() => {
+          setRetagProgress(0);
+          setRetagElapsed(0);
+        }, 800);
+      },
+      onError: () => {
+        setRetagProgress(0);
+      },
+      onSettled: () => {
+        setRetaggingMode(null);
+      },
+    });
+  };
+
+  const [downloadingFormatId, setDownloadingFormatId] = useState<string | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<SourceVideo | null>(null);
+
+  // Download YouTube video with optimistic card display
   const handleDownloadYT = async (formatId: string) => {
-    try {
-      await api.downloadYT(project.id, ytUrl.trim(), formatId);
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Download YouTube dimulai di background!", "info");
-      setIsYTOpen(false);
-      setYtUrl("");
-      setYtInfo(null);
-    } catch (err: any) {
-      showToast(err.message || "Gagal mendownload YouTube", "error");
-    }
+    setDownloadingFormatId(formatId);
+    downloadYTMutation.mutate(
+      { url: ytUrl.trim(), formatId, title: ytInfo?.title },
+      {
+        onSettled: () => setDownloadingFormatId(null),
+        onSuccess: () => {
+          setIsYTOpen(false);
+          setYtUrl("");
+          setYtInfo(null);
+        },
+      }
+    );
   };
-
-  // Delete Video
-  const deleteMutation = useMutation({
-    mutationFn: (vidId: string) => api.deleteMedia(project.id, vidId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Video dihapus dari Media Pool", "info");
-    },
-  });
 
   return (
     <div className="space-y-8">
@@ -241,119 +227,172 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {project.source_videos.map((vid) => (
-              <div
-                key={vid.id}
-                className="glass-panel rounded-xl p-4 border border-surface-border flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                        vid.origin === "ytdlp"
-                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                          : "bg-brand-500/20 text-brand-300 border border-brand-500/30"
-                      }`}
-                    >
-                      {vid.origin}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Hapus "${vid.filename}" dari Media Pool?`)) {
-                          deleteMutation.mutate(vid.id);
-                        }
-                      }}
-                      className="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-white/5 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            {project.source_videos.map((vid) => {
+              const isDownloadActive = activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id;
+              const dlProgress = isDownloadActive ? activeTask.progress : (vid.progress || 15);
+              const dlMessage = isDownloadActive && activeTask.message ? activeTask.message : `Mendownload video (${dlProgress}%)...`;
+
+              const isDetectActive = activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id);
+              const detectProgress = isDetectActive ? activeTask.progress : (vid.progress || 25);
+              const detectMessage = isDetectActive && activeTask.message ? activeTask.message : `Menganalisis visual AI scene (${detectProgress}%)...`;
+
+              const videoScenes = project.scenes?.filter((s) => s.source_video_id === vid.id) || [];
+              const sceneCount = videoScenes.length;
+
+              const formatDuration = (sec: number) => {
+                if (!sec || sec <= 0) return null;
+                const m = Math.floor(sec / 60);
+                const s = Math.floor(sec % 60);
+                return `${m}:${s.toString().padStart(2, "0")}`;
+              };
+
+              return (
+                <div
+                  key={vid.id}
+                  className="glass-panel rounded-xl p-4 border border-surface-border flex flex-col justify-between hover:border-surface-border/80 transition shadow-lg"
+                >
+                  <div>
+                    {/* Header Row: Badges & Actions */}
+                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Origin Badge */}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                            vid.origin === "ytdlp"
+                              ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                              : "bg-brand-500/15 text-brand-300 border border-brand-500/30"
+                          }`}
+                        >
+                          {vid.origin === "ytdlp" ? "YouTube" : "Upload"}
+                        </span>
+
+                        {/* Live Status Badge */}
+                        {vid.status === "downloading" && (
+                          <span className="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-amber-400" />
+                            <span>Mengunduh</span>
+                          </span>
+                        )}
+                        {vid.status === "processing" && (
+                          <span className="bg-brand-500/15 text-brand-300 border border-brand-500/30 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-brand-400" />
+                            <span>Analisis Scene AI</span>
+                          </span>
+                        )}
+                        {vid.status === "ready" && (
+                          <span className="bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Siap</span>
+                          </span>
+                        )}
+                        {vid.status === "failed" && (
+                          <span className="bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <AlertCircle className="w-2.5 h-2.5 text-rose-400" />
+                            <span>Gagal</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setVideoToDelete(vid)}
+                        className="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-white/5 transition shrink-0"
+                        title="Hapus video"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Title */}
+                    <h4 className="text-sm font-semibold text-white truncate mb-1" title={vid.filename}>
+                      {vid.filename}
+                    </h4>
+
+                    {/* Sub-meta (Resolution & Scene Count) */}
+                    <div className="flex items-center gap-2 mb-3 text-[11px] text-slate-400">
+                      {vid.width && vid.height ? (
+                        <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-slate-300 text-[10px]">
+                          {vid.height}p {vid.fps ? `• ${Math.round(vid.fps)}fps` : ""}
+                        </span>
+                      ) : null}
+                      {vid.status === "ready" && (
+                        <span className="text-emerald-400/90 font-medium flex items-center gap-1 text-[11px]">
+                          <Film className="w-3 h-3" />
+                          {sceneCount > 0 ? `${sceneCount} scene terdeteksi` : "Siap dipotong"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Dedicated Card Progress Bar: Downloading */}
+                    {vid.status === "downloading" && (
+                      <div className="mb-3 space-y-1.5 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/15">
+                        <div className="flex items-center justify-between text-[11px] text-amber-400">
+                          <span className="flex items-center gap-1.5 truncate max-w-[200px] font-medium">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-amber-400" />
+                            <span className="truncate">{dlMessage}</span>
+                          </span>
+                          <span className="font-mono font-bold text-amber-300">{dlProgress}%</span>
+                        </div>
+                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+                          <div
+                            className="bg-gradient-to-r from-amber-500 to-rose-400 h-full transition-all duration-300 rounded-full animate-pulse"
+                            style={{ width: `${Math.max(5, dlProgress)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dedicated Card Progress Bar: Scene Detection & Vision AI */}
+                    {vid.status === "processing" && (
+                      <div className="mb-3 space-y-1.5 bg-brand-500/5 p-2.5 rounded-xl border border-brand-500/15">
+                        <div className="flex items-center justify-between text-[11px] text-brand-400">
+                          <span className="flex items-center gap-1.5 truncate max-w-[200px] font-medium">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-brand-400" />
+                            <span className="truncate">{detectMessage}</span>
+                          </span>
+                          <span className="font-mono font-bold text-brand-300">{detectProgress}%</span>
+                        </div>
+                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+                          <div
+                            className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full animate-pulse"
+                            style={{ width: `${Math.max(5, detectProgress)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Failure Message */}
+                    {vid.status === "failed" && (
+                      <div className="mb-3 text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                        <span className="truncate">{vid.error_message || "Gagal memproses video"}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <h4 className="text-sm font-semibold text-white truncate mb-2" title={vid.filename}>
-                    {vid.filename}
-                  </h4>
-
-                  {/* Status & Progress */}
-                  {vid.status === "downloading" && (
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-[10px] text-amber-400 mb-1">
-                        <span className="flex items-center gap-1 truncate max-w-[200px]">
-                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                          {activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
-                            ? activeTask.message
-                            : "Mendownload video..."}
+                  {/* Card Footer: Formatted Duration & Dimensions */}
+                  <div className="pt-3 border-t border-surface-border/60 flex items-center justify-between text-xs text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                      {vid.duration && vid.duration > 0 ? (
+                        <span className="font-medium text-slate-300">
+                          {formatDuration(vid.duration)} ({Math.round(vid.duration)}s)
                         </span>
-                        <span>
-                          {activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
-                            ? `${activeTask.progress}%`
-                            : `${vid.progress}%`}
-                        </span>
-                      </div>
-                      <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-amber-400 h-full transition-all duration-300"
-                          style={{
-                            width: `${
-                              activeTask?.task_type === "youtube_download" && activeTask.data?.video_id === vid.id
-                                ? activeTask.progress
-                                : vid.progress
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {vid.status === "processing" && (
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-[10px] text-brand-400 mb-1">
-                        <span className="flex items-center gap-1 truncate max-w-[200px]">
-                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                          {activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
-                            ? activeTask.message
-                            : "Menganalisis scene & vision AI..."}
-                        </span>
-                        <span>
-                          {activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
-                            ? `${activeTask.progress}%`
-                            : `${vid.progress || 10}%`}
-                        </span>
-                      </div>
-                      <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-brand-500 h-full transition-all duration-300"
-                          style={{
-                            width: `${
-                              activeTask?.task_type === "scene_detect" && (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id)
-                                ? activeTask.progress
-                                : (vid.progress || 10)
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {vid.status === "failed" && (
-                    <div className="mb-3 text-[10px] text-rose-400 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" /> {vid.error_message || "Gagal memproses"}
-                    </div>
-                  )}
-
+                      ) : vid.status === "downloading" || vid.status === "processing" ? (
+                        <span className="text-amber-400/80 italic text-[11px]">Memproses durasi...</span>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-500">
+                      {vid.width && vid.height ? `${vid.width}x${vid.height}` : ""}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="pt-3 border-t border-surface-border/60 flex items-center justify-between text-xs text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-slate-500" />
-                    {Math.round(vid.duration)} detik
-                  </span>
-                  <span>{vid.width && vid.height ? `${vid.width}x${vid.height}` : ""}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              );
+            })}
+            </div>
+          )}
+        </div>
 
       {/* Scene Gallery Drawer */}
       <div>
@@ -374,7 +413,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             {/* Quick Tagging (Incremental) */}
             <button
               type="button"
-              onClick={() => retagMutation.mutate("quick")}
+              onClick={() => handleRetag("quick")}
               disabled={retagMutation.isPending || untaggedCount === 0}
               className="px-3.5 py-1.5 rounded-xl bg-accent-yellow/15 hover:bg-accent-yellow/25 border border-accent-yellow/40 text-accent-yellow text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
               title="Hanya tagging scene yang belum memiliki tag AI (cepat & hemat kuota)"
@@ -397,7 +436,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               type="button"
               onClick={() => {
                 if (confirm(`Tagging ulang seluruh ${project.scenes.length} scene dari awal menggunakan model vision ${modelConfig?.vision_model || "aktif"}?`)) {
-                  retagMutation.mutate("force");
+                  handleRetag("force");
                 }
               }}
               disabled={retagMutation.isPending || project.scenes.length === 0}
@@ -545,10 +584,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               />
               <button
                 type="submit"
-                disabled={isInspecting}
+                disabled={inspectYTMutation.isPending}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold rounded-xl flex items-center gap-1.5 transition"
               >
-                {isInspecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Periksa"}
+                {inspectYTMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Periksa"}
               </button>
             </form>
 
@@ -572,19 +611,30 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 <div className="space-y-1.5 pt-2 border-t border-surface-border">
                   <p className="text-xs font-semibold text-slate-300 mb-2">Pilih Resolusi Download:</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {ytInfo.formats?.map((fmt: any) => (
-                      <button
-                        key={fmt.format_id}
-                        type="button"
-                        onClick={() => handleDownloadYT(fmt.format_id)}
-                        className="px-3 py-2 rounded-lg border border-surface-border bg-surface hover:bg-rose-500/10 hover:border-rose-500/40 text-left text-xs text-white flex items-center justify-between transition"
-                      >
-                        <span className="font-semibold">{fmt.resolution}</span>
-                        <span className="text-[10px] text-slate-400">
-                          {fmt.filesize_approx_mb ? `${fmt.filesize_approx_mb} MB` : "Auto"}
-                        </span>
-                      </button>
-                    ))}
+                    {ytInfo.formats?.map((fmt: any) => {
+                      const isSelected = downloadingFormatId === fmt.format_id;
+                      return (
+                        <button
+                          key={fmt.format_id}
+                          type="button"
+                          disabled={Boolean(downloadingFormatId)}
+                          onClick={() => handleDownloadYT(fmt.format_id)}
+                          className={`px-3 py-2 rounded-lg border text-left text-xs flex items-center justify-between transition ${
+                            isSelected
+                              ? "border-rose-500 bg-rose-500/20 text-white"
+                              : "border-surface-border bg-surface hover:bg-rose-500/10 hover:border-rose-500/40 text-white"
+                          } ${downloadingFormatId && !isSelected ? "opacity-40 cursor-not-allowed" : ""}`}
+                        >
+                          <span className="font-semibold flex items-center gap-1.5">
+                            {isSelected && <Loader2 className="w-3 h-3 animate-spin text-rose-400" />}
+                            <span>{fmt.resolution}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {isSelected ? "Memulai..." : (fmt.filesize_approx_mb ? `${fmt.filesize_approx_mb} MB` : "Auto")}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -619,6 +669,52 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           tags={previewScene.tags}
           sceneIndex={previewScene.scene_index}
         />
+      )}
+
+      {/* Modal: Confirm Delete Video */}
+      {videoToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Hapus Video dari Media Pool?</h3>
+                <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Apakah Anda yakin ingin menghapus{" "}
+              <span className="font-semibold text-white">"{videoToDelete.filename}"</span>? Seluruh scene visual AI hasil analisis video ini juga akan dihapus dari project.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border/60">
+              <button
+                type="button"
+                onClick={() => setVideoToDelete(null)}
+                className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                id="confirm-delete-video-btn"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  const vidId = videoToDelete.id;
+                  setVideoToDelete(null);
+                  deleteMutation.mutate(vidId);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition flex items-center gap-2"
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                <span>Hapus Video</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

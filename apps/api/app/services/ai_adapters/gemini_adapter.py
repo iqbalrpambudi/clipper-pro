@@ -29,14 +29,25 @@ class GeminiAdapter(OpenAICompatibleAdapter):
             vision_model=vision_model,
             embedding_model=embedding_model,
         )
+        self._quota_exhausted = False
 
     async def analyze_vision_batch(
         self,
         batch_items: List[Tuple[str, str]],  # [(scene_id, thumbnail_path), ...]
     ) -> List[Dict[str, Any]]:
         """Analyze a batch of scene thumbnails in a SINGLE API call for maximum speed and quota efficiency."""
-        if not batch_items or not self.api_key:
+        if not batch_items:
             return []
+
+        if self._quota_exhausted or not self.api_key:
+            return [
+                {
+                    "scene_id": sc_id,
+                    "description": "Cuplikan video aksi/aktivitas",
+                    "tags": ["video", "scene", "aktivitas"],
+                }
+                for sc_id, _ in batch_items
+            ]
 
         instruction = (
             f"Analisis {len(batch_items)} gambar cuplikan video ini secara berurutan. "
@@ -76,15 +87,22 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                 models_to_try.append(m)
 
         for model_name in models_to_try:
+            if self._quota_exhausted:
+                break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-            for attempt in range(3):
+            for attempt in range(2):
                 try:
-                    async with httpx.AsyncClient(timeout=35.0) as client:
+                    async with httpx.AsyncClient(timeout=25.0) as client:
                         resp = await client.post(url, json=payload)
                         if resp.status_code == 429:
-                            if attempt < 2:
-                                log.warning("Batch vision model %s hit 429, waiting 2.5s before retry (attempt %d)...", model_name, attempt + 1)
-                                await asyncio.sleep(2.5)
+                            err_text = resp.text.lower()
+                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
+                                log.warning("Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast for all scenes.")
+                                self._quota_exhausted = True
+                                break
+                            if attempt < 1:
+                                log.warning("Batch vision model %s hit 429, waiting 2.0s before retry...", model_name)
+                                await asyncio.sleep(2.0)
                                 continue
                             else:
                                 log.warning("Batch vision model %s hit 429, falling back to next model...", model_name)
@@ -114,7 +132,9 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                         return out
                 except Exception as exc:
                     log.warning("Batch vision attempt failed for %s: %s", model_name, exc)
-                    await asyncio.sleep(2.0)
+                    if self._quota_exhausted:
+                        break
+                    await asyncio.sleep(1.0)
 
         return [
             {
@@ -130,15 +150,15 @@ class GeminiAdapter(OpenAICompatibleAdapter):
         image_paths: List[str],
         prompt: str,
     ) -> Dict[str, Any]:
-        """Analyze single scene frame using Google AI Studio API with retry on rate limits."""
-        if not self.api_key:
+        """Analyze single scene frame using Google AI Studio API with fail-fast on quota limits."""
+        if self._quota_exhausted or not self.api_key:
             return await super().analyze_vision(image_paths, prompt)
 
         parts: List[Dict[str, Any]] = [
             {
                 "text": (
-                    f"{prompt}\\n\\n"
-                    "PENTING: Jawab HANYA dalam format JSON valid dengan keys:\\n"
+                    f"{prompt}\n\n"
+                    "PENTING: Jawab HANYA dalam format JSON valid dengan keys:\n"
                     "{\"description\": \"Deskripsi singkat scene dalam 1 kalimat Bahasa Indonesia\", "
                     "\"tags\": [\"tag1\", \"tag2\", \"tag3\", \"tag4\"]}"
                 )
@@ -173,13 +193,20 @@ class GeminiAdapter(OpenAICompatibleAdapter):
             models_to_try.append("gemini-2.5-flash-lite")
 
         for model_name in models_to_try:
+            if self._quota_exhausted:
+                break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-            for attempt in range(3):
+            for attempt in range(2):
                 try:
-                    async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with httpx.AsyncClient(timeout=20.0) as client:
                         resp = await client.post(url, json=payload)
                         if resp.status_code == 429:
-                            wait_sec = 2.5 * (attempt + 1)
+                            err_text = resp.text.lower()
+                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
+                                log.warning("Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast to fallback.")
+                                self._quota_exhausted = True
+                                return await super().analyze_vision(image_paths, prompt)
+                            wait_sec = 2.0 * (attempt + 1)
                             log.warning("Gemini Vision rate-limited (429), retrying in %.1fs...", wait_sec)
                             await asyncio.sleep(wait_sec)
                             continue
@@ -202,10 +229,12 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                             "tags": parsed.get("tags", ["video", "scene"]),
                         }
                 except Exception as exc:
-                    if attempt == 2 and model_name == models_to_try[-1]:
+                    if self._quota_exhausted:
+                        return await super().analyze_vision(image_paths, prompt)
+                    if attempt == 1 and model_name == models_to_try[-1]:
                         log.warning("Gemini Vision analysis failed: %s", exc)
                         return await super().analyze_vision(image_paths, prompt)
-                    await asyncio.sleep(2.0)
+                    await asyncio.sleep(1.0)
 
         return await super().analyze_vision(image_paths, prompt)
 

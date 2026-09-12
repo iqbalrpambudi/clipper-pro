@@ -35,27 +35,33 @@ async def get_active_vision_adapter(db: AsyncSession) -> BaseLLMAdapter:
         tts_key = settings.GEMINI_API_KEY or ""
         base_url = settings.AI_BASE_URL
 
-    # Check if selected vision_model is Gemini
-    if "gemini" in (vision_model or "").lower():
+    # Priority 1: If user specified a custom base_url that is NOT googleapis.com (e.g. InferHub, local proxy, LiteLLM, Ollama, OpenRouter),
+    if base_url and "googleapis.com" not in base_url.lower():
+        effective_vision_model = vision_model
+        if ("20128" in base_url or "inferhub" in base_url.lower()) and (
+            not vision_model or vision_model.strip().lower() in ("gemini", "gemini-flash", "gemini-pro")
+        ):
+            effective_vision_model = "inferhub/gemini-3.6-flash"
+
+        return OpenAICompatibleAdapter(
+            base_url=base_url,
+            api_key=api_key,
+            chat_model=effective_vision_model,
+            vision_model=effective_vision_model,
+        )
+
+    # Priority 2: If model is Gemini or base_url explicitly points to Google Gemini
+    if "gemini" in (vision_model or "").lower() or (base_url and "googleapis.com" in base_url.lower()):
         gemini_key = api_key if (api_key and ("AIza" in api_key or "AQ." in api_key)) else (tts_key or settings.GEMINI_API_KEY or api_key)
         norm_model = _normalize_gemini_model(vision_model)
         return GeminiAdapter(
             api_key=gemini_key,
             vision_model=norm_model,
             chat_model=norm_model,
+            base_url=base_url if (base_url and "googleapis.com" in base_url.lower()) else None,
         )
 
-    # If base_url explicitly points to Google Gemini
-    if base_url and "googleapis.com" in base_url:
-        gemini_key = api_key or tts_key or settings.GEMINI_API_KEY
-        return GeminiAdapter(
-            api_key=gemini_key,
-            vision_model=_normalize_gemini_model(vision_model),
-            chat_model=_normalize_gemini_model(vision_model),
-            base_url=base_url,
-        )
-
-    # Standard OpenAI compatible vision model
+    # Default fallback: Standard OpenAI compatible vision model
     return OpenAICompatibleAdapter(
         base_url=base_url,
         api_key=api_key,
@@ -84,13 +90,23 @@ async def get_active_llm_adapter(db: AsyncSession) -> BaseLLMAdapter:
         chat_model = settings.AI_CHAT_MODEL
         vision_model = settings.AI_VISION_MODEL
 
-    if (base_url and "googleapis.com" in base_url) or (not base_url and "gemini" in (chat_model or "").lower()) or ("gemini" in (chat_model or "").lower() and not api_key):
-        gemini_key = api_key if (api_key and ("AIza" in api_key or "AQ." in api_key)) else (tts_key or api_key)
+    # Priority 1: If user specified a custom base_url that is NOT googleapis.com, ALWAYS use OpenAICompatibleAdapter
+    if base_url and "googleapis.com" not in base_url.lower():
+        return OpenAICompatibleAdapter(
+            base_url=base_url,
+            api_key=api_key,
+            chat_model=chat_model,
+            vision_model=vision_model,
+        )
+
+    # Priority 2: If model is Gemini or base_url points to Google Gemini
+    if "gemini" in (chat_model or "").lower() or (base_url and "googleapis.com" in base_url.lower()):
+        gemini_key = api_key if (api_key and ("AIza" in api_key or "AQ." in api_key)) else (tts_key or settings.GEMINI_API_KEY or api_key)
         return GeminiAdapter(
             api_key=gemini_key,
             chat_model=_normalize_gemini_model(chat_model),
             vision_model=_normalize_gemini_model(vision_model),
-            base_url=base_url if (base_url and "googleapis.com" in base_url) else None,
+            base_url=base_url if (base_url and "googleapis.com" in base_url.lower()) else None,
         )
 
     return OpenAICompatibleAdapter(
@@ -99,3 +115,4 @@ async def get_active_llm_adapter(db: AsyncSession) -> BaseLLMAdapter:
         chat_model=chat_model,
         vision_model=vision_model,
     )
+
