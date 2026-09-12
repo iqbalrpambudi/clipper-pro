@@ -87,6 +87,9 @@ async def detect_scenes(
     """Detect scenes in video and extract representative thumbnails."""
     meta = await get_video_metadata(video_path)
     total_duration = meta["duration"]
+    fps = float(meta.get("fps") or 30.0)
+    if fps <= 0:
+        fps = 30.0
 
     out_p = Path(output_dir)
     out_p.mkdir(parents=True, exist_ok=True)
@@ -96,12 +99,32 @@ async def detect_scenes(
 
     def _run_pyscenedetect() -> List[Tuple[float, float]]:
         try:
-            scene_list = detect(video_path, ContentDetector(threshold=threshold, min_scene_len=int(min_scene_len_sec * 30)))
+            min_scene_frames = max(1, int(min_scene_len_sec * fps))
+            # 1. Coba dengan AdaptiveDetector (adaptif terhadap variasi gerakan kamera & scene cut dinamis)
+            detector = AdaptiveDetector(adaptive_threshold=3.0, min_scene_len=min_scene_frames)
+            scene_list = detect(video_path, detector)
+
+            # 2. Fallback ke ContentDetector jika AdaptiveDetector tidak mendeteksi adegan
+            if not scene_list:
+                scene_list = detect(video_path, ContentDetector(threshold=threshold, min_scene_len=min_scene_frames))
+
             results = []
             for scene in scene_list:
-                start = scene[0].get_seconds()
-                end = scene[1].get_seconds()
-                results.append((start, end))
+                start_sec = scene[0].get_seconds()
+                start_frame = scene[0].get_frames()
+                end_frame = scene[1].get_frames()
+
+                # Solusi Anti-Bleeding:
+                # scene[1] adalah cut boundary (frame pertama scene berikutnya).
+                # Kurangi 1 frame agar end_time tepat berada di frame terakhir scene ini:
+                if end_frame > start_frame:
+                    safe_end_frame = end_frame - 1
+                    end_sec = safe_end_frame / fps
+                else:
+                    end_sec = scene[1].get_seconds()
+
+                end_sec = max(start_sec, end_sec)
+                results.append((start_sec, end_sec))
             return results
         except Exception as e:
             log.warning("PySceneDetect error: %s, falling back to time segmentation", e)
@@ -111,22 +134,26 @@ async def detect_scenes(
 
     # Fallback if no cut detected (e.g. static camera or single take)
     if not raw_scenes:
-        log.info("No scenes detected by ContentDetector; splitting into 4.0s segments")
+        log.info("No scenes detected by PySceneDetect; splitting into 4.0s segments")
         chunk_len = 4.0
         cur = 0.0
         while cur < total_duration:
             next_t = min(cur + chunk_len, total_duration)
-            raw_scenes.append((cur, next_t))
+            if next_t < total_duration:
+                safe_next_t = max(cur, next_t - (1.0 / fps))
+            else:
+                safe_next_t = next_t
+            raw_scenes.append((cur, safe_next_t))
             cur = next_t
 
     scenes_data: List[Dict[str, Any]] = []
 
     for idx, (start_t, end_t) in enumerate(raw_scenes):
-        duration = round(end_t - start_t, 2)
+        duration = round(end_t - start_t, 3)
         if duration < 0.8 and idx > 0 and idx == len(raw_scenes) - 1:
             # Append tiny last chunk to previous
-            scenes_data[-1]["end_time"] = round(end_t, 2)
-            scenes_data[-1]["duration"] = round(end_t - scenes_data[-1]["start_time"], 2)
+            scenes_data[-1]["end_time"] = round(end_t, 3)
+            scenes_data[-1]["duration"] = round(end_t - scenes_data[-1]["start_time"], 3)
             continue
 
         mid_t = start_t + (duration / 2.0)
@@ -145,8 +172,8 @@ async def detect_scenes(
 
         scenes_data.append({
             "scene_index": idx,
-            "start_time": round(start_t, 2),
-            "end_time": round(end_t, 2),
+            "start_time": round(start_t, 3),
+            "end_time": round(end_t, 3),
             "duration": duration,
             "thumbnail_path": thumb_abs,
             "keyframe_paths": keyframe_paths,

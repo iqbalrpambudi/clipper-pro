@@ -80,7 +80,43 @@ export function ScenePreviewModal({
     }
   }, [isOpen, videoUrl, startTime, endTime]);
 
-  // Handle timeupdate boundary enforcement
+  // High-precision frame boundary enforcement using requestAnimationFrame
+  // Native HTML5 'timeupdate' only fires every 250ms, which causes the browser
+  // to overshoot and flash frames of the next scene before JavaScript can react!
+  useEffect(() => {
+    if (!isOpen || !isPlaying) return;
+
+    let animId: number;
+    // Stop 40ms (~1 frame) before endTime so the browser's video element never renders
+    // the boundary cut of the subsequent scene
+    const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
+
+    const checkFrame = () => {
+      const video = videoRef.current;
+      if (video) {
+        const t = video.currentTime;
+        setCurrentTime(t);
+
+        if (t >= effectiveEndTime) {
+          if (isLooping) {
+            video.currentTime = startTime;
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+            video.currentTime = startTime;
+            setIsPlaying(false);
+            return;
+          }
+        }
+      }
+      animId = requestAnimationFrame(checkFrame);
+    };
+
+    animId = requestAnimationFrame(checkFrame);
+    return () => cancelAnimationFrame(animId);
+  }, [isOpen, isPlaying, startTime, endTime, isLooping]);
+
+  // Fallback boundary check on timeupdate
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -88,7 +124,8 @@ export function ScenePreviewModal({
     const t = video.currentTime;
     setCurrentTime(t);
 
-    if (t >= endTime) {
+    const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
+    if (t >= effectiveEndTime) {
       if (isLooping) {
         video.currentTime = startTime;
         video.play().catch(() => {});
@@ -104,11 +141,12 @@ export function ScenePreviewModal({
     const video = videoRef.current;
     if (!video) return;
 
+    const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
     if (isPlaying) {
       video.pause();
       setIsPlaying(false);
     } else {
-      if (video.currentTime >= endTime || video.currentTime < startTime) {
+      if (video.currentTime >= effectiveEndTime || video.currentTime < startTime) {
         video.currentTime = startTime;
       }
       video.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -156,7 +194,8 @@ export function ScenePreviewModal({
         e.preventDefault();
         const video = videoRef.current;
         if (video) {
-          const next = Math.min(endTime, video.currentTime + 0.5);
+          const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
+          const next = Math.min(effectiveEndTime, video.currentTime + 0.5);
           video.currentTime = next;
           setCurrentTime(next);
         }

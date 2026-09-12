@@ -86,17 +86,25 @@ async def render_timeline_video(
                     f"setsar=1,fps=30"
                 )
 
+            # Anti-Bleeding:
+            # 1. Tempatkan -ss sebelum -i (fast seek) dan -t setelah -i (output frame duration limit)
+            # 2. Kurangi micro-safety margin (~33ms / 1 frame di 30fps) jika duration > 0.8s
+            #    untuk menjamin pemotongan tidak overread frame pertama scene setelahnya
+            safe_duration = max(0.4, round(duration - 0.033, 3)) if duration > 0.8 else round(duration, 3)
+
             cut_cmd = [
                 "ffmpeg",
                 "-y",
                 "-ss",
                 str(clip_start),
-                "-t",
-                str(duration),
                 "-i",
                 src_file,
+                "-t",
+                str(safe_duration),
                 "-filter_complex",
                 vf_filter,
+                "-fps_mode",
+                "cfr",
                 "-c:v",
                 "libx264",
                 "-preset",

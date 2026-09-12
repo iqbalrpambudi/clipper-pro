@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from app.core.db import SessionLocal
 from app.core.storage import storage
 from app.models.project import Project, SourceVideo, Scene, RenderJob
@@ -153,6 +153,10 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
         scene_out_dir = storage.get_scenes_dir(video.project_id)
 
         try:
+            # Bersihkan scene lama untuk video ini jika re-detect
+            await db.execute(delete(Scene).where(Scene.source_video_id == video_id))
+            await db.commit()
+
             scenes_data = await detect_scenes(video.file_path, str(scene_out_dir))
             total_scenes = len(scenes_data)
 

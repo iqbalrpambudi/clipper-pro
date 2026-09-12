@@ -65,13 +65,14 @@ async def match_scenes_to_segments(
 
         scene_dur = best_scene.get("duration", 4.0)
         scene_start = best_scene.get("start_time", 0.0)
+        scene_end = best_scene.get("end_time", scene_start + scene_dur)
 
         # Metode A: Center-Weighted Slice Extraction (Pusatkan potongan untuk hindari bleed awal & akhir)
         if scene_dur >= target_duration:
-            slack = scene_dur - target_duration
-            center_offset = round(slack / 2.0, 2)
-            clip_start = round(scene_start + center_offset, 2)
-            clip_end = round(clip_start + target_duration, 2)
+            slack = max(0.0, scene_dur - target_duration)
+            center_offset = round(slack / 2.0, 3)
+            clip_start = round(scene_start + center_offset, 3)
+            clip_end = min(round(clip_start + target_duration, 3), round(scene_end, 3))
             clips.append({
                 "id": str(uuid.uuid4()),
                 "segment_id": seg["id"],
@@ -79,8 +80,8 @@ async def match_scenes_to_segments(
                 "source_video_id": best_scene["source_video_id"],
                 "timeline_start": round(start_sec, 2),
                 "timeline_end": round(end_sec, 2),
-                "clip_start": round(clip_start, 2),
-                "clip_end": round(clip_end, 2),
+                "clip_start": round(clip_start, 3),
+                "clip_end": round(clip_end, 3),
                 "speed": 1.0,
                 "text": seg["text"],
                 "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -101,8 +102,8 @@ async def match_scenes_to_segments(
                     "source_video_id": best_scene["source_video_id"],
                     "timeline_start": round(start_sec, 2),
                     "timeline_end": round(end_sec, 2),
-                    "clip_start": round(scene_start, 2),
-                    "clip_end": round(best_scene.get("end_time", scene_start + scene_dur), 2),
+                    "clip_start": round(scene_start, 3),
+                    "clip_end": round(scene_end, 3),
                     "speed": max(0.8, min(1.0, speed_factor)),
                     "text": seg["text"],
                     "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -118,8 +119,8 @@ async def match_scenes_to_segments(
                     "source_video_id": best_scene["source_video_id"],
                     "timeline_start": round(cur_time_cursor, 2),
                     "timeline_end": round(cur_time_cursor + scene_dur, 2),
-                    "clip_start": round(scene_start, 2),
-                    "clip_end": round(best_scene.get("end_time", scene_start + scene_dur), 2),
+                    "clip_start": round(scene_start, 3),
+                    "clip_end": round(scene_end, 3),
                     "speed": 1.0,
                     "text": seg["text"],
                     "thumbnail_url": best_scene.get("thumbnail_url"),
@@ -131,10 +132,11 @@ async def match_scenes_to_segments(
                     second_scene = scored_scenes[1][1]
                     s2_dur = second_scene.get("duration", 4.0)
                     s2_start = second_scene.get("start_time", 0.0)
+                    s2_end = second_scene.get("end_time", s2_start + s2_dur)
                     s2_slack = max(0.0, s2_dur - time_remaining)
-                    s2_offset = round(s2_slack / 2.0, 2)
-                    c2_start = round(s2_start + s2_offset, 2)
-                    c2_end = round(c2_start + time_remaining, 2)
+                    s2_offset = round(s2_slack / 2.0, 3)
+                    c2_start = round(s2_start + s2_offset, 3)
+                    c2_end = min(round(c2_start + time_remaining, 3), round(s2_end, 3))
                     clips.append({
                         "id": str(uuid.uuid4()),
                         "segment_id": seg["id"],
@@ -142,8 +144,8 @@ async def match_scenes_to_segments(
                         "source_video_id": second_scene["source_video_id"],
                         "timeline_start": round(cur_time_cursor, 2),
                         "timeline_end": round(end_sec, 2),
-                        "clip_start": round(c2_start, 2),
-                        "clip_end": round(c2_end, 2),
+                        "clip_start": round(c2_start, 3),
+                        "clip_end": round(c2_end, 3),
                         "speed": 1.0,
                         "text": seg["text"],
                         "thumbnail_url": second_scene.get("thumbnail_url"),
