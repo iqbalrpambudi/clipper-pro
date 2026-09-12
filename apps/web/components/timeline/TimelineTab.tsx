@@ -371,17 +371,23 @@ export function TimelineTab({ project }: TimelineTabProps) {
       <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
         {/* Track 1: Video Clips */}
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <Film className="w-3.5 h-3.5 text-brand-400" /> Track 1: Klip Video (Scene Matching)
-            </span>
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-2 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Film className="w-3.5 h-3.5 text-brand-400" /> Track 1: Klip Video (Scene Matching)
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-emerald-400" /> Anti-Flash Pacing (≥2.0s)
+              </span>
+            </div>
             <span className="text-[10px]">Klik klip untuk memilih & swap</span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 pt-1">
             {clips.map((clip, idx) => {
               const isSelected = selectedClipIndex === idx;
-              const dur = Math.round(clip.timeline_end - clip.timeline_start);
+              const dur = Number((clip.timeline_end - clip.timeline_start).toFixed(1));
+              const isFlashWarning = dur < 1.8;
               return (
                 <div
                   key={clip.id || idx}
@@ -430,6 +436,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-white pointer-events-none">
                       #{idx + 1}
                     </span>
+
+                    {isFlashWarning ? (
+                      <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-amber-500/90 text-[8px] font-bold text-black flex items-center gap-0.5 shadow">
+                        <AlertCircle className="w-2.5 h-2.5" /> &lt;1.8s
+                      </span>
+                    ) : clip.speed && Math.abs(clip.speed - 1.0) > 0.02 ? (
+                      <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-indigo-500/80 text-[8px] font-mono text-white">
+                        {clip.speed}x
+                      </span>
+                    ) : null}
+
                     <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono text-white pointer-events-none">
                       {dur}s
                     </span>

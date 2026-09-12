@@ -178,6 +178,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     if (next[segIdx] && next[segIdx].words && next[segIdx].words[wordIdx]) {
       const current = next[segIdx].words[wordIdx][field] || 0;
       next[segIdx].words[wordIdx][field] = Math.max(0, current + delta);
+      // Synchronize parent segment start_ms and end_ms boundary
+      const wList = next[segIdx].words;
+      if (wList.length > 0) {
+        next[segIdx].start_ms = wList[0].start_ms || 0;
+        next[segIdx].end_ms = wList[wList.length - 1].end_ms || 0;
+      }
       setEditableSegments(next);
     }
   };

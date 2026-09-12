@@ -6,6 +6,9 @@ from pydantic import BaseModel, ConfigDict
 class BackgroundFillSchema(BaseModel):
     mode: str = "blur"  # blur | black | custom
     color: str = "#000000"
+    anti_copyright: bool = True
+    dynamic_zoom: bool = True
+    color_grading: bool = True
 
 
 class ProjectBase(BaseModel):

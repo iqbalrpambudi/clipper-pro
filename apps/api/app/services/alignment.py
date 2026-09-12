@@ -178,9 +178,6 @@ async def align_audio_with_text(
     """Perform audio-anchored word-level forced alignment against the narration segments."""
     loop = asyncio.get_running_loop()
 
-    # Build prompt from script to guide Whisper transcription
-    script_prompt = " ".join(seg.get("text", "") for seg in segments)[:400]
-
     def _run_whisper() -> List[Dict[str, Any]]:
         model = _get_whisper_model()
         if not model:
@@ -192,7 +189,6 @@ async def align_audio_with_text(
                 language="id",
                 word_timestamps=True,
                 vad_filter=True,
-                initial_prompt=script_prompt if script_prompt else None,
             )
             extracted_words = []
             for seg in whisper_segments:

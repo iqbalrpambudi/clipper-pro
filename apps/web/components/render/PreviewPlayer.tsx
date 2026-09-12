@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Move } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Move } from "lucide-react";
 import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle } from "@/types";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 
@@ -52,7 +52,13 @@ interface PreviewPlayerProps {
 
 export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRefA = useRef<HTMLVideoElement | null>(null);
+  const videoRefB = useRef<HTMLVideoElement | null>(null);
+  const activeVideoSlot = useRef<0 | 1>(0);
+  const [activeSlotState, setActiveSlotState] = useState<0 | 1>(0);
+  const currentClipIndexRef = useRef<number>(0);
+  const lastPreloadedClipIndex = useRef<number | null>(null);
+
   const frameRef = useRef<HTMLDivElement | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const jassubRef = useRef<any>(null);
@@ -63,9 +69,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const [isMuted, setIsMuted] = useState(false);
   const [frameWidth, setFrameWidth] = useState(320);
   const [isJassubReady, setIsJassubReady] = useState(false);
+  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
 
   // Dragging state for subtitle position
-  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number; initialOffsetX: number; initialOffsetY: number }>({
     x: 0,
     y: 0,
@@ -92,17 +98,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   }, []);
 
   // Find active clip at current time
-  const activeClip = clips.find(
-    (c) => currentTimeSec >= c.timeline_start && currentTimeSec <= c.timeline_end
-  ) || clips[0];
-
-  // Calculate target playback position in source video for activeClip
-  const clipProgress = activeClip
-    ? Math.max(0, currentTimeSec - activeClip.timeline_start)
-    : 0;
-  const targetVideoTime = activeClip
-    ? activeClip.clip_start + clipProgress * (activeClip.speed || 1)
-    : 0;
+  const activeClipIndex = clips.findIndex(
+    (c) => currentTimeSec >= c.timeline_start && currentTimeSec < c.timeline_end
+  );
+  const currentIdx = activeClipIndex !== -1 ? activeClipIndex : 0;
+  const activeClip = clips[currentIdx] || clips[0];
 
   // Active Segment & Active Word Calculation (with micro-pause buffer)
   const curMs = currentTimeSec * 1000;
@@ -170,7 +170,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     }
   }, [project.timeline?.total_duration, project.audio?.duration]);
 
-  // Audio sync
+  // Audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -182,6 +182,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTimeSec(0);
+      handleReset();
     };
 
     const handleLoadedMetadata = () => {
@@ -215,6 +216,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         const next = cur + delta;
         if (next >= durationSec) {
           setIsPlaying(false);
+          handleReset();
           return 0;
         }
         return next;
@@ -224,32 +226,138 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     return () => clearInterval(interval);
   }, [isPlaying, project.audio?.audio_url, durationSec]);
 
-  // Sync video element with active clip & currentTimeSec
+  // Initial & Clips-Change Setup for Video Elements
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !activeClip?.video_url) return;
+    if (clips.length === 0) return;
 
-    const currentSrc = video.getAttribute("src");
-    if (currentSrc !== activeClip.video_url) {
-      video.src = activeClip.video_url;
+    let idx = clips.findIndex((c) => currentTimeSec >= c.timeline_start && currentTimeSec < c.timeline_end);
+    if (idx === -1) idx = 0;
+    currentClipIndexRef.current = idx;
+
+    const curClip = clips[idx];
+    const vidA = videoRefA.current;
+    if (vidA) {
+      if (vidA.getAttribute("src") !== curClip.video_url) {
+        vidA.src = curClip.video_url || "";
+      }
+      const clipProg = Math.max(0, currentTimeSec - curClip.timeline_start);
+      vidA.currentTime = Math.min(
+        curClip.clip_start + clipProg * (curClip.speed || 1.0),
+        Math.max(curClip.clip_start, curClip.clip_end - 0.04)
+      );
+      vidA.playbackRate = curClip.speed || 1.0;
+      vidA.muted = true;
     }
 
-    if (Math.abs(video.currentTime - targetVideoTime) > 0.35) {
-      video.currentTime = targetVideoTime;
+    // Preload next clip on slot B
+    const nextIdx = idx + 1;
+    const vidB = videoRefB.current;
+    if (vidB && nextIdx < clips.length) {
+      const nextClip = clips[nextIdx];
+      if (vidB.getAttribute("src") !== nextClip.video_url) {
+        vidB.src = nextClip.video_url || "";
+      }
+      vidB.currentTime = nextClip.clip_start;
+      vidB.playbackRate = nextClip.speed || 1.0;
+      vidB.muted = true;
+      lastPreloadedClipIndex.current = nextIdx;
     }
 
-    if (isPlaying && video.paused) {
-      video.play().catch(() => {});
-    } else if (!isPlaying && !video.paused) {
-      video.pause();
-    }
-  }, [
-    activeClip?.video_url,
-    activeClip?.id,
-    isPlaying,
-    Math.floor(currentTimeSec * 2),
-    targetVideoTime,
-  ]);
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+  }, [clips]);
+
+  // 60fps High-Precision Dual-Video Ping-Pong Loop
+  // Guarantees ZERO flash cuts: next clip is pre-buffered on alternate video, and active video is clamped before scene ends
+  useEffect(() => {
+    if (!isPlaying) return;
+    let animId: number;
+
+    const syncLoop = () => {
+      const audio = audioRef.current;
+
+      if (audio && !audio.paused) {
+        const curTime = audio.currentTime;
+        setCurrentTimeSec(curTime);
+
+        // Find which clip belongs to curTime
+        const newIdx = clips.findIndex(
+          (c) => curTime >= c.timeline_start && curTime < c.timeline_end
+        );
+        const validIdx = newIdx !== -1 ? newIdx : (curTime >= durationSec ? clips.length - 1 : 0);
+
+        if (validIdx !== currentClipIndexRef.current && validIdx < clips.length) {
+          // Transition boundary hit! Ping-pong switch to the other video element
+          const nextSlot = (activeVideoSlot.current === 0 ? 1 : 0) as 0 | 1;
+          const newActiveVid = nextSlot === 0 ? videoRefA.current : videoRefB.current;
+          const oldActiveVid = nextSlot === 0 ? videoRefB.current : videoRefA.current;
+
+          const targetClip = clips[validIdx];
+          if (newActiveVid && targetClip) {
+            const clipProg = Math.max(0, curTime - targetClip.timeline_start);
+            const targetVideoTime = targetClip.clip_start + clipProg * (targetClip.speed || 1.0);
+
+            // Re-align if drifted
+            if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.12) {
+              newActiveVid.currentTime = targetVideoTime;
+            }
+            newActiveVid.playbackRate = targetClip.speed || 1.0;
+            newActiveVid.muted = true;
+            newActiveVid.play().catch(() => {});
+          }
+
+          // Immediately pause old video so it NEVER overruns into next scene
+          if (oldActiveVid) {
+            oldActiveVid.pause();
+          }
+
+          activeVideoSlot.current = nextSlot;
+          setActiveSlotState(nextSlot);
+          currentClipIndexRef.current = validIdx;
+
+          // Preload the next clip (validIdx + 1) on the now-inactive video element
+          const preloadIdx = validIdx + 1;
+          if (preloadIdx < clips.length && oldActiveVid) {
+            const preloadClip = clips[preloadIdx];
+            if (oldActiveVid.getAttribute("src") !== preloadClip.video_url) {
+              oldActiveVid.src = preloadClip.video_url || "";
+            }
+            oldActiveVid.currentTime = preloadClip.clip_start;
+            oldActiveVid.playbackRate = preloadClip.speed || 1.0;
+            oldActiveVid.muted = true;
+            lastPreloadedClipIndex.current = preloadIdx;
+          }
+        } else {
+          // Playing inside current clip: hard ceiling clamp
+          const curClip = clips[validIdx];
+          if (curClip) {
+            const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+            if (activeVid) {
+              // Enforce playback rate
+              const targetSpeed = curClip.speed || 1.0;
+              if (Math.abs(activeVid.playbackRate - targetSpeed) > 0.01) {
+                activeVid.playbackRate = targetSpeed;
+              }
+
+              // Anti-bleed hard clamp: NEVER allow video to reach clip_end - 0.04
+              const maxAllowed = Math.max(curClip.clip_start, (curClip.clip_end || curClip.clip_start + 1.0) - 0.04);
+              if (activeVid.currentTime >= maxAllowed) {
+                activeVid.currentTime = maxAllowed;
+                if (!activeVid.paused) activeVid.pause();
+              } else if (activeVid.paused && !audio.paused) {
+                activeVid.play().catch(() => {});
+              }
+            }
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(syncLoop);
+    };
+
+    animId = requestAnimationFrame(syncLoop);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, clips, durationSec]);
 
   // Initialize JASSUB (WebAssembly libass) for 100% true WYSIWYG rendering
   useEffect(() => {
@@ -258,15 +366,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     let jassubInstance: any = null;
 
     async function initJassub() {
-      console.log("[JASSUB] initJassub started. canvasContainerRef:", !!canvasContainerRef.current);
       if (!canvasContainerRef.current) return;
 
       try {
-        console.log("[JASSUB] importing jassub module...");
         const JASSUBModule = await import("jassub");
-        console.log("[JASSUB] imported module:", JASSUBModule);
         const JASSUB = JASSUBModule.default || JASSUBModule;
-        console.log("[JASSUB] JASSUB constructor:", typeof JASSUB);
 
         if (!mounted || !canvasContainerRef.current) return;
 
@@ -290,7 +394,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         );
 
         const baseUrl = window.location.origin;
-        console.log("[JASSUB] Instantiating new JASSUB with ASS length:", initialAss.length);
 
         jassubInstance = new JASSUB({
           canvas: canvasEl,
@@ -310,12 +413,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
             `${baseUrl}/fonts/Oswald.ttf`,
             `${baseUrl}/fonts/Roboto.ttf`,
           ],
-          debug: true,
+          debug: false,
         });
 
-        console.log("[JASSUB] Waiting for jassubInstance.ready...");
         await jassubInstance.ready;
-        console.log("[JASSUB] jassubInstance.ready RESOLVED successfully!");
 
         if (!mounted) {
           try {
@@ -336,10 +437,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
           height: 1920,
           mediaTime: currentTimeSec,
         });
-        console.log("[JASSUB] Initial paint completed!");
       } catch (err: any) {
         console.error("[JASSUB] initialization failed:", err);
-        (window as any).__jassub_error = err?.message || String(err);
         setIsJassubReady(false);
       }
     }
@@ -425,16 +524,17 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const togglePlay = () => {
     if (isPlaying) {
       if (audioRef.current) audioRef.current.pause();
-      if (videoRef.current) videoRef.current.pause();
+      if (videoRefA.current) videoRefA.current.pause();
+      if (videoRefB.current) videoRefB.current.pause();
       setIsPlaying(false);
     } else {
       if (audioRef.current) {
         audioRef.current.currentTime = currentTimeSec;
         audioRef.current.play().catch(() => {});
       }
-      if (videoRef.current) {
-        videoRef.current.currentTime = targetVideoTime;
-        videoRef.current.play().catch(() => {});
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+      if (activeVid) {
+        activeVid.play().catch(() => {});
       }
       setIsPlaying(true);
     }
@@ -446,10 +546,70 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
     if (audioRef.current) {
       audioRef.current.currentTime = t;
     }
-    const seekClip = clips.find((c) => t >= c.timeline_start && t <= c.timeline_end) || clips[0];
-    if (seekClip && videoRef.current) {
-      const offset = Math.max(0, t - seekClip.timeline_start);
-      videoRef.current.currentTime = seekClip.clip_start + offset * (seekClip.speed || 1);
+
+    const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
+    const idx = seekIdx !== -1 ? seekIdx : 0;
+    currentClipIndexRef.current = idx;
+    const seekClip = clips[idx];
+
+    if (seekClip) {
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+      const otherVid = activeVideoSlot.current === 0 ? videoRefB.current : videoRefA.current;
+
+      const clipProgress = Math.max(0, t - seekClip.timeline_start);
+      const targetTime = Math.min(
+        seekClip.clip_start + clipProgress * (seekClip.speed || 1.0),
+        Math.max(seekClip.clip_start, seekClip.clip_end - 0.04)
+      );
+
+      if (activeVid) {
+        if (activeVid.getAttribute("src") !== seekClip.video_url) {
+          activeVid.src = seekClip.video_url || "";
+        }
+        activeVid.currentTime = targetTime;
+        activeVid.playbackRate = seekClip.speed || 1.0;
+        if (isPlaying) activeVid.play().catch(() => {});
+      }
+
+      // Pre-seek next clip on the other slot
+      const nextIdx = idx + 1;
+      if (nextIdx < clips.length && otherVid) {
+        const nextClip = clips[nextIdx];
+        if (otherVid.getAttribute("src") !== nextClip.video_url) {
+          otherVid.src = nextClip.video_url || "";
+        }
+        otherVid.currentTime = nextClip.clip_start;
+        otherVid.playbackRate = nextClip.speed || 1.0;
+        lastPreloadedClipIndex.current = nextIdx;
+      }
+    }
+  };
+
+  const handleReset = () => {
+    setCurrentTimeSec(0);
+    if (audioRef.current) audioRef.current.currentTime = 0;
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+    currentClipIndexRef.current = 0;
+
+    if (clips.length > 0 && videoRefA.current) {
+      videoRefA.current.src = clips[0].video_url || "";
+      videoRefA.current.currentTime = clips[0].clip_start;
+      videoRefA.current.playbackRate = clips[0].speed || 1.0;
+    }
+    if (clips.length > 1 && videoRefB.current) {
+      videoRefB.current.src = clips[1].video_url || "";
+      videoRefB.current.currentTime = clips[1].clip_start;
+      videoRefB.current.playbackRate = clips[1].speed || 1.0;
+      lastPreloadedClipIndex.current = 1;
+    }
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (audioRef.current) {
+      audioRef.current.muted = nextMuted;
     }
   };
 
@@ -530,22 +690,37 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         {/* Blurred Background Layer (if blur mode) */}
         {project.background_fill?.mode !== "black" && activeClip?.thumbnail_url && (
           <div
-            className="absolute inset-0 bg-cover bg-center scale-150 blur-xl opacity-60 pointer-events-none"
+            className="absolute inset-0 bg-cover bg-center scale-150 blur-xl opacity-60 pointer-events-none transition-all duration-300"
             style={{ backgroundImage: `url(${activeClip.thumbnail_url})` }}
           />
         )}
 
-        {/* Center Main Video Content */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center p-1 overflow-hidden">
-          {activeClip?.video_url ? (
-            <video
-              ref={videoRef}
-              src={activeClip.video_url}
-              playsInline
-              muted
-              poster={activeClip.thumbnail_url || undefined}
-              className="w-full max-h-full object-contain rounded-lg shadow-2xl"
-            />
+        {/* Center Main Video Content with Dual-Video Ping-Pong */}
+        <div className="relative z-10 w-full h-full flex items-center justify-center p-0 overflow-hidden">
+          {clips.length > 0 ? (
+            <>
+              {/* Video Slot 0 (A) */}
+              <video
+                ref={videoRefA}
+                playsInline
+                muted
+                preload="auto"
+                className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-75 ${
+                  activeSlotState === 0 ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                }`}
+              />
+
+              {/* Video Slot 1 (B) */}
+              <video
+                ref={videoRefB}
+                playsInline
+                muted
+                preload="auto"
+                className={`absolute inset-0 w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-75 ${
+                  activeSlotState === 1 ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                }`}
+              />
+            </>
           ) : activeClip?.thumbnail_url ? (
             <img
               src={activeClip.thumbnail_url}
@@ -716,9 +891,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         )}
 
         {/* Top Watermark Overlay */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-[10px] text-white/80 font-mono">
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-          <span>9:16 PREVIEW</span>
+          <span>9:16 LIVE PREVIEW</span>
         </div>
       </div>
 
@@ -743,11 +918,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setCurrentTimeSec(0);
-                if (audioRef.current) audioRef.current.currentTime = 0;
-                if (videoRef.current) videoRef.current.currentTime = 0;
-              }}
+              onClick={handleReset}
               className="p-2 rounded-xl bg-surface hover:bg-surface-border text-slate-300 hover:text-white transition"
               title="Reset ke Awal"
             >
@@ -764,20 +935,21 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                if (audioRef.current) {
-                  audioRef.current.muted = !isMuted;
-                  setIsMuted(!isMuted);
-                }
-              }}
+              onClick={toggleMute}
               className={`p-2 rounded-xl border border-surface-border text-xs transition ${
                 isMuted ? "text-rose-400 bg-rose-500/10" : "text-slate-300 bg-surface"
               }`}
+              title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
           </div>
         </div>
+
+        {/* Helper Note */}
+        <p className="text-[10px] text-slate-400 text-center pt-1.5 leading-snug border-t border-surface-border/40">
+          💡 <em>Live Preview:</em> Tayangan real-time dari timeline klip & subtitle draft. Hasil render final dapat diputar di tab baru melalui Riwayat Render.
+        </p>
       </div>
     </div>
   );

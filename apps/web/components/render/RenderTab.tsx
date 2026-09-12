@@ -13,6 +13,8 @@ import {
   Sliders,
   Play,
   RefreshCw,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -35,6 +37,9 @@ export function RenderTab({ project }: RenderTabProps) {
 
   const [bgMode, setBgMode] = useState(project.background_fill?.mode || "blur");
   const [resolution, setResolution] = useState(project.resolution || "1080p");
+  const [antiCopyright, setAntiCopyright] = useState(project.background_fill?.anti_copyright ?? true);
+  const [dynamicZoom, setDynamicZoom] = useState(project.background_fill?.dynamic_zoom ?? true);
+  const [colorGrading, setColorGrading] = useState(project.background_fill?.color_grading ?? true);
 
   const { data: renderJobs = [], refetch: refetchJobs } = useQuery({
     queryKey: ["render-jobs", project.id],
@@ -87,6 +92,30 @@ export function RenderTab({ project }: RenderTabProps) {
     },
   });
 
+  const updateAntiCopyrightSettings = (updates: Partial<{
+    anti_copyright: boolean;
+    dynamic_zoom: boolean;
+    color_grading: boolean;
+  }>) => {
+    const newAnti = updates.anti_copyright !== undefined ? updates.anti_copyright : antiCopyright;
+    const newZoom = updates.dynamic_zoom !== undefined ? updates.dynamic_zoom : dynamicZoom;
+    const newColor = updates.color_grading !== undefined ? updates.color_grading : colorGrading;
+
+    setAntiCopyright(newAnti);
+    setDynamicZoom(newZoom);
+    setColorGrading(newColor);
+
+    updateProjectMutation.mutate({
+      background_fill: {
+        mode: bgMode,
+        color: "#000000",
+        anti_copyright: newAnti,
+        dynamic_zoom: newZoom,
+        color_grading: newColor,
+      },
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Left Column: Interactive Vertical Video Player */}
@@ -117,7 +146,13 @@ export function RenderTab({ project }: RenderTabProps) {
                 onChange={(e) => {
                   setBgMode(e.target.value as any);
                   updateProjectMutation.mutate({
-                    background_fill: { mode: e.target.value, color: "#000000" },
+                    background_fill: {
+                      mode: e.target.value,
+                      color: "#000000",
+                      anti_copyright: antiCopyright,
+                      dynamic_zoom: dynamicZoom,
+                      color_grading: colorGrading,
+                    },
                   });
                 }}
                 className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
@@ -142,6 +177,50 @@ export function RenderTab({ project }: RenderTabProps) {
                 <option value="1080p">1080x1920 (Full HD Vertical)</option>
                 <option value="720p">720x1280 (HD Fast Export)</option>
               </select>
+            </div>
+          </div>
+
+          {/* Proteksi Hak Cipta & Transformative Editing (Anti-Copyright) */}
+          <div className="rounded-xl p-4 bg-surface/70 border border-brand-500/20 space-y-3 mt-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-white">Proteksi Hak Cipta & Transformative Editing</span>
+              </div>
+              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Aman Upload TikTok / Reels / Shorts
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Menerapkan modifikasi visual dinamis saat render FFmpeg agar tayangan tidak terdeteksi duplikat oleh algoritma Content ID platform.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <label className="flex items-start gap-2.5 p-2.5 rounded-lg bg-surface-secondary/40 border border-surface-border cursor-pointer hover:border-brand-500/40 transition">
+                <input
+                  type="checkbox"
+                  checked={dynamicZoom}
+                  onChange={(e) => updateAntiCopyrightSettings({ dynamic_zoom: e.target.checked })}
+                  className="mt-0.5 rounded border-surface-border text-brand-500 focus:ring-brand-500/30"
+                />
+                <div>
+                  <div className="text-xs font-semibold text-white">Dynamic Ken Burns Zoom</div>
+                  <div className="text-[10px] text-slate-400">Zoom halus bergantian (1.05x) mematahkan spatial hash pencocokan video.</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2.5 p-2.5 rounded-lg bg-surface-secondary/40 border border-surface-border cursor-pointer hover:border-brand-500/40 transition">
+                <input
+                  type="checkbox"
+                  checked={colorGrading}
+                  onChange={(e) => updateAntiCopyrightSettings({ color_grading: e.target.checked })}
+                  className="mt-0.5 rounded border-surface-border text-brand-500 focus:ring-brand-500/30"
+                />
+                <div>
+                  <div className="text-xs font-semibold text-white">Micro Color Grading</div>
+                  <div className="text-[10px] text-slate-400">Penyesuaian kontras & saturasi mikro (+3%) mengubah signature digital piksel.</div>
+                </div>
+              </label>
             </div>
           </div>
 

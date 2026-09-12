@@ -54,8 +54,22 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
         for s in scenes
     ]
 
+    # Fetch active audio track duration if available
+    a_res = await db.execute(
+        select(AudioTrack)
+        .where(AudioTrack.project_id == project_id)
+        .order_by(AudioTrack.created_at.desc())
+    )
+    audio_track = a_res.scalars().first()
+    audio_dur = audio_track.duration if audio_track else None
+
     adapter = await get_active_llm_adapter(db)
-    clips = await match_scenes_to_segments(adapter, narration.segments, scenes_data)
+    clips = await match_scenes_to_segments(
+        adapter,
+        narration.segments,
+        scenes_data,
+        total_audio_duration_sec=audio_dur,
+    )
 
     # Calculate total duration
     total_dur = max([c["timeline_end"] for c in clips], default=0.0)

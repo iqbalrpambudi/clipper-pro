@@ -8,6 +8,9 @@ export interface Project {
   background_fill: {
     mode: "blur" | "black" | "custom";
     color: string;
+    anti_copyright?: boolean;
+    dynamic_zoom?: boolean;
+    color_grading?: boolean;
   };
   created_at: string;
   updated_at: string;

@@ -43,6 +43,9 @@ async def render_timeline_video(
 
     bg_mode = (background_fill or {}).get("mode", "blur")
     bg_color = (background_fill or {}).get("color", "black")
+    anti_copyright = (background_fill or {}).get("anti_copyright", True)
+    dynamic_zoom = (background_fill or {}).get("dynamic_zoom", True) if anti_copyright else False
+    color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
 
     temp_dir = Path(tempfile.mkdtemp(prefix="cliper_render_"))
 
@@ -63,46 +66,77 @@ async def render_timeline_video(
 
             clip_start = clip.get("clip_start", 0.0)
             clip_end = clip.get("clip_end", clip_start + 3.0)
+            clip_speed = float(clip.get("speed", 1.0) or 1.0)
             duration = max(clip_end - clip_start, 0.5)
+
+            # Target output duration on the timeline
+            timeline_start = clip.get("timeline_start", 0.0)
+            timeline_end = clip.get("timeline_end", timeline_start + duration)
+            target_out_dur = round(max(0.4, timeline_end - timeline_start), 3)
 
             chunk_out = temp_dir / f"chunk_{idx:04d}.mp4"
 
+            # Anti-Bleeding read safety margin (~33ms / 1 frame at 30fps)
+            safe_read_duration = max(0.4, round(duration - 0.033, 3)) if duration > 0.8 else round(duration, 3)
+
+            # Transformative post-processing filters (Ken Burns Dynamic Zoom & Micro Color Grade)
+            post_filters = []
+            if dynamic_zoom:
+                # Alternate zoom in and subtle zoom out / gentle pan per clip
+                if idx % 2 == 0:
+                    post_filters.append(
+                        f"zoompan=z='min(zoom+0.0008,1.05)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps=30"
+                    )
+                else:
+                    post_filters.append(
+                        f"zoompan=z='if(lte(zoom,1.0),1.05,max(1.001,zoom-0.0008))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps=30"
+                    )
+
+            if color_grading:
+                post_filters.append("eq=contrast=1.03:saturation=1.04:brightness=0.01")
+
+            post_chain = ("," + ",".join(post_filters)) if post_filters else ""
+
+            # Speed adjustment & trim to ensure zero bleed into next scene
+            speed_prefix = ""
+            if 0.5 <= clip_speed <= 2.0 and abs(clip_speed - 1.0) > 0.02:
+                pts_factor = round(target_out_dur / safe_read_duration, 4)
+                speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts={pts_factor}*PTS[v_speed];"
+                in_label = "[v_speed]"
+            else:
+                speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts=PTS-STARTPTS[v_trim];"
+                in_label = "[v_trim]"
+
             # Background filter: blur or solid color
             if bg_mode == "blur":
-                # Split input: [0:v] split into [bg] and [fg]
-                # bg: scale to fill, crop, blur
-                # fg: scale to fit
-                # overlay fg on bg
                 vf_filter = (
-                    f"split[bg_in][fg_in];"
+                    f"{speed_prefix}"
+                    f"{in_label}split[bg_in][fg_in];"
                     f"[bg_in]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=25:5[bg];"
                     f"[fg_in]scale={w}:{h}:force_original_aspect_ratio=decrease[fg];"
-                    f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=30"
+                    f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=30{post_chain}"
                 )
             else:
                 vf_filter = (
-                    f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+                    f"{speed_prefix}"
+                    f"{in_label}scale={w}:{h}:force_original_aspect_ratio=decrease,"
                     f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color={bg_color},"
-                    f"setsar=1,fps=30"
+                    f"setsar=1,fps=30{post_chain}"
                 )
-
-            # Anti-Bleeding:
-            # 1. Tempatkan -ss sebelum -i (fast seek) dan -t setelah -i (output frame duration limit)
-            # 2. Kurangi micro-safety margin (~33ms / 1 frame di 30fps) jika duration > 0.8s
-            #    untuk menjamin pemotongan tidak overread frame pertama scene setelahnya
-            safe_duration = max(0.4, round(duration - 0.033, 3)) if duration > 0.8 else round(duration, 3)
 
             cut_cmd = [
                 "ffmpeg",
                 "-y",
                 "-ss",
                 str(clip_start),
+                "-t",
+                str(safe_read_duration),
                 "-i",
                 src_file,
-                "-t",
-                str(safe_duration),
                 "-filter_complex",
                 vf_filter,
+                "-t",
+                str(target_out_dur),
                 "-fps_mode",
                 "cfr",
                 "-c:v",
