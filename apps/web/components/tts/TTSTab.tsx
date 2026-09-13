@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Volume2,
+  VolumeX,
   Play,
   Pause,
   Sparkles,
@@ -14,6 +15,13 @@ import {
   ArrowRight,
   Sliders,
   AlignLeft,
+  RotateCcw,
+  RotateCw,
+  Activity,
+  Mic,
+  Music,
+  Check,
+  Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -26,6 +34,13 @@ interface TTSTabProps {
   };
 }
 
+function formatAudioTime(secs: number): string {
+  if (isNaN(secs) || secs < 0) return "00:00";
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function TTSTab({ project }: TTSTabProps) {
   const queryClient = useQueryClient();
   const { showToast, setActiveTab, activeTask } = useStudioStore();
@@ -34,9 +49,19 @@ export function TTSTab({ project }: TTSTabProps) {
   const [provider, setProvider] = useState("gemini");
   const [rate, setRate] = useState("+0%");
   const [pitch, setPitch] = useState("+0Hz");
+
+  // Sample voice audio state
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
   const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Main custom audio player state
+  const mainAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(project.audio?.duration || 0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Live Progress State for TTS Generation (driven by SSE activeTask)
   const [isGeneratingTTS, setIsGeneratingTTS] = useState(
@@ -50,6 +75,9 @@ export function TTSTab({ project }: TTSTabProps) {
     return () => {
       if (sampleAudioRef.current) {
         sampleAudioRef.current.pause();
+      }
+      if (mainAudioRef.current) {
+        mainAudioRef.current.pause();
       }
     };
   }, []);
@@ -109,6 +137,23 @@ export function TTSTab({ project }: TTSTabProps) {
     }
   }, [project.audio, isGeneratingTTS]);
 
+  useEffect(() => {
+    if (project.audio?.duration) {
+      setAudioDuration(project.audio.duration);
+    }
+    if (project.audio?.provider) {
+      setProvider(project.audio.provider);
+    }
+    if (project.audio?.voice) {
+      setSelectedVoice(project.audio.voice);
+    }
+    if (project.audio?.rate) {
+      setRate(project.audio.rate);
+    }
+    if (project.audio?.pitch) {
+      setPitch(project.audio.pitch);
+    }
+  }, [project.audio]);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],
@@ -187,88 +232,138 @@ export function TTSTab({ project }: TTSTabProps) {
     });
   };
 
+  // Main player controls
+  const toggleMainPlay = () => {
+    if (!mainAudioRef.current) return;
+    if (isPlaying) {
+      mainAudioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      mainAudioRef.current.play().catch((e) => {
+        console.warn("Playback error:", e);
+      });
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSeek = (timeSec: number) => {
+    if (!mainAudioRef.current) return;
+    const clamped = Math.max(0, Math.min(timeSec, audioDuration));
+    mainAudioRef.current.currentTime = clamped;
+    setCurrentTime(clamped);
+  };
+
+  const handleSkip = (seconds: number) => {
+    if (!mainAudioRef.current) return;
+    handleSeek(mainAudioRef.current.currentTime + seconds);
+  };
+
+  const toggleMute = () => {
+    if (!mainAudioRef.current) return;
+    mainAudioRef.current.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    if (!mainAudioRef.current) return;
+    mainAudioRef.current.volume = newVol;
+    setVolume(newVol);
+    if (newVol > 0 && isMuted) {
+      mainAudioRef.current.muted = false;
+      setIsMuted(false);
+    }
+  };
+
+  const filteredVoices = voices.filter((v) =>
+    provider === "gemini" ? v.provider === "gemini" : v.provider === "edge"
+  );
+
   return (
-    <div className="space-y-8">
-      {/* Voice Selection */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Volume2 className="w-4 h-4 text-brand-400" />
-            <h3 className="text-base font-bold text-white tracking-tight">
-              1. Pilih Karakter Suara Narator
-            </h3>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* ========================================================================= */}
+      {/* KOLOM KIRI (5/12): PEMILIHAN KARAKTER SUARA & PARAMETER TUNING           */}
+      {/* ========================================================================= */}
+      <div className="lg:col-span-5 space-y-4">
+        {/* Voice Selection Card */}
+        <div className="glass-panel rounded-2xl p-5 border border-surface-border space-y-3.5">
+          <div className="flex items-center justify-between pb-2 border-b border-surface-border/60">
+            <div className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-brand-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                Pilih Karakter Suara
+              </h3>
+            </div>
+
+            {/* Provider Switcher */}
+            <div className="flex items-center gap-1 p-0.5 bg-surface rounded-lg border border-surface-border text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setProvider("gemini");
+                  setSelectedVoice("Puck");
+                }}
+                className={`px-2 py-1 rounded-md text-[11px] font-semibold transition ${
+                  provider === "gemini"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Gemini 2.5
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProvider("edge");
+                  setSelectedVoice("id-ID-GadisNeural");
+                }}
+                className={`px-2 py-1 rounded-md text-[11px] font-semibold transition ${
+                  provider === "edge"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Edge Natural
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400">Provider:</span>
-            <button
-              onClick={() => {
-                setProvider("gemini");
-                setSelectedVoice("Puck");
-              }}
-              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
-                provider === "gemini"
-                  ? "bg-brand-500/20 border-brand-500 text-brand-300"
-                  : "bg-surface border-surface-border text-slate-400"
-              }`}
-            >
-              Gemini 2.5 Flash TTS
-            </button>
-            <button
-              onClick={() => {
-                setProvider("edge");
-                setSelectedVoice("id-ID-GadisNeural");
-              }}
-              className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
-                provider === "edge"
-                  ? "bg-brand-500/20 border-brand-500 text-brand-300"
-                  : "bg-surface border-surface-border text-slate-400"
-              }`}
-            >
-              Edge Natural (Free)
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {voices
-            .filter((v) => (provider === "gemini" ? v.provider === "gemini" : v.provider === "edge"))
-            .map((v) => {
+          {/* Voice Cards List (scrollable) */}
+          <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar">
+            {filteredVoices.map((v) => {
               const isSelected = selectedVoice === v.id;
               const isPlayingSample = sampleAudioPlaying === v.id;
               return (
                 <div
                   key={v.id}
                   onClick={() => setSelectedVoice(v.id)}
-                  className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                  className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                     isSelected
-                      ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/10"
-                      : "border-surface-border hover:border-slate-500"
+                      ? "border-brand-500 bg-brand-500/15 shadow-md shadow-brand-500/10 ring-1 ring-brand-500/40"
+                      : "border-surface-border bg-surface/40 hover:bg-surface hover:border-slate-500"
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{v.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-surface-border text-slate-400">
-                          {v.gender}
-                        </span>
-                      </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400" />}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white">{v.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-slate-400">
+                        {v.gender}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      {v.description}
-                    </p>
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
 
-                  <div className="pt-2 border-t border-surface-border/50 flex items-center justify-between">
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5 line-clamp-2">
+                    {v.description}
+                  </p>
+
+                  <div className="pt-2 border-t border-surface-border/50 flex items-center justify-between text-xs">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         playVoiceSample(v.id);
                       }}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
                         isPlayingSample
                           ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
                           : "bg-surface hover:bg-white/10 text-brand-400"
@@ -285,8 +380,8 @@ export function TTSTab({ project }: TTSTabProps) {
                         {loadingSampleVoiceId === v.id
                           ? "Memuat..."
                           : isPlayingSample
-                          ? "Stop"
-                          : "Dengar Sample"}
+                          ? "Stop Sample"
+                          : "Dengar Sampel"}
                       </span>
                     </button>
                     <span className="text-[10px] text-slate-500 font-mono">ID: {v.id}</span>
@@ -294,96 +389,89 @@ export function TTSTab({ project }: TTSTabProps) {
                 </div>
               );
             })}
+          </div>
         </div>
-      </div>
 
-      {/* Speed, Pitch & Cost Estimator */}
-      <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-accent-yellow" />
-            <h4 className="text-sm font-bold text-white">2. Parameter Audio & Estimasi Biaya</h4>
+        {/* Audio Tuning Parameters */}
+        <div className="glass-panel rounded-2xl p-5 border border-surface-border space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-surface-border/60">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-accent-yellow" />
+              <h4 className="text-sm font-bold text-white">Parameter Suara & Biaya</h4>
+            </div>
+
+            {costEstimate && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-semibold">
+                Est: ${costEstimate.estimated_cost_usd} USD
+              </span>
+            )}
           </div>
 
-          {costEstimate && (
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-slate-400">
-                {costEstimate.char_count} Karakter (~{costEstimate.estimated_duration_sec}s)
-              </span>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold font-mono">
-                Est. Biaya: ${costEstimate.estimated_cost_usd} USD
-              </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Kecepatan (Rate)
+              </label>
+              <select
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+              >
+                <option value="-10%">Lambat (-10%)</option>
+                <option value="+0%">Normal (+0%)</option>
+                <option value="+10%">Cepat (+10%)</option>
+                <option value="+20%">Sangat Cepat (+20%)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Tinggi Nada (Pitch)
+              </label>
+              <select
+                value={pitch}
+                onChange={(e) => setPitch(e.target.value)}
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+              >
+                <option value="-5Hz">Lebih Berat (-5Hz)</option>
+                <option value="+0Hz">Standar (+0Hz)</option>
+                <option value="+5Hz">Lebih Cerah (+5Hz)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Live Progress Card for TTS */}
+          {isGeneratingTTS && (
+            <div className="p-3.5 rounded-xl bg-surface border border-brand-500/40 space-y-2 animate-fadeIn shadow-lg shadow-brand-500/5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-brand-300 font-semibold truncate max-w-[240px]">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-400 shrink-0" />
+                  <span className="truncate">{generationStepText || "Memproses audio TTS..."}</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400 shrink-0">
+                  <span>
+                    {Math.floor(generationElapsed / 60)}:
+                    {String(generationElapsed % 60).padStart(2, "0")}
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-300 font-bold">
+                    {Math.round(generationProgress)}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-full bg-surface-card rounded-full h-1.5 overflow-hidden border border-surface-border">
+                <div
+                  className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.max(5, generationProgress)}%` }}
+                />
+              </div>
             </div>
           )}
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Kecepatan Bicara (Rate)
-            </label>
-            <select
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500"
-            >
-              <option value="-10%">Lambat (-10%)</option>
-              <option value="+0%">Normal (+0%)</option>
-              <option value="+10%">Cepat (+10%)</option>
-              <option value="+20%">Sangat Cepat (+20%)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tinggi Nada (Pitch)
-            </label>
-            <select
-              value={pitch}
-              onChange={(e) => setPitch(e.target.value)}
-              className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500"
-            >
-              <option value="-5Hz">Lebih Berat (-5Hz)</option>
-              <option value="+0Hz">Standar (+0Hz)</option>
-              <option value="+5Hz">Lebih Cerah (+5Hz)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Live Progress Card for TTS */}
-        {isGeneratingTTS && (
-          <div className="p-4 rounded-xl bg-surface border border-brand-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-brand-500/5">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-brand-300 font-semibold">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
-                <span className="truncate max-w-sm sm:max-w-md">{generationStepText || "Sedang memproses audio..."}</span>
-              </div>
-              <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-                <span>{Math.floor(generationElapsed / 60)}:{String(generationElapsed % 60).padStart(2, "0")}</span>
-                <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
-                  {Math.round(generationProgress)}%
-                </span>
-              </div>
-            </div>
-            <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
-              <div
-                className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
-                style={{ width: Math.max(5, generationProgress) + "%" }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="pt-3 border-t border-surface-border flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">
-            {isGeneratingTTS
-              ? "Sedang mensintesis audio narasi secara otomatis..."
-              : "Audio & word timestamp akan dibuat otomatis saat tombol diklik."}
-          </span>
+          {/* Generate Button */}
           <button
             onClick={() => generateTTSMutation.mutate()}
             disabled={generateTTSMutation.isPending || isGeneratingTTS || !narrationText}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-sm shadow-xl shadow-brand-500/25 flex items-center gap-2 transition transform active:scale-95 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-brand-500/20 flex items-center justify-center gap-2 transition transform active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             {isGeneratingTTS ? (
               <>
@@ -392,88 +480,276 @@ export function TTSTab({ project }: TTSTabProps) {
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
-                <span>Generate Suara & Jalankan Alignment</span>
+                <Sparkles className="w-4 h-4 text-accent-yellow" />
+                <span>Generate Suara & Word Alignment</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Audio Track Result */}
-      {project.audio && (
-        <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
-          <div className="flex items-center justify-between">
+      {/* ========================================================================= */}
+      {/* KOLOM KANAN (7/12): MODERN CUSTOM AUDIO PLAYER & WORD ALIGNMENT          */}
+      {/* ========================================================================= */}
+      <div className="lg:col-span-7 space-y-4">
+        <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-5">
+          {/* Header Panel Kanan */}
+          <div className="flex items-center justify-between pb-3 border-b border-surface-border">
             <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-sm font-bold text-white">Audio Narasi Siap</h4>
+              <Music className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                Audio Narasi & Forced Alignment
+              </h3>
             </div>
 
-            <span className="text-xs text-slate-400">
-              Durasi: {Math.round(project.audio.duration)} detik • Voice: {project.audio.voice}
-            </span>
+            {project.audio && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+                {formatAudioTime(audioDuration)} • {project.audio.voice}
+              </span>
+            )}
           </div>
 
-          {project.audio.audio_url && (
-            <div className="p-3 bg-surface rounded-xl border border-surface-border">
-              <audio controls className="w-full h-10">
-                <source src={project.audio.audio_url} type="audio/mpeg" />
-                Browser Anda tidak mendukung elemen audio.
-              </audio>
-            </div>
-          )}
+          {project.audio && project.audio.audio_url ? (
+            <div className="space-y-5">
+              {/* Hidden Native Audio Element */}
+              <audio
+                ref={mainAudioRef}
+                src={project.audio.audio_url}
+                onTimeUpdate={() => {
+                  if (mainAudioRef.current) {
+                    setCurrentTime(mainAudioRef.current.currentTime);
+                  }
+                }}
+                onLoadedMetadata={() => {
+                  if (mainAudioRef.current && !isNaN(mainAudioRef.current.duration)) {
+                    setAudioDuration(mainAudioRef.current.duration);
+                  }
+                }}
+                onEnded={() => {
+                  setIsPlaying(false);
+                  setCurrentTime(0);
+                }}
+              />
 
-          {/* Word-level breakdown indicator */}
-          {project.narration?.segments && (
-            <div className="pt-3 border-t border-surface-border">
-              <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <AlignLeft className="w-3.5 h-3.5 text-accent-yellow" />
-                Hasil Forced Word-Level Alignment ({project.narration.segments.length} Segmen Kalimat)
-              </h5>
-              <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-                {project.narration.segments.map((seg, i) => (
-                  <div
-                    key={seg.id || i}
-                    className="p-2.5 rounded-lg bg-surface border border-surface-border text-xs"
-                  >
-                    <div className="flex justify-between font-mono text-[10px] text-slate-400 mb-1">
-                      <span>#{i + 1}</span>
-                      <span>
-                        {seg.start_ms}ms — {seg.end_ms}ms
-                      </span>
+              {/* MODERN SLEEK AUDIO PLAYER CARD */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-surface to-surface-card border border-surface-border shadow-xl space-y-4">
+                {/* Top Info with Visualizer Mockup */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 shadow-inner">
+                      <Volume2 className="w-5 h-5" />
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {seg.words && seg.words.length > 0 ? (
-                        seg.words.map((w, wi) => (
-                          <span
-                            key={wi}
-                            className="px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-[11px] text-brand-300"
-                            title={`${w.start_ms}ms - ${w.end_ms}ms`}
-                          >
-                            {w.word}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-slate-400">{seg.text}</span>
-                      )}
+                    <div>
+                      <h4 className="text-xs font-bold text-white">
+                        Narasi: {project.name}
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Voice: <strong className="text-brand-300">{project.audio.voice}</strong> ({project.audio.provider.toUpperCase()}) • Kecepatan: {project.audio.rate || "+0%"}
+                      </p>
                     </div>
                   </div>
-                ))}
+
+                  {/* Equalizer animation when playing */}
+                  <div className="flex items-end gap-0.5 h-6">
+                    {[40, 70, 30, 90, 60, 100, 45, 80, 50].map((h, i) => (
+                      <div
+                        key={i}
+                        className={`w-1 rounded-full bg-brand-400 transition-all duration-300 ${
+                          isPlaying ? "animate-pulse" : "opacity-30"
+                        }`}
+                        style={{
+                          height: isPlaying ? `${Math.max(20, (h * ((currentTime * 3 + i) % 10)) / 10)}%` : "20%",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Progress / Seekbar */}
+                <div className="space-y-1.5">
+                  <div
+                    className="relative w-full h-3 bg-black/40 rounded-full cursor-pointer overflow-hidden group border border-surface-border/80"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+                      handleSeek(pct * audioDuration);
+                    }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 rounded-full transition-all"
+                      style={{
+                        width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-[11px] font-mono text-slate-400">
+                    <span>{formatAudioTime(currentTime)}</span>
+                    <span>{formatAudioTime(audioDuration)}</span>
+                  </div>
+                </div>
+
+                {/* Player Controls Bar */}
+                <div className="flex items-center justify-between pt-1">
+                  {/* Skip Buttons & Main Play */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSkip(-5)}
+                      className="p-2 rounded-xl bg-surface hover:bg-white/10 text-slate-300 hover:text-white transition"
+                      title="Mundur 5 detik"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleMainPlay}
+                      className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-brand-400 hover:scale-105 text-white flex items-center justify-center shadow-lg shadow-brand-500/30 transition transform active:scale-95"
+                    >
+                      {isPlaying ? (
+                        <Pause className="w-5 h-5 fill-current" />
+                      ) : (
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSkip(5)}
+                      className="p-2 rounded-xl bg-surface hover:bg-white/10 text-slate-300 hover:text-white transition"
+                      title="Maju 5 detik"
+                    >
+                      <RotateCw className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Volume Control */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleMute}
+                      className="text-slate-400 hover:text-white transition"
+                    >
+                      {isMuted || volume === 0 ? (
+                        <VolumeX className="w-4 h-4 text-rose-400" />
+                      ) : (
+                        <Volume2 className="w-4 h-4" />
+                      )}
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={isMuted ? 0 : volume}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      className="w-20 h-1.5 bg-black/40 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* WORD-LEVEL FORCED ALIGNMENT & KARAOKE BREAKDOWN */}
+              {project.narration?.segments && project.narration.segments.length > 0 && (
+                <div className="pt-2 border-t border-surface-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlignLeft className="w-3.5 h-3.5 text-accent-yellow" />
+                      <span>
+                        Hasil Word-Level Alignment ({project.narration.segments.length} Segmen)
+                      </span>
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Klik kata untuk melompat ke audio
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                    {project.narration.segments.map((seg, i) => {
+                      const isSegActive =
+                        currentTime * 1000 >= seg.start_ms && currentTime * 1000 <= seg.end_ms;
+                      return (
+                        <div
+                          key={seg.id || i}
+                          className={`p-3 rounded-xl border transition-all ${
+                            isSegActive
+                              ? "bg-brand-500/15 border-brand-500/50 shadow-md shadow-brand-500/10 ring-1 ring-brand-500/30"
+                              : "bg-surface/60 border-surface-border/70 hover:border-slate-600"
+                          }`}
+                        >
+                          <div className="flex justify-between font-mono text-[10px] text-slate-400 mb-1.5">
+                            <span className="text-brand-300 font-bold">Segmen #{i + 1}</span>
+                            <span>
+                              {formatAudioTime(seg.start_ms / 1000)} — {formatAudioTime(seg.end_ms / 1000)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {seg.words && seg.words.length > 0 ? (
+                              seg.words.map((w, wi) => {
+                                const isWordActive =
+                                  currentTime * 1000 >= w.start_ms &&
+                                  currentTime * 1000 <= w.end_ms;
+                                return (
+                                  <button
+                                    key={wi}
+                                    type="button"
+                                    onClick={() => handleSeek(w.start_ms / 1000)}
+                                    className={`px-2 py-0.5 rounded-md text-xs transition font-sans cursor-pointer ${
+                                      isWordActive
+                                        ? "bg-brand-500 text-white font-bold scale-105 shadow-sm shadow-brand-500/40"
+                                        : "bg-surface-card border border-surface-border text-slate-300 hover:text-white hover:border-brand-500/40"
+                                    }`}
+                                    title={`${w.start_ms}ms - ${w.end_ms}ms`}
+                                  >
+                                    {w.word}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-slate-300">{seg.text}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Next Tab Button */}
+              <div className="pt-4 border-t border-surface-border flex items-center justify-between">
+                <span className="text-xs text-slate-400">
+                  Audio siap! Lanjutkan ke perakitan Timeline & Subtitle.
+                </span>
+                <button
+                  onClick={() => setActiveTab("timeline")}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-brand-500/20 transition transform active:scale-95 cursor-pointer"
+                >
+                  <span>Lanjut ke Timeline & Subtitle</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Empty State saat belum ada audio */
+            <div className="py-16 px-6 text-center rounded-xl bg-surface/30 border border-dashed border-surface-border flex flex-col items-center justify-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+                <Volume2 className="w-7 h-7" />
+              </div>
+              <div className="max-w-sm space-y-1">
+                <h4 className="text-sm font-bold text-white">Audio Narasi Belum Dibuat</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Pilih karakter suara narator di kolom kiri, sesuaikan kecepatan dan nada, lalu klik{" "}
+                  <strong>Generate Suara & Word Alignment</strong>.
+                </p>
               </div>
             </div>
           )}
-
-          <div className="pt-4 flex justify-end">
-            <button
-              onClick={() => setActiveTab("timeline")}
-              className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 transition"
-            >
-              <span>Lanjut ke Timeline Editor</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
