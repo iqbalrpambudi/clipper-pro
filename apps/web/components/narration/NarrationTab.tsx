@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Flame,
   Lightbulb,
+  Film,
   Code,
   ExternalLink,
 } from "lucide-react";
@@ -156,7 +157,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {templates.map((tpl) => {
             const isSelected = selectedTemplateId === tpl.id;
             return (
@@ -178,6 +179,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow" />}
                       {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400" />}
                       {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue" />}
+                      {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400" />}
                       {tpl.name}
                     </span>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400" />}

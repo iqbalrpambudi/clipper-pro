@@ -22,6 +22,7 @@ import {
   BookOpen,
   Flame,
   Lightbulb,
+  Film,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -508,7 +509,7 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {templates.map((tpl) => {
                 const isSelected = selectedTemplateId === tpl.id;
                 return (
@@ -527,6 +528,7 @@ export default function SettingsPage() {
                           {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow" />}
                           {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400" />}
                           {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue" />}
+                          {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400" />}
                           {tpl.name}
                         </span>
                         {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400" />}
