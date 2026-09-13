@@ -238,21 +238,24 @@ async def generate_gemini_tts(
     voice: str = "Puck",
     rate: str = "+0%",
     pitch: str = "+0Hz",
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: str = "gemini-2.5-flash",
 ) -> float:
     """Generate audio via Gemini API multimodal audio endpoint (:generateContent) with rate & pitch tuning."""
     settings = get_settings()
     key = (api_key or "").strip() or (settings.GEMINI_API_KEY or "").strip() or (settings.AI_API_KEY or "").strip()
 
     if not key:
-        log.warning("No Gemini API key configured for TTS, falling back to Edge-TTS")
-        edge_voice = "id-ID-ArdiNeural" if voice in ("Puck", "Charon", "Fenrir", "Orpheus") else "id-ID-GadisNeural"
-        return await generate_edge_tts(text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+        raise RuntimeError("Gemini API Key belum dikonfigurasi. Silakan simpan Gemini API Key pada menu Pengaturan.")
 
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    clean_model = model.strip().removeprefix("models/")
+    # Normalize model name: strip prefix models/ and invalid preview suffixes
+    raw_model = (model or "gemini-2.5-flash").strip().removeprefix("models/")
+    clean_model = raw_model.replace("-preview-tts", "").replace("-tts", "")
+    if not clean_model:
+        clean_model = "gemini-2.5-flash"
+
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent?key={key}"
     payload = {
         "contents": [
@@ -283,78 +286,87 @@ async def generate_gemini_tts(
     try:
         async with httpx.AsyncClient(timeout=90.0) as client:
             resp = await client.post(url, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates") or []
-                inline_data = None
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    for part in parts:
-                        if "inlineData" in part:
-                            inline_data = part["inlineData"]
-                            break
+            if resp.status_code != 200:
+                err_detail = resp.text
+                try:
+                    err_json = resp.json()
+                    err_detail = err_json.get("error", {}).get("message") or resp.text
+                except Exception:
+                    pass
+                log.error("Gemini TTS API error HTTP %s (%s): %s", resp.status_code, clean_model, err_detail[:300])
+                raise RuntimeError(f"Gemini TTS ({clean_model}) HTTP {resp.status_code}: {err_detail}")
 
-                if inline_data and "data" in inline_data:
-                    raw_bytes = base64.b64decode(inline_data["data"])
-                    mime_type = inline_data.get("mimeType", "")
-                    audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
+            data = resp.json()
+            candidates = data.get("candidates") or []
+            if not candidates:
+                prompt_feedback = data.get("promptFeedback") or {}
+                block_reason = prompt_feedback.get("blockReason") or "Tidak ada respons dari Gemini API"
+                raise RuntimeError(f"Gemini TTS gagal menghasilkan audio: {block_reason}")
 
-                    # If PCM audio (24kHz 16-bit mono), transcode to MP3 with rate/pitch filter using ffmpeg
-                    if "pcm" in mime_type or (
-                        not raw_bytes.startswith(b"RIFF")
-                        and not raw_bytes.startswith(b"ID3")
-                        and not raw_bytes.startswith(b"\xff\xfb")
-                    ):
-                        cmd = [
-                            "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
-                        ]
-                        if audio_filter:
-                            cmd.extend(["-af", audio_filter])
-                        cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+            parts = candidates[0].get("content", {}).get("parts", [])
+            inline_data = None
+            for part in parts:
+                if "inlineData" in part:
+                    inline_data = part["inlineData"]
+                    break
 
-                        proc = await asyncio.create_subprocess_exec(
-                            *cmd,
-                            stdin=asyncio.subprocess.PIPE,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                        )
-                        _, stderr = await proc.communicate(input=raw_bytes)
-                        if proc.returncode != 0:
-                            raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
-                    else:
-                        if audio_filter:
-                            proc = await asyncio.create_subprocess_exec(
-                                "ffmpeg", "-y", "-i", "-", "-af", audio_filter,
-                                "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
-                                stdin=asyncio.subprocess.PIPE,
-                                stdout=asyncio.subprocess.PIPE,
-                                stderr=asyncio.subprocess.PIPE,
-                            )
-                            _, stderr = await proc.communicate(input=raw_bytes)
-                            if proc.returncode != 0:
-                                raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
-                        else:
-                            out_p.write_bytes(raw_bytes)
+            if not inline_data or "data" not in inline_data:
+                finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
+                raise RuntimeError(f"Gemini TTS response tidak mengandung data audio: {finish_reason}")
 
-                    return await get_audio_duration(str(out_p))
-                else:
-                    log.error("Gemini response did not contain audio inlineData: %s", str(data)[:300])
+            raw_bytes = base64.b64decode(inline_data["data"])
+            mime_type = inline_data.get("mimeType", "")
+            audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
+
+            # If PCM audio (24kHz 16-bit mono), transcode to MP3 with rate/pitch filter using ffmpeg
+            if "pcm" in mime_type.lower() or (
+                not raw_bytes.startswith(b"RIFF")
+                and not raw_bytes.startswith(b"ID3")
+                and not raw_bytes.startswith(b"\xff\xfb")
+            ):
+                cmd = [
+                    "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+                ]
+                if audio_filter:
+                    cmd.extend(["-af", audio_filter])
+                cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                _, stderr = await proc.communicate(input=raw_bytes)
+                if proc.returncode != 0:
+                    raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
             else:
-                log.error("Gemini TTS API error HTTP %s: %s", resp.status_code, resp.text[:300])
-    except Exception as e:
-        log.exception("Gemini TTS request exception: %s", e)
+                if audio_filter:
+                    proc = await asyncio.create_subprocess_exec(
+                        "ffmpeg", "-y", "-i", "-", "-af", audio_filter,
+                        "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _, stderr = await proc.communicate(input=raw_bytes)
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
+                else:
+                    out_p.write_bytes(raw_bytes)
 
-    # Fallback to Edge-TTS if Gemini request fails
-    log.warning("Gemini TTS synthesis failed. Falling back to Edge-TTS for voice %s", voice)
-    edge_voice = "id-ID-ArdiNeural" if voice in ("Puck", "Charon", "Fenrir", "Orpheus") else "id-ID-GadisNeural"
-    return await generate_edge_tts(text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+            return await get_audio_duration(str(out_p))
+    except Exception as e:
+        log.exception("Gemini TTS synthesis failed for voice %s: %s", voice, e)
+        raise
 
 
 async def get_or_generate_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: str = "gemini-2.5-flash",
     api_key: Optional[str] = None,
+    force_refresh: bool = False,
 ) -> Path:
     """Generate or return cached 2-3s sample audio for the specified voice."""
     settings = get_settings()
@@ -366,7 +378,7 @@ async def get_or_generate_voice_sample(
     clean_voice = re.sub(r"[^\w\-]", "", voice)
     sample_path = cache_dir / f"sample_{clean_prov}_{clean_voice}.mp3"
 
-    if sample_path.exists() and sample_path.stat().st_size > 1000:
+    if not force_refresh and sample_path.exists() and sample_path.stat().st_size > 1000:
         return sample_path
 
     # Find matching sample text
@@ -404,6 +416,7 @@ async def generate_speech_audio(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     api_key: Optional[str] = None,
+    model: str = "gemini-2.5-flash",
 ) -> float:
     """Entrypoint for TTS audio generation."""
     if provider.lower() == "gemini":
@@ -414,6 +427,7 @@ async def generate_speech_audio(
             voice=voice,
             rate=rate,
             pitch=pitch,
+            model=model,
         )
     else:
         return await generate_edge_tts(

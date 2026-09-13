@@ -194,13 +194,19 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     # Latest audio
     if proj.audio_tracks:
         latest_a = sorted(proj.audio_tracks, key=lambda x: x.created_at, reverse=True)[0]
+        raw_audio_url = storage.to_relative_url(latest_a.file_path)
+        audio_url_with_ts = None
+        if raw_audio_url:
+            ts = int(latest_a.updated_at.timestamp()) if latest_a.updated_at else (int(latest_a.created_at.timestamp()) if latest_a.created_at else 0)
+            audio_url_with_ts = f"{raw_audio_url}?v={ts}"
+
         resp.audio = {
             "id": latest_a.id,
             "provider": latest_a.provider,
             "voice": latest_a.voice,
             "rate": latest_a.rate,
             "pitch": latest_a.pitch,
-            "audio_url": storage.to_relative_url(latest_a.file_path),
+            "audio_url": audio_url_with_ts,
             "duration": latest_a.duration,
             "estimated_cost": latest_a.estimated_cost,
             "status": latest_a.status,

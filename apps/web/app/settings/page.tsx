@@ -703,7 +703,7 @@ export default function SettingsPage() {
                     onChange={(e) => setTtsProvider(e.target.value)}
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
-                    <option value="gemini">Gemini 2.5 Flash TTS (gemini-2.5-flash-preview-tts)</option>
+                    <option value="gemini">Gemini 2.5 Flash TTS (gemini-2.5-flash)</option>
                     <option value="edge">Edge-TTS (Natural Indonesian, Free)</option>
                   </select>
                 </div>

@@ -14,7 +14,7 @@ x-api-env: &api-env
   AI_VISION_MODEL: ${AI_VISION_MODEL:-gemini-2.0-flash}
   TTS_PROVIDER: ${TTS_PROVIDER:-gemini}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-  GEMINI_TTS_MODEL: ${GEMINI_TTS_MODEL:-gemini-2.5-flash-preview-tts}
+  GEMINI_TTS_MODEL: ${GEMINI_TTS_MODEL:-gemini-2.5-flash}
   GEMINI_TTS_VOICE: ${GEMINI_TTS_VOICE:-Puck}
   HF_HOME: /app/.cache/huggingface
   WATCHFILES_FORCE_POLLING: "true"

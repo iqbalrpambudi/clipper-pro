@@ -99,14 +99,16 @@ export function TTSTab({ project }: TTSTabProps) {
         return () => clearTimeout(timeout);
       } else if (activeTask.status === "error") {
         setGenerationProgress(0);
-        setGenerationStepText(activeTask.error || activeTask.message || "Gagal membuat audio narasi");
+        const errMsg = activeTask.error || activeTask.message || "Gagal membuat audio narasi";
+        setGenerationStepText(errMsg);
+        showToast(errMsg, "error");
         const timeout = setTimeout(() => {
           setIsGeneratingTTS(false);
         }, 4000);
         return () => clearTimeout(timeout);
       }
     }
-  }, [activeTask]);
+  }, [activeTask, showToast]);
 
   // Elapsed second counter during active generation
   useEffect(() => {
@@ -137,23 +139,36 @@ export function TTSTab({ project }: TTSTabProps) {
     }
   }, [project.audio, isGeneratingTTS]);
 
+  // Sync state only when not actively generating to prevent overwriting user's new voice selection
   useEffect(() => {
     if (project.audio?.duration) {
       setAudioDuration(project.audio.duration);
     }
-    if (project.audio?.provider) {
-      setProvider(project.audio.provider);
+    if (!isGeneratingTTS) {
+      if (project.audio?.provider) {
+        setProvider(project.audio.provider);
+      }
+      if (project.audio?.voice) {
+        setSelectedVoice(project.audio.voice);
+      }
+      if (project.audio?.rate) {
+        setRate(project.audio.rate);
+      }
+      if (project.audio?.pitch) {
+        setPitch(project.audio.pitch);
+      }
     }
-    if (project.audio?.voice) {
-      setSelectedVoice(project.audio.voice);
+  }, [project.audio?.id, project.audio?.status, isGeneratingTTS]);
+
+  // Invalidate and reload main audio when audio URL or ID changes
+  useEffect(() => {
+    if (mainAudioRef.current) {
+      mainAudioRef.current.pause();
+      setIsPlaying(false);
+      setCurrentTime(0);
+      mainAudioRef.current.load();
     }
-    if (project.audio?.rate) {
-      setRate(project.audio.rate);
-    }
-    if (project.audio?.pitch) {
-      setPitch(project.audio.pitch);
-    }
-  }, [project.audio]);
+  }, [project.audio?.audio_url, project.audio?.id]);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],
@@ -210,7 +225,7 @@ export function TTSTab({ project }: TTSTabProps) {
     setSampleAudioPlaying(voiceId);
     setLoadingSampleVoiceId(voiceId);
 
-    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}`;
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}&t=${Date.now()}`;
     audio.src = sampleUrl;
     audio.oncanplay = () => {
       setLoadingSampleVoiceId(null);

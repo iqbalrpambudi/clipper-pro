@@ -327,5 +327,26 @@ def test_storage_render_deletion(tmp_path, monkeypatch):
     assert not file_2.exists()
 
 
+@pytest.mark.asyncio
+async def test_gemini_tts_missing_key_throws_error(tmp_path, monkeypatch):
+    from app.services.tts import generate_gemini_tts
+    from app.core.config import get_settings
+
+    # Empty API keys
+    settings = get_settings()
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(settings, "AI_API_KEY", "")
+
+    out_file = tmp_path / "test.mp3"
+    with pytest.raises(RuntimeError, match="Gemini API Key belum dikonfigurasi"):
+        await generate_gemini_tts(
+            text="Halo dunia",
+            output_path=str(out_file),
+            api_key="",
+            voice="Puck",
+        )
+
+
+
 
 

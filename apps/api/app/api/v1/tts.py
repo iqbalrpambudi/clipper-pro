@@ -34,31 +34,37 @@ async def list_voices():
 async def get_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
+    force: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """Serve real 2-3s sample audio for the specified voice."""
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     api_key = ""
+    tts_model = "gemini-2.5-flash"
     if cfg:
         if cfg.tts_api_key_encrypted:
             api_key = decrypt_secret(cfg.tts_api_key_encrypted)
         elif cfg.api_key_encrypted:
             api_key = decrypt_secret(cfg.api_key_encrypted)
+        if cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
+            tts_model = cfg.tts_provider
 
     try:
         sample_path = await get_or_generate_voice_sample(
             provider=provider,
             voice=voice,
+            model=tts_model,
             api_key=api_key or None,
+            force_refresh=force,
         )
         return FileResponse(
             path=str(sample_path),
             media_type="audio/mpeg",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers={"Cache-Control": "no-cache, must-revalidate"},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memuat sampel suara: {e}")
+        raise HTTPException(status_code=500, detail=f"Gagal memuat sampel suara {voice} ({provider}): {e}")
 
 
 @router.post("/tts/estimate-cost", response_model=CostEstimateResponse)
@@ -158,6 +164,13 @@ async def get_latest_audio(project_id: str, db: AsyncSession = Depends(get_db)):
     if not track:
         raise HTTPException(status_code=404, detail="Belum ada audio track yang di-generate")
 
+    raw_url = storage.to_relative_url(track.file_path)
+    if raw_url:
+        ts = int(track.updated_at.timestamp()) if track.updated_at else (int(track.created_at.timestamp()) if track.created_at else 0)
+        audio_url = f"{raw_url}?v={ts}"
+    else:
+        audio_url = None
+
     return AudioTrackResponse(
         id=track.id,
         project_id=track.project_id,
@@ -166,7 +179,7 @@ async def get_latest_audio(project_id: str, db: AsyncSession = Depends(get_db)):
         voice=track.voice,
         rate=track.rate,
         pitch=track.pitch,
-        audio_url=storage.to_relative_url(track.file_path),
+        audio_url=audio_url,
         duration=track.duration,
         estimated_cost=track.estimated_cost,
         status=track.status,

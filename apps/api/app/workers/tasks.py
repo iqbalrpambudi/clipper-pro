@@ -290,15 +290,18 @@ async def generate_tts_and_align_job(
         audio_file = audio_dir / f"tts_{narration.id}.mp3"
 
         try:
-            # Retrieve active ModelConfig for decrypted API key
+            # Retrieve active ModelConfig for decrypted API key & model
             res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
+            tts_model = "gemini-2.5-flash"
             if cfg:
                 if cfg.tts_api_key_encrypted:
                     api_key = decrypt_secret(cfg.tts_api_key_encrypted)
                 elif cfg.api_key_encrypted:
                     api_key = decrypt_secret(cfg.api_key_encrypted)
+                if cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
+                    tts_model = cfg.tts_provider
 
             # Step 1: TTS generation
             duration = await generate_speech_audio(
@@ -309,6 +312,7 @@ async def generate_tts_and_align_job(
                 rate=rate,
                 pitch=pitch,
                 api_key=api_key,
+                model=tts_model,
             )
 
             await publish_project_event(
