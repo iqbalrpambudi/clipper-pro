@@ -32,8 +32,8 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
-        display: ["var(--font-outfit)", "Montserrat", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Montserrat", "sans-serif"],
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

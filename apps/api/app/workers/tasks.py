@@ -97,13 +97,24 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
             video.progress = 10
             await db.commit()
 
+            # Explicitly close the youtube_download task so the frontend UI transitions cleanly
+            await publish_project_event(
+                video.project_id,
+                task_type="youtube_download",
+                status="success",
+                progress=100,
+                stage="completed",
+                message=f"Video '{video.filename}' berhasil didownload! Melanjutkan ke analisis scene...",
+                data={"video_id": video_id, "duration": meta["duration"], "filename": video.filename},
+            )
+
             await publish_project_event(
                 video.project_id,
                 task_type="scene_detect",
                 status="progress",
                 progress=10,
                 stage="detecting_cuts",
-                message=f"Video '{video.filename}' berhasil didownload! Memulai analisis scene...",
+                message=f"Memulai analisis scene untuk '{video.filename}'...",
                 data={"video_id": video_id, "duration": meta["duration"], "filename": video.filename},
             )
 

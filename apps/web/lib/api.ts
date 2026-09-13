@@ -51,10 +51,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Projects
   getProjects: () => request<Project[]>("/api/v1/projects"),
-  getProject: (id: string) => request<any>(`/api/v1/projects/${id}`),
+  getProject: (id: string) => request<Project & { source_videos: SourceVideo[]; scenes: Scene[]; narration?: Narration | null; audio?: AudioTrack | null; timeline?: Timeline | null; subtitle_style?: SubtitleStyle | null; render_jobs?: RenderJob[] }>(`/api/v1/projects/${id}`),
   createProject: (data: { name: string; description?: string; aspect_ratio?: string; resolution?: string }) =>
     request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
-  updateProject: (id: string, data: any) =>
+  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'aspect_ratio' | 'resolution' | 'background_fill'>>) =>
     request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteProject: (id: string) =>
     request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
@@ -188,13 +188,13 @@ export const api = {
 
   // Settings
   getModelConfig: () => request<ModelConfig>("/api/v1/settings/config"),
-  saveModelConfig: (data: any) =>
+  saveModelConfig: (data: { base_url?: string | null; chat_model: string; vision_model: string; api_key?: string; tts_provider?: string; tts_api_key?: string }) =>
     request<ModelConfig>("/api/v1/settings/config", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  testConnection: (data: any) =>
-    request<any>("/api/v1/settings/test-connection", {
+  testConnection: (data: { base_url?: string; chat_model: string; vision_model: string; api_key?: string }) =>
+    request<{ success: boolean; message: string; latency_ms?: number }>("/api/v1/settings/test-connection", {
       method: "POST",
       body: JSON.stringify(data),
     }),

@@ -109,9 +109,17 @@ export default function ProjectStudioPage({ params }: PageProps) {
   useEffect(() => {
     if (!activeTask || !project) return;
     if (activeTask.status === "progress") {
+      const vidId = activeTask.data?.video_id;
+      const vid = vidId ? project.source_videos?.find((v: any) => v.id === vidId) : null;
+
+      if (activeTask.task_type === "youtube_download") {
+        // If video is no longer downloading, the task has transitioned to scene_detect or finished
+        if (vid && vid.status !== "downloading") {
+          setActiveTask(null);
+        }
+      }
+
       if (activeTask.task_type === "scene_detect") {
-        const vidId = activeTask.data?.video_id;
-        const vid = vidId ? project.source_videos?.find((v: any) => v.id === vidId) : null;
         if (vid && vid.status === "ready") {
           setActiveTask(null);
         }

@@ -282,7 +282,7 @@ export default function SettingsPage() {
               {/* Quick Provider Presets */}
               <div className="bg-surface/60 rounded-xl p-3 border border-surface-border space-y-2">
                 <span className="text-[11px] font-semibold text-slate-400 block">Preset Cepat:</span>
-              <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => applyPreset({ base_url: "http://localhost:20128/v1", chat_model: "gemini", vision_model: "gemini" })}

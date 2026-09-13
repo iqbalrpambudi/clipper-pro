@@ -9,21 +9,18 @@ import {
   Film,
   Settings as SettingsIcon,
   Trash2,
-  Clock,
-  Ratio,
   ArrowRight,
-  SlidersHorizontal,
   Loader2,
 } from "lucide-react";
 import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
+import { Project } from "@/types";
 
 export default function DashboardPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [resolution, setResolution] = useState("1080p");
-  const [bgMode, setBgMode] = useState<"blur" | "black">("blur");
-  const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const { data: projects = [], isLoading } = useProjects();
   const createMutation = useCreateProject();
@@ -265,37 +262,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Background Fill (untuk video non-vertikal)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBgMode("blur")}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${
-                      bgMode === "blur"
-                        ? "bg-brand-500/20 border-brand-500 text-brand-300"
-                        : "bg-surface border-surface-border text-slate-400"
-                    }`}
-                  >
-                    <span className="block font-bold">Blurred Background</span>
-                    <span className="text-[10px] opacity-75">Video diperbesar & di-blur</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBgMode("black")}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${
-                      bgMode === "black"
-                        ? "bg-brand-500/20 border-brand-500 text-brand-300"
-                        : "bg-surface border-surface-border text-slate-400"
-                    }`}
-                  >
-                    <span className="block font-bold">Black Solid Fill</span>
-                    <span className="text-[10px] opacity-75">Bilah atas/bawah warna hitam</span>
-                  </button>
-                </div>
-              </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
                 <button
