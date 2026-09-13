@@ -342,10 +342,10 @@ export function TTSTab({ project }: TTSTabProps) {
                       : "border-surface-border bg-surface/40 hover:bg-surface hover:border-slate-500"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white">{v.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface border border-surface-border text-slate-400">
+                  <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-xs font-bold text-white truncate min-w-0" title={v.name}>{v.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-surface-border text-slate-400 shrink-0">
                         {v.gender}
                       </span>
                     </div>

@@ -23,6 +23,9 @@ import {
   Flame,
   Lightbulb,
   Film,
+  Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -54,7 +57,17 @@ export default function SettingsPage() {
     system_prompt: "",
     user_prompt_template: "",
     default_tone: "santai",
-    default_voice: "Puck",
+  });
+
+  // Modal State for New Template
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newTemplateForm, setNewTemplateForm] = useState({
+    id: "",
+    name: "",
+    description: "",
+    system_prompt: "",
+    user_prompt_template: "",
+    default_tone: "santai",
   });
 
   const { data: config, isLoading } = useQuery({
@@ -86,7 +99,6 @@ export default function SettingsPage() {
         system_prompt: current.system_prompt,
         user_prompt_template: current.user_prompt_template,
         default_tone: current.default_tone,
-        default_voice: current.default_voice,
       });
       if (selectedTemplateId !== current.id) {
         setSelectedTemplateId(current.id);
@@ -111,13 +123,6 @@ export default function SettingsPage() {
     }
   };
 
-  const applyPreset = (preset: { base_url: string; chat_model: string; vision_model: string }) => {
-    setBaseUrl(preset.base_url);
-    setChatModel(preset.chat_model);
-    setVisionModel(preset.vision_model);
-    showToast(`Preset "${preset.chat_model}" diterapkan!`, "info");
-  };
-
   const saveMutation = useMutation({
     mutationFn: api.saveModelConfig,
     onSuccess: () => {
@@ -136,10 +141,36 @@ export default function SettingsPage() {
       api.updateTemplate(selectedTemplateId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
-      showToast("Prompt AI template berhasil diperbarui!", "success");
+      showToast("Preset template naskah berhasil diperbarui!", "success");
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal menyimpan perubahan template", "error");
+    },
+  });
+
+  const createTemplateMutation = useMutation({
+    mutationFn: (data: Partial<NarrationTemplate>) => api.createTemplate(data),
+    onSuccess: (newTpl) => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      setSelectedTemplateId(newTpl.id);
+      setIsCreateModalOpen(false);
+      showToast("Preset naskah baru berhasil ditambahkan!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal membuat template baru", "error");
+    },
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: string) => api.deleteTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      const firstBuiltin = templates.find((t) => t.is_builtin)?.id || "fakta_unik";
+      setSelectedTemplateId(firstBuiltin);
+      showToast("Preset naskah berhasil dihapus", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal menghapus template", "error");
     },
   });
 
@@ -153,9 +184,8 @@ export default function SettingsPage() {
         system_prompt: updated.system_prompt,
         user_prompt_template: updated.user_prompt_template,
         default_tone: updated.default_tone,
-        default_voice: updated.default_voice,
       });
-      showToast("Prompt AI berhasil di-reset ke default pabrik!", "info");
+      showToast("Prompt preset berhasil di-reset ke default bawaan!", "info");
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal me-reset template", "error");
@@ -206,6 +236,36 @@ export default function SettingsPage() {
     updateTemplateMutation.mutate(templateForm);
   };
 
+  const handleOpenCreateModal = () => {
+    setNewTemplateForm({
+      id: `preset_${Date.now().toString(36)}`,
+      name: "",
+      description: "",
+      system_prompt: `Peran Anda adalah scriptwriter video pendek profesional. Tulis naskah yang padat, menarik, dan memikat penonton sejak detik pertama.`,
+      user_prompt_template: `Topik: {topic}\nNada Bicara: {tone}\nTarget Durasi: {target_duration} detik\nTarget Kata: {word_count} kata\n\nKonteks Scene Visual Video:\n{scene_context}`,
+      default_tone: "santai",
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateTemplateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateForm.id.trim() || !newTemplateForm.name.trim()) {
+      showToast("ID dan Nama Preset wajib diisi", "error");
+      return;
+    }
+    // Clean id slug
+    const cleanId = newTemplateForm.id
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "_");
+
+    createTemplateMutation.mutate({
+      ...newTemplateForm,
+      id: cleanId,
+    });
+  };
+
   const currentSelectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   return (
@@ -225,7 +285,7 @@ export default function SettingsPage() {
                 <SettingsIcon className="w-4 h-4 text-brand-400" />
                 Pengaturan Sistem & Konfigurasi AI
               </h1>
-              <p className="text-[11px] text-slate-400">Model LLM, Vision, TTS & Kustomisasi Prompt Naskah</p>
+              <p className="text-[11px] text-slate-400">Model LLM, Vision, TTS & Kustomisasi Preset Naskah</p>
             </div>
           </div>
         </div>
@@ -257,7 +317,7 @@ export default function SettingsPage() {
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Prompt AI & Template Naskah</span>
+            <span>Prompt AI & Preset Naskah</span>
           </button>
         </div>
 
@@ -279,42 +339,6 @@ export default function SettingsPage() {
               <p className="text-xs text-slate-400 leading-relaxed">
                 Konfigurasi endpoint dan model untuk narrative generation serta vision tagging. Anda dapat menggunakan <strong>9Router</strong>, Google Gemini API, OpenAI, DeepSeek, atau self-hosted endpoint.
               </p>
-
-              {/* Quick Provider Presets */}
-              <div className="bg-surface/60 rounded-xl p-3 border border-surface-border space-y-2">
-                <span className="text-[11px] font-semibold text-slate-400 block">Preset Cepat:</span>
-                <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyPreset({ base_url: "http://localhost:20128/v1", chat_model: "gemini", vision_model: "gemini" })}
-                  className="px-3 py-1.5 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-300 text-xs font-medium transition flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3 h-3 text-brand-400" />
-                  <span>9Router (gemini)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset({ base_url: "http://localhost:20128/v1", chat_model: "kr/claude-sonnet-4.5", vision_model: "gemini" })}
-                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
-                >
-                  9Router (Claude Sonnet 4.5)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset({ base_url: "https://generativelanguage.googleapis.com/v1beta/openai/", chat_model: "gemini-2.5-flash", vision_model: "gemini-2.5-flash" })}
-                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
-                >
-                  Google Gemini Direct
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset({ base_url: "https://api.openai.com/v1", chat_model: "gpt-4o-mini", vision_model: "gpt-4o-mini" })}
-                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-white/5 border border-surface-border text-slate-300 text-xs font-medium transition"
-                >
-                  OpenAI Official (gpt-4o-mini)
-                </button>
-              </div>
-            </div>
 
             <div className="space-y-4 pt-1">
               <div>
@@ -494,19 +518,27 @@ export default function SettingsPage() {
         </form>
       )}
 
-      {/* TAB 2: PROMPT AI & TEMPLATE NASKAH */}
+      {/* TAB 2: PROMPT AI & PRESET NASKAH */}
       {activeSettingsTab === "prompts" && (
         <div className="space-y-6">
-          {/* Template Selector Grid */}
+          {/* Template Selector Grid Header */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-brand-400" />
-                <h3 className="text-sm font-bold text-white">Pilih Template Naskah untuk Diedit</h3>
+                <h3 className="text-sm font-bold text-white">Preset Template Naskah</h3>
+                <span className="text-[11px] text-slate-400">
+                  ({templates.length} preset tersedia)
+                </span>
               </div>
-              <span className="text-[11px] text-slate-400">
-                {templates.length} template naskah tersedia
-              </span>
+              <button
+                type="button"
+                onClick={handleOpenCreateModal}
+                className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand-500/20 transition transform active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Preset Baru</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -523,23 +555,28 @@ export default function SettingsPage() {
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow" />}
-                          {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400" />}
-                          {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue" />}
-                          {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400" />}
-                          {tpl.name}
-                        </span>
-                        {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400" />}
+                      <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />}
+                          {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+                          {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
+                          {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+                          {!["fakta_unik", "konten_viral", "edukasi_singkat", "alur_film"].includes(tpl.id) && (
+                            <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          )}
+                          <span className="text-xs font-bold text-white truncate min-w-0" title={tpl.name}>
+                            {tpl.name}
+                          </span>
+                        </div>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
-                        {tpl.description}
+                        {tpl.description || "Tidak ada deskripsi"}
                       </p>
                     </div>
 
                     <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center">
-                      <span className="font-mono text-slate-400">{tpl.id}</span>
+                      <span className="font-mono text-slate-400 truncate max-w-[120px]">{tpl.id}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${
                         tpl.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
                       }`}>
@@ -559,51 +596,96 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <Code className="w-4 h-4 text-accent-yellow" />
-                    Editor Prompt: {currentSelectedTemplate.name}
+                    Editor Preset: {currentSelectedTemplate.name}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    ID Template: <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">{currentSelectedTemplate.id}</code>
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                    <span>ID Preset:</span>
+                    <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
+                      {currentSelectedTemplate.id}
+                    </code>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
+                      currentSelectedTemplate.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
+                    }`}>
+                      {currentSelectedTemplate.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
+                    </span>
                   </p>
                 </div>
 
-                {currentSelectedTemplate.is_builtin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm("Reset prompt template ini ke setelan bawaan standar?")) {
-                        resetTemplateMutation.mutate();
-                      }
-                    }}
-                    disabled={resetTemplateMutation.isPending}
-                    className="px-3 py-1.5 rounded-xl bg-surface border border-surface-border hover:bg-rose-500/10 hover:border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                    title="Kembalikan prompt ke teks standar pabrik"
-                  >
-                    {resetTemplateMutation.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    )}
-                    <span>Reset ke Default</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {currentSelectedTemplate.is_builtin ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm("Reset prompt preset ini ke setelan standar bawaan pabrik?")) {
+                          resetTemplateMutation.mutate();
+                        }
+                      }}
+                      disabled={resetTemplateMutation.isPending}
+                      className="px-3 py-1.5 rounded-xl bg-surface border border-surface-border hover:bg-rose-500/10 hover:border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                      title="Kembalikan prompt ke teks standar pabrik"
+                    >
+                      {resetTemplateMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      )}
+                      <span>Reset ke Default</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Hapus preset naskah "${currentSelectedTemplate.name}"? Tindakan ini tidak dapat dibatalkan.`)) {
+                          deleteTemplateMutation.mutate(currentSelectedTemplate.id);
+                        }
+                      }}
+                      disabled={deleteTemplateMutation.isPending}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                      title="Hapus preset kustom ini"
+                    >
+                      {deleteTemplateMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      )}
+                      <span>Hapus Preset</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Template Meta Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-1">
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Nama Template
+                    Nama Preset Naskah
                   </label>
                   <input
                     type="text"
                     value={templateForm.name}
                     onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                    placeholder="Contoh: Fakta Sains Populer"
                     required
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Tone Bawaan (Gaya Bahasa)
+                  </label>
+                  <select
+                    value={templateForm.default_tone}
+                    onChange={(e) => setTemplateForm({ ...templateForm, default_tone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="santai">Santai (Casual & Friendly)</option>
+                    <option value="formal">Formal (Professional & Clear)</option>
+                    <option value="dramatis">Dramatis (Tense & Emotional)</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-1">
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                     Deskripsi Ringkas
                   </label>
@@ -612,6 +694,7 @@ export default function SettingsPage() {
                     value={templateForm.description}
                     onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    placeholder="Contoh: Format naskah ringkas edukatif..."
                   />
                 </div>
               </div>
@@ -627,7 +710,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata), struktur poin fakta/klimaks, larangan tanda kurung arahan panggung, dan pertanyaan penutup.
+                  System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata), struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan pertanyaan penutup (CTA).
                 </p>
                 <textarea
                   rows={9}
@@ -650,16 +733,24 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Gunakan placeholder variabel dalam tanda kurung kurawal yang akan diisi secara otomatis oleh sistem saat generasi naskah:
+                  Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam prompt:
                 </p>
                 <div className="flex flex-wrap gap-1.5 py-1">
                   {["{topic}", "{tone}", "{target_duration}", "{word_count}", "{scene_context}"].map((token) => (
-                    <span
+                    <button
+                      type="button"
                       key={token}
-                      className="px-2 py-0.5 rounded bg-surface border border-surface-border text-[11px] font-mono text-brand-300"
+                      onClick={() => {
+                        setTemplateForm((prev) => ({
+                          ...prev,
+                          user_prompt_template: prev.user_prompt_template + " " + token,
+                        }));
+                      }}
+                      className="px-2 py-0.5 rounded bg-surface hover:bg-brand-500/20 border border-surface-border text-[11px] font-mono text-brand-300 transition"
+                      title="Klik untuk menambahkan variabel"
                     >
-                      {token}
-                    </span>
+                      + {token}
+                    </button>
                   ))}
                 </div>
                 <textarea
@@ -670,36 +761,6 @@ export default function SettingsPage() {
                   placeholder="Template prompt user..."
                   required
                 />
-              </div>
-
-              {/* Default Tone & Voice */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-surface-border">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Default Tone
-                  </label>
-                  <select
-                    value={templateForm.default_tone}
-                    onChange={(e) => setTemplateForm({ ...templateForm, default_tone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="santai">Santai (Casual & Friendly)</option>
-                    <option value="formal">Formal (Professional & Clear)</option>
-                    <option value="dramatis">Dramatis (Tense & Emotional)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Default Voice Name (TTS)
-                  </label>
-                  <input
-                    type="text"
-                    value={templateForm.default_voice}
-                    onChange={(e) => setTemplateForm({ ...templateForm, default_voice: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
-                  />
-                </div>
               </div>
 
               {/* Submit Buttons */}
@@ -715,7 +776,7 @@ export default function SettingsPage() {
                     <Check className="w-4 h-4" />
                   )}
                   <span>
-                    {updateTemplateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Prompt"}
+                    {updateTemplateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Preset"}
                   </span>
                 </button>
               </div>
@@ -724,6 +785,182 @@ export default function SettingsPage() {
         </div>
       )}
       </main>
+
+      {/* MODAL: TAMBAH PRESET NASKAH BARU */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="glass-panel w-full max-w-2xl bg-[#0E1017] border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between bg-surface/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Buat Preset Naskah Baru</h3>
+                  <p className="text-[11px] text-slate-400">Tambahkan struktur dan formula prompt khusus untuk video Anda</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreateTemplateSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Nama Preset <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Review Produk Unboxing"
+                    value={newTemplateForm.name}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const slug = name
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "_")
+                        .replace(/^_+|_+$/g, "");
+                      setNewTemplateForm({
+                        ...newTemplateForm,
+                        name,
+                        id: slug ? `preset_${slug}` : newTemplateForm.id,
+                      });
+                    }}
+                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-medium focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    ID Identifier (Slug Unik) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="preset_review_unboxing"
+                    value={newTemplateForm.id}
+                    onChange={(e) =>
+                      setNewTemplateForm({
+                        ...newTemplateForm,
+                        id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"),
+                      })
+                    }
+                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Tone Bawaan
+                  </label>
+                  <select
+                    value={newTemplateForm.default_tone}
+                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, default_tone: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="santai">Santai (Casual & Friendly)</option>
+                    <option value="formal">Formal (Professional & Clear)</option>
+                    <option value="dramatis">Dramatis (Tense & Emotional)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Deskripsi Ringkas
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Format naskah khusus affiliate dan unboxing"
+                    value={newTemplateForm.description}
+                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, description: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  1. System Prompt (Instruksi Persona & Struktur Naskah) <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={5}
+                  required
+                  value={newTemplateForm.system_prompt}
+                  onChange={(e) => setNewTemplateForm({ ...newTemplateForm, system_prompt: e.target.value })}
+                  placeholder="Instruksi sistem persona dan format naskah..."
+                  className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    2. User Prompt Template (Format Input) <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {["{topic}", "{tone}", "{target_duration}", "{word_count}", "{scene_context}"].map((token) => (
+                      <button
+                        type="button"
+                        key={token}
+                        onClick={() => {
+                          setNewTemplateForm((prev) => ({
+                            ...prev,
+                            user_prompt_template: prev.user_prompt_template + " " + token,
+                          }));
+                        }}
+                        className="px-1.5 py-0.2 rounded bg-surface hover:bg-brand-500/20 border border-surface-border text-[10px] font-mono text-brand-300 transition"
+                      >
+                        + {token}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  rows={4}
+                  required
+                  value={newTemplateForm.user_prompt_template}
+                  onChange={(e) => setNewTemplateForm({ ...newTemplateForm, user_prompt_template: e.target.value })}
+                  placeholder="Template format variabel..."
+                  className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-surface-border flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface text-xs font-medium transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={createTemplateMutation.isPending}
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-lg shadow-brand-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {createTemplateMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  <span>{createTemplateMutation.isPending ? "Menyimpan..." : "Buat Preset Naskah"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

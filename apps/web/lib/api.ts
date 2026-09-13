@@ -114,6 +114,10 @@ export const api = {
     request<NarrationTemplate>(`/api/v1/templates/${id}/reset`, {
       method: "POST",
     }),
+  deleteTemplate: (id: string) =>
+    request<void>(`/api/v1/templates/${id}`, {
+      method: "DELETE",
+    }),
   generateNarration: (projectId: string, data: { template_id: string; topic?: string; tone: string; target_duration: number; custom_prompt?: string }) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration/generate`, {
       method: "POST",

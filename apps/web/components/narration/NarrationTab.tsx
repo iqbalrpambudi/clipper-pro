@@ -339,20 +339,22 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <h4 className="text-xs font-bold text-white truncate">{tpl.name}</h4>
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded border font-medium shrink-0 ${badge.color}`}>
+                    <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
+                      <h4 className="text-xs font-bold text-white truncate min-w-0 flex-1" title={tpl.name}>
+                        {tpl.name}
+                      </h4>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${badge.color}`}>
                           {badge.label}
                         </span>
+                        {isSelected ? (
+                          <CheckCircle2 className="w-4 h-4 text-brand-400" />
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {tpl.default_tone}
+                          </span>
+                        )}
                       </div>
-                      {isSelected ? (
-                        <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
-                      ) : (
-                        <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                          {tpl.default_tone}
-                        </span>
-                      )}
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
                       {tpl.description}
