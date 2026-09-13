@@ -4,8 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 class SubtitleStyleBase(BaseModel):
     preset_name: str = "viral_tiktok"  # viral_tiktok | hormozi_punch | minimalist | custom
-    font_family: str = "Montserrat"
-    font_size: int = 52
+    description: Optional[str] = None
+    font_family: str = "Poppins"
+    font_size: int = 56
     font_weight: str = "Bold"
     primary_color: str = "#FFFFFF"
     highlight_color: str = "#FFE600"
@@ -14,12 +15,12 @@ class SubtitleStyleBase(BaseModel):
     box_color: str = "#000000"
     box_opacity: float = 0.0
     position: str = "bottom"  # top | center | bottom
-    offset_y: int = 0
+    offset_y: int = -120
     offset_x: int = 0
     display_mode: str = "per_word"  # per_word | full_sentence | burst
     burst_word_count: int = 2
     highlight_animation: str = "scale"  # scale | color | box | none
-    scale_factor: float = 1.5
+    scale_factor: float = 1.15
     emoji_enabled: bool = True
 
 
@@ -31,9 +32,54 @@ class SubtitleStyleUpdateRequest(SubtitleStyleBase):
 class SubtitlePresetResponse(SubtitleStyleBase):
     id: str
     name: str
-    description: str
+    description: Optional[str] = None
     is_builtin: bool
     preview_style: Dict[str, Any] = {}
+
+
+class SubtitlePresetCreate(BaseModel):
+    id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    font_family: str = "Poppins"
+    font_size: int = 56
+    font_weight: str = "Bold"
+    primary_color: str = "#FFFFFF"
+    highlight_color: str = "#FFE600"
+    outline_color: str = "#000000"
+    outline_width: int = 4
+    box_color: str = "#000000"
+    box_opacity: float = 0.0
+    position: str = "bottom"
+    offset_y: int = -120
+    offset_x: int = 0
+    display_mode: str = "per_word"
+    burst_word_count: int = 2
+    highlight_animation: str = "scale"
+    scale_factor: float = 1.15
+    emoji_enabled: bool = True
+
+
+class SubtitlePresetUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    font_family: Optional[str] = None
+    font_size: Optional[int] = None
+    font_weight: Optional[str] = None
+    primary_color: Optional[str] = None
+    highlight_color: Optional[str] = None
+    outline_color: Optional[str] = None
+    outline_width: Optional[int] = None
+    box_color: Optional[str] = None
+    box_opacity: Optional[float] = None
+    position: Optional[str] = None
+    offset_y: Optional[int] = None
+    offset_x: Optional[int] = None
+    display_mode: Optional[str] = None
+    burst_word_count: Optional[int] = None
+    highlight_animation: Optional[str] = None
+    scale_factor: Optional[float] = None
+    emoji_enabled: Optional[bool] = None
 
 
 class SubtitleStyleResponse(SubtitleStyleBase):

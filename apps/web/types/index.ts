@@ -122,6 +122,7 @@ export interface SubtitleStyle {
   id?: string;
   project_id?: string | null;
   preset_name: string;
+  description?: string | null;
   is_preset?: boolean;
   font_family: string;
   font_size: number;
@@ -140,6 +141,13 @@ export interface SubtitleStyle {
   highlight_animation: "scale" | "color" | "box" | "none";
   scale_factor?: number;
   emoji_enabled: boolean;
+}
+
+export interface SubtitlePreset extends SubtitleStyle {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_builtin: boolean;
 }
 
 export interface RenderJob {

@@ -39,4 +39,5 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         # Ensure new schema columns exist
         await conn.execute(text("ALTER TABLE scenes ADD COLUMN IF NOT EXISTS transcript TEXT;"))
+        await conn.execute(text("ALTER TABLE subtitle_styles ADD COLUMN IF NOT EXISTS description VARCHAR(255);"))
         await conn.execute(text("ALTER TABLE source_videos ALTER COLUMN selected_resolution TYPE VARCHAR(255);"))

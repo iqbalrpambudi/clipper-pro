@@ -59,7 +59,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "name": "Viral TikTok / Reels",
             "description": "Font tebal sans-serif, teks putih dengan outline hitam tebal, highlight kuning cerah, animasi scale-up.",
             "is_builtin": True,
-            "font_family": "Montserrat",
+            "font_family": "Poppins",
             "font_size": 56,
             "font_weight": "Bold",
             "primary_color": "#FFFFFF",
@@ -74,12 +74,13 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "display_mode": "per_word",
             "burst_word_count": 2,
             "highlight_animation": "scale",
+            "scale_factor": 1.15,
             "emoji_enabled": False,
         },
         {
             "id": "hormozi_punch",
             "name": "Alex Hormozi Punch",
-            "description": "Font sangat tebal huruf kapital di tengah layar, mode burst 2-3 kata dengan kotak latar belakang dan efek punch.",
+            "description": "Font sangat tebal huruf kapital di tengah layar, mode burst 2-3 kata dengan efek punch pop elegan.",
             "is_builtin": True,
             "font_family": "Bebas Neue",
             "font_size": 68,
@@ -88,14 +89,15 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "highlight_color": "#00FF66",
             "outline_color": "#000000",
             "outline_width": 6,
-            "box_color": "#111111",
-            "box_opacity": 0.8,
+            "box_color": "#000000",
+            "box_opacity": 0.0,
             "position": "center",
             "offset_y": 0,
             "offset_x": 0,
             "display_mode": "burst",
             "burst_word_count": 2,
             "highlight_animation": "scale",
+            "scale_factor": 1.15,
             "emoji_enabled": False,
         },
         {
@@ -118,6 +120,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "display_mode": "full_sentence",
             "burst_word_count": 2,
             "highlight_animation": "color",
+            "scale_factor": 1.0,
             "emoji_enabled": False,
         },
         {
@@ -133,13 +136,14 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "outline_color": "#090A0F",
             "outline_width": 4,
             "box_color": "#000000",
-            "box_opacity": 0.4,
+            "box_opacity": 0.0,
             "position": "bottom",
             "offset_y": -110,
             "offset_x": 0,
             "display_mode": "burst",
             "burst_word_count": 3,
             "highlight_animation": "scale",
+            "scale_factor": 1.15,
             "emoji_enabled": False,
         },
     ]
@@ -240,12 +244,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     anim = style_config.get("highlight_animation", "scale")
     is_scale_anim = anim not in ("color", "none")
     try:
-        scale_factor = float(style_config.get("scale_factor") or 1.5)
+        scale_factor = float(style_config.get("scale_factor") if style_config.get("scale_factor") is not None else 1.15)
     except (TypeError, ValueError):
-        scale_factor = 1.5
+        scale_factor = 1.15
     scale_factor = max(1.0, min(scale_factor, 2.5))
     target_scale = int(round(scale_factor * 100)) if is_scale_anim else 100
-    overshoot = int(round(target_scale * 1.1))
+    overshoot = int(round(target_scale * 1.05))
 
     pop_fx = f"{{\\t(0,60,\\fscx{overshoot}\\fscy{overshoot})\\t(60,120,\\fscx{target_scale}\\fscy{target_scale})}}" if is_scale_anim else ""
     scale_reset = "{\\fscx100\\fscy100}" if is_scale_anim else ""

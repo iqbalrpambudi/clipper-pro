@@ -525,7 +525,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         style = sub_res.scalar_one_or_none()
         style_dict = {
             "preset_name": style.preset_name if style else "viral_tiktok",
-            "font_family": style.font_family if style else "Montserrat",
+            "font_family": style.font_family if style else "Poppins",
             "font_size": style.font_size if style else 56,
             "font_weight": style.font_weight if style else "Bold",
             "primary_color": style.primary_color if style else "#FFFFFF",

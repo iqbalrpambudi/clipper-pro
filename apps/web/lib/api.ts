@@ -7,6 +7,7 @@ import {
   AudioTrack,
   Timeline,
   SubtitleStyle,
+  SubtitlePreset,
   RenderJob,
   VoiceInfo,
   ModelConfig,
@@ -163,7 +164,25 @@ export const api = {
     }),
 
   // Subtitles
-  getSubtitlePresets: () => request<any[]>("/api/v1/subtitles/presets"),
+  getSubtitlePresets: () => request<SubtitlePreset[]>("/api/v1/subtitles/presets"),
+  createSubtitlePreset: (data: Partial<SubtitlePreset>) =>
+    request<SubtitlePreset>("/api/v1/subtitles/presets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateSubtitlePreset: (id: string, data: Partial<SubtitlePreset>) =>
+    request<SubtitlePreset>(`/api/v1/subtitles/presets/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  resetSubtitlePreset: (id: string) =>
+    request<SubtitlePreset>(`/api/v1/subtitles/presets/${id}/reset`, {
+      method: "POST",
+    }),
+  deleteSubtitlePreset: (id: string) =>
+    request<void>(`/api/v1/subtitles/presets/${id}`, {
+      method: "DELETE",
+    }),
   getSubtitleStyle: (projectId: string) =>
     request<SubtitleStyle>(`/api/v1/projects/${projectId}/subtitles/style`),
   updateSubtitleStyle: (projectId: string, data: any) =>

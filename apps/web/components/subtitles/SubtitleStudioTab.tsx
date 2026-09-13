@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
@@ -23,6 +24,7 @@ import {
   HelpCircle,
   Move,
   Film,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -44,7 +46,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
   const [style, setStyle] = useState<SubtitleStyle>({
     preset_name: "viral_tiktok",
-    font_family: "Montserrat",
+    font_family: "Poppins",
     font_size: 56,
     font_weight: "Bold",
     primary_color: "#FFFFFF",
@@ -59,7 +61,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     display_mode: "per_word",
     burst_word_count: 2,
     highlight_animation: "scale",
-    scale_factor: 1.5,
+    scale_factor: 1.15,
     emoji_enabled: true,
   });
 
@@ -151,7 +153,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       display_mode: preset.display_mode,
       burst_word_count: preset.burst_word_count ?? 2,
       highlight_animation: preset.highlight_animation ?? "scale",
-      scale_factor: preset.scale_factor ?? 1.5,
+      scale_factor: preset.scale_factor ?? 1.15,
       emoji_enabled: preset.emoji_enabled ?? true,
     };
     setStyle(updated);
@@ -210,6 +212,14 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <h3 className="text-sm font-bold text-white tracking-tight">
                 Pilih Preset Subtitle
               </h3>
+              <Link
+                href="/settings"
+                className="text-[10px] text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium underline transition"
+                title="Buka Pengaturan Preset Subtitle"
+              >
+                <SettingsIcon className="w-2.5 h-2.5" />
+                <span>Kelola Preset</span>
+              </Link>
             </div>
 
             {/* Quick Export Tools */}
@@ -269,8 +279,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   }`}
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold text-white truncate max-w-[120px]">
+                    <div className="flex items-center justify-between mb-1.5 gap-1.5 min-w-0">
+                      <span className="text-xs font-bold text-white truncate min-w-0 flex-1" title={p.name}>
                         {p.name}
                       </span>
                       {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-brand-400 shrink-0" />}
@@ -580,25 +590,25 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   Faktor Zoom Kata Aktif:
                 </span>
                 <span className="font-mono font-bold text-brand-200 text-xs px-2 py-0.5 rounded bg-brand-500/20 border border-brand-500/30">
-                  {(style.scale_factor || 1.5).toFixed(2)}x
+                  {(style.scale_factor || 1.15).toFixed(2)}x
                 </span>
               </div>
 
               {/* Quick Presets */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { label: "1.15x (Halus)", val: 1.15 },
+                  { label: "1.10x (Sangat Halus)", val: 1.10 },
+                  { label: "1.15x (Halus - Standar)", val: 1.15 },
                   { label: "1.25x (Sedang)", val: 1.25 },
                   { label: "1.35x (Tegas)", val: 1.35 },
-                  { label: "1.50x (Hormozi)", val: 1.5 },
-                  { label: "1.75x (Ekstra)", val: 1.75 },
+                  { label: "1.50x (Ekstra)", val: 1.50 },
                 ].map((item) => (
                   <button
                     key={item.val}
                     type="button"
                     onClick={() => commitStyle({ ...style, scale_factor: item.val })}
                     className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition ${
-                      Math.abs((style.scale_factor || 1.5) - item.val) < 0.03
+                      Math.abs((style.scale_factor || 1.15) - item.val) < 0.03
                         ? "bg-brand-500 text-white shadow-sm font-bold scale-105"
                         : "bg-surface hover:bg-white/10 border border-surface-border text-slate-300 hover:text-white"
                     }`}
@@ -610,10 +620,10 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
               <input
                 type="range"
-                min={1.0}
-                max={2.0}
+                min={1.05}
+                max={1.8}
                 step={0.05}
-                value={style.scale_factor || 1.5}
+                value={style.scale_factor || 1.15}
                 onChange={(e) => setStyle({ ...style, scale_factor: parseFloat(e.target.value) })}
                 onPointerUp={(e) =>
                   commitStyle({
@@ -621,7 +631,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     scale_factor: parseFloat((e.target as HTMLInputElement).value),
                   })
                 }
-                className="w-full accent-brand-500 cursor-pointer"
+                className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-1 accent-brand-500"
               />
             </div>
           )}

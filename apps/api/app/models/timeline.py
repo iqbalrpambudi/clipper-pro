@@ -39,8 +39,9 @@ class SubtitleStyle(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True)
     preset_name: Mapped[str] = mapped_column(String(50), default="viral_tiktok")  # viral_tiktok | hormozi_punch | minimalist | custom
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False)
-    font_family: Mapped[str] = mapped_column(String(100), default="Montserrat")
+    font_family: Mapped[str] = mapped_column(String(100), default="Poppins")
     font_size: Mapped[int] = mapped_column(Integer, default=52)
     font_weight: Mapped[str] = mapped_column(String(20), default="Bold")
     primary_color: Mapped[str] = mapped_column(String(20), default="#FFFFFF")
@@ -55,7 +56,7 @@ class SubtitleStyle(Base):
     display_mode: Mapped[str] = mapped_column(String(20), default="per_word")  # per_word | full_sentence | burst
     burst_word_count: Mapped[int] = mapped_column(Integer, default=2)  # 2 or 3
     highlight_animation: Mapped[str] = mapped_column(String(20), default="scale")  # scale | color | box | none
-    scale_factor: Mapped[float] = mapped_column(Float, default=1.5)
+    scale_factor: Mapped[float] = mapped_column(Float, default=1.15)
     emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
