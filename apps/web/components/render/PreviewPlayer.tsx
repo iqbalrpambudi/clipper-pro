@@ -29,9 +29,10 @@ interface PreviewPlayerProps {
     subtitle_style?: SubtitleStyle | null;
   };
   onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
+  compact?: boolean;
 }
 
-export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlayerProps) {
+export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: PreviewPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRefA = useRef<HTMLVideoElement | null>(null);
   const videoRefB = useRef<HTMLVideoElement | null>(null);
@@ -864,12 +865,17 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
   const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.5) : 1.0;
 
   // Aspect ratio responsive frame wrapper styling
-  const aspectClass =
-    project.aspect_ratio === "16:9"
-      ? "w-[320px] sm:w-[480px] aspect-[16/9]"
+  const aspectClass = compact
+    ? project.aspect_ratio === "16:9"
+      ? "w-[260px] sm:w-[340px] aspect-[16/9]"
       : project.aspect_ratio === "1:1"
-      ? "w-[280px] sm:w-[340px] aspect-square"
-      : "w-[280px] sm:w-[320px] aspect-[9/16]";
+      ? "w-[200px] sm:w-[240px] aspect-square"
+      : "w-[190px] sm:w-[220px] aspect-[9/16]"
+    : project.aspect_ratio === "16:9"
+    ? "w-[320px] sm:w-[480px] aspect-[16/9]"
+    : project.aspect_ratio === "1:1"
+    ? "w-[280px] sm:w-[340px] aspect-square"
+    : "w-[280px] sm:w-[320px] aspect-[9/16]";
 
   return (
     <div className="flex flex-col items-center">
@@ -1081,7 +1087,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       </div>
 
       {/* Playback Controls */}
-      <div className="w-full max-w-sm mt-4 glass-panel rounded-2xl p-4 border border-surface-border space-y-2">
+      <div
+        className={`w-full ${
+          compact ? "max-w-[240px] sm:max-w-[260px] p-2.5 mt-2.5" : "max-w-sm p-4 mt-4"
+        } glass-panel rounded-2xl border border-surface-border space-y-2`}
+      >
         {/* Scrubber */}
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <span>{formatTime(currentTimeSec)}</span>

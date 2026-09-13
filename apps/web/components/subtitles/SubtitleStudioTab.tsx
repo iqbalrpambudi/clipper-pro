@@ -18,6 +18,11 @@ import {
   Wand2,
   ChevronUp,
   ChevronDown,
+  Layers,
+  CheckCircle2,
+  HelpCircle,
+  Move,
+  Film,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -60,7 +65,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
   // State for editable segments
   const [editableSegments, setEditableSegments] = useState<any[]>([]);
-  const [isWordInspectorOpen, setIsWordInspectorOpen] = useState(true);
   const [isAssModalOpen, setIsAssModalOpen] = useState(false);
   const [assContent, setAssContent] = useState("");
   const [newPresetName, setNewPresetName] = useState("");
@@ -90,7 +94,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     mutationFn: (data: any) => api.updateSubtitleStyle(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Gaya subtitle karaoke berhasil disimpan!", "success");
+      showToast("Gaya subtitle berhasil disimpan!", "success");
       setIsSavePresetOpen(false);
     },
     onError: (err: any) => {
@@ -147,6 +151,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       display_mode: preset.display_mode,
       burst_word_count: preset.burst_word_count ?? 2,
       highlight_animation: preset.highlight_animation ?? "scale",
+      scale_factor: preset.scale_factor ?? 1.5,
       emoji_enabled: preset.emoji_enabled ?? true,
     };
     setStyle(updated);
@@ -167,7 +172,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     const next = [...editableSegments];
     if (next[segIdx] && next[segIdx].words && next[segIdx].words[wordIdx]) {
       next[segIdx].words[wordIdx].word = newWord;
-      // Also reconstruct segment sentence text
       next[segIdx].text = next[segIdx].words.map((w: any) => w.word).join(" ");
       setEditableSegments(next);
     }
@@ -178,7 +182,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     if (next[segIdx] && next[segIdx].words && next[segIdx].words[wordIdx]) {
       const current = next[segIdx].words[wordIdx][field] || 0;
       next[segIdx].words[wordIdx][field] = Math.max(0, current + delta);
-      // Synchronize parent segment start_ms and end_ms boundary
       const wList = next[segIdx].words;
       if (wList.length > 0) {
         next[segIdx].start_ms = wList[0].start_ms || 0;
@@ -194,170 +197,146 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
   };
 
   return (
-    <div className="space-y-8">
-      {/* 1. Presets & Quick Export Toolbar */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-accent-yellow" />
-            <h3 className="text-base font-bold text-white tracking-tight">
-              1. Preset Gaya Subtitle Siap Pakai
-            </h3>
-          </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* ========================================================================= */}
+      {/* KOLOM KIRI (7/12): PRESET GAYA & PANEL KUSTOMISASI DETAIL STYLING        */}
+      {/* ========================================================================= */}
+      <div className="lg:col-span-7 space-y-4">
+        {/* Preset Selection & Quick Export Header Card */}
+        <div className="glass-panel rounded-2xl p-5 border border-surface-border space-y-3.5">
+          <div className="flex items-center justify-between pb-2.5 border-b border-surface-border/60 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-accent-yellow" />
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                Pilih Preset Subtitle
+              </h3>
+            </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={handlePreviewASS}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-border text-xs text-slate-300 hover:text-white bg-surface transition"
-            >
-              <FileCode className="w-3.5 h-3.5" />
-              <span>Lihat ASS Script</span>
-            </button>
+            {/* Quick Export Tools */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={handlePreviewASS}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-surface-border text-[11px] text-slate-300 hover:text-white bg-surface hover:bg-white/5 transition"
+                title="Lihat Script File ASS"
+              >
+                <FileCode className="w-3 h-3 text-brand-400" />
+                <span>ASS</span>
+              </button>
 
-            {/* Subtitle Export Dropdowns */}
-            <div className="flex items-center gap-1">
               <a
                 href={api.getSubtitleExportUrl(project.id, "ass")}
                 download
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-surface-border text-[11px] font-mono text-brand-300 hover:text-white bg-brand-500/10 hover:bg-brand-500/20 transition"
-                title="Download Subtitle Format ASS"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg border border-surface-border text-[10px] font-mono text-brand-300 hover:text-white bg-brand-500/10 hover:bg-brand-500/20 transition"
+                title="Download ASS"
               >
-                <Download className="w-3 h-3" />
+                <Download className="w-2.5 h-2.5" />
                 <span>.ASS</span>
               </a>
               <a
                 href={api.getSubtitleExportUrl(project.id, "srt")}
                 download
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-surface-border text-[11px] font-mono text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 transition"
-                title="Download Subtitle Format SRT"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg border border-surface-border text-[10px] font-mono text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 transition"
+                title="Download SRT"
               >
-                <Download className="w-3 h-3" />
+                <Download className="w-2.5 h-2.5" />
                 <span>.SRT</span>
               </a>
               <a
                 href={api.getSubtitleExportUrl(project.id, "vtt")}
                 download
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-surface-border text-[11px] font-mono text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 transition"
-                title="Download Subtitle Format WebVTT"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg border border-surface-border text-[10px] font-mono text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 transition"
+                title="Download VTT"
               >
-                <Download className="w-3 h-3" />
+                <Download className="w-2.5 h-2.5" />
                 <span>.VTT</span>
               </a>
             </div>
           </div>
-        </div>
 
-        {/* Preset Cards Horizontally Scrolled */}
-        <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-surface-border scrollbar-track-transparent">
-          {presets.map((p) => {
-            const isSelected = style.preset_name === (p.preset_name || p.id);
-            return (
-              <div
-                key={p.id}
-                onClick={() => handleApplyPreset(p)}
-                className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between min-w-[220px] max-w-[260px] shrink-0 ${
-                  isSelected
-                    ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/15 ring-1 ring-brand-500"
-                    : "border-surface-border hover:border-slate-500 hover:bg-surface/50"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-white">{p.name}</span>
-                    {isSelected && <Check className="w-4 h-4 text-brand-400" />}
+          {/* Preset Cards Grid (Compact & Scrollable) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
+            {presets.map((p) => {
+              const isSelected = style.preset_name === (p.preset_name || p.id);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => handleApplyPreset(p)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                    isSelected
+                      ? "border-brand-500 bg-brand-500/15 shadow-md shadow-brand-500/10 ring-1 ring-brand-500/40"
+                      : "border-surface-border bg-surface/50 hover:bg-surface hover:border-slate-500"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white truncate max-w-[120px]">
+                        {p.name}
+                      </span>
+                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-brand-400 shrink-0" />}
+                    </div>
+
+                    {/* Preview visual mini box */}
+                    <div className="h-10 rounded-lg bg-black/60 flex items-center justify-center p-1.5 mb-2 border border-surface-border/70 overflow-hidden">
+                      <span
+                        style={{
+                          color: p.primary_color,
+                          fontFamily: `"${p.font_family}", sans-serif`,
+                          fontWeight: p.font_weight?.toLowerCase() === "bold" ? "bold" : "normal",
+                          textShadow: `-1.5px -1.5px 0 ${p.outline_color}, 1.5px -1.5px 0 ${p.outline_color}, -1.5px 1.5px 0 ${p.outline_color}, 1.5px 1.5px 0 ${p.outline_color}`,
+                          backgroundColor: p.box_opacity > 0.05 ? p.box_color : "transparent",
+                          padding: p.box_opacity > 0.05 ? "1px 4px" : "0",
+                          borderRadius: "3px",
+                        }}
+                        className="text-[10px] uppercase font-bold tracking-wider truncate"
+                      >
+                        SUBTITLE <span style={{ color: p.highlight_color }}>VIRAL</span>
+                      </span>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 line-clamp-1">
+                      {p.description}
+                    </p>
                   </div>
 
-                  {/* Card Simulation Visual */}
-                  <div className="h-16 rounded-lg bg-black/60 flex items-center justify-center p-2 mb-3 border border-surface-border">
-                    <span
-                      style={{
-                        color: p.primary_color,
-                        fontFamily: `"${p.font_family}", sans-serif`,
-                        fontWeight: p.font_weight.toLowerCase() === "bold" ? "bold" : "normal",
-                        textShadow: `-2px -2px 0 ${p.outline_color}, 2px -2px 0 ${p.outline_color}, -2px 2px 0 ${p.outline_color}, 2px 2px 0 ${p.outline_color}`,
-                        backgroundColor: p.box_opacity > 0.05 ? p.box_color : "transparent",
-                        padding: p.box_opacity > 0.05 ? "2px 6px" : "0",
-                        borderRadius: "4px",
-                      }}
-                      className="text-xs uppercase tracking-wider"
-                    >
-                      KATA <span style={{ color: p.highlight_color }}>VIRAL</span>
-                    </span>
+                  <div className="pt-1.5 border-t border-surface-border/50 text-[9px] text-slate-500 flex justify-between mt-1.5">
+                    <span className="capitalize">{p.display_mode.replace("_", " ")}</span>
+                    <span className="capitalize">{p.position}</span>
                   </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
-                    {p.description}
-                  </p>
                 </div>
-
-                <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between mt-3">
-                  <span className="capitalize">{p.display_mode.replace("_", " ")}</span>
-                  <span className="capitalize">{p.position}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. Side-by-Side: Live Preview Player & Detailed Style Controls */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Embedded 9:16 Live Preview with Direct Draggable Position */}
-        <div className="lg:col-span-5 flex flex-col items-center glass-panel rounded-2xl p-6 border border-surface-border">
-          <div className="w-full flex items-center justify-between mb-4">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-brand-400" />
-              Live Subtitle Player
-            </h4>
-            <span className="text-[10px] text-slate-400 font-mono">
-              X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
-            </span>
+              );
+            })}
           </div>
-
-          <PreviewPlayer
-            project={projectWithActiveStyle}
-            onUpdateSubtitlePosition={(pos) => {
-              const updated = {
-                ...style,
-                offset_x: pos.offset_x,
-                offset_y: pos.offset_y,
-              };
-              commitStyle(updated);
-            }}
-          />
-
-          <p className="text-[11px] text-slate-400 text-center mt-3 leading-snug">
-            💡 <em>Tips:</em> Klik & drag langsung teks subtitle pada layar video untuk menggeser posisi vertikal / horizontal.
-          </p>
         </div>
 
-        {/* Right Column: Style Controls (Typography, Colors, Modes, Offsets) */}
-        <div className="lg:col-span-7 glass-panel rounded-2xl p-6 border border-surface-border space-y-6">
-          <div className="flex items-center justify-between border-b border-surface-border pb-3">
+        {/* Detailed Style Customizer */}
+        <div className="glass-panel rounded-2xl p-5 border border-surface-border space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-surface-border/60">
             <div className="flex items-center gap-2">
               <Palette className="w-4 h-4 text-brand-400" />
-              <h4 className="text-sm font-bold text-white">2. Kustomisasi Detail Style & Efek</h4>
+              <h4 className="text-sm font-bold text-white">Kustomisasi Style & Efek</h4>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsSavePresetOpen(true)}
-                className="px-3 py-1.5 rounded-lg border border-surface-border bg-surface text-xs text-slate-300 hover:text-white transition"
+                className="px-2.5 py-1 rounded-lg border border-surface-border bg-surface hover:bg-white/5 text-[11px] text-slate-300 hover:text-white transition"
               >
                 Simpan Preset
               </button>
               <button
+                type="button"
                 onClick={() => updateStyleMutation.mutate(style)}
                 disabled={updateStyleMutation.isPending}
-                className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition"
+                className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs shadow-md transition"
               >
                 {updateStyleMutation.isPending ? "Menyimpan..." : "Simpan Style"}
               </button>
             </div>
           </div>
 
-          {/* Controls Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
             {/* Font Family */}
             <div>
               <label className="block text-slate-400 font-semibold mb-1">Font Family</label>
@@ -368,9 +347,9 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   setStyle(updated);
                   updateStyleMutation.mutate(updated);
                 }}
-                className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500 font-semibold"
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
               >
-                <option value="Montserrat">Montserrat (Bold Modern)</option>
+                <option value="Montserrat">Montserrat (Modern Bold)</option>
                 <option value="Bebas Neue">Bebas Neue (Punch Hormozi)</option>
                 <option value="Poppins">Poppins (Clean & Crisp)</option>
                 <option value="Inter">Inter (Minimalist Clean)</option>
@@ -384,7 +363,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-slate-400 font-semibold">Ukuran Font</label>
-                <span className="font-mono text-brand-300">{style.font_size}px</span>
+                <span className="font-mono text-brand-300 font-bold">{style.font_size}px</span>
               </div>
               <input
                 type="range"
@@ -393,8 +372,13 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 step={2}
                 value={style.font_size}
                 onChange={(e) => setStyle({ ...style, font_size: parseInt(e.target.value) })}
-                onPointerUp={(e) => commitStyle({ ...style, font_size: parseInt((e.target as HTMLInputElement).value) })}
-                className="w-full mt-2 accent-brand-500 cursor-pointer"
+                onPointerUp={(e) =>
+                  commitStyle({
+                    ...style,
+                    font_size: parseInt((e.target as HTMLInputElement).value),
+                  })
+                }
+                className="w-full mt-1.5 accent-brand-500 cursor-pointer"
               />
             </div>
 
@@ -408,11 +392,11 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   setStyle(updated);
                   updateStyleMutation.mutate(updated);
                 }}
-                className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500 font-semibold"
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
               >
-                <option value="per_word">Per-Kata (Word-by-Word Active)</option>
+                <option value="per_word">Per-Kata (Word-by-Word)</option>
                 <option value="burst">Burst 2-3 Kata (Gaya Hormozi)</option>
-                <option value="full_sentence">Kalimat Penuh Highlight Berjalan</option>
+                <option value="full_sentence">Kalimat Penuh Highlight</option>
               </select>
             </div>
 
@@ -427,7 +411,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   updateStyleMutation.mutate(updated);
                 }}
                 disabled={style.display_mode !== "burst"}
-                className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500 disabled:opacity-40 font-semibold"
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold disabled:opacity-40"
               >
                 <option value={2}>2 Kata per Burst</option>
                 <option value={3}>3 Kata per Burst</option>
@@ -442,10 +426,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   type="color"
                   value={style.primary_color}
                   onChange={(e) => setStyle({ ...style, primary_color: e.target.value })}
-                  onBlur={(e) => commitStyle({ ...style, primary_color: (e.target as HTMLInputElement).value })}
-                  className="w-7 h-7 rounded bg-transparent border-0 cursor-pointer"
+                  onBlur={(e) =>
+                    commitStyle({ ...style, primary_color: (e.target as HTMLInputElement).value })
+                  }
+                  className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                 />
-                <span className="font-mono text-slate-300 text-xs">{style.primary_color}</span>
+                <span className="font-mono text-slate-300 text-[11px]">{style.primary_color}</span>
               </div>
             </div>
 
@@ -457,10 +443,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   type="color"
                   value={style.highlight_color}
                   onChange={(e) => setStyle({ ...style, highlight_color: e.target.value })}
-                  onBlur={(e) => commitStyle({ ...style, highlight_color: (e.target as HTMLInputElement).value })}
-                  className="w-7 h-7 rounded bg-transparent border-0 cursor-pointer"
+                  onBlur={(e) =>
+                    commitStyle({ ...style, highlight_color: (e.target as HTMLInputElement).value })
+                  }
+                  className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                 />
-                <span className="font-mono text-slate-300 text-xs">{style.highlight_color}</span>
+                <span className="font-mono text-slate-300 text-[11px]">{style.highlight_color}</span>
               </div>
             </div>
 
@@ -472,17 +460,19 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   type="color"
                   value={style.outline_color}
                   onChange={(e) => setStyle({ ...style, outline_color: e.target.value })}
-                  onBlur={(e) => commitStyle({ ...style, outline_color: (e.target as HTMLInputElement).value })}
-                  className="w-7 h-7 rounded bg-transparent border-0 cursor-pointer"
+                  onBlur={(e) =>
+                    commitStyle({ ...style, outline_color: (e.target as HTMLInputElement).value })
+                  }
+                  className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                 />
-                <span className="font-mono text-slate-300 text-xs">{style.outline_color}</span>
+                <span className="font-mono text-slate-300 text-[11px]">{style.outline_color}</span>
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-slate-400 font-semibold">Tebal Outline</label>
-                <span className="font-mono text-brand-300">{style.outline_width}px</span>
+                <span className="font-mono text-brand-300 font-bold">{style.outline_width}px</span>
               </div>
               <input
                 type="range"
@@ -490,16 +480,23 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 max={8}
                 value={style.outline_width}
                 onChange={(e) => setStyle({ ...style, outline_width: parseInt(e.target.value) })}
-                onPointerUp={(e) => commitStyle({ ...style, outline_width: parseInt((e.target as HTMLInputElement).value) })}
-                className="w-full mt-2 accent-brand-500 cursor-pointer"
+                onPointerUp={(e) =>
+                  commitStyle({
+                    ...style,
+                    outline_width: parseInt((e.target as HTMLInputElement).value),
+                  })
+                }
+                className="w-full mt-1.5 accent-brand-500 cursor-pointer"
               />
             </div>
 
             {/* Background Box Opacity & Color */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-slate-400 font-semibold">Transparansi Kotak (Box Opacity)</label>
-                <span className="font-mono text-brand-300">{Math.round((style.box_opacity || 0) * 100)}%</span>
+                <label className="text-slate-400 font-semibold">Transparansi Box</label>
+                <span className="font-mono text-brand-300 font-bold">
+                  {Math.round((style.box_opacity || 0) * 100)}%
+                </span>
               </div>
               <input
                 type="range"
@@ -507,23 +504,34 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 max={100}
                 step={5}
                 value={Math.round((style.box_opacity || 0) * 100)}
-                onChange={(e) => setStyle({ ...style, box_opacity: parseFloat(e.target.value) / 100.0 })}
-                onPointerUp={(e) => commitStyle({ ...style, box_opacity: parseFloat((e.target as HTMLInputElement).value) / 100.0 })}
-                className="w-full mt-2 accent-brand-500 cursor-pointer"
+                onChange={(e) =>
+                  setStyle({ ...style, box_opacity: parseFloat(e.target.value) / 100.0 })
+                }
+                onPointerUp={(e) =>
+                  commitStyle({
+                    ...style,
+                    box_opacity: parseFloat((e.target as HTMLInputElement).value) / 100.0,
+                  })
+                }
+                className="w-full mt-1.5 accent-brand-500 cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Warna Kotak Background</label>
+              <label className="block text-slate-400 font-semibold mb-1">Warna Box Background</label>
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-surface border border-surface-border">
                 <input
                   type="color"
                   value={style.box_color || "#000000"}
                   onChange={(e) => setStyle({ ...style, box_color: e.target.value })}
-                  onBlur={(e) => commitStyle({ ...style, box_color: (e.target as HTMLInputElement).value })}
-                  className="w-7 h-7 rounded bg-transparent border-0 cursor-pointer"
+                  onBlur={(e) =>
+                    commitStyle({ ...style, box_color: (e.target as HTMLInputElement).value })
+                  }
+                  className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                 />
-                <span className="font-mono text-slate-300 text-xs">{style.box_color || "#000000"}</span>
+                <span className="font-mono text-slate-300 text-[11px]">
+                  {style.box_color || "#000000"}
+                </span>
               </div>
             </div>
 
@@ -537,7 +545,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   setStyle(updated);
                   updateStyleMutation.mutate(updated);
                 }}
-                className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500 font-semibold"
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
               >
                 <option value="bottom">Bawah (Default Short)</option>
                 <option value="center">Tengah Layar (Hormozi Center)</option>
@@ -547,93 +555,93 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
             {/* Animation */}
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Animasi Highlight Kata</label>
+              <label className="block text-slate-400 font-semibold mb-1">Animasi Kata Aktif</label>
               <select
                 value={style.highlight_animation}
                 onChange={(e) => {
                   const updated = { ...style, highlight_animation: e.target.value as any };
                   commitStyle(updated);
                 }}
-                className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white focus:outline-none focus:border-brand-500 font-semibold"
+                className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
               >
-                <option value="scale">Scale & Zoom Pop (Aktif)</option>
-                <option value="color">Perubahan Warna Lembut (Tanpa Zoom)</option>
+                <option value="scale">Scale & Zoom Pop (Hormozi)</option>
+                <option value="color">Perubahan Warna Lembut</option>
                 <option value="none">Tanpa Animasi</option>
               </select>
             </div>
-
-            {/* Active Word Zoom Factor */}
-            {style.highlight_animation === "scale" && (
-              <div className="sm:col-span-2 p-4 rounded-xl bg-gradient-to-r from-brand-950/40 via-surface/60 to-surface/40 border border-brand-500/40 space-y-3">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-brand-300 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-brand-400" />
-                    Faktor Scale & Zoom Kata Aktif (100% Render Parity)
-                  </span>
-                  <span className="font-mono font-bold text-brand-200 text-sm px-2.5 py-0.5 rounded-md bg-brand-500/20 border border-brand-500/30">
-                    {(style.scale_factor || 1.5).toFixed(2)}x
-                  </span>
-                </div>
-
-                {/* Quick Presets */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[
-                    { label: "1.15x (Halus)", val: 1.15 },
-                    { label: "1.25x (Sedang)", val: 1.25 },
-                    { label: "1.35x (Tegas)", val: 1.35 },
-                    { label: "1.50x (Dinamis Hormozi)", val: 1.5 },
-                    { label: "1.75x (Ekstra)", val: 1.75 },
-                  ].map((item) => (
-                    <button
-                      key={item.val}
-                      type="button"
-                      onClick={() => commitStyle({ ...style, scale_factor: item.val })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                        Math.abs((style.scale_factor || 1.5) - item.val) < 0.03
-                          ? "bg-brand-500 text-white shadow-md shadow-brand-500/30 font-bold scale-105"
-                          : "bg-surface/80 hover:bg-surface border border-surface-border text-slate-300 hover:text-white"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Fine Range Slider */}
-                <div className="pt-1">
-                  <input
-                    type="range"
-                    min={1.0}
-                    max={2.0}
-                    step={0.05}
-                    value={style.scale_factor || 1.5}
-                    onChange={(e) => setStyle({ ...style, scale_factor: parseFloat(e.target.value) })}
-                    onPointerUp={(e) =>
-                      commitStyle({ ...style, scale_factor: parseFloat((e.target as HTMLInputElement).value) })
-                    }
-                    className="w-full accent-brand-500 cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-0.5">
-                    <span>1.0x (Normal)</span>
-                    <span className="text-brand-300 font-bold">1.50x (Default)</span>
-                    <span>2.0x (Maks)</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Sliders for Fine Position Adjustments */}
-          <div className="p-4 rounded-xl bg-black/40 border border-surface-border space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-              <Sliders className="w-3.5 h-3.5 text-brand-400" />
-              <span>Koreksi Presisi Koordinat Pixel (1080x1920)</span>
+          {/* Active Word Zoom Factor */}
+          {style.highlight_animation === "scale" && (
+            <div className="p-3.5 rounded-xl bg-brand-950/30 border border-brand-500/30 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-brand-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
+                  Faktor Zoom Kata Aktif:
+                </span>
+                <span className="font-mono font-bold text-brand-200 text-xs px-2 py-0.5 rounded bg-brand-500/20 border border-brand-500/30">
+                  {(style.scale_factor || 1.5).toFixed(2)}x
+                </span>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: "1.15x (Halus)", val: 1.15 },
+                  { label: "1.25x (Sedang)", val: 1.25 },
+                  { label: "1.35x (Tegas)", val: 1.35 },
+                  { label: "1.50x (Hormozi)", val: 1.5 },
+                  { label: "1.75x (Ekstra)", val: 1.75 },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => commitStyle({ ...style, scale_factor: item.val })}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition ${
+                      Math.abs((style.scale_factor || 1.5) - item.val) < 0.03
+                        ? "bg-brand-500 text-white shadow-sm font-bold scale-105"
+                        : "bg-surface hover:bg-white/10 border border-surface-border text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="range"
+                min={1.0}
+                max={2.0}
+                step={0.05}
+                value={style.scale_factor || 1.5}
+                onChange={(e) => setStyle({ ...style, scale_factor: parseFloat(e.target.value) })}
+                onPointerUp={(e) =>
+                  commitStyle({
+                    ...style,
+                    scale_factor: parseFloat((e.target as HTMLInputElement).value),
+                  })
+                }
+                className="w-full accent-brand-500 cursor-pointer"
+              />
+            </div>
+          )}
+
+          {/* Precision Offset Sliders */}
+          <div className="p-3.5 rounded-xl bg-black/40 border border-surface-border space-y-2.5 text-xs">
+            <div className="flex items-center justify-between text-slate-300 font-bold">
+              <span className="flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-brand-400" />
+                Koreksi Koordinat Pixel
+              </span>
+              <span className="font-mono text-[11px] text-brand-300">
+                X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-slate-400">Offset Vertikal (Y):</span>
+                <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <span className="text-slate-400">Offset Y:</span>
                   <span className="font-mono text-brand-300">{style.offset_y || 0}px</span>
                 </div>
                 <input
@@ -643,14 +651,19 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   step={5}
                   value={style.offset_y || 0}
                   onChange={(e) => setStyle({ ...style, offset_y: parseInt(e.target.value) })}
-                  onPointerUp={(e) => commitStyle({ ...style, offset_y: parseInt((e.target as HTMLInputElement).value) })}
+                  onPointerUp={(e) =>
+                    commitStyle({
+                      ...style,
+                      offset_y: parseInt((e.target as HTMLInputElement).value),
+                    })
+                  }
                   className="w-full accent-brand-500 cursor-pointer"
                 />
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-slate-400">Offset Horizontal (X):</span>
+                <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <span className="text-slate-400">Offset X:</span>
                   <span className="font-mono text-brand-300">{style.offset_x || 0}px</span>
                 </div>
                 <input
@@ -660,7 +673,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   step={5}
                   value={style.offset_x || 0}
                   onChange={(e) => setStyle({ ...style, offset_x: parseInt(e.target.value) })}
-                  onPointerUp={(e) => commitStyle({ ...style, offset_x: parseInt((e.target as HTMLInputElement).value) })}
+                  onPointerUp={(e) =>
+                    commitStyle({
+                      ...style,
+                      offset_x: parseInt((e.target as HTMLInputElement).value),
+                    })
+                  }
                   className="w-full accent-brand-500 cursor-pointer"
                 />
               </div>
@@ -669,119 +687,186 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
         </div>
       </div>
 
-      {/* 3. Word Inspector & In-Place Transcript Editor */}
-      <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-3">
-          <div>
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-emerald-400" />
-              <span>Word Inspector & Koreksi Teks Transkrip</span>
+      {/* ========================================================================= */}
+      {/* KOLOM KANAN (5/12): COMPACT PREVIEW PLAYER & ALIGNED WORD INSPECTOR       */}
+      {/* ========================================================================= */}
+      <div className="lg:col-span-5 space-y-4">
+        {/* Compact Live Preview Player Card */}
+        <div className="glass-panel rounded-2xl p-4 border border-surface-border flex flex-col items-center">
+          <div className="w-full flex items-center justify-between mb-2.5 border-b border-surface-border pb-2">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
+              Live Subtitle Preview
             </h4>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Koreksi langsung kata typo, ubah kapitalisasi, atau sesuaikan timing milidetik tanpa perlu re-generate audio TTS.
-            </p>
+            <span className="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-0.5 rounded-full border border-surface-border">
+              X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => matchAudioMutation.mutate()}
-              disabled={matchAudioMutation.isPending || !project.audio}
-              className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 font-semibold text-xs flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-              title="Gunakan Whisper AI untuk mencocokkan kata transkrip dengan suara yang dibacakan pada audio"
-            >
-              <Wand2 className={`w-3.5 h-3.5 ${matchAudioMutation.isPending ? "animate-spin" : "text-amber-400"}`} />
-              <span>{matchAudioMutation.isPending ? "Mencocokkan Audio via Whisper..." : "Cocokkan Subtitle dengan Audio"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (project.narration?.segments) {
-                  setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
-                  showToast("Daftar kata di-reset ke data tersimpan", "info");
-                }
+          <div className="w-full flex justify-center py-0.5">
+            <PreviewPlayer
+              project={projectWithActiveStyle}
+              compact={true}
+              onUpdateSubtitlePosition={(pos) => {
+                const updated = {
+                  ...style,
+                  offset_x: pos.offset_x,
+                  offset_y: pos.offset_y,
+                };
+                commitStyle(updated);
               }}
-              className="px-3 py-2 rounded-xl border border-surface-border text-xs text-slate-300 hover:text-white bg-surface hover:bg-surface-border/40 transition flex items-center gap-1.5 shadow-sm"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => updateSegmentsMutation.mutate(editableSegments)}
-              disabled={updateSegmentsMutation.isPending}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{updateSegmentsMutation.isPending ? "Menyimpan..." : "Simpan Koreksi Transkrip"}</span>
-            </button>
+            />
           </div>
+
+          <p className="text-[10px] text-slate-400 text-center mt-2 leading-snug">
+            💡 <em>Tips:</em> Klik & drag teks subtitle pada layar untuk menggeser posisi.
+          </p>
         </div>
 
-        {/* Segments Accordion / List */}
-        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-          {editableSegments.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-xs">
-              Belum ada segmen kata narasi. Generate naskah & TTS terlebih dahulu.
+        {/* Word Inspector & In-Place Transcript Editor */}
+        <div className="glass-panel rounded-2xl p-4 border border-surface-border space-y-3">
+          {/* Header with neatly aligned action buttons */}
+          <div className="flex items-center justify-between gap-2 border-b border-surface-border pb-2.5">
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                <Edit3 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Word Inspector</span>
+              </h4>
+              <p className="text-[10px] text-slate-400 truncate">
+                Koreksi kata & timing presisi
+              </p>
             </div>
-          ) : (
-            editableSegments.map((seg, segIdx) => (
-              <div
-                key={seg.id || segIdx}
-                className="p-4 rounded-xl bg-surface/80 border border-surface-border space-y-3"
-              >
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-bold text-white flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-300 flex items-center justify-center text-[10px]">
-                      #{segIdx + 1}
-                    </span>
-                    <span>Segmen Kalimat #{segIdx + 1}</span>
-                  </span>
-                  <span className="font-mono text-[11px] bg-black/40 px-2 py-0.5 rounded border border-surface-border">
-                    {seg.start_ms}ms – {seg.end_ms}ms ({(seg.end_ms - seg.start_ms) / 1000}s)
-                  </span>
-                </div>
 
-                {/* Words Grid */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {(seg.words || []).map((w: any, wIdx: number) => (
-                    <div
-                      key={w.id || wIdx}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 border border-surface-border hover:border-brand-500/50 transition-all text-xs shadow-sm"
-                    >
-                      <input
-                        type="text"
-                        value={w.word}
-                        onChange={(e) => handleWordChange(segIdx, wIdx, e.target.value)}
-                        className="bg-surface/80 text-white font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 px-1.5 py-0.5 rounded w-20 text-xs border border-transparent focus:border-brand-500"
-                      />
-                      <span className="font-mono text-[10px] text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
-                        {w.start_ms}ms
-                      </span>
-                      <div className="flex flex-col gap-0.5 ml-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", -50)}
-                          className="p-0.5 rounded bg-surface hover:bg-surface-border text-slate-400 hover:text-white transition flex items-center justify-center"
-                          title="-50ms start"
-                        >
-                          <ChevronUp className="w-2.5 h-2.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", 50)}
-                          className="p-0.5 rounded bg-surface hover:bg-surface-border text-slate-400 hover:text-white transition flex items-center justify-center"
-                          title="+50ms start"
-                        >
-                          <ChevronDown className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Aligned action buttons row */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => matchAudioMutation.mutate()}
+                disabled={matchAudioMutation.isPending || !project.audio}
+                className="h-7 px-2.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 font-semibold text-[11px] flex items-center gap-1 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shrink-0 cursor-pointer"
+                title="Gunakan Whisper AI untuk mencocokkan kata transkrip dengan suara pada audio"
+              >
+                <Wand2
+                  className={`w-3 h-3 ${
+                    matchAudioMutation.isPending ? "animate-spin" : "text-amber-400"
+                  }`}
+                />
+                <span>
+                  {matchAudioMutation.isPending ? "Sync..." : "Cocokkan"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (project.narration?.segments) {
+                    setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
+                    showToast("Daftar kata di-reset ke data tersimpan", "info");
+                  }
+                }}
+                className="h-7 px-2 rounded-lg border border-surface-border text-[11px] text-slate-300 hover:text-white bg-surface hover:bg-white/5 transition flex items-center gap-1 shadow-sm shrink-0 cursor-pointer"
+                title="Reset ke data awal"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateSegmentsMutation.mutate(editableSegments)}
+                disabled={updateSegmentsMutation.isPending}
+                className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] flex items-center gap-1 transition shadow-sm disabled:opacity-50 shrink-0 cursor-pointer"
+                title="Simpan koreksi kata dan timing"
+              >
+                <Save className="w-3 h-3" />
+                <span>
+                  {updateSegmentsMutation.isPending ? "..." : "Simpan"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Segments & Words List */}
+          <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+            {editableSegments.length === 0 ? (
+              <div className="text-center py-6 text-slate-500 text-xs">
+                Belum ada segmen kata narasi. Generate naskah & TTS terlebih dahulu.
               </div>
-            ))
-          )}
+            ) : (
+              editableSegments.map((seg, segIdx) => (
+                <div
+                  key={seg.id || segIdx}
+                  className="p-2.5 rounded-xl bg-surface/70 border border-surface-border space-y-2"
+                >
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-brand-500/20 text-brand-300 flex items-center justify-center text-[9px] font-mono">
+                        #{segIdx + 1}
+                      </span>
+                      <span className="text-xs">Segmen #{segIdx + 1}</span>
+                    </span>
+                    <span className="font-mono text-[10px] bg-black/40 px-1.5 py-0.5 rounded border border-surface-border">
+                      {seg.start_ms}ms – {seg.end_ms}ms (
+                      {((seg.end_ms - seg.start_ms) / 1000).toFixed(1)}s)
+                    </span>
+                  </div>
+
+                  {/* Words Grid with aligned word badges */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {(seg.words || []).map((w: any, wIdx: number) => (
+                      <div
+                        key={w.id || wIdx}
+                        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-black/60 border border-surface-border/90 hover:border-brand-500/50 transition-all text-xs shadow-sm"
+                      >
+                        <input
+                          type="text"
+                          value={w.word}
+                          onChange={(e) => handleWordChange(segIdx, wIdx, e.target.value)}
+                          className="bg-surface/90 text-white font-medium focus:outline-none focus:ring-1 focus:ring-brand-500 px-1.5 py-0.5 rounded w-16 text-[11px] border border-transparent focus:border-brand-500"
+                        />
+                        <span className="font-mono text-[9px] text-slate-400 bg-white/5 px-1 py-0.5 rounded leading-none">
+                          {w.start_ms}ms
+                        </span>
+                        <div className="flex flex-col justify-center items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", -50)}
+                            className="w-3.5 h-3 rounded bg-surface hover:bg-white/10 text-slate-400 hover:text-white transition flex items-center justify-center leading-none"
+                            title="-50ms start"
+                          >
+                            <ChevronUp className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", 50)}
+                            className="w-3.5 h-3 rounded bg-surface hover:bg-white/10 text-slate-400 hover:text-white transition flex items-center justify-center leading-none"
+                            title="+50ms start"
+                          >
+                            <ChevronDown className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Quick Navigation to Tab 6 Render */}
+          <div className="pt-2.5 border-t border-surface-border flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">
+              Subtitle siap!
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("render")}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-brand-500/20 transition transform active:scale-95 cursor-pointer"
+            >
+              <span>Lanjut ke Render</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

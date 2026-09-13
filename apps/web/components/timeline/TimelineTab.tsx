@@ -880,7 +880,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
             onClick={() => setActiveTab("subtitles")}
             className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 transition"
           >
-            <span>Lanjut ke Subtitle Karaoke Studio</span>
+            <span>Lanjut ke Subtitle</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

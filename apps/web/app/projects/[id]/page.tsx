@@ -175,7 +175,7 @@ export default function ProjectStudioPage({ params }: PageProps) {
     },
     {
       id: "subtitles",
-      label: "5. Subtitle Karaoke",
+      label: "5. Subtitle",
       icon: Subtitles,
       badge: project.subtitle_style?.preset_name?.slice(0, 5),
     },
