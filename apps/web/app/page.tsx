@@ -11,8 +11,14 @@ import {
   Trash2,
   ArrowRight,
   Loader2,
+  Edit3,
 } from "lucide-react";
-import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
+import {
+  useProjects,
+  useCreateProject,
+  useDeleteProject,
+  useUpdateProject,
+} from "@/hooks/useProjects";
 import { Project } from "@/types";
 
 export default function DashboardPage() {
@@ -22,9 +28,15 @@ export default function DashboardPage() {
   const [resolution, setResolution] = useState("1080p");
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
+  // Edit Project State
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
   const { data: projects = [], isLoading } = useProjects();
   const createMutation = useCreateProject();
   const deleteMutation = useDeleteProject();
+  const updateMutation = useUpdateProject();
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +51,27 @@ export default function DashboardPage() {
         onSuccess: () => {
           setIsCreateOpen(false);
           setName("");
+        },
+      }
+    );
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectToEdit || !editName.trim()) return;
+    updateMutation.mutate(
+      {
+        id: projectToEdit.id,
+        data: {
+          name: editName.trim(),
+          description: editDescription.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setProjectToEdit(null);
+          setEditName("");
+          setEditDescription("");
         },
       }
     );
@@ -157,17 +190,32 @@ export default function DashboardPage() {
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-300 border border-brand-500/20">
                       {proj.aspect_ratio} • {proj.resolution}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setProjectToDelete(proj);
-                      }}
-                      className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-white/5 transition"
-                      title="Hapus Project"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setProjectToEdit(proj);
+                          setEditName(proj.name);
+                          setEditDescription(proj.description || "");
+                        }}
+                        className="text-slate-500 hover:text-brand-300 p-1.5 rounded-lg hover:bg-white/5 transition"
+                        title="Edit Nama Project"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setProjectToDelete(proj);
+                        }}
+                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-white/5 transition"
+                        title="Hapus Project"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <Link href={`/projects/${proj.id}`}>
@@ -277,6 +325,75 @@ export default function DashboardPage() {
                   className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 transition"
                 >
                   {createMutation.isPending ? "Membuat..." : "Buat Project"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Project */}
+      {projectToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-scale-pop">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-1">
+              <Edit3 className="w-5 h-5 text-brand-400" />
+              <h3 className="text-lg font-bold text-white">Edit Nama Project</h3>
+            </div>
+            <p className="text-xs text-slate-400 mb-5">
+              Ubah nama atau deskripsi project video Anda.
+            </p>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Nama Project
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Mis. Fakta Menakjubkan Lautan"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500 transition"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Deskripsi (Opsional)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Catatan atau tema video..."
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 transition leading-relaxed resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
+                <button
+                  type="button"
+                  onClick={() => setProjectToEdit(null)}
+                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 transition flex items-center gap-2"
+                >
+                  {updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <span>Simpan Perubahan</span>
+                  )}
                 </button>
               </div>
             </form>

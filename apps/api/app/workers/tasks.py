@@ -1,3 +1,4 @@
+import os
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -11,7 +12,7 @@ from app.models.timeline import Timeline, SubtitleStyle
 from app.models.config import ModelConfig
 from app.core.security import decrypt_secret
 from app.core.events import publish_project_event
-from app.services.ytdlp import download_video
+from app.services.ytdlp import download_video, get_video_info
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
 from app.services.vision_tagger import analyze_scene, analyze_scenes_batch

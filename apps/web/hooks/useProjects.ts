@@ -78,3 +78,27 @@ export function useDeleteProject() {
     },
   });
 }
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  const { showToast } = useStudioStore();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Pick<Project, "name" | "description" | "aspect_ratio" | "resolution" | "background_fill">>;
+    }) => api.updateProject(id, data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
+      showToast("Project berhasil diperbarui!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal memperbarui project", "error");
+    },
+  });
+}
+

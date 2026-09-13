@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect } from "react";
+import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,11 +14,14 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
+  Edit3,
+  Check,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore, StudioTab } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
-import { useProject } from "@/hooks/useProjects";
+import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { GlobalTaskIndicator } from "@/components/common/GlobalTaskIndicator";
 import { MediaPoolTab } from "@/components/media/MediaPoolTab";
 import { NarrationTab } from "@/components/narration/NarrationTab";
@@ -34,6 +37,9 @@ interface PageProps {
 export default function ProjectStudioPage({ params }: PageProps) {
   const { id } = use(params);
   const { activeTab, setActiveTab, activeTask, setActiveTask } = useStudioStore();
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const updateProjectMutation = useUpdateProject();
 
   // Establish SSE real-time connection for worker tasks
   useProjectEvents(id);
@@ -201,14 +207,83 @@ export default function ProjectStudioPage({ params }: PageProps) {
             </Link>
 
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-white tracking-tight truncate max-w-xs sm:max-w-md">
-                  {project.name}
-                </h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                  {project.aspect_ratio} • {project.resolution}
-                </span>
-              </div>
+              {isEditingTitle ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!editTitle.trim()) return;
+                    updateProjectMutation.mutate(
+                      {
+                        id: project.id,
+                        data: { name: editTitle.trim() },
+                      },
+                      {
+                        onSuccess: () => setIsEditingTitle(false),
+                      }
+                    );
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setIsEditingTitle(false);
+                    }}
+                    className="px-2.5 py-1 text-sm font-bold text-white bg-surface rounded-lg border border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-xs sm:max-w-sm"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={updateProjectMutation.isPending}
+                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center shadow-sm"
+                    title="Simpan Nama"
+                  >
+                    {updateProjectMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTitle(false)}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-white/10 text-slate-400 hover:text-white border border-surface-border transition"
+                    title="Batal"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <h1
+                    onClick={() => {
+                      setEditTitle(project.name);
+                      setIsEditingTitle(true);
+                    }}
+                    className="text-base font-bold text-white tracking-tight truncate max-w-xs sm:max-w-md cursor-pointer hover:text-brand-300 transition"
+                    title="Klik untuk mengubah nama project"
+                  >
+                    {project.name}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditTitle(project.name);
+                      setIsEditingTitle(true);
+                    }}
+                    className="text-slate-500 hover:text-brand-300 p-1 rounded-md hover:bg-white/5 transition opacity-60 group-hover:opacity-100"
+                    title="Edit Nama Project"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                    {project.aspect_ratio} • {project.resolution}
+                  </span>
+                </div>
+              )}
               <p className="text-[11px] text-slate-400">Cliper Pro Auto Studio</p>
             </div>
           </div>
