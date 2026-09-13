@@ -15,6 +15,8 @@ import {
   Tag,
   Play,
   RefreshCw,
+  Mic,
+  MessageSquare,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
 import { useStudioStore } from "@/lib/store";
@@ -26,6 +28,7 @@ import {
   useModelConfig,
   useYTInfo,
   useRetagScenes,
+  useTranscribeScenes,
 } from "@/hooks/useMediaPool";
 
 interface MediaPoolTabProps {
@@ -71,13 +74,21 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [retagStepText, setRetagStepText] = useState("");
   const [retagElapsed, setRetagElapsed] = useState(0);
 
+  // Live Progress State for Scene Audio Transcription
+  const [transcribeProgress, setTranscribeProgress] = useState(0);
+  const [transcribeStepText, setTranscribeStepText] = useState("");
+  const [transcribeElapsed, setTranscribeElapsed] = useState(0);
+
   const { data: modelConfig } = useModelConfig();
   const inspectYTMutation = useYTInfo(project.id);
   const retagMutation = useRetagScenes(project.id);
+  const transcribeMutation = useTranscribeScenes(project.id);
 
   const untaggedCount = project.scenes.filter(
     (s) => !s.description || s.description === "Cuplikan video aksi/aktivitas"
   ).length;
+
+  const untranscribedCount = project.scenes.filter((s) => !s.transcript).length;
 
   // Sync real-time progress events from SSE for scene_retag
   useEffect(() => {
@@ -88,6 +99,19 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
       } else if (activeTask.status === "success") {
         setRetagProgress(100);
         setRetagStepText(activeTask.message || "Tagging selesai!");
+      }
+    }
+  }, [activeTask]);
+
+  // Sync real-time progress events from SSE for scene_transcribe
+  useEffect(() => {
+    if (activeTask && activeTask.task_type === "scene_transcribe") {
+      if (activeTask.status === "progress") {
+        setTranscribeProgress(activeTask.progress);
+        setTranscribeStepText(activeTask.message);
+      } else if (activeTask.status === "success") {
+        setTranscribeProgress(100);
+        setTranscribeStepText(activeTask.message || "Transkripsi dialog selesai!");
       }
     }
   }, [activeTask]);
@@ -106,6 +130,21 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
       if (timer) clearInterval(timer);
     };
   }, [retagMutation.isPending]);
+
+  // Elapsed second counter during active transcribing
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (transcribeMutation.isPending) {
+      timer = setInterval(() => {
+        setTranscribeElapsed((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setTranscribeElapsed(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [transcribeMutation.isPending]);
 
 
   const deleteMutation = useDeleteMedia(project.id);
@@ -484,6 +523,32 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 </>
               )}
             </button>
+
+            {/* Transcribe Dialog (Whisper) */}
+            <button
+              type="button"
+              onClick={() => {
+                setTranscribeProgress(10);
+                setTranscribeElapsed(0);
+                setTranscribeStepText("Memulai ekstraksi audio dan transkripsi dialog...");
+                transcribeMutation.mutate("id");
+              }}
+              disabled={transcribeMutation.isPending || project.scenes.length === 0}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/40 text-indigo-300 hover:text-indigo-200 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              title="Ekstrak percakapan audio menggunakan Whisper dan beri label dialog pada setiap scene"
+            >
+              {transcribeMutation.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                  <span>Mentranskrip ({untranscribedCount} sisa)...</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Transkrip Dialog (Whisper)</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -506,6 +571,30 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               <div
                 className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
                 style={{ width: `${Math.max(5, retagProgress)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Live Progress Card for Transcribing */}
+        {transcribeMutation.isPending && (
+          <div className="p-4 rounded-xl bg-surface border border-indigo-500/40 space-y-2.5 animate-fadeIn shadow-lg shadow-indigo-500/5 mb-4">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-indigo-300 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+                <span className="truncate max-w-sm sm:max-w-md">{transcribeStepText || "Sedang mentranskripsikan dialog audio..."}</span>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+                <span>{Math.floor(transcribeElapsed / 60)}:{String(transcribeElapsed % 60).padStart(2, "0")}</span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                  {Math.round(transcribeProgress)}%
+                </span>
+              </div>
+            </div>
+            <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
+              <div
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                style={{ width: `${Math.max(5, transcribeProgress)}%` }}
               />
             </div>
           </div>
@@ -547,6 +636,12 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     </span>
                   </div>
 
+                  {scene.transcript && (
+                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-indigo-600/90 text-[9px] font-bold text-white flex items-center gap-0.5 shadow">
+                      <Mic className="w-2.5 h-2.5" /> Dialog
+                    </span>
+                  )}
+
                   <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">
                     {scene.duration}s
                   </span>
@@ -557,9 +652,17 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                 <div className="p-2.5 flex-1 flex flex-col justify-between gap-2">
                   <div>
-                    <p className="text-[11px] text-slate-200 line-clamp-2 leading-tight mb-2">
+                    <p className="text-[11px] text-slate-200 line-clamp-2 leading-tight mb-1.5">
                       {scene.description || "Scene visual"}
                     </p>
+
+                    {scene.transcript && (
+                      <div className="flex items-start gap-1 p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-200 mb-2" title={scene.transcript}>
+                        <MessageSquare className="w-3 h-3 text-indigo-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2 italic">"{scene.transcript}"</span>
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-1">
                       {scene.tags?.slice(0, 2).map((t, i) => (
                         <span
@@ -696,6 +799,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           title={`Scene #${previewScene.scene_index + 1}`}
           description={previewScene.description}
           tags={previewScene.tags}
+          transcript={previewScene.transcript}
           sceneIndex={previewScene.scene_index}
         />
       )}

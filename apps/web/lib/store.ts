@@ -4,7 +4,7 @@ export type StudioTab = "media" | "narration" | "tts" | "timeline" | "subtitles"
 
 export interface TaskEvent {
   project_id: string;
-  task_type: "youtube_download" | "scene_detect" | "scene_retag" | "tts_align" | "render";
+  task_type: "youtube_download" | "scene_detect" | "scene_retag" | "scene_transcribe" | "tts_align" | "render";
   status: "queued" | "progress" | "success" | "error";
   progress: number;
   stage: string;

@@ -6,8 +6,10 @@ import { useStudioStore, TaskEvent } from "@/lib/store";
 
 export function useProjectEvents(projectId: string) {
   const queryClient = useQueryClient();
-  const { setActiveTask, showToast } = useStudioStore();
+  const { setActiveTask, showToast, activeTask } = useStudioStore();
   const clearTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstConnectRef = useRef(true);
 
   useEffect(() => {
     if (!projectId) return;
@@ -16,8 +18,30 @@ export function useProjectEvents(projectId: string) {
     const streamUrl = `${baseUrl}/api/v1/projects/${projectId}/events`;
     const eventSource = new EventSource(streamUrl);
 
+    // Watchdog reset helper
+    const resetWatchdog = () => {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+      // If task is active, check DB state silently if no events arrive within 45s
+      watchdogTimerRef.current = setTimeout(() => {
+        const currentTask = useStudioStore.getState().activeTask;
+        if (currentTask && (currentTask.status === "progress" || currentTask.status === "queued")) {
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
+        }
+      }, 45000);
+    };
+
     eventSource.onopen = () => {
       console.log(`[SSE] Connected to project events stream (${projectId})`);
+      // If this is a reconnection (not initial mount), sync queries once
+      if (!isFirstConnectRef.current) {
+        queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
+      }
+      isFirstConnectRef.current = false;
     };
 
     eventSource.onmessage = (event) => {
@@ -33,6 +57,8 @@ export function useProjectEvents(projectId: string) {
         const task = payload as TaskEvent;
         if (!task.task_type) return;
 
+        resetWatchdog();
+
         if (clearTimerRef.current) {
           clearTimeout(clearTimerRef.current);
           clearTimerRef.current = null;
@@ -46,6 +72,11 @@ export function useProjectEvents(projectId: string) {
         }
 
         if (task.status === "success") {
+          if (watchdogTimerRef.current) {
+            clearTimeout(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
+
           showToast(task.message || "Proses berhasil diselesaikan!", "success");
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
           queryClient.refetchQueries({ queryKey: ["project", projectId] });
@@ -59,6 +90,11 @@ export function useProjectEvents(projectId: string) {
             setActiveTask(null);
           }, 3500);
         } else if (task.status === "error") {
+          if (watchdogTimerRef.current) {
+            clearTimeout(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
+
           showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
           queryClient.refetchQueries({ queryKey: ["project", projectId] });
@@ -85,6 +121,9 @@ export function useProjectEvents(projectId: string) {
     return () => {
       if (clearTimerRef.current) {
         clearTimeout(clearTimerRef.current);
+      }
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
       }
       eventSource.close();
     };

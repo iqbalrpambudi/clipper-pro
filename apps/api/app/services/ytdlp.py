@@ -18,6 +18,22 @@ def _format_duration(seconds: float) -> str:
     return f"{mins}:{secs:02d}"
 
 
+def _get_quality_tier(h: Optional[int], w: Optional[int]):
+    if not h:
+        return None
+    if h >= 1400 or (w and w >= 2560):
+        return ("4K / 2K", 2160)
+    elif h >= 900 or (w and w >= 1600):
+        return ("1080p (Full HD)", 1080)
+    elif h >= 600 or (w and w >= 1100):
+        return ("720p (HD)", 720)
+    elif h >= 400 or (w and w >= 700):
+        return ("480p (SD)", 480)
+    elif h >= 300:
+        return ("360p", 360)
+    return None
+
+
 async def get_video_info(url: str) -> YTInfoResponse:
     """Fetch video metadata and available formats using yt-dlp."""
     cmd = [
@@ -46,51 +62,59 @@ async def get_video_info(url: str) -> YTInfoResponse:
     thumbnail = data.get("thumbnail")
 
     raw_formats = data.get("formats", [])
-    format_map: Dict[str, YTFormatOption] = {}
-
-    # Target standard heights
-    target_heights = [1080, 720, 480, 360]
+    tier_map: Dict[str, tuple] = {}
 
     for f in raw_formats:
-        h = f.get("height")
-        if not h or h not in target_heights:
-            continue
-
-        ext = f.get("ext", "mp4")
         vcodec = f.get("vcodec", "none")
         if vcodec == "none":
             continue
 
-        res_str = f"{h}p"
+        h = f.get("height")
+        w = f.get("width")
+        tier_info = _get_quality_tier(h, w)
+        if not tier_info:
+            continue
+
+        tier_name, sort_order = tier_info
+        ext = f.get("ext", "mp4")
         filesize = f.get("filesize") or f.get("filesize_approx")
         filesize_mb = round(filesize / (1024 * 1024), 1) if filesize else None
-        fps = f.get("fps")
 
-        # Prefer mp4 container or best video
-        if res_str not in format_map or (ext == "mp4" and format_map[res_str].ext != "mp4"):
-            format_map[res_str] = YTFormatOption(
-                format_id=str(f.get("format_id")),
-                resolution=res_str,
-                ext=ext,
-                filesize_approx_mb=filesize_mb,
-                fps=float(fps) if fps else None,
-                vcodec=vcodec,
-                acodec=f.get("acodec"),
-                label=f"{res_str} ({filesize_mb} MB)" if filesize_mb else res_str,
-            )
+        existing = tier_map.get(tier_name)
+        if not existing:
+            tier_map[tier_name] = (sort_order, f, filesize_mb)
+        else:
+            # Prefer mp4 container or higher filesize
+            if ext == "mp4" and existing[1].get("ext") != "mp4":
+                tier_map[tier_name] = (sort_order, f, filesize_mb)
+            elif ext == existing[1].get("ext") and (filesize or 0) > (existing[1].get("filesize") or existing[1].get("filesize_approx") or 0):
+                tier_map[tier_name] = (sort_order, f, filesize_mb)
 
-    sorted_formats = [
-        format_map[f"{h}p"] for h in target_heights if f"{h}p" in format_map
-    ]
+    sorted_tiers = sorted(tier_map.items(), key=lambda x: x[1][0], reverse=True)
+    sorted_formats: List[YTFormatOption] = []
 
-    # Fallback to "best" if specific heights aren't neatly separated
-    if not sorted_formats:
+    # Always add Auto (Best Quality) as the premier option
+    sorted_formats.append(
+        YTFormatOption(
+            format_id="bestvideo+bestaudio/best",
+            resolution="Auto (Best)",
+            ext="mp4",
+            label="Auto (Kualitas Terbaik)",
+        )
+    )
+
+    for name, (_, f, size_mb) in sorted_tiers:
+        res_label = name.split(" ")[0]  # e.g., "1080p", "720p", "480p", "360p"
         sorted_formats.append(
             YTFormatOption(
-                format_id="bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-                resolution="Auto (Best)",
+                format_id=str(f.get("format_id")),
+                resolution=res_label,
                 ext="mp4",
-                label="Auto (Best Quality)",
+                filesize_approx_mb=size_mb,
+                fps=float(f.get("fps")) if f.get("fps") else None,
+                vcodec=f.get("vcodec"),
+                acodec=f.get("acodec"),
+                label=f"{name} ({size_mb} MB)" if size_mb else name,
             )
         )
 
@@ -119,7 +143,7 @@ async def download_video(
     elif format_id:
         f_spec = format_id
     else:
-        f_spec = "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+        f_spec = "bestvideo+bestaudio/best"
 
     cmd = [
         "yt-dlp",

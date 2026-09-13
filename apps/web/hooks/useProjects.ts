@@ -20,25 +20,8 @@ export function useProject(id: string) {
   return useQuery({
     queryKey: projectKeys.detail(id),
     queryFn: () => api.getProject(id),
-    staleTime: 3000,
-    refetchInterval: (query) => {
-      const p = query.state.data;
-      const isVideoBusy = p?.source_videos?.some(
-        (v: any) => v.status === "processing" || v.status === "pending" || v.status === "downloading"
-      );
-      const isAudioBusy = p?.audio?.status === "generating" || p?.audio?.status === "processing";
-      const isRenderBusy = p?.render_jobs?.some(
-        (j: any) =>
-          j.status === "processing" ||
-          j.status === "pending" ||
-          j.status === "rendering" ||
-          j.status === "queued"
-      );
-      const isNarrationBusy =
-        p?.narration?.status === "generating" || p?.narration?.status === "tts_generating";
-
-      return isVideoBusy || isAudioBusy || isRenderBusy || isNarrationBusy ? 2000 : false;
-    },
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
   });
 }
 

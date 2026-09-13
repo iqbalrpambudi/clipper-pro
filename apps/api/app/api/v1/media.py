@@ -113,17 +113,26 @@ async def upload_media_files(
             width=width,
             height=height,
             fps=fps,
-            status="ready",
-            progress=100,
+            status="processing",
+            progress=5,
         )
         db.add(video)
         created_videos.append(video)
 
     await db.commit()
 
-    # Trigger scene detection for newly uploaded videos
+    # Trigger scene detection for newly uploaded videos & emit real-time event
     for v in created_videos:
         await db.refresh(v)
+        await publish_project_event(
+            project_id,
+            task_type="scene_detect",
+            status="progress",
+            progress=5,
+            stage="queued",
+            message=f"Video '{v.filename}' diunggah. Memulai deteksi scene...",
+            data={"video_id": v.id, "filename": v.filename},
+        )
         await enqueue_task("detect_scenes_job", v.id)
 
     return [

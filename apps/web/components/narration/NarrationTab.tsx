@@ -18,6 +18,9 @@ import {
   Flame,
   Lightbulb,
   Film,
+  Smile,
+  ShieldAlert,
+  Heart,
   Code,
   ExternalLink,
 } from "lucide-react";
@@ -157,7 +160,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {templates.map((tpl) => {
             const isSelected = selectedTemplateId === tpl.id;
             return (
@@ -176,15 +179,18 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow" />}
-                      {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400" />}
-                      {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue" />}
-                      {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400" />}
-                      {tpl.name}
+                      {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />}
+                      {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+                      {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
+                      {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+                      {tpl.id === "alur_film_absurd" && <Smile className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      {tpl.id === "alur_film_heist" && <ShieldAlert className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
+                      {tpl.id === "alur_film_dramatis" && <Heart className="w-3.5 h-3.5 text-pink-400 shrink-0" />}
+                      <span className="truncate">{tpl.name}</span>
                     </span>
-                    {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400" />}
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-3">
                     {tpl.description}
                   </p>
                 </div>

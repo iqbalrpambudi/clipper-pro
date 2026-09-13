@@ -2,7 +2,7 @@ from pydantic import BaseModel
 import asyncio
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -58,11 +58,43 @@ async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db
             video_url=video_url_map.get(s.source_video_id),
             description=s.description,
             tags=s.tags or [],
+            transcript=s.transcript,
             status=s.status,
             created_at=s.created_at,
         )
         for s in sorted_scenes
     ]
+
+
+class TranscribeRequest(BaseModel):
+    video_id: Optional[str] = None
+    language: Optional[str] = "id"
+
+
+@router.post("/transcribe")
+async def transcribe_project_scenes(
+    project_id: str,
+    payload: TranscribeRequest = TranscribeRequest(),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger background audio transcription for scenes in project."""
+    from app.workers.tasks import transcribe_scenes_job
+
+    res = await db.execute(select(Scene).where(Scene.project_id == project_id))
+    scenes = res.scalars().all()
+    if not scenes:
+        raise HTTPException(status_code=400, detail="Belum ada scene di project ini untuk ditranskripsikan")
+
+    asyncio.create_task(
+        transcribe_scenes_job(
+            {},
+            project_id=project_id,
+            video_id=payload.video_id,
+            language=payload.language,
+        )
+    )
+    return {"message": "Transkripsi dialog audio dijadwalkan di background", "total_scenes": len(scenes)}
+
 
 
 @router.post("/re-detect/{video_id}")

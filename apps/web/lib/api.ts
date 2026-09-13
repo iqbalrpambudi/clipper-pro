@@ -89,6 +89,14 @@ export const api = {
         body: JSON.stringify({ mode, batch_size: 5 }),
       }
     ),
+  transcribeScenes: (projectId: string, language: string = "id") =>
+    request<{ message: string; total_scenes: number }>(
+      `/api/v1/projects/${projectId}/scenes/transcribe`,
+      {
+        method: "POST",
+        body: JSON.stringify({ language }),
+      }
+    ),
 
   // Templates & Narration
   getTemplates: () => request<NarrationTemplate[]>("/api/v1/templates"),

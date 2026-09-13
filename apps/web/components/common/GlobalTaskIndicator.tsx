@@ -13,6 +13,7 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Mic,
 } from "lucide-react";
 import { useStudioStore, TaskEvent } from "@/lib/store";
 
@@ -54,6 +55,16 @@ export function GlobalTaskIndicator() {
           bg: "from-amber-950/80 via-surface-card/95 to-surface/90",
           progressBg: "from-amber-500 to-accent-yellow",
           glow: "shadow-accent-yellow/20",
+        };
+      case "scene_transcribe":
+        return {
+          label: "Transkripsi Dialog Audio",
+          icon: Mic,
+          color: "text-indigo-400",
+          border: "border-indigo-500/40",
+          bg: "from-indigo-950/80 via-surface-card/95 to-surface/90",
+          progressBg: "from-indigo-600 to-purple-400",
+          glow: "shadow-indigo-500/20",
         };
       case "tts_align":
         return {

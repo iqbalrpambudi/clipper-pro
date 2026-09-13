@@ -12,6 +12,8 @@ import {
   Sparkles,
   Clock,
   Film,
+  MessageSquare,
+  Mic,
 } from "lucide-react";
 
 export interface ScenePreviewModalProps {
@@ -24,6 +26,7 @@ export interface ScenePreviewModalProps {
   title?: string;
   description?: string | null;
   tags?: string[];
+  transcript?: string | null;
   sceneIndex?: number;
 }
 
@@ -37,6 +40,7 @@ export function ScenePreviewModal({
   title,
   description,
   tags = [],
+  transcript,
   sceneIndex,
 }: ScenePreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -373,6 +377,17 @@ export function ScenePreviewModal({
               </button>
             </div>
           </div>
+
+          {/* Transcript / Dialogue */}
+          {transcript && (
+            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-xs text-indigo-200 flex items-start gap-2.5">
+              <MessageSquare className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-indigo-300 block text-[11px] mb-0.5">Dialog Percakapan (Whisper):</span>
+                <p className="italic text-slate-200 leading-relaxed">"{transcript}"</p>
+              </div>
+            </div>
+          )}
 
           {/* Description & Tags */}
           {(description || tags.length > 0) && (

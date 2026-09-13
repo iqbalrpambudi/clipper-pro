@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 from sqlalchemy import select, delete
 from app.core.db import SessionLocal
 from app.core.storage import storage
@@ -395,7 +395,12 @@ async def generate_tts_and_align_job(
 
             clips_count = 0
             if all_scenes:
-                clips = await match_scenes_to_segments(adapter, aligned_segments, all_scenes)
+                clips = await match_scenes_to_segments(
+                    adapter,
+                    aligned_segments,
+                    all_scenes,
+                    total_audio_duration_sec=duration,
+                )
                 clips_count = len(clips)
                 t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
                 timeline = t_res.scalar_one_or_none()
@@ -626,4 +631,95 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 error=str(e),
                 data={"job_id": render_job_id},
             )
+
+
+async def transcribe_scenes_job(
+    ctx: Dict[str, Any],
+    project_id: str,
+    video_id: Optional[str] = None,
+    language: Optional[str] = None,
+) -> None:
+    """Async background task to transcribe speech in project scenes using faster-whisper."""
+    from app.services.transcriber import transcribe_video_scenes
+
+    async with SessionLocal() as db:
+        query = select(SourceVideo).where(SourceVideo.project_id == project_id)
+        if video_id:
+            query = query.where(SourceVideo.id == video_id)
+        res = await db.execute(query)
+        videos = res.scalars().all()
+
+        if not videos:
+            return
+
+        total_vids = len(videos)
+        await publish_project_event(
+            project_id,
+            task_type="scene_transcribe",
+            status="progress",
+            progress=10,
+            stage="starting",
+            message="Memulai ekstraksi audio & transkripsi dialog scene...",
+            data={"total_videos": total_vids},
+        )
+
+        total_updated = 0
+        for v_idx, video in enumerate(videos):
+            if not video.file_path or not os.path.exists(video.file_path):
+                continue
+
+            # Fetch scenes for this video
+            s_res = await db.execute(
+                select(Scene).where(Scene.source_video_id == video.id).order_by(Scene.scene_index.asc())
+            )
+            scenes = s_res.scalars().all()
+            if not scenes:
+                continue
+
+            scenes_dict = [
+                {
+                    "id": s.id,
+                    "scene_index": s.scene_index,
+                    "start_time": s.start_time,
+                    "end_time": s.end_time,
+                }
+                for s in scenes
+            ]
+
+            pct = 15 + int((v_idx / max(1, total_vids)) * 75)
+            await publish_project_event(
+                project_id,
+                task_type="scene_transcribe",
+                status="progress",
+                progress=pct,
+                stage="transcribing",
+                message=f"Mentranskripsikan dialog audio pada '{video.filename}'...",
+                data={"video_id": video.id, "current": v_idx + 1, "total": total_vids},
+            )
+
+            try:
+                transcript_map = await transcribe_video_scenes(
+                    video.file_path,
+                    scenes_dict,
+                    language=language,
+                )
+
+                for s in scenes:
+                    if s.id in transcript_map:
+                        s.transcript = transcript_map[s.id]
+                        total_updated += 1
+
+                await db.commit()
+            except Exception as e:
+                log.exception("Error transcribing scenes for video %s: %s", video.id, e)
+
+        await publish_project_event(
+            project_id,
+            task_type="scene_transcribe",
+            status="success",
+            progress=100,
+            stage="completed",
+            message=f"Transkripsi dialog selesai! {total_updated} scene berhasil diberi label percakapan.",
+            data={"total_updated": total_updated},
+        )
 

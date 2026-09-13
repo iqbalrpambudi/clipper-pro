@@ -39,7 +39,7 @@ class SourceVideo(Base):
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     youtube_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    selected_resolution: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    selected_resolution: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     duration: Mapped[float] = mapped_column(Float, default=0.0)
     width: Mapped[int] = mapped_column(Integer, default=0)
     height: Mapped[int] = mapped_column(Integer, default=0)
@@ -67,6 +67,7 @@ class Scene(Base):
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[list] = mapped_column(JSON, default=list)
+    transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     embedding: Mapped[Optional[list]] = mapped_column(Vector(768), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="detected")  # detected, analyzing, ready, failed
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -133,3 +133,21 @@ export function useRetagScenes(projectId: string) {
   });
 }
 
+export function useTranscribeScenes(projectId: string) {
+  const queryClient = useQueryClient();
+  const { showToast } = useStudioStore();
+
+  return useMutation({
+    mutationFn: (language: string = "id") => api.transcribeScenes(projectId, language),
+    onSuccess: async (res) => {
+      await queryClient.refetchQueries({ queryKey: ["project", projectId] });
+      await queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
+      showToast(res.message || "Transkripsi dialog audio dijadwalkan!", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal memulai transkripsi dialog", "error");
+    },
+  });
+}
+
+

@@ -49,6 +49,7 @@ export interface Scene {
   video_url?: string | null;
   description?: string | null;
   tags: string[];
+  transcript?: string | null;
   status: string;
   created_at: string;
 }

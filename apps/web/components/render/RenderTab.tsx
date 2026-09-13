@@ -75,20 +75,8 @@ export function RenderTab({ project }: RenderTabProps) {
   const { data: renderJobs = [], refetch: refetchJobs } = useQuery({
     queryKey: ["render-jobs", project.id],
     queryFn: () => api.getRenderJobs(project.id),
-    staleTime: 0,
-    refetchInterval: (query) => {
-      const jobs = query.state.data || [];
-      const hasActiveJob =
-        activeTask?.task_type === "render" ||
-        jobs.some(
-          (j: any) =>
-            j.status === "pending" ||
-            j.status === "processing" ||
-            j.status === "rendering" ||
-            j.status === "queued"
-        );
-      return hasActiveJob ? 1500 : 4000;
-    },
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const totalStorageBytes = renderJobs.reduce(

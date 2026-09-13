@@ -37,3 +37,6 @@ async def init_db() -> None:
         # Ensure pgvector extension is enabled
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         await conn.run_sync(Base.metadata.create_all)
+        # Ensure new schema columns exist
+        await conn.execute(text("ALTER TABLE scenes ADD COLUMN IF NOT EXISTS transcript TEXT;"))
+        await conn.execute(text("ALTER TABLE source_videos ALTER COLUMN selected_resolution TYPE VARCHAR(255);"))

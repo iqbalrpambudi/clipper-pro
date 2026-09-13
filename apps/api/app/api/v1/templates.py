@@ -11,7 +11,7 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 
 
 async def seed_templates(db: AsyncSession):
-    """Seed builtin templates if not existing."""
+    """Seed builtin templates if not existing or sync builtin definitions."""
     for item in DEFAULT_TEMPLATES:
         t = await db.get(NarrationTemplate, item["id"])
         if not t:
@@ -27,6 +27,9 @@ async def seed_templates(db: AsyncSession):
                 is_builtin=item["is_builtin"],
             )
             db.add(template)
+        elif t.is_builtin:
+            t.name = item["name"]
+            t.description = item["description"]
     await db.commit()
 
 

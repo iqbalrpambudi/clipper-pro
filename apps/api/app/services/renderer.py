@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 from app.core.frame_math import sec_to_frame, frame_to_sec, snap_to_frame, COMPOSITION_FPS
+from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +50,11 @@ async def render_timeline_video(
     dynamic_zoom = (background_fill or {}).get("dynamic_zoom", True) if anti_copyright else False
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
 
+    # Check target audio duration if audio provided
+    audio_dur = 0.0
+    if audio_path and Path(audio_path).exists():
+        audio_dur = await get_audio_duration(audio_path)
+
     temp_dir = Path(tempfile.mkdtemp(prefix="cliper_render_"))
 
     try:
@@ -73,7 +79,14 @@ async def render_timeline_video(
 
             # Target output duration on the 30 FPS timeline
             timeline_start = snap_to_frame(float(clip.get("timeline_start", 0.0)))
-            timeline_end = snap_to_frame(float(clip.get("timeline_end", timeline_start + source_dur)))
+            raw_timeline_end = float(clip.get("timeline_end", timeline_start + source_dur))
+            
+            # If this is the last clip and audio is longer, extend to cover the full audio duration
+            if idx == total_clips - 1 and audio_dur > 0 and audio_dur > raw_timeline_end:
+                timeline_end = snap_to_frame(audio_dur)
+            else:
+                timeline_end = snap_to_frame(raw_timeline_end)
+
             target_out_frames = max(12, sec_to_frame(timeline_end - timeline_start))
             target_out_dur = frame_to_sec(target_out_frames)
 
