@@ -256,6 +256,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             status=j.status,
             progress=j.progress,
             output_url=storage.to_relative_url(j.output_file_path),
+            file_size_bytes=storage.get_file_size(j.output_file_path),
             log_output=j.log_output,
             error_message=j.error_message,
             created_at=j.created_at,

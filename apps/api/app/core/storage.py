@@ -63,6 +63,71 @@ class StorageManager:
             return self.base_dir / rel_str
         return Path(rel_url)
 
+    def get_file_size(self, abs_path: Optional[str | Path]) -> Optional[int]:
+        if not abs_path:
+            return None
+        try:
+            p = Path(abs_path)
+            if p.is_file():
+                return p.stat().st_size
+        except Exception:
+            pass
+        return None
+
+    def delete_file(self, abs_path: Optional[str | Path]) -> bool:
+        if not abs_path:
+            return False
+        try:
+            p = Path(abs_path)
+            if p.exists() and p.is_file():
+                p.unlink(missing_ok=True)
+                return True
+        except Exception:
+            pass
+        return False
+
+    def delete_render_job_files(
+        self,
+        project_id: str,
+        job_id: str,
+        output_file_path: Optional[str | Path] = None,
+    ) -> int:
+        """Deletes output file and any artifacts matching job_id, returning total bytes freed."""
+        freed = 0
+        if output_file_path:
+            try:
+                p = Path(output_file_path)
+                if p.exists() and p.is_file():
+                    freed += p.stat().st_size
+                    p.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+        renders_dir = self.get_renders_dir(project_id)
+        if renders_dir.exists():
+            for f in renders_dir.glob(f"*{job_id}*"):
+                if f.is_file():
+                    try:
+                        freed += f.stat().st_size
+                        f.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+        return freed
+
+    def clear_all_project_renders(self, project_id: str) -> int:
+        """Deletes all render files for the given project, returning total bytes freed."""
+        freed = 0
+        renders_dir = self.get_renders_dir(project_id)
+        if renders_dir.exists():
+            for f in renders_dir.iterdir():
+                if f.is_file():
+                    try:
+                        freed += f.stat().st_size
+                        f.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+        return freed
+
     def delete_project_files(self, project_id: str) -> None:
         p = self.get_project_dir(project_id)
         if p.exists():
@@ -70,3 +135,4 @@ class StorageManager:
 
 
 storage = StorageManager()
+

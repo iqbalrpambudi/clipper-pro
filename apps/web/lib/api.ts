@@ -175,6 +175,16 @@ export const api = {
     request<RenderJob>(`/api/v1/projects/${projectId}/render/preview`, { method: "POST" }),
   getRenderJobs: (projectId: string) =>
     request<RenderJob[]>(`/api/v1/projects/${projectId}/render/jobs`),
+  deleteRenderJob: (projectId: string, jobId: string) =>
+    request<{ success: boolean; job_id: string; freed_bytes: number; message: string }>(
+      `/api/v1/projects/${projectId}/render/jobs/${jobId}`,
+      { method: "DELETE" }
+    ),
+  clearRenderJobs: (projectId: string) =>
+    request<{ success: boolean; count: number; freed_bytes: number; message: string }>(
+      `/api/v1/projects/${projectId}/render/jobs`,
+      { method: "DELETE" }
+    ),
 
   // Settings
   getModelConfig: () => request<ModelConfig>("/api/v1/settings/config"),

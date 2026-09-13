@@ -6,8 +6,9 @@ export interface Project {
   aspect_ratio: string;
   resolution: string;
   background_fill: {
-    mode: "blur" | "black" | "custom";
+    mode: "blur" | "black" | "cover" | "custom";
     color: string;
+    zoom?: number;
     anti_copyright?: boolean;
     dynamic_zoom?: boolean;
     color_grading?: boolean;
@@ -147,6 +148,7 @@ export interface RenderJob {
   status: "queued" | "rendering" | "completed" | "failed";
   progress: number;
   output_url?: string | null;
+  file_size_bytes?: number | null;
   log_output?: string | null;
   error_message?: string | null;
   created_at: string;

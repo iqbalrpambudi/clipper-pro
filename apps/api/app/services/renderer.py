@@ -44,6 +44,7 @@ async def render_timeline_video(
 
     bg_mode = (background_fill or {}).get("mode", "blur")
     bg_color = (background_fill or {}).get("color", "black")
+    custom_zoom = float((background_fill or {}).get("zoom", 1.0) or 1.0)
     anti_copyright = (background_fill or {}).get("anti_copyright", True)
     dynamic_zoom = (background_fill or {}).get("dynamic_zoom", True) if anti_copyright else False
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
@@ -112,21 +113,35 @@ async def render_timeline_video(
                 speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts=PTS-STARTPTS[v_trim];"
                 in_label = "[v_trim]"
 
-            # Background filter: blur or solid color
-            if bg_mode == "blur":
+            # Calculate scaled foreground dimensions if custom zoom is applied
+            fg_w = int(round(w * custom_zoom))
+            fg_h = int(round(h * custom_zoom))
+            fg_w = fg_w if fg_w % 2 == 0 else fg_w + 1
+            fg_h = fg_h if fg_h % 2 == 0 else fg_h + 1
+
+            # Video layout filter: cover (fullscreen 9:16), blur with zoom, or solid color with zoom
+            if bg_mode == "cover":
+                vf_filter = (
+                    f"{speed_prefix}"
+                    f"{in_label}scale={w}:{h}:force_original_aspect_ratio=increase,"
+                    f"crop={w}:{h},"
+                    f"setsar=1,fps=30{post_chain}"
+                )
+            elif bg_mode == "blur":
                 vf_filter = (
                     f"{speed_prefix}"
                     f"{in_label}split[bg_in][fg_in];"
                     f"[bg_in]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=25:5[bg];"
-                    f"[fg_in]scale={w}:{h}:force_original_aspect_ratio=decrease[fg];"
+                    f"[fg_in]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
                     f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=30{post_chain}"
                 )
             else:
+                # Solid color background (black or custom color) using color canvas to safely support custom zoom
                 vf_filter = (
                     f"{speed_prefix}"
-                    f"{in_label}scale={w}:{h}:force_original_aspect_ratio=decrease,"
-                    f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color={bg_color},"
-                    f"setsar=1,fps=30{post_chain}"
+                    f"color=c='{bg_color}':s={w}x{h}:r=30[bg_solid];"
+                    f"{in_label}scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
+                    f"[bg_solid][fg]overlay=(W-w)/2:(H-h)/2:shortest=1,setsar=1,fps=30{post_chain}"
                 )
 
             cut_cmd = [

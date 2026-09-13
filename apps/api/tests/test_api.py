@@ -293,4 +293,39 @@ async def test_publish_project_event():
     )
 
 
+def test_storage_render_deletion(tmp_path, monkeypatch):
+    from app.core.storage import StorageManager
+    sm = StorageManager()
+    monkeypatch.setattr(sm.settings, "STORAGE_PATH", str(tmp_path))
+
+    project_id = "test-proj-delete"
+    renders_dir = sm.get_renders_dir(project_id)
+
+    # Create dummy render files
+    job_id_1 = "job-uuid-1111"
+    job_id_2 = "job-uuid-2222"
+
+    file_1 = renders_dir / f"render_final_{job_id_1}.mp4"
+    file_1.write_bytes(b"dummy video 1 data 1234567890")
+
+    file_2 = renders_dir / f"render_preview_{job_id_2}.mp4"
+    file_2.write_bytes(b"dummy video 2 data abcdefghij")
+
+    assert file_1.exists()
+    assert file_2.exists()
+    assert sm.get_file_size(file_1) == len(b"dummy video 1 data 1234567890")
+
+    # Delete job 1
+    freed_1 = sm.delete_render_job_files(project_id, job_id_1, str(file_1))
+    assert freed_1 == len(b"dummy video 1 data 1234567890")
+    assert not file_1.exists()
+    assert file_2.exists()
+
+    # Clear all remaining renders
+    freed_2 = sm.clear_all_project_renders(project_id)
+    assert freed_2 == len(b"dummy video 2 data abcdefghij")
+    assert not file_2.exists()
+
+
+
 

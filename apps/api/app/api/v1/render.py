@@ -113,6 +113,7 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
             status=j.status,
             progress=j.progress,
             output_url=storage.to_relative_url(j.output_file_path),
+            file_size_bytes=storage.get_file_size(j.output_file_path),
             log_output=j.log_output,
             error_message=j.error_message,
             created_at=j.created_at,
@@ -120,6 +121,64 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
         )
         for j in jobs
     ]
+
+
+@router.delete("/jobs/{job_id}")
+async def delete_render_job(
+    project_id: str,
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    job = await db.get(RenderJob, job_id)
+    if not job or job.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Render job tidak ditemukan")
+
+    # Delete video file and any related artifacts from storage
+    freed_bytes = storage.delete_render_job_files(project_id, job.id, job.output_file_path)
+
+    # Delete job record from database
+    await db.delete(job)
+    await db.commit()
+
+    return {
+        "success": True,
+        "job_id": job_id,
+        "freed_bytes": freed_bytes,
+        "message": "Riwayat render dan file video berhasil dihapus dari penyimpanan",
+    }
+
+
+@router.delete("/jobs")
+async def clear_render_jobs(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(
+        select(RenderJob).where(RenderJob.project_id == project_id)
+    )
+    jobs = res.scalars().all()
+    if not jobs:
+        return {
+            "success": True,
+            "count": 0,
+            "freed_bytes": 0,
+            "message": "Tidak ada riwayat render untuk dihapus",
+        }
+
+    # Delete all render files for project
+    freed_bytes = storage.clear_all_project_renders(project_id)
+
+    # Delete all job records from database
+    for j in jobs:
+        await db.delete(j)
+    await db.commit()
+
+    return {
+        "success": True,
+        "count": len(jobs),
+        "freed_bytes": freed_bytes,
+        "message": f"{len(jobs)} riwayat render dan file video berhasil dibersihkan dari penyimpanan",
+    }
 
 
 @router.get("/download/{job_id}")
@@ -140,3 +199,4 @@ async def download_rendered_video(
         filename=f"cliper_short_{job.id[:8]}.mp4",
         media_type="video/mp4",
     )
+

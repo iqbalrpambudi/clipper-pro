@@ -4,8 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class BackgroundFillSchema(BaseModel):
-    mode: str = "blur"  # blur | black | custom
+    mode: str = "blur"  # blur | black | cover
     color: str = "#000000"
+    zoom: float = 1.0  # custom zoom factor (1.0 = 100% fit, up to 3.0)
     anti_copyright: bool = True
     dynamic_zoom: bool = True
     color_grading: bool = True
@@ -79,6 +80,7 @@ class RenderJobResponse(BaseModel):
     status: str
     progress: int
     output_url: Optional[str] = None
+    file_size_bytes: Optional[int] = None
     log_output: Optional[str] = None
     error_message: Optional[str] = None
     created_at: datetime

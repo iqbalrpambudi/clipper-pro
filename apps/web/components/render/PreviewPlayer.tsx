@@ -266,6 +266,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
 
       const bgMode = project.background_fill?.mode || "blur";
       const bgColor = project.background_fill?.color || "#000000";
+      const userZoom = Math.max(0.5, project.background_fill?.zoom ?? 1.0);
       const antiCopyright = project.background_fill?.anti_copyright ?? true;
       const dynamicZoom = antiCopyright ? (project.background_fill?.dynamic_zoom ?? true) : false;
       const colorGrading = antiCopyright ? (project.background_fill?.color_grading ?? true) : false;
@@ -281,7 +282,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
       const isVideoReady = Boolean(activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0);
 
       // 1. Render Background
-      if (bgMode === "blur" && isVideoReady && activeVid) {
+      if (bgMode === "cover") {
+        // Fullscreen cover: video fills entire canvas, background layer is omitted
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, cW, cH);
+      } else if (bgMode === "blur" && isVideoReady && activeVid) {
         ctx.save();
         // Hardware accelerated dynamic blur matching FFmpeg boxblur=25:5
         ctx.filter = "blur(30px) brightness(0.70)";
@@ -310,7 +315,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         ctx.fillRect(0, 0, cW, cH);
       }
 
-      // 2. Render Main Video Content (Letterboxed + Ken Burns Zoom + Color Grading)
+      // 2. Render Main Video Content (Letterboxed / Cover / Custom Zoom + Ken Burns Zoom + Color Grading)
       if (isVideoReady && activeVid) {
         ctx.save();
 
@@ -324,16 +329,32 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         let destX = 0;
         let destY = 0;
 
-        if (videoAspect > canvasAspect) {
-          destW = cW;
-          destH = cW / videoAspect;
-          destX = 0;
-          destY = (cH - destH) / 2;
+        if (bgMode === "cover") {
+          // Cover: Fill entire canvas, crop overflowing edges symmetrically
+          if (videoAspect > canvasAspect) {
+            destH = cH;
+            destW = cH * videoAspect;
+            destX = (cW - destW) / 2;
+            destY = 0;
+          } else {
+            destW = cW;
+            destH = cW / videoAspect;
+            destX = 0;
+            destY = (cH - destH) / 2;
+          }
         } else {
-          destH = cH;
-          destW = cH * videoAspect;
-          destX = (cW - destW) / 2;
-          destY = 0;
+          // Fit (zoom = 1.0) or Custom Zoom with background blur/color
+          if (videoAspect > canvasAspect) {
+            destW = cW * userZoom;
+            destH = (cW / videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          } else {
+            destH = cH * userZoom;
+            destW = (cH * videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          }
         }
 
         // Apply Dynamic Zoom (Ken Burns) matching FFmpeg zoompan
@@ -370,16 +391,30 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
           let destX = 0;
           let destY = 0;
 
-          if (videoAspect > canvasAspect) {
-            destW = cW;
-            destH = cW / videoAspect;
-            destX = 0;
-            destY = (cH - destH) / 2;
+          if (bgMode === "cover") {
+            if (videoAspect > canvasAspect) {
+              destH = cH;
+              destW = cH * videoAspect;
+              destX = (cW - destW) / 2;
+              destY = 0;
+            } else {
+              destW = cW;
+              destH = cW / videoAspect;
+              destX = 0;
+              destY = (cH - destH) / 2;
+            }
           } else {
-            destH = cH;
-            destW = cH * videoAspect;
-            destX = (cW - destW) / 2;
-            destY = 0;
+            if (videoAspect > canvasAspect) {
+              destW = cW * userZoom;
+              destH = (cW / videoAspect) * userZoom;
+              destX = (cW - destW) / 2;
+              destY = (cH - destH) / 2;
+            } else {
+              destH = cH * userZoom;
+              destW = (cH * videoAspect) * userZoom;
+              destX = (cW - destW) / 2;
+              destY = (cH - destH) / 2;
+            }
           }
 
           if (colorGrading) {
@@ -1029,9 +1064,19 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition }: PreviewPlay
         )}
 
         {/* Top Watermark Overlay */}
-        <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
+        <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
           <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
+          <span className="text-white/30">•</span>
+          <span className="text-amber-400/90 font-semibold uppercase">
+            {project.background_fill?.mode === "cover"
+              ? "Cover 9:16"
+              : (project.background_fill?.zoom && project.background_fill.zoom > 1.05)
+              ? `Zoom ${Math.round(project.background_fill.zoom * 100)}%`
+              : project.background_fill?.mode === "black"
+              ? "Fit Black"
+              : "Fit Blur"}
+          </span>
         </div>
       </div>
 
