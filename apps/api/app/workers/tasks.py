@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, List
 from sqlalchemy import select, delete
 from app.core.db import SessionLocal
 from app.core.storage import storage
+from app.core.config import get_settings
 from app.models.project import Project, SourceVideo, Scene, RenderJob
 from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline, SubtitleStyle
@@ -76,6 +77,15 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 progress_callback=_progress,
             )
             meta = await get_video_metadata(downloaded_path)
+
+            # Enforce duration cap for downloads too (not just /yt-info)
+            _settings = get_settings()
+            max_sec = _settings.MAX_SOURCE_DURATION_MINS * 60
+            if meta["duration"] and meta["duration"] > max_sec:
+                Path(downloaded_path).unlink(missing_ok=True)
+                raise RuntimeError(
+                    f"Durasi video ({int(meta['duration'])}s) melebihi batas {_settings.MAX_SOURCE_DURATION_MINS} menit"
+                )
 
             video.file_path = downloaded_path
             video.duration = meta["duration"]
@@ -165,12 +175,29 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
         scene_out_dir = storage.get_scenes_dir(video.project_id)
 
         try:
+            # Capture old scene rows so their thumbnails can be cleaned from disk
+            old_res = await db.execute(
+                select(Scene.thumbnail_path).where(Scene.source_video_id == video_id)
+            )
+            old_thumbnails = [tp for (tp,) in old_res.all() if tp]
+
             # Bersihkan scene lama untuk video ini jika re-detect
             await db.execute(delete(Scene).where(Scene.source_video_id == video_id))
             await db.commit()
 
             scenes_data = await detect_scenes(video.file_path, str(scene_out_dir))
             total_scenes = len(scenes_data)
+
+            # Old thumbnails no longer referenced -> delete from disk
+            for tp in old_thumbnails:
+                p = Path(tp)
+                if not p.exists():
+                    p = storage.to_absolute_path(tp)
+                if p and p.exists():
+                    try:
+                        p.unlink(missing_ok=True)
+                    except Exception:
+                        pass
 
             adapter = await get_active_vision_adapter(db)
             vision_name = getattr(adapter, "vision_model", "AI Vision")

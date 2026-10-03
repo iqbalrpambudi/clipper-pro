@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
@@ -8,9 +8,7 @@ import {
   Film,
   Volume2,
   Subtitles,
-  Clock,
   ArrowRight,
-  MoveHorizontal,
   Layers,
   Check,
   RotateCcw,
@@ -37,7 +35,7 @@ interface TimelineTabProps {
 
 export function TimelineTab({ project }: TimelineTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, setActiveTab, currentTime, setCurrentTime } = useStudioStore();
+  const { showToast, setActiveTab } = useStudioStore();
 
   const [selectedClipIndex, setSelectedClipIndex] = useState<number | null>(null);
   const [previewData, setPreviewData] = useState<{
@@ -50,6 +48,23 @@ export function TimelineTab({ project }: TimelineTabProps) {
     tags?: string[];
   } | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>(project.timeline?.clips || []);
+
+  // Resync local clips only when the server timeline changed AND there are no
+  // unsaved local edits. Identity changes on every refetch, so compare content.
+  const serverClipsKeyRef = useRef<string>(JSON.stringify(project.timeline?.clips || []));
+  const localClipsKeyRef = useRef<string>(serverClipsKeyRef.current);
+  useEffect(() => {
+    localClipsKeyRef.current = JSON.stringify(clips);
+  }, [clips]);
+  useEffect(() => {
+    const serverClips = project.timeline?.clips;
+    if (!serverClips) return;
+    const key = JSON.stringify(serverClips);
+    if (key === serverClipsKeyRef.current) return;
+    const isDirty = localClipsKeyRef.current !== serverClipsKeyRef.current;
+    serverClipsKeyRef.current = key;
+    if (!isDirty) setClips(serverClips);
+  }, [project.timeline?.clips]);
 
   // Filter state for Scene Drawer in Timeline (All, Used in Timeline, Available)
   const [sceneDrawerFilter, setSceneDrawerFilter] = useState<"all" | "used" | "available">("all");
@@ -98,62 +113,30 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
   // Live Progress State for Auto-Match & Auto-Refresh
   const [isAutoMatching, setIsAutoMatching] = useState(false);
-  const [matchProgress, setMatchProgress] = useState(0);
-  const [matchStepText, setMatchStepText] = useState("");
   const [matchElapsed, setMatchElapsed] = useState(0);
+  const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
 
-  // Progress Timer for Auto-Match
+  // Auto-match is a single blocking request, so only elapsed time is real. No fake %.
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (isAutoMatching) {
-      timer = setInterval(() => {
-        setMatchElapsed((prev) => {
-          const next = prev + 1;
-          if (next <= 2) {
-            setMatchProgress(25);
-            setMatchStepText("Mengekstrak segmen narasi & timing kata...");
-          } else if (next <= 4) {
-            setMatchProgress(55);
-            setMatchStepText("Menganalisis kemiripan semantik AI antara naskah dan scene...");
-          } else if (next <= 7) {
-            setMatchProgress(80);
-            setMatchStepText("Menghitung durasi cut & sinkronisasi transisi...");
-          } else {
-            setMatchProgress((p) => Math.min(92, p + 1));
-            setMatchStepText("Menyusun susunan klip visual Track 1...");
-          }
-          return next;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    if (!isAutoMatching) return;
+    const timer = setInterval(() => setMatchElapsed((prev) => prev + 1), 1000);
+    return () => clearInterval(timer);
   }, [isAutoMatching]);
 
   const autoMatchMutation = useMutation({
     mutationFn: () => {
       setIsAutoMatching(true);
-      setMatchProgress(15);
       setMatchElapsed(0);
-      setMatchStepText("Mempersiapkan data scene & naskah...");
       return api.autoMatchTimeline(project.id);
     },
     onSuccess: async (data) => {
-      setMatchProgress(100);
-      setMatchStepText("Scene berhasil dicocokkan otomatis!");
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       setClips(data.clips);
       showToast("Scene berhasil dicocokkan otomatis dengan naskah!", "success");
-      setTimeout(() => {
-        setIsAutoMatching(false);
-        setMatchProgress(0);
-        setMatchElapsed(0);
-      }, 800);
+      setIsAutoMatching(false);
     },
     onError: (err: any) => {
       setIsAutoMatching(false);
-      setMatchProgress(0);
       showToast(err.message || "Gagal mencocokkan scene", "error");
     },
   });
@@ -349,20 +332,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-brand-300 font-semibold">
               <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
-              <span className="truncate max-w-sm sm:max-w-md">{matchStepText || "Sedang mencocokkan scene..."}</span>
+              <span className="truncate max-w-sm sm:max-w-md">Mencocokkan scene dengan naskah...</span>
             </div>
             <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
               <span>{Math.floor(matchElapsed / 60)}:{String(matchElapsed % 60).padStart(2, "0")}</span>
-              <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
-                {Math.round(matchProgress)}%
-              </span>
             </div>
           </div>
           <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-surface-border">
-            <div
-              className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
-              style={{ width: Math.max(5, matchProgress) + "%" }}
-            />
+            <div className="w-1/3 bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full rounded-full animate-progress-indeterminate" />
           </div>
         </div>
       )}
@@ -399,15 +376,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   }`}
                 >
                   <div className="relative aspect-video rounded-lg overflow-hidden bg-black/60 mb-2 group/thumb">
-                    {clip.thumbnail_url ? (
+                    {clip.thumbnail_url && !brokenThumbnails[clip.id || `clip-${idx}`] ? (
                       <img
                         src={clip.thumbnail_url}
                         alt="Clip thumbnail"
                         className="w-full h-full object-cover"
+                        onError={() => setBrokenThumbnails((prev) => ({ ...prev, [clip.id || `clip-${idx}`]: true }))}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-600">
-                        <Film className="w-5 h-5" />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 gap-0.5">
+                        <Film className="w-5 h-5 text-slate-600" />
+                        <span className="text-[9px] font-mono text-slate-500">Klip #{idx + 1}</span>
                       </div>
                     )}
 
@@ -787,15 +766,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   }`}
                 >
                   <div className="relative aspect-video bg-black/60 overflow-hidden group/sc">
-                    {sc.thumbnail_url ? (
+                    {sc.thumbnail_url && !brokenThumbnails[sc.id] ? (
                       <img
                         src={sc.thumbnail_url}
                         alt={sc.description || "scene"}
                         className="w-full h-full object-cover group-hover:scale-105 transition"
+                        onError={() => setBrokenThumbnails((prev) => ({ ...prev, [sc.id]: true }))}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-600">
-                        <Film className="w-5 h-5" />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 gap-0.5">
+                        <Film className="w-5 h-5 text-slate-600" />
+                        <span className="text-[9px] font-mono text-slate-500">Scene #{sc.scene_index + 1}</span>
                       </div>
                     )}
 

@@ -26,8 +26,8 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(
             Project,
-            func.count(SourceVideo.id).label("video_count"),
-            func.count(Scene.id).label("scene_count"),
+            func.count(func.distinct(SourceVideo.id)).label("video_count"),
+            func.count(func.distinct(Scene.id)).label("scene_count"),
         )
         .outerjoin(SourceVideo, Project.id == SourceVideo.project_id)
         .outerjoin(Scene, Project.id == Scene.project_id)
@@ -197,7 +197,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         raw_audio_url = storage.to_relative_url(latest_a.file_path)
         audio_url_with_ts = None
         if raw_audio_url:
-            ts = int(latest_a.updated_at.timestamp()) if latest_a.updated_at else (int(latest_a.created_at.timestamp()) if latest_a.created_at else 0)
+            ts = int(latest_a.created_at.timestamp()) if latest_a.created_at else 0
             audio_url_with_ts = f"{raw_audio_url}?v={ts}"
 
         resp.audio = {

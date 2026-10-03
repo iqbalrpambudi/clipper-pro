@@ -8,8 +8,6 @@ import {
   Play,
   Pause,
   Sparkles,
-  DollarSign,
-  Clock,
   CheckCircle2,
   Loader2,
   ArrowRight,
@@ -17,15 +15,12 @@ import {
   AlignLeft,
   RotateCcw,
   RotateCw,
-  Activity,
   Mic,
   Music,
-  Check,
-  Zap,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Narration, AudioTrack, VoiceInfo } from "@/types";
+import { Project, Narration, AudioTrack } from "@/types";
 
 interface TTSTabProps {
   project: Project & {

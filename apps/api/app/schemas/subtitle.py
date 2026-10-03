@@ -1,8 +1,43 @@
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
+
+# ASS style headers, fontconfig names and ffmpeg filter strings are built from
+# these values, so restrict them to known-safe shapes instead of passing user
+# text through verbatim.
+_HEX_COLOR_RE = r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+_FONT_FAMILIES = {
+    "Montserrat", "BebasNeue", "Bebas Neue", "Poppins", "Inter",
+    "Anton", "Oswald", "Roboto", "Arial", "Liberation Sans",
+}
+_FONT_WEIGHTS = {"Thin", "Light", "Regular", "Medium", "SemiBold", "Bold", "ExtraBold", "Black"}
 
 
-class SubtitleStyleBase(BaseModel):
+def _validate_style_fields(values: Dict[str, Any]) -> Dict[str, Any]:
+    import re
+
+    for key in ("primary_color", "highlight_color", "outline_color", "box_color"):
+        v = values.get(key)
+        if v is not None and not re.fullmatch(_HEX_COLOR_RE, str(v)):
+            raise ValueError(f"{key} harus berupa warna hex, contoh #FFFFFF")
+    ff = values.get("font_family")
+    if ff is not None and ff not in _FONT_FAMILIES:
+        raise ValueError(f"font_family tidak didukung: {ff}")
+    fw = values.get("font_weight")
+    if fw is not None and fw not in _FONT_WEIGHTS:
+        raise ValueError(f"font_weight tidak didukung: {fw}")
+    return values
+
+
+class StyleFieldsMixin(BaseModel):
+    """Rejects unsafe ASS / fontconfig / ffmpeg values for models carrying style fields."""
+
+    @model_validator(mode="after")
+    def _check_style_fields(self):
+        _validate_style_fields(self.model_dump())
+        return self
+
+
+class SubtitleStyleBase(StyleFieldsMixin):
     preset_name: str = "viral_tiktok"  # viral_tiktok | hormozi_punch | minimalist | custom
     description: Optional[str] = None
     font_family: str = "Poppins"
@@ -37,7 +72,7 @@ class SubtitlePresetResponse(SubtitleStyleBase):
     preview_style: Dict[str, Any] = {}
 
 
-class SubtitlePresetCreate(BaseModel):
+class SubtitlePresetCreate(StyleFieldsMixin):
     id: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -60,7 +95,7 @@ class SubtitlePresetCreate(BaseModel):
     emoji_enabled: bool = True
 
 
-class SubtitlePresetUpdate(BaseModel):
+class SubtitlePresetUpdate(StyleFieldsMixin):
     name: Optional[str] = None
     description: Optional[str] = None
     font_family: Optional[str] = None

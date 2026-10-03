@@ -18,6 +18,21 @@ def _escape_filter_path(path: str) -> str:
     escaped = str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return escaped
 
+async def _run_ffmpeg(cmd: List[str]) -> tuple[int, bytes]:
+    """Run an ffmpeg command, killing the child if the task is cancelled."""
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        _, stderr = await proc.communicate()
+    except asyncio.CancelledError:
+        proc.kill()
+        await proc.wait()
+        raise
+    return proc.returncode or 0, stderr
+
 
 async def render_timeline_video(
     clips: List[Dict[str, Any]],
@@ -63,6 +78,7 @@ async def render_timeline_video(
 
         # Step 1: Normalize and render each clip chunk
         clip_files = []
+        failed_clips: List[Dict[str, Any]] = []
         total_clips = len(clips)
 
         for idx, clip in enumerate(clips):
@@ -70,6 +86,7 @@ async def render_timeline_video(
             src_file = source_videos_map.get(vid_id)
             if not src_file or not Path(src_file).exists():
                 log.warning("Source video file %s not found for clip %s", src_file, clip["id"])
+                failed_clips.append({"index": idx, "id": clip.get("id"), "reason": "source file missing"})
                 continue
 
             clip_start = snap_to_frame(float(clip.get("clip_start", 0.0)))
@@ -183,14 +200,12 @@ async def render_timeline_video(
                 str(chunk_out),
             ]
 
-            proc = await asyncio.create_subprocess_exec(
-                *cut_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await proc.communicate()
-            if proc.returncode != 0:
+            ret, stderr = await _run_ffmpeg(cut_cmd)
+            if ret != 0:
                 log.error("Clip chunk %d failed: %s", idx, stderr.decode()[-300:])
+                failed_clips.append(
+                    {"index": idx, "id": clip.get("id"), "reason": stderr.decode()[-200:]}
+                )
                 continue
 
             clip_files.append(chunk_out)
@@ -201,6 +216,12 @@ async def render_timeline_video(
 
         if not clip_files:
             raise RuntimeError("Tidak ada klip video yang berhasil diproses.")
+
+        if failed_clips:
+            # Fail loudly instead of silently shipping a video with missing footage.
+            raise RuntimeError(
+                f"{len(failed_clips)} dari {total_clips} klip gagal diproses: {failed_clips[:5]}"
+            )
 
         # Step 2: Concat all chunks
         concat_list_path = temp_dir / "concat_list.txt"
@@ -226,12 +247,11 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(55, "Menggabungkan urutan klip video...")
 
-        proc_concat = await asyncio.create_subprocess_exec(
-            *concat_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        await proc_concat.communicate()
+        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd)
+        if ret_concat != 0:
+            err_msg = stderr_concat.decode()[-400:]
+            log.error("Concat failed: %s", err_msg)
+            raise RuntimeError(f"FFmpeg concat error: {err_msg}")
 
         # Step 3: Mix audio and burn in ASS subtitles
         if progress_callback:
@@ -291,14 +311,9 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(85, "Merender hasil akhir video...")
 
-        proc_final = await asyncio.create_subprocess_exec(
-            *cmd_final,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr_final = await proc_final.communicate()
+        ret_final, stderr_final = await _run_ffmpeg(cmd_final)
 
-        if proc_final.returncode != 0:
+        if ret_final != 0:
             err_msg = stderr_final.decode()[-400:]
             log.error("Final render failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg render error: {err_msg}")
@@ -308,5 +323,9 @@ async def render_timeline_video(
 
         return str(out_p)
 
+    except BaseException:
+        # Remove any partial output so a failed render is never mistaken for a good one.
+        out_p.unlink(missing_ok=True)
+        raise
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

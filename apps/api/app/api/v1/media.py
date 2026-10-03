@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from arq import create_pool
 from app.core.db import get_db
 from app.core.redis import get_redis_settings
@@ -28,6 +28,7 @@ from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/media", tags=["media"])
 
+_background_tasks: set = set()
 
 async def enqueue_task(job_name: str, *args, **kwargs):
     """Enqueue job into arq redis queue or run via asyncio background task."""
@@ -36,11 +37,15 @@ async def enqueue_task(job_name: str, *args, **kwargs):
         await pool.enqueue_job(job_name, *args, **kwargs)
         await pool.close()
     except Exception:
-        # Fallback to local asyncio task
+        # Fallback to local asyncio task (keep a strong ref so it is not GC'd mid-run)
+        task = None
         if job_name == "detect_scenes_job":
-            asyncio.create_task(detect_scenes_job({}, *args))
+            task = asyncio.create_task(detect_scenes_job({}, *args))
         elif job_name == "download_youtube_job":
-            asyncio.create_task(download_youtube_job({}, *args))
+            task = asyncio.create_task(download_youtube_job({}, *args))
+        if task is not None:
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
 
 @router.get("", response_model=List[SourceVideoResponse])
@@ -79,6 +84,10 @@ async def upload_media_files(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
+    settings = get_settings()
+    max_upload = settings.MAX_UPLOAD_SIZE
+    max_duration_sec = settings.MAX_SOURCE_DURATION_MINS * 60
+
     videos_dir = storage.get_videos_dir(project_id)
     created_videos = []
 
@@ -90,10 +99,23 @@ async def upload_media_files(
         unique_name = f"{uuid.uuid4()}{file_ext}"
         dest_path = videos_dir / unique_name
 
-        # Stream save file
+        # Stream save file with a hard size cap to prevent disk exhaustion
+        written = 0
+        too_large = False
         with open(dest_path, "wb") as f:
             while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                written += len(chunk)
+                if written > max_upload:
+                    too_large = True
+                    break
                 f.write(chunk)
+
+        if too_large:
+            dest_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=413,
+                detail=f"Ukuran file '{file.filename}' melebihi batas {max_upload // (1024 * 1024)} MB",
+            )
 
         try:
             meta = await get_video_metadata(str(dest_path))
@@ -103,6 +125,13 @@ async def upload_media_files(
             fps = meta["fps"]
         except Exception:
             duration, width, height, fps = 0.0, 0, 0, 0.0
+
+        if duration and duration > max_duration_sec:
+            dest_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Durasi video '{file.filename}' ({int(duration)}s) melebihi batas {settings.MAX_SOURCE_DURATION_MINS} menit",
+            )
 
         video = SourceVideo(
             project_id=project_id,
@@ -262,8 +291,10 @@ async def delete_source_video(
 
     # Clean up scene thumbnail files from disk
     from app.models.project import Scene
+    from app.models.timeline import Timeline
     res = await db.execute(select(Scene).where(Scene.source_video_id == video_id))
-    for sc in res.scalars().all():
+    deleted_scenes = res.scalars().all()
+    for sc in deleted_scenes:
         if sc.thumbnail_path:
             tp = Path(sc.thumbnail_path)
             if not tp.exists():
@@ -288,5 +319,21 @@ async def delete_source_video(
     except Exception:
         pass
 
+    await db.execute(delete(Scene).where(Scene.source_video_id == video_id))
     await db.delete(video)
+
+    # Remove timeline clips that reference scenes of the deleted video (avoid dangling refs)
+    timeline_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
+    timeline = timeline_res.scalar_one_or_none()
+    if timeline and timeline.clips:
+        deleted_scene_ids = {sc.id for sc in deleted_scenes}
+        remaining = [
+            c for c in timeline.clips if c.get("scene_id") not in deleted_scene_ids
+        ]
+        if len(remaining) != len(timeline.clips):
+            timeline.clips = remaining
+            timeline.total_duration = max(
+                (float(c.get("timeline_end", 0.0)) for c in remaining), default=0.0
+            )
+
     await db.commit()

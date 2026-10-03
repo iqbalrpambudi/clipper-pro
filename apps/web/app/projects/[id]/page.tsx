@@ -13,12 +13,10 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   Loader2,
-  CheckCircle2,
   Edit3,
   Check,
   X,
 } from "lucide-react";
-import { api } from "@/lib/api";
 import { useStudioStore, StudioTab } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";

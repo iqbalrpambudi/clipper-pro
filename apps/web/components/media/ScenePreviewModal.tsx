@@ -9,11 +9,8 @@ import {
   Volume2,
   VolumeX,
   Repeat,
-  Sparkles,
-  Clock,
   Film,
   MessageSquare,
-  Mic,
 } from "lucide-react";
 
 export interface ScenePreviewModalProps {
@@ -50,6 +47,15 @@ export function ScenePreviewModal({
   const [isLooping, setIsLooping] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [brokenThumb, setBrokenThumb] = useState(false);
+
+  // The rAF loop runs at 60fps; only publish to state when the value visibly moves.
+  const lastPublishedTimeRef = useRef(startTime);
+  const publishTime = (t: number) => {
+    if (Math.abs(t - lastPublishedTimeRef.current) < 0.05) return;
+    lastPublishedTimeRef.current = t;
+    setCurrentTime(t);
+  };
 
   const duration = Math.max(0.1, endTime - startTime);
   const currentOffset = Math.max(0, Math.min(duration, currentTime - startTime));
@@ -99,7 +105,7 @@ export function ScenePreviewModal({
       const video = videoRef.current;
       if (video) {
         const t = video.currentTime;
-        setCurrentTime(t);
+        publishTime(t);
 
         if (t >= effectiveEndTime) {
           if (isLooping) {
@@ -126,7 +132,7 @@ export function ScenePreviewModal({
     if (!video) return;
 
     const t = video.currentTime;
-    setCurrentTime(t);
+    publishTime(t);
 
     const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
     if (t >= effectiveEndTime) {
@@ -265,16 +271,17 @@ export function ScenePreviewModal({
               }}
               className="w-full h-full object-contain"
             />
-          ) : thumbnailUrl ? (
+          ) : thumbnailUrl && !brokenThumb ? (
             <img
               src={thumbnailUrl}
               alt="Scene preview"
               className="w-full h-full object-contain"
+              onError={() => setBrokenThumb(true)}
             />
           ) : (
             <div className="text-slate-500 text-xs flex flex-col items-center gap-2">
-              <Film className="w-8 h-8 opacity-40" />
-              <span>Video tidak tersedia</span>
+              <Film className="w-8 h-8 opacity-40 text-slate-400" />
+              <span>Preview Klip #{sceneIndex !== undefined ? sceneIndex + 1 : ""}</span>
             </div>
           )}
 

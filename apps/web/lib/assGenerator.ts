@@ -160,7 +160,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     } else if (displayMode === "burst") {
       for (let i = 0; i < words.length; i += burstCount) {
         const group = words.slice(i, i + burstCount);
-        const gStart = group[0].start_ms;
         const gEnd = group[group.length - 1].end_ms;
         const kCount = group.length;
 
@@ -208,7 +207,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       }
     } else {
       // full_sentence mode
-      const segStart = seg.start_ms ?? words[0].start_ms;
       const segEnd = seg.end_ms ?? words[words.length - 1].end_ms;
       const nWords = words.length;
 

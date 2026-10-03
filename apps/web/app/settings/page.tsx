@@ -7,8 +7,6 @@ import {
   ArrowLeft,
   Settings as SettingsIcon,
   Sparkles,
-  Key,
-  Database,
   CheckCircle2,
   AlertCircle,
   Loader2,

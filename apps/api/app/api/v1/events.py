@@ -28,8 +28,7 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
         try:
             cached_active = await redis.get(f"project:{project_id}:active_task")
             if cached_active:
-                if isinstance(cached_active, bytes):
-                    cached_active = cached_active.decode("utf-8")
+                # redis client uses decode_responses=True -> always str
                 yield f"data: {cached_active}\n\n"
         except Exception as e:
             log.warning("Failed to replay cached active task for project %s: %s", project_id, e)
@@ -43,6 +42,7 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
                     log.info("Client disconnected from project %s SSE stream", project_id)
                     break
 
+                # Block up to 1s waiting for a message instead of polling + sleeping
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
                 if message and message.get("type") == "message":
                     payload_str = message.get("data", "")
@@ -52,12 +52,10 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
                     heartbeat_counter = 0
                 else:
                     heartbeat_counter += 1
-                    # Send keep-alive comment every ~15 seconds (15 iterations of 1.0s timeout)
+                    # Send keep-alive comment every ~15 seconds
                     if heartbeat_counter >= 15:
                         yield ": ping\n\n"
                         heartbeat_counter = 0
-
-                await asyncio.sleep(0.1)
 
         except asyncio.CancelledError:
             log.info("SSE connection cancelled for project %s", project_id)

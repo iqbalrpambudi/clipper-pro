@@ -6,7 +6,7 @@ import { useStudioStore, TaskEvent } from "@/lib/store";
 
 export function useProjectEvents(projectId: string) {
   const queryClient = useQueryClient();
-  const { setActiveTask, showToast, activeTask } = useStudioStore();
+  const { setActiveTask, showToast } = useStudioStore();
   const clearTimerRef = useRef<NodeJS.Timeout | null>(null);
   const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstConnectRef = useRef(true);
@@ -78,12 +78,10 @@ export function useProjectEvents(projectId: string) {
           }
 
           showToast(task.message || "Proses berhasil diselesaikan!", "success");
-          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-          queryClient.refetchQueries({ queryKey: ["project", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
-          queryClient.refetchQueries({ queryKey: ["render-jobs", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["scenes", projectId] });
-          queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
+          // refetchType "all" makes invalidate also refetch active + inactive queries
+          queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["scenes", projectId], refetchType: "all" });
 
           // Retain success status briefly, then auto-dismiss
           clearTimerRef.current = setTimeout(() => {
@@ -96,12 +94,9 @@ export function useProjectEvents(projectId: string) {
           }
 
           showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
-          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-          queryClient.refetchQueries({ queryKey: ["project", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
-          queryClient.refetchQueries({ queryKey: ["render-jobs", projectId] });
-          queryClient.invalidateQueries({ queryKey: ["scenes", projectId] });
-          queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["scenes", projectId], refetchType: "all" });
 
           // Keep error visible longer so user can read what went wrong
           clearTimerRef.current = setTimeout(() => {

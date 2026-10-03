@@ -8,15 +8,14 @@ import {
   Trash2,
   Clock,
   Sparkles,
-  Download,
   AlertCircle,
   Loader2,
   CheckCircle2,
-  Tag,
   Play,
   RefreshCw,
   Mic,
   MessageSquare,
+  Wrench,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
 import { useStudioStore } from "@/lib/store";
@@ -29,6 +28,7 @@ import {
   useYTInfo,
   useRetagScenes,
   useTranscribeScenes,
+  useRepairThumbnails,
 } from "@/hooks/useMediaPool";
 
 interface MediaPoolTabProps {
@@ -39,12 +39,11 @@ interface MediaPoolTabProps {
 }
 
 export function MediaPoolTab({ project }: MediaPoolTabProps) {
-  const { showToast, activeTask, setActiveTask } = useStudioStore();
+  const { activeTask } = useStudioStore();
   const [isYTOpen, setIsYTOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState("");
   const [ytInfo, setYtInfo] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
 
@@ -83,6 +82,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const inspectYTMutation = useYTInfo(project.id);
   const retagMutation = useRetagScenes(project.id);
   const transcribeMutation = useTranscribeScenes(project.id);
+  const repairThumbnailsMutation = useRepairThumbnails(project.id);
+  const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+
+  const brokenCount = Object.keys(brokenThumbnails).length;
 
   const untaggedCount = project.scenes.filter(
     (s) => !s.description || s.description === "Cuplikan video aksi/aktivitas"
@@ -155,7 +158,6 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setIsUploading(true);
-    setUploadProgress(40);
 
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("files", f));
@@ -163,7 +165,6 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
     uploadMediaMutation.mutate(formData, {
       onSettled: () => {
         setIsUploading(false);
-        setUploadProgress(0);
       },
     });
   };
@@ -242,10 +243,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           </p>
           {isUploading && (
             <div className="w-full mt-4 bg-surface rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-brand-500 h-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
+              {/* fetch() cannot report upload bytes; indeterminate bar is honest */}
+              <div className="w-1/3 bg-brand-500 h-full rounded-full animate-progress-indeterminate" />
             </div>
           )}
         </label>
@@ -549,6 +548,32 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 </>
               )}
             </button>
+
+            {/* Repair Thumbnails Button */}
+            {(brokenCount > 0 || project.scenes.some(s => !s.thumbnail_url)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBrokenThumbnails({});
+                  repairThumbnailsMutation.mutate();
+                }}
+                disabled={repairThumbnailsMutation.isPending}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 hover:text-rose-200 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm animate-pulse"
+                title="Regenerasi seluruh gambar thumbnail yang rusak atau belum terbentuk"
+              >
+                {repairThumbnailsMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-400" />
+                    <span>Memperbaiki Thumbnail...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wrench className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Perbaiki {brokenCount > 0 ? `${brokenCount} ` : ""}Thumbnail</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -617,15 +642,17 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   className="relative aspect-video bg-black/50 overflow-hidden cursor-pointer"
                   onClick={() => setPreviewScene(scene)}
                 >
-                  {scene.thumbnail_url ? (
+                  {scene.thumbnail_url && !brokenThumbnails[scene.id] ? (
                     <img
                       src={scene.thumbnail_url}
                       alt={scene.description || "Scene thumbnail"}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [scene.id]: true }))}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-600">
-                      <Film className="w-6 h-6" />
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 gap-1 p-2 text-center">
+                      <Film className="w-6 h-6 text-slate-600" />
+                      <span className="text-[9px] font-mono text-slate-500">#{scene.scene_index + 1}</span>
                     </div>
                   )}
 

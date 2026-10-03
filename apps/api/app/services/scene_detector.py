@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import cv2
@@ -62,20 +64,55 @@ async def get_video_metadata(video_path: str) -> Dict[str, Any]:
 
 
 def extract_frame(video_path: str, timestamp_sec: float, output_path: str) -> bool:
-    """Extract a single frame at timestamp_sec and save as JPEG."""
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return False
+    """Extract a single frame at timestamp_sec using FFmpeg (with OpenCV fallback) and save as JPEG."""
+    out_p = Path(output_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    # 1. Primary: FFmpeg CLI (Native support for all codecs: AV1, VP9, HEVC, H.264, ProRes, MKV, WebM)
+    cmd = [
+        "ffmpeg",
+        "-v", "error",
+        "-ss", str(max(0.0, timestamp_sec)),
+        "-i", str(video_path),
+        "-vframes", "1",
+        "-q:v", "2",
+        "-y",
+        str(output_path),
+    ]
     try:
-        cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_sec * 1000.0)
-        ret, frame = cap.read()
-        if ret and frame is not None:
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(output_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        res = subprocess.run(cmd, capture_output=True, timeout=15)
+        if res.returncode == 0 and out_p.exists() and out_p.stat().st_size > 0:
             return True
-        return False
-    finally:
-        cap.release()
+    except Exception as e:
+        log.warning("FFmpeg frame extraction failed for %s at %ss: %s", video_path, timestamp_sec, e)
+
+    # 2. Secondary fallback: OpenCV cv2.VideoCapture
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if cap.isOpened():
+            cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_sec * 1000.0)
+            ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                cv2.imwrite(str(output_path), frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                return True
+    except Exception as e:
+        log.warning("OpenCV fallback frame extraction failed for %s: %s", video_path, e)
+
+    return False
+
+
+def extract_frames_batch(video_path: str, items: List[Tuple[float, str]], max_workers: int = 6) -> int:
+    """Extract multiple frames from a video in parallel."""
+    if not items:
+        return 0
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(extract_frame, video_path, t, p)
+            for t, p in items
+        ]
+        results = [f.result() for f in futures]
+    return sum(1 for r in results if r)
 
 
 async def detect_scenes(
@@ -147,6 +184,7 @@ async def detect_scenes(
             cur = next_t
 
     scenes_data: List[Dict[str, Any]] = []
+    extraction_tasks: List[Tuple[float, str]] = []
 
     for idx, (start_t, end_t) in enumerate(raw_scenes):
         duration = round(end_t - start_t, 3)
@@ -160,14 +198,14 @@ async def detect_scenes(
         thumb_filename = f"thumb_{idx:04d}_{int(start_t*1000)}.jpg"
         thumb_abs = str(out_p / thumb_filename)
 
-        # Extract representative middle frame
-        await loop.run_in_executor(None, extract_frame, video_path, mid_t, thumb_abs)
+        # Representative middle frame task
+        extraction_tasks.append((mid_t, thumb_abs))
 
         # Extract keyframes for vision model (start, middle, end)
         keyframe_paths = [thumb_abs]
         if duration >= 3.0:
             kf2 = str(out_p / f"kf_{idx:04d}_2.jpg")
-            await loop.run_in_executor(None, extract_frame, video_path, start_t + 0.5, kf2)
+            extraction_tasks.append((start_t + 0.5, kf2))
             keyframe_paths.append(kf2)
 
         scenes_data.append({
@@ -178,5 +216,9 @@ async def detect_scenes(
             "thumbnail_path": thumb_abs,
             "keyframe_paths": keyframe_paths,
         })
+
+    # Batch extract all thumbnails & keyframes in parallel for maximum speed
+    if extraction_tasks:
+        await loop.run_in_executor(None, extract_frames_batch, video_path, extraction_tasks)
 
     return scenes_data

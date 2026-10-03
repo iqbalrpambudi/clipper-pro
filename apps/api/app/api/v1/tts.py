@@ -166,7 +166,7 @@ async def get_latest_audio(project_id: str, db: AsyncSession = Depends(get_db)):
 
     raw_url = storage.to_relative_url(track.file_path)
     if raw_url:
-        ts = int(track.updated_at.timestamp()) if track.updated_at else (int(track.created_at.timestamp()) if track.created_at else 0)
+        ts = int(track.created_at.timestamp()) if track.created_at else 0
         audio_url = f"{raw_url}?v={ts}"
     else:
         audio_url = None

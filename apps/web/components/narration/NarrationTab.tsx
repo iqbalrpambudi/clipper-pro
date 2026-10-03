@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Sliders,
   FileText,
-  Clock,
   Layers,
   ArrowRight,
   Flame,
@@ -24,7 +23,6 @@ import {
   ExternalLink,
   Copy,
   Check,
-  RotateCcw,
   MessageSquareQuote,
   Clapperboard,
   Zap,
@@ -57,8 +55,6 @@ export function NarrationTab({ project }: NarrationTabProps) {
 
   // Live Progress State for Narration Generation & Auto-Refresh
   const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
-  const [narrationProgress, setNarrationProgress] = useState(0);
-  const [narrationStepText, setNarrationStepText] = useState("");
   const [narrationElapsed, setNarrationElapsed] = useState(0);
 
   const { data: templates = [] } = useQuery({
@@ -141,41 +137,17 @@ export function NarrationTab({ project }: NarrationTabProps) {
     return templates.filter((t) => getTemplateCategory(t) === selectedCategory);
   }, [templates, selectedCategory]);
 
-  // Progress Timer for Narration Generation
+  // Narration generation is one blocking request, so only elapsed time is real.
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (isGeneratingNarration) {
-      timer = setInterval(() => {
-        setNarrationElapsed((prev) => {
-          const next = prev + 1;
-          if (next <= 2) {
-            setNarrationProgress(20);
-            setNarrationStepText("Menganalisis ringkasan scene video & visual...");
-          } else if (next <= 4) {
-            setNarrationProgress(50);
-            setNarrationStepText("Menyusun hook awal & alur narasi storytelling...");
-          } else if (next <= 7) {
-            setNarrationProgress(75);
-            setNarrationStepText("Memformat segmentasi kalimat & kata kunci...");
-          } else {
-            setNarrationProgress((p) => Math.min(92, p + 1));
-            setNarrationStepText("Menyelesaikan validasi naskah dengan AI...");
-          }
-          return next;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    if (!isGeneratingNarration) return;
+    const timer = setInterval(() => setNarrationElapsed((prev) => prev + 1), 1000);
+    return () => clearInterval(timer);
   }, [isGeneratingNarration]);
 
   const generateMutation = useMutation({
     mutationFn: () => {
       setIsGeneratingNarration(true);
-      setNarrationProgress(12);
       setNarrationElapsed(0);
-      setNarrationStepText("Menghubungi AI Model naskah...");
       return api.generateNarration(project.id, {
         template_id: selectedTemplateId,
         topic,
@@ -185,21 +157,14 @@ export function NarrationTab({ project }: NarrationTabProps) {
       });
     },
     onSuccess: async (data) => {
-      setNarrationProgress(100);
-      setNarrationStepText("Naskah narasi berhasil dibuat!");
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       setRawText(data.raw_text);
       setIsEditing(false);
       showToast("Naskah narasi berhasil dibuat dengan AI!", "success");
-      setTimeout(() => {
-        setIsGeneratingNarration(false);
-        setNarrationProgress(0);
-        setNarrationElapsed(0);
-      }, 800);
+      setIsGeneratingNarration(false);
     },
     onError: (err: any) => {
       setIsGeneratingNarration(false);
-      setNarrationProgress(0);
       showToast(err.message || "Gagal generate naskah", "error");
     },
   });
@@ -444,23 +409,17 @@ export function NarrationTab({ project }: NarrationTabProps) {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 text-brand-300 font-semibold truncate max-w-[240px]">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-400 shrink-0" />
-                  <span className="truncate">{narrationStepText || "Menyusun naskah AI..."}</span>
+                  <span className="truncate">Menyusun naskah AI...</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400 shrink-0">
                   <span>
                     {Math.floor(narrationElapsed / 60)}:
                     {String(narrationElapsed % 60).padStart(2, "0")}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-300 font-bold">
-                    {Math.round(narrationProgress)}%
-                  </span>
                 </div>
               </div>
               <div className="w-full bg-surface-card rounded-full h-1.5 overflow-hidden border border-surface-border">
-                <div
-                  className="bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.max(5, narrationProgress)}%` }}
-                />
+                <div className="w-1/3 bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-400 h-full rounded-full animate-progress-indeterminate" />
               </div>
             </div>
           )}
@@ -530,7 +489,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
             {isGeneratingNarration ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Menyusun Naskah AI ({Math.round(narrationProgress)}%)...</span>
+                <span>Menyusun Naskah AI...</span>
               </>
             ) : (
               <>

@@ -150,4 +150,21 @@ export function useTranscribeScenes(projectId: string) {
   });
 }
 
+export function useRepairThumbnails(projectId: string) {
+  const queryClient = useQueryClient();
+  const { showToast } = useStudioStore();
+
+  return useMutation({
+    mutationFn: () => api.repairThumbnails(projectId),
+    onSuccess: async (res) => {
+      await queryClient.refetchQueries({ queryKey: ["project", projectId] });
+      await queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
+      showToast(res.message || `Berhasil memperbaiki ${res.repaired} thumbnail!`, "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal meregenerasi thumbnail", "error");
+    },
+  });
+}
+
 

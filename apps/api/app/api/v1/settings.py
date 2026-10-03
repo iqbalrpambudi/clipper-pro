@@ -1,7 +1,7 @@
 import re
 import time
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.db import get_db
@@ -175,14 +175,15 @@ _MODELS_CACHE_TTL: float = 300.0  # 5 minutes
 @router.get("/models")
 async def list_available_models(
     base_url: str = "",
-    api_key: str = "",
+    x_api_key: str = Header("", alias="X-Api-Key"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Fetch list of available models from OpenAI-compatible endpoint or 9Router.
+    Fetch list of available models from [OI]-compatible endpoint or 9Router.
+    The key travels in the X-Api-Key header so it never lands in access logs.
     """
     target_url = base_url.strip()
-    target_key = api_key.strip()
+    target_key = x_api_key.strip()
 
     if not target_url:
         res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
@@ -218,6 +219,9 @@ async def list_available_models(
         cached_time, cached_models = _MODELS_CACHE[cache_key]
         if now - cached_time < _MODELS_CACHE_TTL:
             return {"models": cached_models}
+        # ponytail: drop only the expired entry; switch to an LRU when the key
+        # space grows beyond a handful of provider configs.
+        _MODELS_CACHE.pop(cache_key, None)
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:

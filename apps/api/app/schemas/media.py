@@ -1,5 +1,6 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from urllib.parse import urlparse
+from pydantic import BaseModel, field_validator
 
 
 class YTFormatOption(BaseModel):
@@ -26,6 +27,19 @@ class YTDownloadRequest(BaseModel):
     format_id: Optional[str] = None
     selected_resolution: Optional[str] = None
     title: Optional[str] = None
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url(cls, v: str) -> str:
+        v = (v or "").strip()
+        parsed = urlparse(v)
+        # ponytail: allowlist http/https and block local hosts. Widen when other sources are needed.
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL harus diawali http:// atau https://")
+        host = (parsed.hostname or "").lower()
+        if not host or host in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+            raise ValueError("Host URL tidak valid")
+        return v
 
 
 class YTUpdateRequest(BaseModel):

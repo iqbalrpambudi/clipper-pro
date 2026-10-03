@@ -14,6 +14,20 @@ import {
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const REQUEST_TIMEOUT_MS = 120_000;
+
+/** FastAPI returns `detail` as a string, or a list of {loc,msg} for 422s. */
+function formatErrorDetail(errJson: any, fallback: string): string {
+  const detail = errJson?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d: any) => (typeof d === "string" ? d : d?.msg || JSON.stringify(d)))
+      .join("; ") || fallback;
+  }
+  if (detail) return JSON.stringify(detail);
+  return fallback;
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
@@ -22,30 +36,47 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   };
 
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) {
-    let detail = "Terjadi kesalahan saat memproses data";
-    try {
-      const errJson = await res.json();
-      detail = errJson.detail || detail;
-    } catch {}
-    throw new Error(detail);
+  // Abort hung requests so a dead backend surfaces as an error, not a spinner forever.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  if (options.signal) {
+    options.signal.addEventListener("abort", () => controller.abort(), { once: true });
   }
 
-  // Handle 204 No Content or empty responses gracefully without JSON parsing crash
-  if (res.status === 204 || res.headers.get("content-length") === "0") {
-    return {} as T;
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers, signal: controller.signal });
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err?.name === "AbortError") {
+      throw new Error("Permintaan ke server timeout atau dibatalkan");
+    }
+    throw new Error("Tidak dapat terhubung ke server API");
+  }
+  clearTimeout(timer);
+
+  if (!res.ok) {
+    let fallback = `Gagal memuat data (HTTP ${res.status})`;
+    try {
+      fallback = formatErrorDetail(await res.json(), fallback);
+    } catch {}
+    throw new Error(fallback);
+  }
+
+  // 204 No Content: nothing to parse.
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   const text = await res.text();
   if (!text || text.trim() === "") {
-    return {} as T;
+    return undefined as T;
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as T;
   } catch {
-    return {} as T;
+    throw new Error("Respons server bukan JSON yang valid");
   }
 }
 
@@ -96,6 +127,13 @@ export const api = {
       {
         method: "POST",
         body: JSON.stringify({ language }),
+      }
+    ),
+  repairThumbnails: (projectId: string) =>
+    request<{ message: string; repaired: number; total: number }>(
+      `/api/v1/projects/${projectId}/scenes/repair-thumbnails`,
+      {
+        method: "POST",
       }
     ),
 
@@ -232,8 +270,10 @@ export const api = {
   getAvailableModels: (baseUrl?: string, apiKey?: string) => {
     const params = new URLSearchParams();
     if (baseUrl) params.set("base_url", baseUrl);
-    if (apiKey) params.set("api_key", apiKey);
     const query = params.toString() ? `?${params.toString()}` : "";
-    return request<{ models: string[] }>(`/api/v1/settings/models${query}`);
+    // Key travels in a header, not the query string, so it stays out of logs.
+    return request<{ models: string[] }>(`/api/v1/settings/models${query}`, {
+      headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
+    });
   },
 };

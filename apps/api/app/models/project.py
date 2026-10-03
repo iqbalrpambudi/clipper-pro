@@ -34,7 +34,7 @@ class SourceVideo(Base):
     __tablename__ = "source_videos"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     origin: Mapped[str] = mapped_column(String(20), default="upload")  # upload | ytdlp
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -58,8 +58,8 @@ class Scene(Base):
     __tablename__ = "scenes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    source_video_id: Mapped[str] = mapped_column(String(36), ForeignKey("source_videos.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_video_id: Mapped[str] = mapped_column(String(36), ForeignKey("source_videos.id", ondelete="CASCADE"), nullable=False, index=True)
     scene_index: Mapped[int] = mapped_column(Integer, default=0)
     start_time: Mapped[float] = mapped_column(Float, default=0.0)
     end_time: Mapped[float] = mapped_column(Float, default=0.0)
@@ -81,7 +81,7 @@ class RenderJob(Base):
     __tablename__ = "render_jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     render_type: Mapped[str] = mapped_column(String(20), default="final")  # final | preview
     status: Mapped[str] = mapped_column(String(50), default="queued")  # queued, rendering, completed, failed
     progress: Mapped[int] = mapped_column(Integer, default=0)

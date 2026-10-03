@@ -350,3 +350,14 @@ async def test_gemini_tts_missing_key_throws_error(tmp_path, monkeypatch):
 
 
 
+
+
+def test_list_available_models_takes_key_from_header():
+    """The provider key must arrive via X-Api-Key, never as a query param (URLs land in logs)."""
+    import inspect
+
+    from app.api.v1.settings import list_available_models
+
+    params = inspect.signature(list_available_models).parameters
+    assert "api_key" not in params, "api_key query param reintroduced"
+    assert params["x_api_key"].default.alias == "X-Api-Key"

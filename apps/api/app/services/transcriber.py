@@ -8,22 +8,10 @@ from typing import List, Dict, Any, Optional
 
 log = logging.getLogger(__name__)
 
-_whisper_model = None
-
-
 def get_transcribe_model(model_size: str = "base"):
-    """Lazy load faster-whisper model for speech transcription."""
-    global _whisper_model
-    if _whisper_model is None:
-        try:
-            from faster_whisper import WhisperModel
-            # Load on CPU with int8 quantization for fast lightweight inference
-            _whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
-            log.info("Loaded faster-whisper model '%s' on CPU", model_size)
-        except Exception as e:
-            log.warning("Could not initialize faster-whisper model: %s", e)
-            _whisper_model = False
-    return _whisper_model
+    """Reuse the single shared Whisper model (services.alignment) to avoid double RAM."""
+    from app.services.alignment import get_whisper_model
+    return get_whisper_model(model_size)
 
 
 async def extract_audio_track(video_path: str, output_wav_path: str) -> bool:

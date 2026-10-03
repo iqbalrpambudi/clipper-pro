@@ -29,4 +29,6 @@ RUN uv pip install --system -r pyproject.toml --extra dev
 COPY . .
 
 FROM base AS dev
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+# --timeout-graceful-shutdown: SSE streams never end on their own, so without a cap
+# uvicorn --reload waits on them forever and every backend edit hangs the API.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload", "--timeout-graceful-shutdown", "5"]

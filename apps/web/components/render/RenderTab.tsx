@@ -14,7 +14,6 @@ import {
   Play,
   RefreshCw,
   ShieldCheck,
-  ShieldAlert,
   Trash2,
   HardDrive,
   Maximize2,

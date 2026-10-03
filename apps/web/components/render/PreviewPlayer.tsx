@@ -50,6 +50,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
+  // Mirror of currentTimeSec for effects that must not re-run every frame
+  const currentTimeRef = useRef(0);
+  // Last value pushed to state from the compositor loop (throttles re-renders)
+  const lastPublishedTimeRef = useRef(0);
   const [durationSec, setDurationSec] = useState(project.timeline?.total_duration || 30);
   const [isMuted, setIsMuted] = useState(false);
   const [frameWidth, setFrameWidth] = useState(320);
@@ -85,13 +89,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     ro.observe(frameRef.current);
     return () => ro.disconnect();
   }, []);
-
-  // Find active clip at current time
-  const activeClipIndex = clips.findIndex(
-    (c) => currentTimeSec >= c.timeline_start && currentTimeSec < c.timeline_end
-  );
-  const currentIdx = activeClipIndex !== -1 ? activeClipIndex : 0;
-  const activeClip = clips[currentIdx] || clips[0];
 
   // Active Segment & Active Word Calculation (with micro-pause buffer)
   const curMs = currentTimeSec * 1000;
@@ -159,6 +156,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     }
   }, [project.timeline?.total_duration, project.audio?.duration]);
 
+  useEffect(() => {
+    currentTimeRef.current = currentTimeSec;
+  }, [currentTimeSec]);
+
   // Audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
@@ -219,7 +220,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   useEffect(() => {
     if (clips.length === 0) return;
 
-    let idx = clips.findIndex((c) => currentTimeSec >= c.timeline_start && currentTimeSec < c.timeline_end);
+    const seekTime = currentTimeRef.current;
+    let idx = clips.findIndex((c) => seekTime >= c.timeline_start && seekTime < c.timeline_end);
     if (idx === -1) idx = 0;
     currentClipIndexRef.current = idx;
 
@@ -229,7 +231,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       if (vidA.getAttribute("src") !== curClip.video_url) {
         vidA.src = curClip.video_url || "";
       }
-      const clipProg = Math.max(0, currentTimeSec - curClip.timeline_start);
+      const clipProg = Math.max(0, seekTime - curClip.timeline_start);
       vidA.currentTime = curClip.clip_start + clipProg * (curClip.speed || 1.0);
       vidA.playbackRate = curClip.speed || 1.0;
       vidA.muted = true;
@@ -435,10 +437,17 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
     const compositorLoop = () => {
       const audio = audioRef.current;
-      const curTime = isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeSec;
+      // Read the ref, not state: currentTimeSec is no longer an effect dep, so the
+      // closure value would be frozen and paused seeks would not repaint.
+      const curTime = isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeRef.current;
 
       if (isPlaying && audio && !audio.paused) {
-        setCurrentTimeSec(curTime);
+        // Only push to state ~20x/sec; the loop itself reads currentTimeRef at 60fps.
+        // ponytail: coarse display cadence; lower to 1/60 once the time readout is the only consumer.
+        if (Math.abs(curTime - lastPublishedTimeRef.current) >= 0.05) {
+          lastPublishedTimeRef.current = curTime;
+          setCurrentTimeSec(curTime);
+        }
 
         // Find which clip belongs to curTime
         const newIdx = clips.findIndex(
@@ -529,13 +538,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       animId = requestAnimationFrame(compositorLoop);
     } else {
       // Single paint when paused
-      renderCanvasFrame(currentTimeSec);
+      renderCanvasFrame(currentTimeRef.current);
       if (jassubRef.current && isJassubReady) {
         jassubRef.current.manualRender({
           expectedDisplayTime: performance.now(),
           width: canvasWidth,
           height: canvasHeight,
-          mediaTime: currentTimeSec,
+          mediaTime: currentTimeRef.current,
         });
       }
     }
@@ -543,7 +552,22 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     return () => {
       if (animId) cancelAnimationFrame(animId);
     };
-  }, [isPlaying, clips, durationSec, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame, currentTimeSec]);
+  }, [isPlaying, clips, durationSec, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame]);
+
+  // Paused repaint. The compositor effect above deliberately omits currentTimeSec so it is
+  // not torn down 60x/sec; without this, scrubbing while paused would leave a stale frame.
+  useEffect(() => {
+    if (isPlaying) return;
+    renderCanvasFrame(currentTimeRef.current);
+    if (jassubRef.current && isJassubReady) {
+      jassubRef.current.manualRender({
+        expectedDisplayTime: performance.now(),
+        width: canvasWidth,
+        height: canvasHeight,
+        mediaTime: currentTimeRef.current,
+      });
+    }
+  }, [currentTimeSec, isPlaying, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame]);
 
   // Initialize JASSUB (WebAssembly libass) for 100% true WYSIWYG subtitle rendering
   useEffect(() => {
@@ -619,7 +643,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           expectedDisplayTime: performance.now(),
           width: canvasWidth,
           height: canvasHeight,
-          mediaTime: currentTimeSec,
+          mediaTime: currentTimeRef.current,
         });
       } catch (err: any) {
         console.error("[JASSUB] initialization failed:", err);
@@ -662,20 +686,20 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           expectedDisplayTime: performance.now(),
           width: canvasWidth,
           height: canvasHeight,
-          mediaTime: currentTimeSec,
+          mediaTime: currentTimeRef.current,
         },
         true
       );
     } catch (err) {
       console.error("Failed to update JASSUB track:", err);
     }
-  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight, currentTimeSec]);
+  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight]);
 
   // Listen for video decoder seeked/loaded events to redraw canvas when paused
   useEffect(() => {
     const onFrameUpdate = () => {
       if (!isPlaying) {
-        renderCanvasFrame(currentTimeSec);
+        renderCanvasFrame(currentTimeRef.current);
       }
     };
 
@@ -693,7 +717,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       vB?.removeEventListener("seeked", onFrameUpdate);
       vB?.removeEventListener("loadeddata", onFrameUpdate);
     };
-  }, [isPlaying, renderCanvasFrame, currentTimeSec]);
+  }, [isPlaying, renderCanvasFrame]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -718,6 +742,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     const rawT = parseFloat(e.target.value);
     const t = snapToFrame(rawT);
     setCurrentTimeSec(t);
+    lastPublishedTimeRef.current = t;
     if (audioRef.current) {
       audioRef.current.currentTime = t;
     }

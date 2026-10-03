@@ -143,7 +143,7 @@ async def download_video(
     elif format_id:
         f_spec = format_id
     else:
-        f_spec = "bestvideo+bestaudio/best"
+        f_spec = "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
 
     cmd = [
         "yt-dlp",
@@ -158,19 +158,24 @@ async def download_video(
     ]
 
     log.info("Running download cmd: %s", " ".join(cmd))
+    # Merge stderr into stdout: reading stdout while stderr stays a full PIPE would deadlock.
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
 
     percent_regex = re.compile(r"\[download\]\s+([0-9\.]+)%")
+    tail_lines: List[str] = []
 
     while True:
         line = await proc.stdout.readline()
         if not line:
             break
-        text = line.decode().strip()
+        text = line.decode(errors="replace").strip()
+        tail_lines.append(text)
+        if len(tail_lines) > 40:
+            tail_lines.pop(0)
         match = percent_regex.search(text)
         if match:
             pct = int(float(match.group(1)))
@@ -182,9 +187,9 @@ async def download_video(
 
     await proc.wait()
     if proc.returncode != 0:
-        stderr_bytes = await proc.stderr.read()
-        err_msg = stderr_bytes.decode().strip()
-        raise RuntimeError(f"Gagal mendownload video YouTube: {err_msg[:200]}")
+        err_msg = "\n".join(tail_lines)[-400:]
+        out_p.unlink(missing_ok=True)
+        raise RuntimeError(f"Gagal mendownload video YouTube: {err_msg}")
 
     if progress_callback:
         if asyncio.iscoroutinefunction(progress_callback):

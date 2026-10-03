@@ -11,13 +11,14 @@ log = logging.getLogger(__name__)
 _whisper_model = None
 
 
-def _get_whisper_model():
+def get_whisper_model(model_size: str = "base"):
+    """Lazy load the shared faster-whisper model instance."""
     global _whisper_model
     if _whisper_model is None:
         try:
             from faster_whisper import WhisperModel
-            # Run on CPU with int8 compute for lightweight fast alignment
-            _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+            # Run on CPU with int8 compute for lightweight fast inference
+            _whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         except Exception as e:
             log.warning("Could not initialize faster-whisper model: %s", e)
             _whisper_model = False
@@ -179,7 +180,7 @@ async def align_audio_with_text(
     loop = asyncio.get_running_loop()
 
     def _run_whisper() -> List[Dict[str, Any]]:
-        model = _get_whisper_model()
+        model = get_whisper_model()
         if not model:
             return []
 

@@ -2,7 +2,7 @@ from pydantic import BaseModel
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -244,4 +244,52 @@ async def retag_project_scenes(
         "model": vision_model_name,
         "mode": payload.mode,
     }
+
+
+@router.post("/repair-thumbnails")
+async def repair_project_thumbnails(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Scan and regenerate any missing or 0-byte thumbnail files for project scenes."""
+    res = await db.execute(
+        select(Scene)
+        .where(Scene.project_id == project_id)
+        .order_by(Scene.start_time.asc())
+    )
+    scenes = res.scalars().all()
+    if not scenes:
+        return {"message": "Tidak ada scene pada project ini", "repaired": 0, "total": 0}
+
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    videos_map = {v.id: v for v in v_res.scalars().all()}
+
+    from app.services.scene_detector import extract_frames_batch
+
+    tasks_by_video: Dict[str, List[Tuple[float, str]]] = {}
+    loop = asyncio.get_running_loop()
+
+    for s in scenes:
+        if not s.thumbnail_path:
+            continue
+        p = Path(s.thumbnail_path)
+        if not p.is_absolute():
+            p = storage.to_absolute_path(s.thumbnail_path)
+        if not p or not p.exists() or p.stat().st_size == 0:
+            vid = videos_map.get(s.source_video_id)
+            if vid and vid.file_path and Path(vid.file_path).exists():
+                mid_t = s.start_time + (s.duration / 2.0)
+                tasks_by_video.setdefault(vid.file_path, []).append((mid_t, str(p)))
+
+    repaired_count = 0
+    for v_path, items in tasks_by_video.items():
+        count = await loop.run_in_executor(None, extract_frames_batch, v_path, items, 8)
+        repaired_count += count
+
+    return {
+        "message": f"Berhasil meregenerasi {repaired_count} thumbnail yang hilang",
+        "repaired": repaired_count,
+        "total": len(scenes),
+    }
+
 

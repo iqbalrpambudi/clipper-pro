@@ -89,8 +89,8 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         description="Ceria, bersemangat, sangat cocok untuk video santai dan edukasi modern.",
     ),
     VoiceInfo(
-        id="Orpheus",
-        name="Orpheus (Gemini)",
+        id="Orus",
+        name="Orus (Gemini)",
         provider="gemini",
         gender="Male",
         sample_text="Simak analisa mendalam berikut untuk memahami apa yang sebenarnya terjadi.",
@@ -98,8 +98,8 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         description="Percaya diri, elegan, sangat cocok untuk dokumenter dan narasi ulasan.",
     ),
     VoiceInfo(
-        id="Zephyr",
-        name="Zephyr (Gemini)",
+        id="Enceladus",
+        name="Enceladus (Gemini)",
         provider="gemini",
         gender="Neutral",
         sample_text="Tarik nafas perlahan, dan nikmati momen berharga dalam perjalanan ini.",
@@ -238,7 +238,7 @@ async def generate_gemini_tts(
     voice: str = "Puck",
     rate: str = "+0%",
     pitch: str = "+0Hz",
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-preview-tts",
 ) -> float:
     """Generate audio via Gemini API multimodal audio endpoint (:generateContent) with rate & pitch tuning."""
     settings = get_settings()
@@ -250,23 +250,30 @@ async def generate_gemini_tts(
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    # Normalize model name: strip prefix models/ and invalid preview suffixes
-    raw_model = (model or "gemini-2.5-flash").strip().removeprefix("models/")
-    clean_model = raw_model.replace("-preview-tts", "").replace("-tts", "")
-    if not clean_model:
-        clean_model = "gemini-2.5-flash"
+    clean_model = (model or "gemini-2.5-flash-preview-tts").strip().removeprefix("models/")
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent?key={key}"
+    # Normalize voice name to Gemini prebuilt voice catalog
+    voice_lookup = {
+        "orpheus": "Orus",
+        "orus": "Orus",
+        "zephyr": "Enceladus",
+        "zephyrus": "Enceladus",
+        "enceladus": "Enceladus",
+    }
+    actual_voice = voice_lookup.get(voice.lower().strip(), voice.strip())
+
+    # Supported multimodal audio TTS model candidates
+    models_to_try = [clean_model]
+    for m in ["gemini-flash-latest", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]:
+        if m not in models_to_try:
+            models_to_try.append(m)
+
     payload = {
         "contents": [
             {
                 "parts": [
                     {
-                        "text": (
-                            "Please read aloud the following text exactly as written with natural pacing, "
-                            "clarity, and expressive storytelling tone, with no additional commentary:\n\n"
-                            f"{text}"
-                        )
+                        "text": text
                     }
                 ]
             }
@@ -276,95 +283,113 @@ async def generate_gemini_tts(
             "speechConfig": {
                 "voiceConfig": {
                     "prebuiltVoiceConfig": {
-                        "voiceName": voice,
+                        "voiceName": actual_voice,
                     }
                 }
             },
         },
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                err_detail = resp.text
-                try:
-                    err_json = resp.json()
-                    err_detail = err_json.get("error", {}).get("message") or resp.text
-                except Exception:
-                    pass
-                log.error("Gemini TTS API error HTTP %s (%s): %s", resp.status_code, clean_model, err_detail[:300])
-                raise RuntimeError(f"Gemini TTS ({clean_model}) HTTP {resp.status_code}: {err_detail}")
+    last_error_detail = ""
+    for attempt_model in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{attempt_model}:generateContent?key={key}"
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                resp = await client.post(url, json=payload)
+                if resp.status_code in (429, 500, 503, 504):
+                    err_json = {}
+                    try:
+                        err_json = resp.json()
+                    except Exception:
+                        pass
+                    last_error_detail = err_json.get("error", {}).get("message") or resp.text
+                    log.warning("Gemini TTS model %s returned HTTP %s (%s), trying next candidate...", attempt_model, resp.status_code, last_error_detail[:100])
+                    continue
 
-            data = resp.json()
-            candidates = data.get("candidates") or []
-            if not candidates:
-                prompt_feedback = data.get("promptFeedback") or {}
-                block_reason = prompt_feedback.get("blockReason") or "Tidak ada respons dari Gemini API"
-                raise RuntimeError(f"Gemini TTS gagal menghasilkan audio: {block_reason}")
+                if resp.status_code != 200:
+                    err_detail = resp.text
+                    try:
+                        err_json = resp.json()
+                        err_detail = err_json.get("error", {}).get("message") or resp.text
+                    except Exception:
+                        pass
+                    last_error_detail = f"HTTP {resp.status_code}: {err_detail}"
+                    log.error("Gemini TTS API error HTTP %s (%s): %s", resp.status_code, attempt_model, err_detail[:300])
+                    continue
 
-            parts = candidates[0].get("content", {}).get("parts", [])
-            inline_data = None
-            for part in parts:
-                if "inlineData" in part:
-                    inline_data = part["inlineData"]
-                    break
+                data = resp.json()
+                candidates = data.get("candidates") or []
+                if not candidates:
+                    prompt_feedback = data.get("promptFeedback") or {}
+                    block_reason = prompt_feedback.get("blockReason") or "Tidak ada respons dari Gemini API"
+                    last_error_detail = block_reason
+                    continue
 
-            if not inline_data or "data" not in inline_data:
-                finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
-                raise RuntimeError(f"Gemini TTS response tidak mengandung data audio: {finish_reason}")
+                parts = candidates[0].get("content", {}).get("parts", [])
+                inline_data = None
+                for part in parts:
+                    if "inlineData" in part:
+                        inline_data = part["inlineData"]
+                        break
 
-            raw_bytes = base64.b64decode(inline_data["data"])
-            mime_type = inline_data.get("mimeType", "")
-            audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
+                if not inline_data or "data" not in inline_data:
+                    finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
+                    last_error_detail = finish_reason
+                    continue
 
-            # If PCM audio (24kHz 16-bit mono), transcode to MP3 with rate/pitch filter using ffmpeg
-            if "pcm" in mime_type.lower() or (
-                not raw_bytes.startswith(b"RIFF")
-                and not raw_bytes.startswith(b"ID3")
-                and not raw_bytes.startswith(b"\xff\xfb")
-            ):
-                cmd = [
-                    "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
-                ]
-                if audio_filter:
-                    cmd.extend(["-af", audio_filter])
-                cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+                raw_bytes = base64.b64decode(inline_data["data"])
+                mime_type = inline_data.get("mimeType", "")
+                audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
 
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                _, stderr = await proc.communicate(input=raw_bytes)
-                if proc.returncode != 0:
-                    raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
-            else:
-                if audio_filter:
+                # If PCM audio (24kHz 16-bit mono), transcode to MP3 with rate/pitch filter using ffmpeg
+                if "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
+                    not raw_bytes.startswith(b"RIFF")
+                    and not raw_bytes.startswith(b"ID3")
+                    and not raw_bytes.startswith(b"\xff\xfb")
+                ):
+                    cmd = [
+                        "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+                    ]
+                    if audio_filter:
+                        cmd.extend(["-af", audio_filter])
+                    cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+
                     proc = await asyncio.create_subprocess_exec(
-                        "ffmpeg", "-y", "-i", "-", "-af", audio_filter,
-                        "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+                        *cmd,
                         stdin=asyncio.subprocess.PIPE,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                     )
                     _, stderr = await proc.communicate(input=raw_bytes)
                     if proc.returncode != 0:
-                        raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
+                        raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
                 else:
-                    out_p.write_bytes(raw_bytes)
+                    if audio_filter:
+                        proc = await asyncio.create_subprocess_exec(
+                            "ffmpeg", "-y", "-i", "-", "-af", audio_filter,
+                            "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        _, stderr = await proc.communicate(input=raw_bytes)
+                        if proc.returncode != 0:
+                            raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
+                    else:
+                        out_p.write_bytes(raw_bytes)
 
-            return await get_audio_duration(str(out_p))
-    except Exception as e:
-        log.exception("Gemini TTS synthesis failed for voice %s: %s", voice, e)
-        raise
+                return await get_audio_duration(str(out_p))
+        except Exception as e:
+            log.warning("Gemini TTS synthesis attempt failed for %s: %s", attempt_model, e)
+            last_error_detail = str(e)
+
+    raise RuntimeError(f"Gemini TTS gagal ({clean_model}): {last_error_detail}")
 
 
 async def get_or_generate_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-preview-tts",
     api_key: Optional[str] = None,
     force_refresh: bool = False,
 ) -> Path:
@@ -416,7 +441,7 @@ async def generate_speech_audio(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     api_key: Optional[str] = None,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-preview-tts",
 ) -> float:
     """Entrypoint for TTS audio generation."""
     if provider.lower() == "gemini":

@@ -25,7 +25,7 @@ class Narration(Base):
     __tablename__ = "narrations"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     template_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     topic: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tone: Mapped[str] = mapped_column(String(50), default="santai")  # santai, formal, dramatis
@@ -46,8 +46,8 @@ class AudioTrack(Base):
     __tablename__ = "audio_tracks"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    narration_id: Mapped[str] = mapped_column(String(36), ForeignKey("narrations.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    narration_id: Mapped[str] = mapped_column(String(36), ForeignKey("narrations.id", ondelete="CASCADE"), nullable=False, index=True)
     provider: Mapped[str] = mapped_column(String(50), default="gemini")  # gemini | edge
     voice: Mapped[str] = mapped_column(String(100), default="Puck")
     rate: Mapped[str] = mapped_column(String(20), default="+0%")

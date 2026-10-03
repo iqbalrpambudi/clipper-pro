@@ -14,6 +14,7 @@ const config: Config = {
           DEFAULT: "#12141C",
           hover: "#1A1D28",
           card: "#161922",
+          secondary: "#0E1017",
           border: "#232736",
         },
         brand: {
@@ -38,12 +39,17 @@ const config: Config = {
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "scale-pop": "scalePop 0.2s ease-out forwards",
+        "progress-indeterminate": "progressIndeterminate 1.4s ease-in-out infinite",
       },
       keyframes: {
         scalePop: {
           "0%": { transform: "scale(0.95)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
-        }
+        },
+        progressIndeterminate: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(300%)" },
+        },
       }
     },
   },

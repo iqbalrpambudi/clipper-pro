@@ -1,29 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
   Palette,
-  Check,
   FileCode,
   ArrowRight,
   Download,
   Edit3,
   Save,
-  Clock,
   RotateCcw,
   Sliders,
-  Type,
   Wand2,
   ChevronUp,
   ChevronDown,
-  Layers,
   CheckCircle2,
-  HelpCircle,
-  Move,
-  Film,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -78,6 +71,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
   });
 
   useEffect(() => {
+    // Don't let a stale server response clobber unsaved local style edits
+    if (styleDebounceRef.current) return;
     if (project.subtitle_style) {
       setStyle((prev) => ({
         ...prev,
@@ -104,9 +99,19 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     },
   });
 
+  // Debounced style commit: color pickers fire on every input event, which
+  // previously produced a PUT per pixel of mouse movement.
+  const styleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (styleDebounceRef.current) clearTimeout(styleDebounceRef.current);
+  }, []);
+
   const commitStyle = (updated: SubtitleStyle) => {
     setStyle(updated);
-    updateStyleMutation.mutate(updated);
+    if (styleDebounceRef.current) clearTimeout(styleDebounceRef.current);
+    styleDebounceRef.current = setTimeout(() => {
+      updateStyleMutation.mutate(updated);
+    }, 400);
   };
 
   const updateSegmentsMutation = useMutation({
