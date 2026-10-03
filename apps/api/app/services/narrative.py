@@ -385,12 +385,42 @@ async def generate_narration_script(
     scene_context_str = "Tidak ada metadata scene spesifik."
     if scenes_summary:
         lines = []
+        prev_analysis = None
+        from app.services.vision_tagger import compute_relationship
+
         for i, sc in enumerate(scenes_summary[:16]):
+            analysis = sc.get("analysis") or {}
             desc = sc.get("description", "")
             tags = ", ".join(sc.get("tags", []))
+            start = sc.get("start_time", 0.0)
+            ts = f"{int(start // 60):02d}:{int(start % 60):02d}"
+
+            rel = compute_relationship(prev_analysis, analysis) if analysis else ""
+            prev_analysis = analysis or prev_analysis
+
+            parts = [f"- Scene {i+1} [{ts}] ({sc.get('duration', 0)}s): {desc}"]
+            if analysis:
+                if analysis.get("characters"):
+                    parts.append(f"karakter: {', '.join(analysis['characters'])}")
+                if analysis.get("action"):
+                    parts.append(f"aksi: {analysis['action']}")
+                if analysis.get("location"):
+                    parts.append(f"lokasi: {analysis['location']}")
+                if analysis.get("objects"):
+                    parts.append(f"objek: {', '.join(analysis['objects'])}")
+                if analysis.get("state"):
+                    parts.append(f"suasana: {analysis['state']}")
+                if analysis.get("confidence") is not None:
+                    parts.append(f"confidence: {analysis['confidence']}")
+                if rel:
+                    parts.append(f"relasi: {rel}")
+            parts.append(f"(tags: {tags})")
+
             transcript = sc.get("transcript")
-            dialog_str = f" | Dialog percakapan: \"{transcript}\"" if transcript else ""
-            lines.append(f"- Scene {i+1} ({sc.get('duration', 0)}s): {desc}{dialog_str} (tags: {tags})")
+            if transcript:
+                parts.append(f'Dialog: "{transcript}"')
+
+            lines.append(" | ".join(parts))
         scene_context_str = "\n".join(lines)
 
     if custom_prompt:

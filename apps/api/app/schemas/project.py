@@ -67,6 +67,7 @@ class SceneResponse(BaseModel):
     video_url: Optional[str] = None
     description: Optional[str] = None
     tags: List[str] = []
+    analysis: Optional[dict] = None
     transcript: Optional[str] = None
     status: str
     created_at: datetime

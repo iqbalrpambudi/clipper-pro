@@ -194,7 +194,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a concise video scene analyzer. Output ONLY valid JSON with keys 'description' (string in Indonesian, 1 natural sentence describing the main action/subject) and 'tags' (list of 3-6 relevant Indonesian keywords).",
+                    "content": "You are a structured video scene analyzer. Output ONLY valid JSON with keys 'description' (string in Indonesian, 1 natural sentence), 'characters' (list of visible people/characters), 'action' (main activity, short phrase in Indonesian), 'location' (setting in Indonesian), 'objects' (list of important objects), 'state' (mood/time/weather in Indonesian), 'confidence' (float 0.0-1.0), and 'tags' (list of 3-6 relevant Indonesian keywords).",
                 },
                 {"role": "user", "content": content_parts},
             ],
@@ -247,6 +247,14 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 return {
                     "description": parsed.get("description", "Aktivitas visual dalam scene"),
                     "tags": parsed.get("tags", ["video", "klip"]),
+                    "analysis": {
+                        "characters": parsed.get("characters", []),
+                        "action": parsed.get("action", ""),
+                        "location": parsed.get("location", ""),
+                        "objects": parsed.get("objects", []),
+                        "state": parsed.get("state", ""),
+                        "confidence": parsed.get("confidence", 0.5),
+                    },
                 }
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             self._service_unavailable = True
@@ -280,7 +288,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 for sc_id, _ in batch_items
             ]
 
-        semaphore = asyncio.Semaphore(6)
+        semaphore = asyncio.Semaphore(16)
 
         async def _analyze_single(sc_id: str, t_path: str) -> Dict[str, Any]:
             async with semaphore:
@@ -294,6 +302,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                                 "scene_id": sc_id,
                                 "description": desc,
                                 "tags": tags,
+                                "analysis": res.get("analysis"),
                             }
                         elif attempt == 0:
                             await asyncio.sleep(1.2)
@@ -303,6 +312,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                                 "scene_id": sc_id,
                                 "description": desc or "Cuplikan video aksi/aktivitas",
                                 "tags": tags,
+                                "analysis": res.get("analysis"),
                             }
                     except Exception as exc:
                         if attempt == 0:

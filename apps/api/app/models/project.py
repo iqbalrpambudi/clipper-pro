@@ -67,6 +67,7 @@ class Scene(Base):
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[list] = mapped_column(JSON, default=list)
+    analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # structured: characters, action, location, objects, state, confidence
     transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     embedding: Mapped[Optional[list]] = mapped_column(Vector(768), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="detected")  # detected, analyzing, ready, failed

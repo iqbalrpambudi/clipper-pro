@@ -47,7 +47,14 @@ async def generate_narration(
     )
     scenes = scenes_res.scalars().all()
     scenes_summary = [
-        {"duration": s.duration, "description": s.description, "tags": s.tags}
+        {
+            "duration": s.duration,
+            "start_time": s.start_time,
+            "description": s.description,
+            "tags": s.tags,
+            "transcript": s.transcript,
+            "analysis": s.analysis,
+        }
         for s in scenes
     ]
 

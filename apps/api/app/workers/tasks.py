@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 from datetime import datetime
@@ -16,7 +17,7 @@ from app.core.events import publish_project_event
 from app.services.ytdlp import download_video, get_video_info
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
-from app.services.vision_tagger import analyze_scene, analyze_scenes_batch
+from app.services.vision_tagger import analyze_scenes_batch
 from app.services.tts import generate_speech_audio, estimate_tts_cost
 from app.services.alignment import align_audio_with_text
 from app.services.matching import match_scenes_to_segments
@@ -212,33 +213,41 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 data={"video_id": video_id, "total_scenes": total_scenes},
             )
 
-            BATCH_SIZE = 8
+            # Batch besar (24) untuk panggilan batch-API Gemini (1 panggilan per batch),
+            # BATCH_CONCURRENCY batch berjalan paralel -> total throughput naik ~Nx
+            BATCH_SIZE = 24
+            BATCH_CONCURRENCY = 4
             processed_count = 0
+            batches = [scenes_data[i : i + BATCH_SIZE] for i in range(0, total_scenes, BATCH_SIZE)]
 
-            for i in range(0, total_scenes, BATCH_SIZE):
-                batch_slice = scenes_data[i : i + BATCH_SIZE]
+            for bi in range(0, len(batches), BATCH_CONCURRENCY):
+                wave = batches[bi : bi + BATCH_CONCURRENCY]
 
-                # Analyze batch of scenes concurrently
-                batch_analysis = await analyze_scenes_batch(adapter, batch_slice)
+                # Analisis beberapa batch secara paralel
+                wave_results = await asyncio.gather(
+                    *[analyze_scenes_batch(adapter, batch_slice) for batch_slice in wave]
+                )
 
-                for item, (description, tags, embedding) in zip(batch_slice, batch_analysis):
-                    sc = Scene(
-                        project_id=video.project_id,
-                        source_video_id=video.id,
-                        scene_index=item["scene_index"],
-                        start_time=item["start_time"],
-                        end_time=item["end_time"],
-                        duration=item["duration"],
-                        thumbnail_path=item["thumbnail_path"],
-                        description=description,
-                        tags=tags,
-                        embedding=embedding,
-                        status="ready",
-                    )
-                    db.add(sc)
+                for batch_slice, batch_analysis in zip(wave, wave_results):
+                    for item, (description, tags, embedding, analysis) in zip(batch_slice, batch_analysis):
+                        sc = Scene(
+                            project_id=video.project_id,
+                            source_video_id=video.id,
+                            scene_index=item["scene_index"],
+                            start_time=item["start_time"],
+                            end_time=item["end_time"],
+                            duration=item["duration"],
+                            thumbnail_path=item["thumbnail_path"],
+                            description=description,
+                            tags=tags,
+                            analysis=analysis,
+                            embedding=embedding,
+                            status="ready",
+                        )
+                        db.add(sc)
 
                 await db.flush()
-                processed_count += len(batch_slice)
+                processed_count += sum(len(b) for b in wave)
 
                 # Report incremental progress for vision analysis
                 pct = 25 + int((processed_count / max(1, total_scenes)) * 70)

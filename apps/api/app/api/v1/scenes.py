@@ -12,7 +12,7 @@ from app.models.project import Scene, SourceVideo
 from app.models.timeline import Timeline
 from app.schemas.project import SceneResponse
 from app.services.ai_adapters.factory import get_active_vision_adapter
-from app.services.vision_tagger import analyze_scene
+from app.services.vision_tagger import analyze_scene, parse_scene_analysis
 from app.workers.tasks import detect_scenes_job
 from app.core.events import publish_project_event
 
@@ -181,6 +181,8 @@ async def retag_project_scenes(
                 if res_item:
                     s.description = res_item["description"]
                     s.tags = res_item["tags"]
+                    if res_item.get("analysis"):
+                        s.analysis = parse_scene_analysis(res_item["analysis"])
                     text_emb = f"{s.description}. Kata kunci: {", ".join(s.tags)}"
                     s.embedding = await adapter.generate_embedding(text_emb)
                     processed_count += 1
@@ -188,10 +190,11 @@ async def retag_project_scenes(
             for s_id, p_str in batch_items:
                 s = next((sc for sc in batch if sc.id == s_id), None)
                 if s:
-                    desc, tags, emb = await analyze_scene(adapter, [p_str])
+                    desc, tags, emb, analysis = await analyze_scene(adapter, [p_str])
                     s.description = desc
                     s.tags = tags
                     s.embedding = emb
+                    s.analysis = analysis
                     processed_count += 1
 
         await db.commit()
