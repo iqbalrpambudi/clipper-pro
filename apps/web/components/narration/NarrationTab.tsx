@@ -26,6 +26,11 @@ import {
   MessageSquareQuote,
   Clapperboard,
   Zap,
+  Search,
+  Ghost,
+  Mountain,
+  Repeat,
+  Swords,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -42,7 +47,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const queryClient = useQueryClient();
   const { showToast, setActiveTab } = useStudioStore();
 
-  const [selectedCategory, setSelectedCategory] = useState<"all" | "alur_film" | "viral_shorts" | "custom">("all");
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "film" | "viral" | "fakta" | "edukasi" | "custom">("all");
   const [selectedTemplateId, setSelectedTemplateId] = useState("alur_film");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("dramatis");
@@ -75,56 +80,67 @@ export function NarrationTab({ project }: NarrationTabProps) {
   }, [project.narration]);
 
   // Helper categorization
-  const getTemplateCategory = (tpl: NarrationTemplate) => {
+  const getTemplateCategory = (tpl: NarrationTemplate): "all" | "film" | "viral" | "fakta" | "edukasi" | "custom" => {
     if (!tpl.is_builtin || tpl.category === "custom") return "custom";
-    if (tpl.id.startsWith("alur_film")) return "alur_film";
-    return "viral_shorts";
+    if (tpl.category === "film" || tpl.category === "viral" || tpl.category === "fakta" || tpl.category === "edukasi") {
+      return tpl.category;
+    }
+    return "custom";
   };
 
-  const getTemplateBadge = (id: string) => {
-    switch (id) {
-      case "alur_film":
-        return { label: "Aksi & Tegang", color: "text-purple-300 bg-purple-500/10 border-purple-500/20" };
-      case "alur_film_absurd":
-        return { label: "Komedi & Parodi", color: "text-amber-300 bg-amber-500/10 border-amber-500/20" };
-      case "alur_film_heist":
-        return { label: "Trik & Survival", color: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20" };
-      case "alur_film_dramatis":
-        return { label: "Drama Emosional", color: "text-pink-300 bg-pink-500/10 border-pink-500/20" };
-      case "fakta_unik":
-        return { label: "Trivia & Misteri", color: "text-yellow-300 bg-yellow-500/10 border-yellow-500/20" };
-      case "konten_viral":
-        return { label: "Viral Story", color: "text-rose-300 bg-rose-500/10 border-rose-500/20" };
-      case "edukasi_singkat":
-        return { label: "Tips Praktis", color: "text-blue-300 bg-blue-500/10 border-blue-500/20" };
-      default:
-        return { label: "Kustom", color: "text-slate-300 bg-slate-500/10 border-slate-500/20" };
+  const getTemplateBadge = (tpl: NarrationTemplate) => {
+    if (tpl.sub_category) {
+      return { label: tpl.sub_category, color: "text-slate-300 bg-slate-500/10 border-slate-500/20" };
     }
+    return { label: "Kustom", color: "text-slate-300 bg-slate-500/10 border-slate-500/20" };
   };
 
-  const getTemplateIcon = (id: string) => {
-    switch (id) {
-      case "fakta_unik":
-        return <Lightbulb className="w-4 h-4 text-accent-yellow shrink-0" />;
-      case "konten_viral":
-        return <Flame className="w-4 h-4 text-rose-400 shrink-0" />;
-      case "edukasi_singkat":
-        return <BookOpen className="w-4 h-4 text-accent-blue shrink-0" />;
-      case "alur_film":
-        return <Film className="w-4 h-4 text-purple-400 shrink-0" />;
-      case "alur_film_absurd":
-        return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
-      case "alur_film_heist":
-        return <ShieldAlert className="w-4 h-4 text-cyan-400 shrink-0" />;
-      case "alur_film_dramatis":
-        return <Heart className="w-4 h-4 text-pink-400 shrink-0" />;
-      default:
-        return <BookOpen className="w-4 h-4 text-brand-400 shrink-0" />;
+  const getTemplateIcon = (tpl: NarrationTemplate) => {
+    const sub = tpl.sub_category || "";
+    const cat = getTemplateCategory(tpl);
+    if (cat === "film") {
+      switch (sub) {
+        case "Aksi":
+          return <Film className="w-4 h-4 text-purple-400 shrink-0" />;
+        case "Komedi":
+          return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
+        case "Heist & Trik":
+          return <ShieldAlert className="w-4 h-4 text-cyan-400 shrink-0" />;
+        case "Drama":
+          return <Heart className="w-4 h-4 text-pink-400 shrink-0" />;
+        case "Misteri":
+          return <Search className="w-4 h-4 text-indigo-400 shrink-0" />;
+        case "Horor":
+          return <Ghost className="w-4 h-4 text-red-400 shrink-0" />;
+        case "Perjalanan":
+          return <Mountain className="w-4 h-4 text-emerald-400 shrink-0" />;
+        case "Plot Twist":
+          return <Repeat className="w-4 h-4 text-violet-400 shrink-0" />;
+        case "Epik & Perang":
+          return <Swords className="w-4 h-4 text-orange-400 shrink-0" />;
+      }
+      return <Clapperboard className="w-4 h-4 text-purple-400 shrink-0" />;
     }
+    if (cat === "viral") {
+      if (sub === "POV Imersif") return <Search className="w-4 h-4 text-fuchsia-400 shrink-0" />;
+      if (sub === "Proses & Transformasi") return <Code className="w-4 h-4 text-teal-400 shrink-0" />;
+      return <Flame className="w-4 h-4 text-rose-400 shrink-0" />;
+    }
+    if (cat === "fakta") {
+      if (sub === "Bongkar Mitos") return <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />;
+      if (sub === "Ranking & Top List") return <Repeat className="w-4 h-4 text-orange-400 shrink-0" />;
+      return <Lightbulb className="w-4 h-4 text-accent-yellow shrink-0" />;
+    }
+    if (cat === "edukasi") {
+      if (sub === "Explainer & Analogi") return <MessageSquareQuote className="w-4 h-4 text-cyan-400 shrink-0" />;
+      if (sub === "Otopsi Kesalahan") return <Search className="w-4 h-4 text-red-400 shrink-0" />;
+      return <BookOpen className="w-4 h-4 text-accent-blue shrink-0" />;
+    }
+    return <BookOpen className="w-4 h-4 text-brand-400 shrink-0" />;
   };
 
   const categoryCounts = useMemo(() => {
-    const counts = { all: templates.length, alur_film: 0, viral_shorts: 0, custom: 0 };
+    const counts = { all: templates.length, film: 0, viral: 0, fakta: 0, edukasi: 0, custom: 0 };
     templates.forEach((t) => {
       const cat = getTemplateCategory(t);
       counts[cat]++;
@@ -233,33 +249,65 @@ export function NarrationTab({ project }: NarrationTabProps) {
 
             <button
               type="button"
-              onClick={() => setSelectedCategory("alur_film")}
+              onClick={() => setSelectedCategory("film")}
               className={`px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-                selectedCategory === "alur_film"
+                selectedCategory === "film"
                   ? "bg-purple-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-surface-border/50"
               }`}
             >
               <Clapperboard className="w-3.5 h-3.5" />
               <span>Alur Cerita Film</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "alur_film" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
-                {categoryCounts.alur_film}
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "film" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
+                {categoryCounts.film}
               </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setSelectedCategory("viral_shorts")}
+              onClick={() => setSelectedCategory("viral")}
               className={`px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-                selectedCategory === "viral_shorts"
-                  ? "bg-amber-600 text-white shadow-sm"
+                selectedCategory === "viral"
+                  ? "bg-rose-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-surface-border/50"
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>Viral & Trivia</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "viral_shorts" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
-                {categoryCounts.viral_shorts}
+              <span>Konten Viral</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "viral" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
+                {categoryCounts.viral}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("fakta")}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
+                selectedCategory === "fakta"
+                  ? "bg-yellow-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-surface-border/50"
+              }`}
+            >
+              <Lightbulb className="w-3.5 h-3.5" />
+              <span>Fakta & Trivia</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "fakta" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
+                {categoryCounts.fakta}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("edukasi")}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
+                selectedCategory === "edukasi"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-surface-border/50"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Edukasi & Tips</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "edukasi" ? "bg-white/20 text-white" : "bg-surface-card text-slate-400"}`}>
+                {categoryCounts.edukasi}
               </span>
             </button>
 
@@ -285,7 +333,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
           <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
             {filteredTemplates.map((tpl) => {
               const isSelected = selectedTemplateId === tpl.id;
-              const badge = getTemplateBadge(tpl.id);
+              const badge = getTemplateBadge(tpl);
               return (
                 <div
                   key={tpl.id}
@@ -300,7 +348,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   }`}
                 >
                   <div className="mt-0.5 p-2 rounded-xl bg-surface/80 border border-surface-border shrink-0 group-hover:scale-105 transition">
-                    {getTemplateIcon(tpl.id)}
+                    {getTemplateIcon(tpl)}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -374,8 +422,13 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
               >
                 <option value="santai">Santai & Akrab</option>
+                <option value="tegang">Tegang & Mepet</option>
                 <option value="dramatis">Dramatis & Tegang</option>
                 <option value="formal">Edukatif / Formal</option>
+                <option value="kocak">Kocak / Lempeng</option>
+                <option value="berwibawa">Berwibawa</option>
+                <option value="mencekam">Mencekam</option>
+                <option value="hangat">Hangat & Menyentuh</option>
               </select>
             </div>
 

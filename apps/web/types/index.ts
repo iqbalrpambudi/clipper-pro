@@ -169,6 +169,7 @@ export interface NarrationTemplate {
   name: string;
   description?: string | null;
   category: string;
+  sub_category?: string | null;
   system_prompt: string;
   user_prompt_template: string;
   default_tone: string;

@@ -82,6 +82,8 @@ export default function SettingsPage() {
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
+    category: "custom",
+    sub_category: "",
     system_prompt: "",
     user_prompt_template: "",
     default_tone: "santai",
@@ -92,6 +94,8 @@ export default function SettingsPage() {
     id: "",
     name: "",
     description: "",
+    category: "custom",
+    sub_category: "",
     system_prompt: "",
     user_prompt_template: "",
     default_tone: "santai",
@@ -194,6 +198,8 @@ export default function SettingsPage() {
       setTemplateForm({
         name: current.name,
         description: current.description || "",
+        category: current.category,
+        sub_category: current.sub_category || "",
         system_prompt: current.system_prompt,
         user_prompt_template: current.user_prompt_template,
         default_tone: current.default_tone,
@@ -342,6 +348,8 @@ export default function SettingsPage() {
       setTemplateForm({
         name: updated.name,
         description: updated.description || "",
+        category: updated.category,
+        sub_category: updated.sub_category || "",
         system_prompt: updated.system_prompt,
         user_prompt_template: updated.user_prompt_template,
         default_tone: updated.default_tone,
@@ -414,6 +422,8 @@ export default function SettingsPage() {
       id: `preset_${Date.now().toString(36)}`,
       name: "",
       description: "",
+      category: "custom",
+      sub_category: "",
       system_prompt: `Peran Anda adalah scriptwriter video pendek profesional. Tulis naskah yang padat, menarik, dan memikat penonton sejak detik pertama.`,
       user_prompt_template: `Topik: {topic}\nNada Bicara: {tone}\nTarget Durasi: {target_duration} detik\nTarget Kata: {word_count} kata\n\nKonteks Scene Visual Video:\n{scene_context}`,
       default_tone: "santai",
@@ -800,8 +810,13 @@ export default function SettingsPage() {
                         </p>
                       </div>
 
-                      <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center">
-                        <span className="font-mono text-slate-400 truncate max-w-[120px]">{tpl.id}</span>
+                      <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center gap-1.5">
+                        <span className="font-mono text-slate-400 truncate max-w-[100px]">{tpl.id}</span>
+                        {tpl.sub_category && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-slate-300 truncate max-w-[90px]" title={tpl.sub_category}>
+                            {tpl.sub_category}
+                          </span>
+                        )}
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
                           tpl.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
                         }`}>
@@ -880,7 +895,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Template Meta Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-1">
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                       Nama Preset Naskah
@@ -905,12 +920,47 @@ export default function SettingsPage() {
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
                       <option value="santai">Santai (Casual & Friendly)</option>
+                      <option value="tegang">Tegang (Tense & Gripping)</option>
                       <option value="formal">Formal (Professional & Clear)</option>
                       <option value="dramatis">Dramatis (Tense & Emotional)</option>
+                      <option value="kocak">Kocak (Funny & Lempeng)</option>
+                      <option value="berwibawa">Berwibawa (Authoritative)</option>
+                      <option value="mencekam">Mencekam (Creepy & Dark)</option>
+                      <option value="hangat">Hangat (Warm & Touching)</option>
                     </select>
                   </div>
 
                   <div className="sm:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Preset / Kategori
+                    </label>
+                    <select
+                      value={templateForm.category}
+                      onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    >
+                      <option value="film">Alur Cerita Film</option>
+                      <option value="viral">Konten Viral</option>
+                      <option value="fakta">Fakta & Trivia</option>
+                      <option value="edukasi">Edukasi & Tips</option>
+                      <option value="custom">Kustom</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Sub-kategori (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      value={templateForm.sub_category}
+                      onChange={(e) => setTemplateForm({ ...templateForm, sub_category: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                      placeholder="Mis. Aksi, Komedi, POV Imersif, Bongkar Mitos..."
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                       Deskripsi Ringkas
                     </label>
@@ -1694,8 +1744,13 @@ export default function SettingsPage() {
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="santai">Santai (Casual & Friendly)</option>
+                    <option value="tegang">Tegang (Tense & Gripping)</option>
                     <option value="formal">Formal (Professional & Clear)</option>
                     <option value="dramatis">Dramatis (Tense & Emotional)</option>
+                    <option value="kocak">Kocak (Funny & Lempeng)</option>
+                    <option value="berwibawa">Berwibawa (Authoritative)</option>
+                    <option value="mencekam">Mencekam (Creepy & Dark)</option>
+                    <option value="hangat">Hangat (Warm & Touching)</option>
                   </select>
                 </div>
 
@@ -1709,6 +1764,38 @@ export default function SettingsPage() {
                     value={newTemplateForm.description}
                     onChange={(e) => setNewTemplateForm({ ...newTemplateForm, description: e.target.value })}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Preset / Kategori
+                  </label>
+                  <select
+                    value={newTemplateForm.category}
+                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="custom">Kustom</option>
+                    <option value="film">Alur Cerita Film</option>
+                    <option value="viral">Konten Viral</option>
+                    <option value="fakta">Fakta & Trivia</option>
+                    <option value="edukasi">Edukasi & Tips</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Sub-kategori (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Mis. Aksi, POV Imersif, Bongkar Mitos..."
+                    value={newTemplateForm.sub_category}
+                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, sub_category: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   />
                 </div>
               </div>

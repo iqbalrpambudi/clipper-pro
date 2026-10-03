@@ -12,7 +12,8 @@ class NarrationTemplate(Base):
     id: Mapped[str] = mapped_column(String(50), primary_key=True)  # slug / id
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    category: Mapped[str] = mapped_column(String(50), default="builtin")  # builtin | custom
+    category: Mapped[str] = mapped_column(String(50), default="custom")  # preset: film | viral | edukasi | fakta | custom
+    sub_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # sub/genre dalam preset
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     user_prompt_template: Mapped[str] = mapped_column(Text, nullable=False)
     default_tone: Mapped[str] = mapped_column(String(50), default="santai")

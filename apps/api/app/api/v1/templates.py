@@ -20,6 +20,7 @@ async def seed_templates(db: AsyncSession):
                 name=item["name"],
                 description=item["description"],
                 category=item["category"],
+                sub_category=item["sub_category"],
                 system_prompt=item["system_prompt"],
                 user_prompt_template=item["user_prompt_template"],
                 default_tone=item["default_tone"],
@@ -30,6 +31,8 @@ async def seed_templates(db: AsyncSession):
         elif t.is_builtin:
             t.name = item["name"]
             t.description = item["description"]
+            t.category = item["category"]
+            t.sub_category = item["sub_category"]
     await db.commit()
 
 
@@ -53,7 +56,8 @@ async def create_custom_template(
         id=payload.id,
         name=payload.name,
         description=payload.description,
-        category="custom",
+        category=payload.category or "custom",
+        sub_category=payload.sub_category,
         system_prompt=payload.system_prompt,
         user_prompt_template=payload.user_prompt_template,
         default_tone=payload.default_tone,
@@ -80,6 +84,10 @@ async def update_template(
         template.name = payload.name
     if payload.description is not None:
         template.description = payload.description
+    if "category" in payload.model_fields_set:
+        template.category = payload.category or "custom"
+    if "sub_category" in payload.model_fields_set:
+        template.sub_category = payload.sub_category
     if payload.system_prompt is not None:
         template.system_prompt = payload.system_prompt
     if payload.user_prompt_template is not None:
@@ -109,6 +117,8 @@ async def reset_template(
 
     template.name = default_data["name"]
     template.description = default_data["description"]
+    template.category = default_data["category"]
+    template.sub_category = default_data["sub_category"]
     template.system_prompt = default_data["system_prompt"]
     template.user_prompt_template = default_data["user_prompt_template"]
     template.default_tone = default_data["default_tone"]
