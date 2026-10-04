@@ -267,10 +267,39 @@ class GeminiAdapter(OpenAICompatibleAdapter):
         return await super().analyze_vision(image_paths, prompt)
 
     async def generate_embedding(self, text: str) -> List[float]:
+        """Real embedding via Gemini OpenAI-compat endpoint (text-embedding-004).
+
+        Falls back to local semantic hash on quota exhaustion / API failure.
+        """
+        if not self._quota_exhausted and self.api_key:
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        f"{self.base_url}/embeddings",
+                        headers=self._get_headers(),
+                        json={"model": self.embedding_model, "input": text},
+                    )
+                    if resp.status_code == 200:
+                        vec = resp.json()["data"][0]["embedding"]
+                        # Pad or truncate to 768 dim
+                        return (vec + [0.0] * 768)[:768]
+                    if resp.status_code == 429:
+                        err_text = resp.text.lower()
+                        if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
+                            log.warning("Gemini embedding quota exhausted; using local hash for the rest of this session.")
+                            self._quota_exhausted = True
+                    else:
+                        log.debug("Gemini embedding API returned %d, using local hash", resp.status_code)
+            except Exception as e:
+                log.debug("Gemini embedding API failed, using local hash: %s", e)
+
+        return self._local_hash_embedding(text)
+
+    def _local_hash_embedding(self, text: str) -> List[float]:
         """Fast deterministic semantic hashing embedding (768 dimensions)."""
         import hashlib
         import math
-        tokens = re.findall(r"\\w+", text.lower())
+        tokens = re.findall(r"\w+", text.lower())
         vec = [0.0] * 768
         if not tokens:
             return vec

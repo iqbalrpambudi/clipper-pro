@@ -63,9 +63,21 @@ def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
     }
 
 
+def build_scene_embedding_text(
+    description: str,
+    tags: List[str],
+    transcript: Optional[str] = None,
+) -> str:
+    """Embedding input: description + tags + dialog transcript (if available)."""
+    parts = [f"{description}. Kata kunci: {', '.join(tags)}"]
+    if transcript and transcript.strip():
+        parts.append(f'Dialog: "{transcript.strip()}"')
+    return " ".join(parts)
+
 async def analyze_scene(
     adapter: BaseLLMAdapter,
     keyframe_paths: List[str],
+    transcript: Optional[str] = None,
 ) -> Tuple[str, List[str], List[float], Dict[str, Any]]:
     """Analyze scene keyframes with vision model and compute semantic embedding vector."""
     vision_result = await adapter.analyze_vision(keyframe_paths, VISION_PROMPT)
@@ -74,7 +86,7 @@ async def analyze_scene(
     analysis = parse_scene_analysis(vision_result.get("analysis") or vision_result)
 
     # Combine description and tags for rich semantic embedding
-    text_to_embed = f"{description}. Kata kunci: {', '.join(tags)}"
+    text_to_embed = build_scene_embedding_text(description, tags, transcript)
     embedding = await adapter.generate_embedding(text_to_embed)
 
     return description, tags, embedding, analysis
@@ -135,7 +147,9 @@ async def analyze_scenes_batch(
 
         descriptions.append(desc)
         tags_list.append(tags)
-        texts_to_embed.append(f"{desc}. Kata kunci: {', '.join(tags)}")
+        texts_to_embed.append(
+            build_scene_embedding_text(desc, tags, item.get("transcript"))
+        )
         analyses.append(analysis)
 
     try:

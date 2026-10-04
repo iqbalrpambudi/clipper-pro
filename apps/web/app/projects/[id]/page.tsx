@@ -8,7 +8,6 @@ import {
   FileText,
   Volume2,
   Layers,
-  Subtitles,
   Download,
   Settings as SettingsIcon,
   Sparkles,
@@ -25,7 +24,6 @@ import { MediaPoolTab } from "@/components/media/MediaPoolTab";
 import { NarrationTab } from "@/components/narration/NarrationTab";
 import { TTSTab } from "@/components/tts/TTSTab";
 import { TimelineTab } from "@/components/timeline/TimelineTab";
-import { SubtitleStudioTab } from "@/components/subtitles/SubtitleStudioTab";
 import { RenderTab } from "@/components/render/RenderTab";
 
 interface PageProps {
@@ -173,19 +171,13 @@ export default function ProjectStudioPage({ params }: PageProps) {
     },
     {
       id: "timeline",
-      label: "4. Timeline",
+      label: "4. Timeline & Subtitle",
       icon: Layers,
       badge: project.timeline?.clips?.length ? `${project.timeline.clips.length} Klip` : undefined,
     },
     {
-      id: "subtitles",
-      label: "5. Subtitle",
-      icon: Subtitles,
-      badge: project.subtitle_style?.preset_name?.slice(0, 5),
-    },
-    {
       id: "render",
-      label: "6. Render & Export",
+      label: "5. Render & Export",
       icon: Download,
     },
   ];
@@ -341,13 +333,18 @@ export default function ProjectStudioPage({ params }: PageProps) {
       <GlobalTaskIndicator />
 
       {/* Main Tab Body */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
+      <main
+        className={
+          activeTab === "timeline"
+            ? "w-full max-w-[1920px] mx-auto px-3 sm:px-5 py-2 flex-1 flex flex-col min-h-0"
+            : "max-w-7xl mx-auto px-6 py-8 flex-1 w-full"
+        }
+      >
 
         {activeTab === "media" && <MediaPoolTab project={project} />}
         {activeTab === "narration" && <NarrationTab project={project} />}
         {activeTab === "tts" && <TTSTab project={project} />}
         {activeTab === "timeline" && <TimelineTab project={project} />}
-        {activeTab === "subtitles" && <SubtitleStudioTab project={project} />}
         {activeTab === "render" && <RenderTab project={project} />}
       </main>
     </div>

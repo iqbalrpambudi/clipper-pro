@@ -1,7 +1,10 @@
 import re
+import logging
 import uuid
 from typing import List, Dict, Any, Optional
 from app.services.ai_adapters.base import BaseLLMAdapter
+
+log = logging.getLogger(__name__)
 
 DEFAULT_TEMPLATES = [
     {
@@ -40,7 +43,7 @@ DEFAULT_TEMPLATES = [
             "\n"
             "SCENE CONTEXT:\n"
             "- Narasi HARUS relevan dengan scene/visual dari video yang tersedia.\n"
-            "- Gunakan deskripsi scene sebagai panduan isi narasi.\n"
+            "- Gunakan RINGKASAN KESELURUHAN sebagai tulang punggung narasi; linimasa visual hanya pelengkap.\n"
             "- Jangan mengarang konten yang tidak ada hubungannya dengan materi video.\n"
             "\n"
             "DURASI:\n"
@@ -101,7 +104,7 @@ DEFAULT_TEMPLATES = [
             "\n"
             "SCENE CONTEXT:\n"
             "- Narasi HARUS relevan dengan scene/visual dari video yang tersedia.\n"
-            "- Gunakan deskripsi scene sebagai panduan alur cerita.\n"
+            "- Gunakan RINGKASAN KESELURUHAN sebagai panduan alur cerita; linimasa visual hanya pelengkap.\n"
             "- Jangan mengarang konten yang tidak ada hubungannya dengan materi video.\n"
             "\n"
             "DURASI:\n"
@@ -164,7 +167,7 @@ DEFAULT_TEMPLATES = [
             "\n"
             "SCENE CONTEXT:\n"
             "- Narasi HARUS relevan dengan scene/visual dari video yang tersedia.\n"
-            "- Gunakan deskripsi scene sebagai panduan isi tips.\n"
+            "- Gunakan RINGKASAN KESELURUHAN sebagai panduan isi tips; linimasa visual hanya pelengkap.\n"
             "- Jangan mengarang konten yang tidak ada hubungannya dengan materi video.\n"
             "\n"
             "DURASI:\n"
@@ -899,6 +902,81 @@ def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
     return segments
 
 
+def _fmt_ts(sec: float) -> str:
+    return f"{int(sec // 60):02d}:{int(sec % 60):02d}"
+
+def build_full_context_lines(scenes_summary: List[Dict[str, Any]]) -> List[str]:
+    """Compact per-scene lines covering the ENTIRE video, chronological, dialog included."""
+    lines = []
+    for sc in scenes_summary:
+        desc = (sc.get("description") or "").strip()
+        tags = ", ".join(sc.get("tags") or [])
+        ts = _fmt_ts(sc.get("start_time", 0.0))
+        parts = [f"[{ts}] {desc}"]
+        if tags:
+            parts.append(f"({tags})")
+        tr = (sc.get("transcript") or "").strip()
+        if tr:
+            parts.append(f'Dialog: "{tr[:400]}"')
+        lines.append(" | ".join(parts))
+    return lines
+
+def _even_sample(items: List[Any], max_items: int) -> List[Any]:
+    """Evenly-spaced sample preserving order (always includes first and last)."""
+    n = len(items)
+    if n <= max_items:
+        return list(items)
+    idxs = sorted({int(round(k * (n - 1) / (max_items - 1))) for k in range(max_items)})
+    return [items[i] for i in idxs]
+
+SUMMARY_SYSTEM_PROMPT = (
+    "Anda adalah analis konten video. Tugas Anda: memahami KESELURUHAN isi video dari log scene "
+    "berurutan (deskripsi visual + dialog), lalu menghasilkan ringkasan terstruktur dalam Bahasa Indonesia.\n"
+    "\n"
+    "FORMAT OUTPUT WAJIB:\n"
+    "TOPIK UTAMA: <video ini tentang apa, 1-2 kalimat>\n"
+    "ALUR: <kronologi peristiwa/tahapan dari AWAL sampai AKHIR video, 5-12 poin urut waktu>\n"
+    "MOMEN KUNCI: <3-5 bagian paling menarik/bernilai, sertakan timestamp>\n"
+    "AKHIR: <bagaimana video berakhir / hasil akhir, 1-2 kalimat>\n"
+    "\n"
+    "ATURAN:\n"
+    "- Rangkum video sebagai SATU KESATUAN cerita/proses — JANGAN mendeskripsikan scene satu per satu.\n"
+    "- Dialog adalah sumber utama pemahaman; deskripsi visual hanya pelengkap.\n"
+    "- Jangan mengarang informasi yang tidak ada di log.\n"
+    "- Output hanya ringkasan terstruktur, tanpa penjelasan tambahan."
+)
+
+async def summarize_video_content(adapter: BaseLLMAdapter, scenes_summary: List[Dict[str, Any]]) -> str:
+    """LLM pass 1: holistic understanding of the whole video from full scene log."""
+    context = "\n".join(build_full_context_lines(scenes_summary))
+    prompt = (
+        f"Log scene video (berurutan, mencakup SELURUH video, {len(scenes_summary)} scene):\n\n"
+        f"{context}\n\n"
+        "Hasilkan ringkasan terstruktur dari keseluruhan isi video:"
+    )
+    return await adapter.generate_chat(prompt=prompt, system_prompt=SUMMARY_SYSTEM_PROMPT)
+
+def build_narration_context(summary: str, scenes_summary: List[Dict[str, Any]]) -> str:
+    """Context for script pass: holistic summary + evenly-sampled visual timeline."""
+    total_sec = 0.0
+    if scenes_summary:
+        last = scenes_summary[-1]
+        total_sec = (last.get("start_time", 0.0) or 0.0) + (last.get("duration", 0.0) or 0.0)
+    sample = _even_sample(scenes_summary, 24) if scenes_summary else []
+    timeline = "\n".join(
+        f"- [{_fmt_ts(s.get('start_time', 0.0))}] {(s.get('description') or '').strip()}"
+        for s in sample
+    )
+    return (
+        "RINGKASAN KESELURUHAN ISI VIDEO:\n"
+        f"{summary}\n\n"
+        f"LINIMASA VISUAL (sampel merata {len(sample)} dari {len(scenes_summary)} scene, "
+        f"durasi total ~{int(total_sec)} detik):\n"
+        f"{timeline}\n\n"
+        "PENTING: naskah harus merangkum alur/isi keseluruhan video sebagai cerita yang mengalir — "
+        "BUKAN mendeskripsikan scene satu per satu. Gunakan momen kunci dari ringkasan sebagai tulang punggung naskah."
+    )
+
 async def generate_narration_script(
     adapter: BaseLLMAdapter,
     system_prompt: str,
@@ -913,46 +991,22 @@ async def generate_narration_script(
     # Approximate words per minute for Indonesian speech ~ 130-150 wpm
     word_count = int(target_duration * 2.3)
 
-    scene_context_str = "Tidak ada metadata scene spesifik."
-    if scenes_summary:
-        lines = []
-        prev_analysis = None
-        from app.services.vision_tagger import compute_relationship
-
-        for i, sc in enumerate(scenes_summary[:16]):
-            analysis = sc.get("analysis") or {}
-            desc = sc.get("description", "")
-            tags = ", ".join(sc.get("tags", []))
-            start = sc.get("start_time", 0.0)
-            ts = f"{int(start // 60):02d}:{int(start % 60):02d}"
-
-            rel = compute_relationship(prev_analysis, analysis) if analysis else ""
-            prev_analysis = analysis or prev_analysis
-
-            parts = [f"- Scene {i+1} [{ts}] ({sc.get('duration', 0)}s): {desc}"]
-            if analysis:
-                if analysis.get("characters"):
-                    parts.append(f"karakter: {', '.join(analysis['characters'])}")
-                if analysis.get("action"):
-                    parts.append(f"aksi: {analysis['action']}")
-                if analysis.get("location"):
-                    parts.append(f"lokasi: {analysis['location']}")
-                if analysis.get("objects"):
-                    parts.append(f"objek: {', '.join(analysis['objects'])}")
-                if analysis.get("state"):
-                    parts.append(f"suasana: {analysis['state']}")
-                if analysis.get("confidence") is not None:
-                    parts.append(f"confidence: {analysis['confidence']}")
-                if rel:
-                    parts.append(f"relasi: {rel}")
-            parts.append(f"(tags: {tags})")
-
-            transcript = sc.get("transcript")
-            if transcript:
-                parts.append(f'Dialog: "{transcript}"')
-
-            lines.append(" | ".join(parts))
-        scene_context_str = "\n".join(lines)
+    # Two-pass generation:
+    # Pass 1 — LLM memahami KESELURUHAN video (semua scene + dialog) → ringkasan terstruktur.
+    # Pass 2 — tulis naskah dari ringkasan level-cerita, bukan metadata scene level-shot.
+    # Mencegah naskah "mendeskripsikan scene" alih-alih merangkum isi video.
+    if scenes_summary and len(scenes_summary) > 16:
+        try:
+            summary = await summarize_video_content(adapter, scenes_summary)
+            scene_context_str = build_narration_context(summary, scenes_summary)
+        except Exception as e:
+            log.warning("Holistic summary failed (%s), falling back to compact scene log", e)
+            scene_context_str = "\n".join(build_full_context_lines(_even_sample(scenes_summary, 40)))
+    elif scenes_summary:
+        # Video pendek: kirim seluruh scene mentah (perilaku lama, tanpa kap 16)
+        scene_context_str = "\n".join(build_full_context_lines(scenes_summary))
+    else:
+        scene_context_str = "Tidak ada metadata scene spesifik."
 
     if custom_prompt:
         user_prompt = f"{custom_prompt}\n\nKonteks visual video:\n{scene_context_str}"

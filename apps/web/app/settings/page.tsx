@@ -68,6 +68,7 @@ export default function SettingsPage() {
   const [visionModel, setVisionModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [ttsProvider, setTtsProvider] = useState("gemini");
+  const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
   const [ttsApiKey, setTtsApiKey] = useState("");
 
   const [testResult, setTestResult] = useState<any>(null);
@@ -188,6 +189,11 @@ export default function SettingsPage() {
       setChatModel(config.chat_model || "gemini-2.5-flash");
       setVisionModel(config.vision_model || "gemini-2.5-flash");
       setTtsProvider(config.tts_provider || "gemini");
+      if (config.tts_provider && config.tts_provider.startsWith("gemini-")) {
+        setTtsModel(config.tts_provider);
+      } else {
+        setTtsModel("gemini-2.5-flash-preview-tts");
+      }
     }
   }, [config]);
 
@@ -295,7 +301,7 @@ export default function SettingsPage() {
       chat_model: chatModel.trim(),
       vision_model: visionModel.trim(),
       api_key: apiKey.trim() || undefined,
-      tts_provider: ttsProvider,
+      tts_provider: ttsProvider === "gemini" ? ttsModel : ttsProvider,
       tts_api_key: ttsApiKey.trim() || undefined,
     });
   };
@@ -711,10 +717,30 @@ export default function SettingsPage() {
                     onChange={(e) => setTtsProvider(e.target.value)}
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
-                    <option value="gemini">Gemini 2.5 Flash TTS (gemini-2.5-flash)</option>
+                    <option value="gemini">Gemini TTS</option>
                     <option value="edge">Edge-TTS (Natural Indonesian, Free)</option>
                   </select>
                 </div>
+
+                {ttsProvider === "gemini" && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Gemini TTS Model
+                    </label>
+                    <select
+                      value={ttsModel}
+                      onChange={(e) => setTtsModel(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    >
+                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (stabil)</option>
+                      <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
+                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (murah, volume tinggi)</option>
+                    </select>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      3.8: kualitas acting lebih bagus &amp; stabil untuk narasi panjang. 2.5: default lama, tidak berubah.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <div className="flex items-center justify-between mb-1">

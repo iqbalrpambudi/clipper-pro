@@ -17,6 +17,7 @@ export interface Project {
   updated_at: string;
   source_video_count?: number;
   scene_count?: number;
+  subtitle_style?: SubtitleStyle | null;
 }
 
 export interface SourceVideo {

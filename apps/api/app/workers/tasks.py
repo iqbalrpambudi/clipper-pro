@@ -745,10 +745,36 @@ async def transcribe_scenes_job(
                     language=language,
                 )
 
-                for s in scenes:
-                    if s.id in transcript_map:
-                        s.transcript = transcript_map[s.id]
-                        total_updated += 1
+                updated = [s for s in scenes if s.id in transcript_map]
+                for s in updated:
+                    s.transcript = transcript_map[s.id]
+                total_updated += len(updated)
+
+                # Re-embed scene yang dapat transcript agar embedding memuat dialog.
+                # (Vision analysis berjalan SEBELUM transcribe → embedding lama tanpa dialog.)
+                if updated:
+                    from app.services.vision_tagger import build_scene_embedding_text
+
+                    adapter = await get_active_vision_adapter(db)
+                    embed_texts = [
+                        build_scene_embedding_text(s.description, s.tags, s.transcript)
+                        for s in updated
+                    ]
+                    embeddings = await asyncio.gather(
+                        *[adapter.generate_embedding(t) for t in embed_texts],
+                        return_exceptions=True,
+                    )
+                    re_embedded = 0
+                    for s, emb in zip(updated, embeddings):
+                        if isinstance(emb, Exception) or not emb:
+                            continue
+                        s.embedding = emb
+                        re_embedded += 1
+                    if re_embedded:
+                        log.info(
+                            "Re-embedded %d scenes with dialog transcript for video %s",
+                            re_embedded, video.id,
+                        )
 
                 await db.commit()
             except Exception as e:

@@ -264,7 +264,14 @@ async def generate_gemini_tts(
 
     # Supported multimodal audio TTS model candidates
     models_to_try = [clean_model]
-    for m in ["gemini-flash-latest", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]:
+    for m in [
+        "gemini-3.8-flash-tts",
+        "gemini-3.8-flash-lite-tts",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-tts-preview",
+        "gemini-2.5-flash-preview-tts",
+        "gemini-2.5-pro-preview-tts",
+    ]:
         if m not in models_to_try:
             models_to_try.append(m)
 
@@ -341,12 +348,28 @@ async def generate_gemini_tts(
                 mime_type = inline_data.get("mimeType", "")
                 audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
 
-                # If PCM audio (24kHz 16-bit mono), transcode to MP3 with rate/pitch filter using ffmpeg
-                if "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
-                    not raw_bytes.startswith(b"RIFF")
-                    and not raw_bytes.startswith(b"ID3")
+                # Gemini 3.8 TTS returns WAV (RIFF) by default; 2.5 returns raw PCM — always
+                # transcode to MP3 so downstream (concat, browser playback) stays consistent.
+                is_wav = raw_bytes.startswith(b"RIFF") or "wav" in mime_type.lower()
+                if is_wav:
+                    cmd = ["ffmpeg", "-y", "-i", "-"]
+                    if audio_filter:
+                        cmd.extend(["-af", audio_filter])
+                    cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _, stderr = await proc.communicate(input=raw_bytes)
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"FFmpeg WAV transcode failed: {stderr.decode()}")
+                elif "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
+                    not raw_bytes.startswith(b"ID3")
                     and not raw_bytes.startswith(b"\xff\xfb")
                 ):
+                    # Raw PCM (24kHz 16-bit mono): feed with explicit format flags
                     cmd = [
                         "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
                     ]
@@ -433,6 +456,51 @@ async def get_or_generate_voice_sample(
     return sample_path
 
 
+def _split_text_for_tts(text: str, max_chars: int = 1200) -> List[str]:
+    """Split long script into TTS-safe chunks at sentence boundaries (~<=max_chars each)."""
+    text = text.strip()
+    if len(text) <= max_chars:
+        return [text]
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks: List[str] = []
+    cur = ""
+    for s in sentences:
+        # Oversized single sentence: hard-split at max_chars
+        while len(s) > max_chars:
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            chunks.append(s[:max_chars])
+            s = s[max_chars:]
+        if not s:
+            continue
+        if cur and len(cur) + 1 + len(s) > max_chars:
+            chunks.append(cur)
+            cur = s
+        else:
+            cur = f"{cur} {s}".strip()
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
+    """Concatenate mp3 parts via ffmpeg concat demuxer; returns total duration."""
+    list_file = Path(output_path).with_suffix(".concat.txt")
+    list_file.write_text("".join(f"file '{p}'\n" for p in part_paths), encoding="utf-8")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
+            "-c:a", "libmp3lame", "-b:a", "192k", output_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg concat failed: {stderr.decode()[:300]}")
+    finally:
+        list_file.unlink(missing_ok=True)
+    return await get_audio_duration(output_path)
+
 async def generate_speech_audio(
     text: str,
     output_path: str,
@@ -443,17 +511,44 @@ async def generate_speech_audio(
     api_key: Optional[str] = None,
     model: str = "gemini-2.5-flash-preview-tts",
 ) -> float:
-    """Entrypoint for TTS audio generation."""
+    """Entrypoint for TTS audio generation.
+
+    Gemini TTS: long scripts are chunked at sentence boundaries (~1200 chars),
+    synthesized per chunk, then concatenated — single calls fail/truncate on
+    multi-minute narrations. ponytail: 1200 chars ≈ 60-80s audio; add streaming
+    TTS if latency ever matters.
+    """
     if provider.lower() == "gemini":
-        return await generate_gemini_tts(
-            text,
-            output_path,
-            api_key=api_key,
-            voice=voice,
-            rate=rate,
-            pitch=pitch,
-            model=model,
-        )
+        chunks = _split_text_for_tts(text)
+        if len(chunks) == 1:
+            return await generate_gemini_tts(
+                chunks[0],
+                output_path,
+                api_key=api_key,
+                voice=voice,
+                rate=rate,
+                pitch=pitch,
+                model=model,
+            )
+        out_p = Path(output_path)
+        parts: List[str] = []
+        try:
+            for i, chunk in enumerate(chunks):
+                part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                await generate_gemini_tts(
+                    chunk,
+                    part_path,
+                    api_key=api_key,
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                    model=model,
+                )
+                parts.append(part_path)
+            return await _concat_mp3s(parts, output_path)
+        finally:
+            for p in parts:
+                Path(p).unlink(missing_ok=True)
     else:
         return await generate_edge_tts(
             text,

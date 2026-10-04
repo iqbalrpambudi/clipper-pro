@@ -436,13 +436,15 @@ export function NarrationTab({ project }: NarrationTabProps) {
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-slate-300">Durasi Narasi</label>
                 <span className="text-[11px] font-mono text-brand-400 font-bold">
-                  {targetDuration}s
+                  {targetDuration >= 60
+                    ? `${Math.floor(targetDuration / 60)}m${targetDuration % 60 ? ` ${targetDuration % 60}s` : ""}`
+                    : `${targetDuration}s`}
                 </span>
               </div>
               <input
                 type="range"
                 min={20}
-                max={90}
+                max={300}
                 step={5}
                 value={targetDuration}
                 onChange={(e) => setTargetDuration(parseInt(e.target.value))}
@@ -451,7 +453,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               <div className="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>20s</span>
                 <span>± {Math.round(targetDuration * 2.3)} kata</span>
-                <span>90s</span>
+                <span>5m</span>
               </div>
             </div>
           </div>
