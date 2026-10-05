@@ -6,6 +6,43 @@ from app.services.ai_adapters.base import BaseLLMAdapter
 
 log = logging.getLogger(__name__)
 
+# Master instruction injected into EVERY preset's system prompt (builtin + custom) at
+# generation time. Forces the script to narrate the WHOLE media-pool context as one flowing
+# story with a proper conclusion, instead of describing scene by scene.
+HOLISTIC_NARRATIVE_DIRECTIVE = (
+    "\n\n=== INSTRUKSI MASTER: CERITAKAN KESELURUHAN (WAJIB, MENIMPA ATURAN YANG BERTENTANGAN) ===\n"
+    "Tugasmu BUKAN menarasikan setiap scene/clip satu per satu. Pahami SELURUH materi Media Pool "
+    "sebagai SATU kesatuan, lalu ceritakan kembali sebagai SATU cerita utuh yang mengalir.\n"
+    "\n"
+    "PRINSIP WAJIB:\n"
+    "1. SATU ALUR, BUKAN DAFTAR SCENE.\n"
+    "   - Rangkai peristiwa menjadi narasi berkesinambungan dari awal sampai akhir materi.\n"
+    "   - DILARANG menyebut 'scene', 'shot', 'klip', atau timestamp di dalam naskah.\n"
+    "   - DILARANG pola 'scene ini menampilkan...', 'selanjutnya terlihat...', 'di klip berikutnya...'.\n"
+    "   - Gabungkan beberapa scene menjadi satu bagian cerita bila membuat alur lebih mulus.\n"
+    "\n"
+    "2. PEMBUKAAN YANG MENGUNDANG.\n"
+    "   - Buka dengan pernyataan/pertanyaan yang memperkenalkan konteks KESELURUHAN materi, "
+    "bukan deskripsi satu kejadian.\n"
+    "   - Pancing rasa penasaran ke arah cerita secara utuh.\n"
+    "\n"
+    "3. TENGAH YANG NYAMBUNG.\n"
+    "   - Setiap kalimat harus terhubung secara kronologis/sebab-akibat dengan kalimat sebelumnya.\n"
+    "   - Gunakan transisi alami ('lalu', 'namun', 'akhirnya', 'sementara itu') secukupnya, jangan repetitif.\n"
+    "   - Susun tensi dan rasa penasaran agar mengalir, bukan melompat antar adegan.\n"
+    "\n"
+    "4. PENUTUP YANG MENYIMPULKAN.\n"
+    "   - WAJIB akhiri dengan kesimpulan, pesan, hasil akhir, atau refleksi dari KESELURUHAN cerita — "
+    "bukan berhenti mendadak di adegan terakhir.\n"
+    "   - Penutup harus terasa memuaskan dan menutup cerita secara utuh.\n"
+    "\n"
+    "5. NATURAL, TIDAK KAKU.\n"
+    "   - Tulis seperti manusia bercerita, bukan caption otomatis dari metadata visual.\n"
+    "   - Prioritaskan makna dan alur cerita di atas kelengkapan detail visual.\n"
+    "   - Jangan mendeskripsikan apa yang 'terlihat di layar'; ceritakan apa yang SEDANG TERJADI dalam cerita.\n"
+    "=== AKHIR INSTRUKSI MASTER ===\n"
+)
+
 DEFAULT_TEMPLATES = [
     {
         "id": "fakta_unik",
@@ -994,17 +1031,14 @@ async def generate_narration_script(
     # Two-pass generation:
     # Pass 1 — LLM memahami KESELURUHAN video (semua scene + dialog) → ringkasan terstruktur.
     # Pass 2 — tulis naskah dari ringkasan level-cerita, bukan metadata scene level-shot.
-    # Mencegah naskah "mendeskripsikan scene" alih-alih merangkum isi video.
-    if scenes_summary and len(scenes_summary) > 16:
+    # Berlaku untuk SEMUA ukuran video agar naskah menceritakan keseluruhan, bukan per scene.
+    if scenes_summary:
         try:
             summary = await summarize_video_content(adapter, scenes_summary)
             scene_context_str = build_narration_context(summary, scenes_summary)
         except Exception as e:
             log.warning("Holistic summary failed (%s), falling back to compact scene log", e)
             scene_context_str = "\n".join(build_full_context_lines(_even_sample(scenes_summary, 40)))
-    elif scenes_summary:
-        # Video pendek: kirim seluruh scene mentah (perilaku lama, tanpa kap 16)
-        scene_context_str = "\n".join(build_full_context_lines(scenes_summary))
     else:
         scene_context_str = "Tidak ada metadata scene spesifik."
 
@@ -1021,7 +1055,7 @@ async def generate_narration_script(
 
     raw_response = await adapter.generate_chat(
         prompt=user_prompt,
-        system_prompt=system_prompt,
+        system_prompt=system_prompt + HOLISTIC_NARRATIVE_DIRECTIVE,
     )
 
     # Clean any accidental conversational prefixes like "Tentu! Ini naskahnya:"
