@@ -271,8 +271,15 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 status="success",
                 progress=100,
                 stage="completed",
-                message=f"Deteksi scene selesai! {total_scenes} scene visual siap digunakan di Media Pool.",
-                data={"video_id": video_id, "total_scenes": total_scenes},
+                message=(
+                    f"Deteksi scene selesai! {total_scenes} scene visual siap digunakan di Media Pool."
+                    + (" \u26a0\ufe0f Embedding fallback hash \u2014 kualitas matching scene turun." if getattr(adapter, "_embedding_degraded", False) else "")
+                ),
+                data={
+                    "video_id": video_id,
+                    "total_scenes": total_scenes,
+                    "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
+                },
             )
 
         except Exception as e:
@@ -459,8 +466,16 @@ async def generate_tts_and_align_job(
                 status="success",
                 progress=100,
                 stage="completed",
-                message="Suara, transkrip karaoke kata, dan susunan klip timeline siap!",
-                data={"narration_id": narration_id, "duration": duration, "clips_count": clips_count},
+                message=(
+                    "Suara, transkrip karaoke kata, dan susunan klip timeline siap!"
+                    + (" \u26a0\ufe0f Embedding fallback hash \u2014 pencocokan scene ke narasi kurang akurat." if getattr(adapter, "_embedding_degraded", False) else "")
+                ),
+                data={
+                    "narration_id": narration_id,
+                    "duration": duration,
+                    "clips_count": clips_count,
+                    "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
+                },
             )
 
         except Exception as e:

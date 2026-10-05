@@ -361,3 +361,19 @@ def test_list_available_models_takes_key_from_header():
     params = inspect.signature(list_available_models).parameters
     assert "api_key" not in params, "api_key query param reintroduced"
     assert params["x_api_key"].default.alias == "X-Api-Key"
+
+
+def test_hash_embedding_deterministic_unit_norm():
+    """Degraded fallback must be stable and unit-normalized so cosine math still behaves."""
+    import math
+
+    from app.services.ai_adapters.base import EMBEDDING_DIM, hash_embedding
+
+    a = hash_embedding("pria menyeduh kopi di kafe")
+    b = hash_embedding("pria menyeduh kopi di kafe")
+    c = hash_embedding("drone terbang di atas kota malam")
+
+    assert len(a) == EMBEDDING_DIM
+    assert a == b
+    assert a != c
+    assert math.isclose(sum(v * v for v in a), 1.0, rel_tol=1e-6)

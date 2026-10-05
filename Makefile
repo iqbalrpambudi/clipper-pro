@@ -2,7 +2,7 @@ COMPOSE := docker compose -f infrastructure/docker/docker-compose.yml --env-file
 WEB_PORT ?= $(shell sed -n 's/^WEB_PORT=//p' .env 2>/dev/null | tail -1)
 API_PORT ?= $(shell sed -n 's/^API_PORT=//p' .env 2>/dev/null | tail -1)
 
-.PHONY: up down restart logs rebuild migrate revision test sh-api sh-web sh-worker clean
+.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean
 
 up: .env
 	$(COMPOSE) up -d
@@ -24,12 +24,6 @@ logs:
 rebuild:
 	$(COMPOSE) build
 	$(COMPOSE) up -d
-
-migrate:
-	$(COMPOSE) exec api alembic upgrade head
-
-revision:
-	$(COMPOSE) exec api alembic revision --autogenerate -m "$(m)"
 
 test:
 	$(COMPOSE) exec api pytest -q

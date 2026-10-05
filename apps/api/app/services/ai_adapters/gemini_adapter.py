@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 import httpx
 
+from app.services.ai_adapters.base import EMBEDDING_DIM, hash_embedding
+
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 
 log = logging.getLogger(__name__)
@@ -281,36 +283,16 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                     )
                     if resp.status_code == 200:
                         vec = resp.json()["data"][0]["embedding"]
-                        # Pad or truncate to 768 dim
-                        return (vec + [0.0] * 768)[:768]
+                        return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
                     if resp.status_code == 429:
                         err_text = resp.text.lower()
                         if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
-                            log.warning("Gemini embedding quota exhausted; using local hash for the rest of this session.")
+                            log.warning("Gemini embedding quota exhausted; falling back to hash embeddings (degraded).")
                             self._quota_exhausted = True
                     else:
-                        log.debug("Gemini embedding API returned %d, using local hash", resp.status_code)
+                        log.warning("Gemini embedding API returned %d; falling back to hash embeddings (degraded)", resp.status_code)
             except Exception as e:
-                log.debug("Gemini embedding API failed, using local hash: %s", e)
+                log.warning("Gemini embedding API failed (%s); falling back to hash embeddings (degraded)", e)
 
-        return self._local_hash_embedding(text)
-
-    def _local_hash_embedding(self, text: str) -> List[float]:
-        """Fast deterministic semantic hashing embedding (768 dimensions)."""
-        import hashlib
-        import math
-        tokens = re.findall(r"\w+", text.lower())
-        vec = [0.0] * 768
-        if not tokens:
-            return vec
-        for i, token in enumerate(tokens):
-            h = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16)
-            idx = h % 768
-            weight = 1.0 / (1.0 + math.log1p(i))
-            sign = 1.0 if (h >> 16) % 2 == 0 else -1.0
-            vec[idx] += sign * weight
-
-        norm = math.sqrt(sum(x * x for x in vec))
-        if norm > 0:
-            vec = [x / norm for x in vec]
-        return vec
+        self._embedding_degraded = True
+        return hash_embedding(text)

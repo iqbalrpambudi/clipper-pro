@@ -28,7 +28,6 @@ class Settings(BaseSettings):
 
     TTS_PROVIDER: str = "gemini"
     GEMINI_API_KEY: str = ""
-    GEMINI_TTS_MODEL: str = "gemini-2.5-flash-preview-tts"
     GEMINI_TTS_VOICE: str = "Puck"
 
     @property

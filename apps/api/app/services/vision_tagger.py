@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional, Tuple
-from app.services.ai_adapters.base import BaseLLMAdapter
+from app.services.ai_adapters.base import BaseLLMAdapter, hash_embedding
 
 log = logging.getLogger(__name__)
 
@@ -9,18 +9,21 @@ log = logging.getLogger(__name__)
 # (diinject dari DB karena akurat), relationship dihitung rule-based.
 VISION_PROMPT = (
     "Analisis frame video ini secara terstruktur dalam Bahasa Indonesia. Berikan:\n"
-    "- description: ringkasan visual 1 kalimat\n"
+    "- description: ringkasan visual 2 kalimat; sebutkan warna dominan, gerakan kamera/subjek, "
+    "dan mood adegan (tegang/hangat/melankolis dll) supaya mudah dicocokkan dengan narasi\n"
     "- characters: daftar orang/karakter/hewan yang terlihat (nama/deskripsi singkat, kosongkan jika tidak ada)\n"
     "- action: aksi/aktivitas utama yang sedang terjadi (frasa singkat)\n"
     "- location: tempat/latar scene\n"
     "- objects: objek penting yang terlihat\n"
     "- state: suasana/keadaan (emosi, waktu, cuaca, kondisi)\n"
     "- confidence: angka 0.0-1.0 seberapa yakin analisis ini akurat\n"
-    "- tags: 3-5 kata kunci relevan\n"
-    'Contoh format JSON: {"description": "Pria menyeduh kopi di meja bar kayu", '
+    "- tags: 5-8 kata kunci relevan, termasuk warna dominan, gerakan, dan mood\n"
+    'Contoh format JSON: {"description": "Pria berbaju hitam menyeduh kopi di meja bar kayu. '
+    'Cahaya kuning hangat dari lampu gantung, kamera statis, suasana santai.", '
     '"characters": ["pria berbaju hitam"], "action": "menyeduh kopi", '
     '"location": "kafe", "objects": ["cangkir", "mesin espresso"], '
-    '"state": "siang, santai", "confidence": 0.85, "tags": ["kopi", "barista", "kafe"]}'
+    '"state": "siang, santai", "confidence": 0.85, '
+    '"tags": ["kopi", "barista", "kafe", "kuning hangat", "kamera statis", "santai"]}'
 )
 
 
@@ -156,8 +159,9 @@ async def analyze_scenes_batch(
         embedding_tasks = [adapter.generate_embedding(txt) for txt in texts_to_embed]
         embeddings = await asyncio.gather(*embedding_tasks)
     except Exception as exc:
-        log.warning("Batch embedding generation error: %s", exc)
-        embeddings = [[0.0] * 768 for _ in texts_to_embed]
+        log.warning("Batch embedding generation error (%s); using hash fallback (degraded)", exc)
+        adapter._embedding_degraded = True
+        embeddings = [hash_embedding(txt) for txt in texts_to_embed]
 
     return list(zip(descriptions, tags_list, embeddings, analyses))
 

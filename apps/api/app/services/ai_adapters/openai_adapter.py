@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 import httpx
-from app.services.ai_adapters.base import BaseLLMAdapter
+from app.services.ai_adapters.base import BaseLLMAdapter, EMBEDDING_DIM, hash_embedding
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         self.vision_model = vision_model or chat_model
         self.embedding_model = embedding_model
         self._service_unavailable = False
+        self._embedding_degraded = False
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -343,30 +344,14 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                     json={"model": self.embedding_model, "input": text},
                 )
                 if resp.status_code == 200:
-                    data = resp.json()
-                    vec = data["data"][0]["embedding"]
-                    # Pad or truncate to 768 dim if necessary
-                    if len(vec) > 768:
-                        return vec[:768]
-                    elif len(vec) < 768:
-                        return vec + [0.0] * (768 - len(vec))
-                    return vec
+                    vec = resp.json()["data"][0]["embedding"]
+                    return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+                log.warning(
+                    "Embedding API returned HTTP %s; scene matching will be degraded",
+                    resp.status_code,
+                )
         except Exception as e:
-            log.debug("Remote embedding failed, using local semantic hash embedding: %s", e)
+            log.warning("Embedding API failed (%s); scene matching will be degraded", e)
 
-        # Robust local semantic hashing embedding fallback (768 dimensions)
-        import hashlib
-        import numpy as np
-
-        words = re.findall(r"\w+", text.lower())
-        vec = np.zeros(768, dtype=np.float32)
-        for i, word in enumerate(words):
-            h = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            idx = h % 768
-            sign = 1.0 if (h >> 10) % 2 == 0 else -1.0
-            vec[idx] += sign * (1.0 / (i + 1) ** 0.5)
-
-        norm = np.linalg.norm(vec)
-        if norm > 0:
-            vec = vec / norm
-        return vec.tolist()
+        self._embedding_degraded = True
+        return hash_embedding(text)
