@@ -37,6 +37,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   const videoRefA = useRef<HTMLVideoElement | null>(null);
   const videoRefB = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const blurCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const thumbnailImgCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const activeVideoSlot = useRef<0 | 1>(0);
@@ -290,10 +291,24 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, cW, cH);
       } else if (bgMode === "blur" && isVideoReady && activeVid) {
+        // High-Performance Offscreen Background Blur matching FFmpeg boxblur=25:5
+        if (!blurCanvasRef.current) {
+          blurCanvasRef.current = document.createElement("canvas");
+        }
+        const bCanvas = blurCanvasRef.current;
+        const bW = Math.max(160, Math.round(cW / 3));
+        const bH = Math.max(160, Math.round(cH / 3));
+        if (bCanvas.width !== bW || bCanvas.height !== bH) {
+          bCanvas.width = bW;
+          bCanvas.height = bH;
+        }
+        const bCtx = bCanvas.getContext("2d");
+        if (bCtx) {
+          bCtx.drawImage(activeVid, 0, 0, bW, bH);
+        }
         ctx.save();
-        // Hardware accelerated dynamic blur matching FFmpeg boxblur=25:5
-        ctx.filter = "blur(30px) brightness(0.70)";
-        ctx.drawImage(activeVid, -25, -25, cW + 50, cH + 50);
+        ctx.filter = "blur(12px) brightness(0.70)";
+        ctx.drawImage(bCanvas, -25, -25, cW + 50, cH + 50);
         ctx.restore();
       } else if (bgMode === "blur" && curClip?.thumbnail_url) {
         let thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);

@@ -56,6 +56,8 @@ interface TimelineTabProps {
   };
 }
 
+const EMPTY_SEGMENTS: any[] = [];
+
 export function TimelineTab({ project }: TimelineTabProps) {
   const queryClient = useQueryClient();
   const { showToast, setActiveTab } = useStudioStore();
@@ -162,6 +164,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
       setIsSubtitlesAttached(project.timeline.has_subtitles ?? true);
     }
   }, [project.timeline?.has_audio, project.timeline?.has_subtitles]);
+
+  const attachedSegments = useMemo(() => {
+    return isSubtitlesAttached ? (project.narration?.segments || EMPTY_SEGMENTS) : EMPTY_SEGMENTS;
+  }, [isSubtitlesAttached, project.narration?.segments]);
 
   // When a clip is selected, auto-switch the side drawer to inspector
   const handleSelectClip = useCallback((idx: number | null) => {
@@ -869,7 +875,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     usedSceneMap={usedSceneMap}
                     selectedClipNumber={selectedClipIndex !== null ? selectedClipIndex + 1 : null}
                     selectedSceneId={selectedClip?.scene_id || null}
-                    canInsertAtPlayhead={time >= 0 && time <= totalDuration}
+                    canInsertAtPlayhead={totalDuration > 0}
                     onReplace={handleReplaceSelectedClip}
                     onInsert={handleInsertAtPlayhead}
                     onAppend={handleAppendScene}
@@ -954,7 +960,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
             >
               <TimelineTracks
                 clips={clips}
-                segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+                segments={attachedSegments}
                 peaks={isAudioAttached ? peaks : null}
                 audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
                 voice={project.audio?.voice}
@@ -1000,7 +1006,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               clips={clips}
               audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
               duration={totalDuration}
-              segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+              segments={attachedSegments}
               aspectRatio={liveAspectRatio}
               backgroundFill={liveBackgroundFill}
               bgMode={liveBackgroundFill?.mode || "blur"}
@@ -1124,7 +1130,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   usedSceneMap={usedSceneMap}
                   selectedClipNumber={selectedClipIndex !== null ? selectedClipIndex + 1 : null}
                   selectedSceneId={selectedClip?.scene_id || null}
-                  canInsertAtPlayhead={time >= 0 && time <= totalDuration}
+                  canInsertAtPlayhead={totalDuration > 0}
                   onReplace={handleReplaceSelectedClip}
                   onInsert={handleInsertAtPlayhead}
                   onAppend={handleAppendScene}
@@ -1209,7 +1215,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 clips={clips}
                 audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
                 duration={totalDuration}
-                segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+                segments={attachedSegments}
                 aspectRatio={liveAspectRatio}
                 backgroundFill={liveBackgroundFill}
                 bgMode={liveBackgroundFill?.mode || "blur"}
@@ -1254,7 +1260,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
           >
             <TimelineTracks
               clips={clips}
-              segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+              segments={attachedSegments}
               peaks={isAudioAttached ? peaks : null}
               audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
               voice={project.audio?.voice}

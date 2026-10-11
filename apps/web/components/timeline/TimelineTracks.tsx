@@ -158,16 +158,27 @@ export function TimelineTracks({
     return () => window.removeEventListener("keydown", onKey);
   }, [scale, zoomTo]);
 
-  // Keep the playhead visible during playback
+  // Keep the playhead visible during playback (optimized to eliminate layout thrashing)
+  const lastScrollCheckTime = useRef(0);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || scrubbingRef.current || dragRef.current) return;
+
+    // During playback, throttle scroll inspection to avoid forced synchronous layout
+    const now = performance.now();
+    if (isPlaying && now - lastScrollCheckTime.current < 200) {
+      return;
+    }
+    lastScrollCheckTime.current = now;
+
     const px = x(time);
-    if (px < el.scrollLeft + 24 || px > el.scrollLeft + el.clientWidth - 48) {
-      el.scrollLeft = Math.max(0, px - (isPlaying ? 80 : el.clientWidth / 3));
+    const sLeft = el.scrollLeft;
+    const vW = viewportW || el.clientWidth;
+    if (px < sLeft + 24 || px > sLeft + vW - 48) {
+      el.scrollLeft = Math.max(0, px - (isPlaying ? 80 : vW / 3));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [time, scale]);
+  }, [time, scale, isPlaying, viewportW]);
 
   // Waveform rendering
   const waveW = Math.max(1, Math.round(audioDuration * scale));
@@ -777,7 +788,14 @@ export function TimelineTracks({
             )}
 
             {/* Red Playhead (spans through all tracks from top to bottom) */}
-            <div className="absolute top-0 z-30 pointer-events-none" style={{ left: x(time), height: trackTotalH }}>
+            <div
+              className="absolute top-0 z-30 pointer-events-none"
+              style={{
+                left: x(time),
+                height: trackTotalH,
+                transition: isPlaying ? "left 0.08s linear" : "none",
+              }}
+            >
               <div className="absolute -translate-x-1/2 top-0 w-3 h-3 bg-rose-500 rotate-45 -mt-1.5 rounded-sm shadow-md" />
               <div className="absolute top-0 bottom-0 w-px bg-rose-500 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
             </div>
