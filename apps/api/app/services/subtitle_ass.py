@@ -107,7 +107,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "is_builtin": True,
             "font_family": "Inter",
             "font_size": 44,
-            "font_weight": "Normal",
+            "font_weight": "Regular",
             "primary_color": "#EEEEEE",
             "highlight_color": "#38BDF8",
             "outline_color": "#0F172A",

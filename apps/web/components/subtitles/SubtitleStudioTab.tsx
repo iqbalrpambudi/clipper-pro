@@ -9,13 +9,7 @@ import {
   FileCode,
   ArrowRight,
   Download,
-  Edit3,
-  Save,
-  RotateCcw,
   Sliders,
-  Wand2,
-  ChevronUp,
-  ChevronDown,
   CheckCircle2,
   Settings as SettingsIcon,
 } from "lucide-react";
@@ -58,8 +52,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     emoji_enabled: true,
   });
 
-  // State for editable segments
-  const [editableSegments, setEditableSegments] = useState<any[]>([]);
   const [isAssModalOpen, setIsAssModalOpen] = useState(false);
   const [assContent, setAssContent] = useState("");
   const [newPresetName, setNewPresetName] = useState("");
@@ -80,12 +72,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       }));
     }
   }, [project.subtitle_style]);
-
-  useEffect(() => {
-    if (project.narration?.segments) {
-      setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
-    }
-  }, [project.narration?.segments]);
 
   const updateStyleMutation = useMutation({
     mutationFn: (data: any) => api.updateSubtitleStyle(project.id, data),
@@ -113,31 +99,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       updateStyleMutation.mutate(updated);
     }, 400);
   };
-
-  const updateSegmentsMutation = useMutation({
-    mutationFn: (segments: any[]) => api.updateNarrationSegments(project.id, segments),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Koreksi kata & timing subtitle berhasil disimpan!", "success");
-    },
-    onError: (err: any) => {
-      showToast(err.message || "Gagal menyimpan koreksi kata", "error");
-    },
-  });
-
-  const matchAudioMutation = useMutation({
-    mutationFn: () => api.matchSubtitleWithAudio(project.id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      if (data?.segments) {
-        setEditableSegments(JSON.parse(JSON.stringify(data.segments)));
-      }
-      showToast("Subtitle berhasil disinkronkan presisi dengan audio via Whisper AI!", "success");
-    },
-    onError: (err: any) => {
-      showToast(err.message || "Gagal mencocokkan subtitle dengan audio", "error");
-    },
-  });
 
   const handleApplyPreset = (preset: any) => {
     const updated: SubtitleStyle = {
@@ -172,29 +133,6 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       setIsAssModalOpen(true);
     } catch (err: any) {
       showToast(err.message || "Gagal menghasilkan preview ASS", "error");
-    }
-  };
-
-  const handleWordChange = (segIdx: number, wordIdx: number, newWord: string) => {
-    const next = [...editableSegments];
-    if (next[segIdx] && next[segIdx].words && next[segIdx].words[wordIdx]) {
-      next[segIdx].words[wordIdx].word = newWord;
-      next[segIdx].text = next[segIdx].words.map((w: any) => w.word).join(" ");
-      setEditableSegments(next);
-    }
-  };
-
-  const handleWordTimingAdjust = (segIdx: number, wordIdx: number, field: "start_ms" | "end_ms", delta: number) => {
-    const next = [...editableSegments];
-    if (next[segIdx] && next[segIdx].words && next[segIdx].words[wordIdx]) {
-      const current = next[segIdx].words[wordIdx][field] || 0;
-      next[segIdx].words[wordIdx][field] = Math.max(0, current + delta);
-      const wList = next[segIdx].words;
-      if (wList.length > 0) {
-        next[segIdx].start_ms = wList[0].start_ms || 0;
-        next[segIdx].end_ms = wList[wList.length - 1].end_ms || 0;
-      }
-      setEditableSegments(next);
     }
   };
 
@@ -703,7 +641,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       </div>
 
       {/* ========================================================================= */}
-      {/* KOLOM KANAN (5/12): COMPACT PREVIEW PLAYER & ALIGNED WORD INSPECTOR       */}
+      {/* KOLOM KANAN (5/12): COMPACT PREVIEW PLAYER & SUBTITLE EXPORT              */}
       {/* ========================================================================= */}
       <div className="lg:col-span-5 space-y-4">
         {/* Compact Live Preview Player Card */}
@@ -738,140 +676,81 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
           </p>
         </div>
 
-        {/* Word Inspector & In-Place Transcript Editor */}
-        <div className="glass-panel rounded-2xl p-4 border border-surface-border space-y-3">
-          {/* Header with neatly aligned action buttons */}
-          <div className="flex items-center justify-between gap-2 border-b border-surface-border pb-2.5">
-            <div className="min-w-0">
-              <h4 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                <Edit3 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">Word Inspector</span>
+        {/* Subtitle Export & Script Card */}
+        <div className="glass-panel rounded-2xl p-4 border border-surface-border space-y-4">
+          <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
+            <div>
+              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <FileCode className="w-3.5 h-3.5 text-brand-400" />
+                <span>Ekspor File Subtitle</span>
               </h4>
-              <p className="text-[10px] text-slate-400 truncate">
-                Koreksi kata & timing presisi
+              <p className="text-[10px] text-slate-400">
+                Unduh file subtitle sesuai standar format video
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handlePreviewASS}
+              className="h-7 px-2.5 rounded-lg border border-surface-border text-[11px] text-slate-300 hover:text-white bg-surface hover:bg-white/5 transition flex items-center gap-1 shadow-sm cursor-pointer"
+              title="Lihat kode script .ASS mentah"
+            >
+              <FileCode className="w-3 h-3 text-brand-400" />
+              <span>Preview ASS</span>
+            </button>
+          </div>
 
-            {/* Aligned action buttons row */}
-            <div className="flex items-center gap-1.5 shrink-0">
+          {/* Export Options Grid */}
+          <div className="grid grid-cols-3 gap-2">
+            <a
+              href={api.getSubtitleExportUrl(project.id, "ass")}
+              download
+              className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-brand-500/50 hover:bg-brand-500/10 transition text-center group"
+            >
+              <Download className="w-4 h-4 text-brand-400 group-hover:scale-110 transition-transform mb-1" />
+              <span className="text-[11px] font-bold text-white">.ASS</span>
+              <span className="text-[9px] text-slate-400">Full Styling</span>
+            </a>
+            <a
+              href={api.getSubtitleExportUrl(project.id, "srt")}
+              download
+              className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-emerald-500/50 hover:bg-emerald-500/10 transition text-center group"
+            >
+              <Download className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform mb-1" />
+              <span className="text-[11px] font-bold text-white">.SRT</span>
+              <span className="text-[9px] text-slate-400">Standard Text</span>
+            </a>
+            <a
+              href={api.getSubtitleExportUrl(project.id, "vtt")}
+              download
+              className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-indigo-500/50 hover:bg-indigo-500/10 transition text-center group"
+            >
+              <Download className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform mb-1" />
+              <span className="text-[11px] font-bold text-white">.VTT</span>
+              <span className="text-[9px] text-slate-400">WebVTT Web</span>
+            </a>
+          </div>
+
+          {/* Voice Word Alignment Notice */}
+          <div className="p-3 rounded-xl bg-surface/50 border border-surface-border/70 flex items-start gap-2.5">
+            <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0 mt-0.5 text-xs">
+              🎙️
+            </div>
+            <div className="flex-1 text-[11px] leading-relaxed text-slate-400">
+              <span className="font-semibold text-slate-300">Koreksi kata & sinkronisasi suara:</span> Pengaturan timing per-kata, offset suara, dan Whisper AI Realignment dikelola di tab{" "}
               <button
                 type="button"
-                onClick={() => matchAudioMutation.mutate()}
-                disabled={matchAudioMutation.isPending || !project.audio}
-                className="h-7 px-2.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 font-semibold text-[11px] flex items-center gap-1 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shrink-0 cursor-pointer"
-                title="Gunakan Whisper AI untuk mencocokkan kata transkrip dengan suara pada audio"
+                onClick={() => setActiveTab("tts")}
+                className="text-brand-400 hover:text-brand-300 underline font-medium cursor-pointer inline"
               >
-                <Wand2
-                  className={`w-3 h-3 ${
-                    matchAudioMutation.isPending ? "animate-spin" : "text-amber-400"
-                  }`}
-                />
-                <span>
-                  {matchAudioMutation.isPending ? "Sync..." : "Cocokkan"}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (project.narration?.segments) {
-                    setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
-                    showToast("Daftar kata di-reset ke data tersimpan", "info");
-                  }
-                }}
-                className="h-7 px-2 rounded-lg border border-surface-border text-[11px] text-slate-300 hover:text-white bg-surface hover:bg-white/5 transition flex items-center gap-1 shadow-sm shrink-0 cursor-pointer"
-                title="Reset ke data awal"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateSegmentsMutation.mutate(editableSegments)}
-                disabled={updateSegmentsMutation.isPending}
-                className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] flex items-center gap-1 transition shadow-sm disabled:opacity-50 shrink-0 cursor-pointer"
-                title="Simpan koreksi kata dan timing"
-              >
-                <Save className="w-3 h-3" />
-                <span>
-                  {updateSegmentsMutation.isPending ? "..." : "Simpan"}
-                </span>
-              </button>
+                Voice (TTS)
+              </button>.
             </div>
           </div>
 
-          {/* Segments & Words List */}
-          <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-            {editableSegments.length === 0 ? (
-              <div className="text-center py-6 text-slate-500 text-xs">
-                Belum ada segmen kata narasi. Generate naskah & TTS terlebih dahulu.
-              </div>
-            ) : (
-              editableSegments.map((seg, segIdx) => (
-                <div
-                  key={seg.id || segIdx}
-                  className="p-2.5 rounded-xl bg-surface/70 border border-surface-border space-y-2"
-                >
-                  <div className="flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="font-bold text-white flex items-center gap-1.5">
-                      <span className="w-4 h-4 rounded-full bg-brand-500/20 text-brand-300 flex items-center justify-center text-[9px] font-mono">
-                        #{segIdx + 1}
-                      </span>
-                      <span className="text-xs">Segmen #{segIdx + 1}</span>
-                    </span>
-                    <span className="font-mono text-[10px] bg-black/40 px-1.5 py-0.5 rounded border border-surface-border">
-                      {seg.start_ms}ms – {seg.end_ms}ms (
-                      {((seg.end_ms - seg.start_ms) / 1000).toFixed(1)}s)
-                    </span>
-                  </div>
-
-                  {/* Words Grid with aligned word badges */}
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {(seg.words || []).map((w: any, wIdx: number) => (
-                      <div
-                        key={w.id || wIdx}
-                        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-black/60 border border-surface-border/90 hover:border-brand-500/50 transition-all text-xs shadow-sm"
-                      >
-                        <input
-                          type="text"
-                          value={w.word}
-                          onChange={(e) => handleWordChange(segIdx, wIdx, e.target.value)}
-                          className="bg-surface/90 text-white font-medium focus:outline-none focus:ring-1 focus:ring-brand-500 px-1.5 py-0.5 rounded w-16 text-[11px] border border-transparent focus:border-brand-500"
-                        />
-                        <span className="font-mono text-[9px] text-slate-400 bg-white/5 px-1 py-0.5 rounded leading-none">
-                          {w.start_ms}ms
-                        </span>
-                        <div className="flex flex-col justify-center items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", -50)}
-                            className="w-3.5 h-3 rounded bg-surface hover:bg-white/10 text-slate-400 hover:text-white transition flex items-center justify-center leading-none"
-                            title="-50ms start"
-                          >
-                            <ChevronUp className="w-2.5 h-2.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", 50)}
-                            className="w-3.5 h-3 rounded bg-surface hover:bg-white/10 text-slate-400 hover:text-white transition flex items-center justify-center leading-none"
-                            title="+50ms start"
-                          >
-                            <ChevronDown className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Quick Navigation to Tab 6 Render */}
-          <div className="pt-2.5 border-t border-surface-border flex items-center justify-between">
+          {/* Navigation to Render */}
+          <div className="pt-2 border-t border-surface-border flex items-center justify-between">
             <span className="text-[11px] text-slate-400">
-              Subtitle siap!
+              Gaya subtitle tersimpan otomatis
             </span>
             <button
               type="button"

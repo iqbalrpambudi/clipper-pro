@@ -69,6 +69,7 @@ async def seed_subtitle_presets(db: AsyncSession):
                 style.preset_name = item["name"]
                 style.description = item["description"]
                 style.font_family = item["font_family"]
+                style.font_weight = "Regular" if item.get("font_weight") in ("Normal", "Regular") else item.get("font_weight", "Bold")
                 style.box_opacity = item["box_opacity"]
                 style.box_color = item["box_color"]
                 style.scale_factor = item.get("scale_factor", 1.15)

@@ -344,7 +344,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizingDrawer) {
         // Rail width is ~48px
-        const newWidth = Math.max(280, Math.min(650, e.clientX - 48));
+        const newWidth = Math.max(280, Math.min(900, e.clientX - 48));
         setDrawerWidth(newWidth);
       }
       if (isResizingTracks) {
@@ -819,7 +819,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                       }`}
-                    title="Subtitle & Word Inspector"
+                    title="Subtitle Style & Presets"
                   >
                     <Subtitles className="w-4 h-4" />
                   </button>
@@ -1037,7 +1037,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                     }`}
-                  title="Subtitle & Word Inspector"
+                  title="Subtitle Style & Presets"
                 >
                   <Subtitles className="w-4 h-4" />
                 </button>

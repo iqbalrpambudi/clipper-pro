@@ -9,7 +9,7 @@ _FONT_FAMILIES = {
     "Montserrat", "BebasNeue", "Bebas Neue", "Poppins", "Inter",
     "Anton", "Oswald", "Roboto", "Arial", "Liberation Sans",
 }
-_FONT_WEIGHTS = {"Thin", "Light", "Regular", "Medium", "SemiBold", "Bold", "ExtraBold", "Black"}
+_FONT_WEIGHTS = {"Thin", "Light", "Regular", "Normal", "Medium", "SemiBold", "Bold", "ExtraBold", "Black"}
 
 
 def _validate_style_fields(values: Dict[str, Any]) -> Dict[str, Any]:
@@ -25,6 +25,8 @@ def _validate_style_fields(values: Dict[str, Any]) -> Dict[str, Any]:
     fw = values.get("font_weight")
     if fw is not None and fw not in _FONT_WEIGHTS:
         raise ValueError(f"font_weight tidak didukung: {fw}")
+    if fw == "Normal":
+        values["font_weight"] = "Regular"
     return values
 
 
