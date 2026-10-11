@@ -808,7 +808,7 @@ export function TimelineMonitor({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-full rounded-2xl border border-surface-border bg-surface-secondary overflow-hidden shadow-xl"
+      className="flex flex-col h-full rounded-xl border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-sm"
     >
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" muted={isMuted} />}
 
@@ -1011,13 +1011,13 @@ export function TimelineMonitor({
           step={1 / 30}
           value={Math.min(time, duration)}
           onChange={(e) => onSeek(parseFloat(e.target.value))}
-          className="w-full h-1 bg-surface-border accent-brand-500 cursor-pointer"
+          className="w-full h-1 bg-[#1E1E1E] accent-primary cursor-pointer"
           aria-label="Posisi playhead"
         />
       </div>
 
       {/* Integrated NLE Transport Toolbar */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-surface-border bg-surface/70 flex-wrap">
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2 border-t border-[#2E2E2E] bg-[#181818] flex-wrap">
         {/* Left actions: Undo, Redo, Cut/Split */}
         <div className="flex items-center gap-1">
           {onUndo && (
@@ -1036,9 +1036,9 @@ export function TimelineMonitor({
               onClick={onSplit}
               disabled={!canSplit}
               title="Potong klip di playhead (S)"
-              className="h-7 px-2 rounded-lg bg-surface hover:bg-surface-hover border border-surface-border hover:border-accent-yellow/50 text-slate-200 hover:text-white text-[11px] font-semibold flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              className="h-7 px-2 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#2E2E2E] hover:border-primary/50 text-foreground text-[11px] font-semibold flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <Scissors className="w-3.5 h-3.5 text-accent-yellow" />
+              <Scissors className="w-3.5 h-3.5 text-primary" />
               <span className="hidden sm:inline">Potong (S)</span>
             </button>
           )}
@@ -1047,7 +1047,7 @@ export function TimelineMonitor({
         {/* Center: Playhead transport controls & Timecode */}
         <div className="flex items-center gap-1.5">
           {activeClip?.speed && Math.abs(activeClip.speed - 1) > 0.02 && (
-            <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono font-bold hidden sm:inline">
+            <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 text-[10px] font-mono font-bold hidden sm:inline">
               {activeClip.speed}x
             </span>
           )}
@@ -1063,11 +1063,11 @@ export function TimelineMonitor({
             type="button"
             onClick={() => onPlayingChange(!isPlaying)}
             disabled={clips.length === 0}
-            className="w-8 h-8 rounded-full bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white flex items-center justify-center shadow-md shadow-brand-600/30 transition active:scale-95 mx-0.5"
+            className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-40 text-black flex items-center justify-center shadow-xs transition active:scale-95 mx-0.5 font-semibold"
             title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
             id="timeline-monitor-play"
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+            {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />}
           </button>
 
           <TransportBtn title="Maju 1 frame (→)" onClick={() => onStep(1)}>
@@ -1077,9 +1077,9 @@ export function TimelineMonitor({
             <SkipForward className="w-3.5 h-3.5" />
           </TransportBtn>
 
-          <div className="font-mono text-[11px] text-slate-300 tabular-nums ml-2 hidden sm:inline">
-            <span className="text-brand-300 font-bold">{formatTimecode(time)}</span>
-            <span className="text-slate-600"> / {formatTimecode(duration)}</span>
+          <div className="font-mono text-[11px] text-foreground tabular-nums ml-2 hidden sm:inline">
+            <span className="text-primary font-bold">{formatTimecode(time)}</span>
+            <span className="text-muted-foreground"> / {formatTimecode(duration)}</span>
           </div>
         </div>
 
@@ -1098,10 +1098,10 @@ export function TimelineMonitor({
             title={isMuted ? "Unmute audio narasi" : "Mute audio narasi"}
             onClick={() => setIsMuted((m) => !m)}
           >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-destructive" /> : <Volume2 className="w-3.5 h-3.5" />}
           </TransportBtn>
 
-          <span className="px-2 py-0.5 rounded-lg bg-surface border border-surface-border text-[10px] font-mono text-slate-300 font-semibold hidden md:inline">
+          <span className="px-2 py-0.5 rounded-lg bg-[#141414] border border-[#2E2E2E] text-[10px] font-mono text-muted-foreground font-semibold hidden md:inline">
             {aspectRatio}
           </span>
 
@@ -1135,8 +1135,8 @@ function TransportBtn({
       disabled={disabled}
       className={`w-7 h-7 rounded-lg flex items-center justify-center transition disabled:opacity-25 disabled:cursor-not-allowed ${
         active
-          ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40"
-          : "text-slate-400 hover:text-white hover:bg-surface-hover"
+          ? "bg-primary text-black font-semibold shadow-xs"
+          : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
       }`}
     >
       {children}

@@ -596,7 +596,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const selectedScene = selectedClip ? sceneMap.get(selectedClip.scene_id) : undefined;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[640px] max-h-[calc(100vh-120px)] w-full rounded-xl border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-xl">
+    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[640px] max-h-[calc(100vh-120px)] w-full border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-xl">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#2E2E2E] bg-[#181818] shrink-0">
         <div className="flex items-center gap-2.5">
@@ -706,11 +706,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("pool")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-                      activeSideTab === "pool"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "pool"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                      }`}
                     title="Media Pool (Koleksi Scene)"
                   >
                     <Film className="w-4 h-4" />
@@ -719,11 +718,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("inspector")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
-                      activeSideTab === "inspector"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${activeSideTab === "inspector"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                      }`}
                     title="Clip Inspector (Pengaturan Klip)"
                   >
                     <SlidersHorizontal className="w-4 h-4" />
@@ -735,11 +733,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("subtitles")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-                      activeSideTab === "subtitles"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "subtitles"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                      }`}
                     title="Subtitle & Word Inspector"
                   >
                     <Subtitles className="w-4 h-4" />
@@ -916,11 +913,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("pool");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-                    activeSideTab === "pool" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "pool" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                  }`}
+                    }`}
                   title="Media Pool (Koleksi Scene)"
                 >
                   <Film className="w-4 h-4" />
@@ -932,11 +928,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("inspector");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
-                    activeSideTab === "inspector" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${activeSideTab === "inspector" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                  }`}
+                    }`}
                   title="Clip Inspector (Pengaturan Klip)"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
@@ -951,11 +946,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("subtitles");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-                    activeSideTab === "subtitles" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "subtitles" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                  }`}
+                    }`}
                   title="Subtitle & Word Inspector"
                 >
                   <Subtitles className="w-4 h-4" />
@@ -976,9 +970,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
             {/* Left Drawer Container (Media Pool OR Clip Inspector OR Subtitle Panel) */}
             <div
               style={{ width: isDrawerCollapsed ? 0 : drawerWidth }}
-              className={`shrink-0 border-r border-surface-border bg-surface-secondary flex flex-col overflow-hidden transition-[width] duration-75 ${
-                isDrawerCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-              }`}
+              className={`shrink-0 border-r border-surface-border bg-surface-secondary flex flex-col overflow-hidden transition-[width] duration-75 ${isDrawerCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+                }`}
             >
               {activeSideTab === "pool" ? (
                 <TimelineMediaPool

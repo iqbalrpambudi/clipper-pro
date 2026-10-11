@@ -12,6 +12,8 @@ import {
   Film,
   MessageSquare,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export interface ScenePreviewModalProps {
   isOpen: boolean;
@@ -83,7 +85,6 @@ export function ScenePreviewModal({
           setIsLoading(false);
         })
         .catch(() => {
-          // Autoplay may be blocked by browser policy without user interaction
           setIsPlaying(false);
           setIsLoading(false);
         });
@@ -91,14 +92,10 @@ export function ScenePreviewModal({
   }, [isOpen, videoUrl, startTime, endTime]);
 
   // High-precision frame boundary enforcement using requestAnimationFrame
-  // Native HTML5 'timeupdate' only fires every 250ms, which causes the browser
-  // to overshoot and flash frames of the next scene before JavaScript can react!
   useEffect(() => {
     if (!isOpen || !isPlaying) return;
 
     let animId: number;
-    // Stop 40ms (~1 frame) before endTime so the browser's video element never renders
-    // the boundary cut of the subsequent scene
     const effectiveEndTime = Math.max(startTime + 0.1, endTime - 0.04);
 
     const checkFrame = () => {
@@ -182,12 +179,13 @@ export function ScenePreviewModal({
     }
   };
 
-  // Keyboard controls
+  // Keyboard shortcut listener
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
       } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
@@ -226,33 +224,35 @@ export function ScenePreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-pop">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-border bg-surface/50">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/20">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#2E2E2E] bg-[#141414]">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
               <Film className="w-4 h-4" />
             </span>
             <div>
-              <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground tracking-tight flex items-center gap-2">
                 {title || (sceneIndex !== undefined ? `Preview Scene #${sceneIndex + 1}` : "Preview Scene")}
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface border border-surface-border text-slate-300">
+                <Badge variant="outline" className="font-mono text-[10px] py-0 text-muted-foreground border-[#2E2E2E]">
                   {duration.toFixed(1)}s Snippet
-                </span>
+                </Badge>
               </h3>
-              <p className="text-[11px] text-slate-400 font-mono">
+              <p className="text-[11px] text-muted-foreground font-mono">
                 Rentang: {formatSec(startTime)} → {formatSec(endTime)}
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-surface rounded-lg transition"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title="Tutup (Esc)"
           >
-            <X className="w-5 h-5" />
-          </button>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Video Player Display */}
@@ -279,8 +279,8 @@ export function ScenePreviewModal({
               onError={() => setBrokenThumb(true)}
             />
           ) : (
-            <div className="text-slate-500 text-xs flex flex-col items-center gap-2">
-              <Film className="w-8 h-8 opacity-40 text-slate-400" />
+            <div className="text-muted-foreground text-xs flex flex-col items-center gap-2">
+              <Film className="w-8 h-8 opacity-40 text-muted-foreground" />
               <span>Preview Klip #{sceneIndex !== undefined ? sceneIndex + 1 : ""}</span>
             </div>
           )}
@@ -289,32 +289,32 @@ export function ScenePreviewModal({
           {!isPlaying && !isLoading && (
             <button
               onClick={togglePlay}
-              className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-black/60 hover:bg-brand-600/80 border border-white/20 text-white flex items-center justify-center transition shadow-2xl backdrop-blur-sm group"
+              className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-black/60 hover:bg-primary hover:text-black border border-white/20 text-white flex items-center justify-center transition shadow-2xl backdrop-blur-xs group"
             >
-              <Play className="w-6 h-6 ml-1 group-hover:scale-110 transition" />
+              <Play className="w-6 h-6 ml-1 group-hover:scale-105 transition fill-current" />
             </button>
           )}
 
           {/* Snippet Badge */}
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 text-[10px] font-mono text-white flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-[#2E2E2E] text-[10px] font-mono text-foreground flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             <span>CLIP [{currentOffset.toFixed(1)}s / {duration.toFixed(1)}s]</span>
           </div>
 
           {/* Speed Indicator */}
           {playbackRate !== 1 && (
-            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-brand-500/80 text-[10px] font-bold text-white font-mono">
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-[10px] font-bold text-black font-mono">
               {playbackRate}x
             </div>
           )}
         </div>
 
         {/* Scrubber & Controls */}
-        <div className="p-4 bg-surface/70 space-y-3 border-t border-surface-border">
+        <div className="p-4 bg-[#141414] space-y-3 border-t border-[#2E2E2E]">
           {/* Progress Bar */}
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-              <span className="text-accent-yellow font-semibold">+{currentOffset.toFixed(1)}s</span>
+            <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+              <span className="text-primary font-semibold">+{currentOffset.toFixed(1)}s</span>
               <span>{duration.toFixed(1)}s</span>
             </div>
             <input
@@ -324,96 +324,103 @@ export function ScenePreviewModal({
               step={0.05}
               value={currentOffset}
               onChange={handleSeek}
-              className="w-full h-1.5 bg-surface-border rounded-lg cursor-pointer accent-accent-yellow"
+              className="w-full h-1.5 bg-[#1E1E1E] rounded-lg cursor-pointer accent-primary"
             />
           </div>
 
           {/* Action Toolbar */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="supabase"
+                size="icon"
                 onClick={togglePlay}
-                className="w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/30 transition transform active:scale-95"
+                className="w-8 h-8 rounded-lg shadow-sm"
                 title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
               >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </button>
+                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 ml-0.5 fill-current" />}
+              </Button>
 
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                   if (videoRef.current) {
                     videoRef.current.currentTime = startTime;
                     setCurrentTime(startTime);
                   }
                 }}
-                className="p-2 text-slate-400 hover:text-white hover:bg-surface rounded-lg transition"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 title="Kembali ke Awal Klip"
               >
                 <RotateCcw className="w-4 h-4" />
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant={isLooping ? "supabase" : "outline"}
+                size="xs"
                 onClick={() => setIsLooping(!isLooping)}
-                className={`p-2 rounded-lg transition flex items-center gap-1 text-xs ${
-                  isLooping
-                    ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40"
-                    : "text-slate-400 hover:text-white hover:bg-surface"
-                }`}
+                className="h-8 gap-1.5"
                 title="Looping Klip"
               >
-                <Repeat className="w-4 h-4" />
-                <span className="text-[10px] hidden sm:inline">Loop</span>
-              </button>
+                <Repeat className="w-3.5 h-3.5" />
+                <span className="text-[11px] hidden sm:inline">Loop</span>
+              </Button>
 
-              <button
+              <Button
+                variant="outline"
+                size="xs"
                 onClick={cycleSpeed}
-                className="px-2.5 py-1 text-[11px] font-mono font-bold text-slate-300 hover:text-white bg-surface hover:bg-surface-border border border-surface-border rounded-lg transition"
+                className="h-8 text-[11px] font-mono font-semibold"
                 title="Ubah Kecepatan Putar"
               >
                 {playbackRate}x
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setIsMuted(!isMuted)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-surface rounded-lg transition"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 title={isMuted ? "Unmute" : "Mute"}
               >
-                {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-              </button>
+                {isMuted ? <VolumeX className="w-4 h-4 text-destructive" /> : <Volume2 className="w-4 h-4" />}
+              </Button>
             </div>
           </div>
 
           {/* Transcript / Dialogue */}
           {transcript && (
-            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-xs text-indigo-200 flex items-start gap-2.5">
-              <MessageSquare className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-foreground flex items-start gap-2.5">
+              <MessageSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-indigo-300 block text-[11px] mb-0.5">Dialog Percakapan (Whisper):</span>
-                <p className="italic text-slate-200 leading-relaxed">"{transcript}"</p>
+                <span className="font-semibold text-primary block text-[11px] mb-0.5">Dialog Percakapan (Whisper):</span>
+                <p className="italic text-foreground/90 leading-relaxed">"{transcript}"</p>
               </div>
             </div>
           )}
 
           {/* Description & Tags */}
           {(description || tags.length > 0) && (
-            <div className="pt-2 border-t border-surface-border/60 text-xs space-y-1.5">
+            <div className="pt-2 border-t border-[#2E2E2E] text-xs space-y-1.5">
               {description && (
-                <p className="text-slate-200 text-xs leading-relaxed line-clamp-2">
-                  <span className="text-slate-400 font-semibold mr-1">Deskripsi AI:</span>
+                <p className="text-foreground text-xs leading-relaxed line-clamp-2">
+                  <span className="text-muted-foreground font-semibold mr-1">Deskripsi AI:</span>
                   {description}
                 </p>
               )}
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {tags.map((tag, i) => (
-                    <span
+                    <Badge
                       key={i}
-                      className="text-[10px] px-2 py-0.5 rounded-md bg-surface border border-surface-border text-slate-400"
+                      variant="outline"
+                      className="text-[10px] py-0 text-muted-foreground border-[#2E2E2E]"
                     >
                       #{tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}

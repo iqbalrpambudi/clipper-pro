@@ -137,8 +137,8 @@ export default function DashboardPage() {
       </header>
 
       {/* Hero Banner with Supabase Aesthetic */}
-      <main className="max-w-7xl mx-auto px-6 py-10 flex-1 w-full">
-        <div className="relative rounded-2xl p-8 mb-10 overflow-hidden border border-[#2E2E2E] bg-gradient-to-br from-[#1C1C1C] via-[#181818] to-[#141414] shadow-2xl">
+      <main className="max-w-7xl mx-auto flex-1 w-full">
+        <div className="relative p-8 mb-10 overflow-hidden border border-[#2E2E2E] bg-gradient-to-br from-[#1C1C1C] via-[#181818] to-[#141414] shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-[#3ECF8E]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 

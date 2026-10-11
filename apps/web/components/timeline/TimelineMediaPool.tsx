@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Scene, SourceVideo } from "@/types";
 import { SCENE_DRAG_MIME } from "./timelineFormat";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 type Filter = "all" | "used" | "available";
 type Sort = "order" | "longest" | "shortest";
@@ -60,40 +62,57 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         setIsFilterOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [isFilterOpen]);
 
   const videoName = useMemo(() => {
-    const m = new Map<string, string>();
-    sourceVideos.forEach((v, i) => m.set(v.id, v.filename || `Video ${i + 1}`));
-    return m;
+    const map = new Map<string, string>();
+    sourceVideos.forEach((v) => map.set(v.id, v.filename || `Video #${v.id.slice(0, 4)}`));
+    return map;
   }, [sourceVideos]);
 
-  const usedCount = useMemo(() => scenes.filter((s) => usedSceneMap.has(s.id)).length, [scenes, usedSceneMap]);
-
   const list = useMemo(() => {
+    let out = scenes.slice();
+
+    if (videoId !== "all") {
+      out = out.filter((s) => s.source_video_id === videoId);
+    }
+
+    if (filter === "used") {
+      out = out.filter((s) => (usedSceneMap.get(s.id) || []).length > 0);
+    } else if (filter === "available") {
+      out = out.filter((s) => (usedSceneMap.get(s.id) || []).length === 0);
+    }
+
     const q = query.trim().toLowerCase();
-    let out = scenes.filter((s) => {
-      if (videoId !== "all" && s.source_video_id !== videoId) return false;
-      if (filter === "used" && !usedSceneMap.has(s.id)) return false;
-      if (filter === "available" && usedSceneMap.has(s.id)) return false;
-      if (!q) return true;
-      return (
-        (s.description || "").toLowerCase().includes(q) ||
-        (s.transcript || "").toLowerCase().includes(q) ||
-        (s.tags || []).some((t) => t.toLowerCase().includes(q)) ||
-        `#${s.scene_index + 1}` === q
-      );
-    });
-    out = [...out].sort((a, b) => {
-      if (sort === "longest") return b.duration - a.duration;
-      if (sort === "shortest") return a.duration - b.duration;
-      if (a.source_video_id !== b.source_video_id) return a.source_video_id.localeCompare(b.source_video_id);
-      return a.scene_index - b.scene_index || a.start_time - b.start_time;
-    });
+    if (q) {
+      out = out.filter((s) => {
+        const idxMatch = `#${s.scene_index + 1}`.includes(q) || `${s.scene_index + 1}` === q;
+        const descMatch = (s.description || "").toLowerCase().includes(q);
+        const tagMatch = (s.tags || []).some((t) => t.toLowerCase().includes(q));
+        return idxMatch || descMatch || tagMatch;
+      });
+    }
+
+    if (sort === "longest") {
+      out.sort((a, b) => b.duration - a.duration);
+    } else if (sort === "shortest") {
+      out.sort((a, b) => a.duration - b.duration);
+    } else {
+      out.sort((a, b) => a.scene_index - b.scene_index);
+    }
+
     return out;
-  }, [scenes, query, filter, videoId, sort, usedSceneMap]);
+  }, [scenes, videoId, filter, query, sort, usedSceneMap]);
+
+  const usedCount = useMemo(() => {
+    let n = 0;
+    scenes.forEach((s) => {
+      if ((usedSceneMap.get(s.id) || []).length > 0) n++;
+    });
+    return n;
+  }, [scenes, usedSceneMap]);
 
   const pills: { id: Filter; label: string; count: number }[] = [
     { id: "all", label: "Semua", count: scenes.length },
@@ -102,30 +121,32 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
   ];
 
   return (
-    <div className="flex flex-col h-full border border-surface-border bg-surface-secondary overflow-hidden">
-      <div className="px-3 py-2 border-b border-surface-border bg-surface/60 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
-          <Film className="w-3.5 h-3.5 text-brand-400" /> Media Pool
+    <div className="flex flex-col h-full border-r border-[#2E2E2E] bg-[#141414] overflow-hidden">
+      <div className="px-3.5 py-2.5 border-b border-[#2E2E2E] bg-[#181818] flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+          <Film className="w-3.5 h-3.5 text-primary" /> Media Pool
         </span>
-        <span className="text-[10px] text-slate-500 font-mono">{list.length} scene</span>
+        <Badge variant="outline" className="text-[10px] text-muted-foreground font-mono border-[#2E2E2E]">
+          {list.length} scene
+        </Badge>
       </div>
 
-      <div className="p-2 border-b border-surface-border/60 relative">
+      <div className="p-2.5 border-b border-[#2E2E2E] relative bg-[#161616]">
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1 min-w-0">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               id="timeline-pool-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari deskripsi, tag, #"
-              className="w-full h-7 pl-8 pr-6 rounded-lg bg-surface border border-surface-border text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-brand-500/60"
+              className="w-full h-7 pl-8 pr-6 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label="Hapus pencarian"
               >
                 <X className="w-3 h-3" />
@@ -134,27 +155,22 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
           </div>
 
           <div className="relative" ref={filterPopoverRef}>
-            <button
+            <Button
               type="button"
+              variant={filter !== "all" || sort !== "order" || videoId !== "all" ? "supabase" : "outline"}
+              size="icon"
               onClick={() => setIsFilterOpen((o) => !o)}
-              className={`h-7 px-2 rounded-lg border text-xs flex items-center gap-1.5 transition ${
-                filter !== "all" || sort !== "order" || videoId !== "all"
-                  ? "bg-brand-500/20 border-brand-500/50 text-brand-300"
-                  : "bg-surface border-surface-border text-slate-400 hover:text-slate-200"
-              }`}
+              className="h-7 w-7"
               title="Opsi filter dan sortir"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              {(filter !== "all" || sort !== "order" || videoId !== "all") && (
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
-              )}
-            </button>
+            </Button>
 
             {isFilterOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 rounded-xl bg-surface border border-surface-border shadow-2xl z-50 space-y-3">
+              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 rounded-xl bg-[#181818] border border-[#2E2E2E] shadow-2xl z-50 space-y-3">
                 <div>
-                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Status Scene</div>
-                  <div className="grid grid-cols-3 gap-1 bg-surface-secondary p-0.5 rounded-lg border border-surface-border">
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Status Scene</div>
+                  <div className="grid grid-cols-3 gap-1 bg-[#121212] p-0.5 rounded-lg border border-[#2E2E2E]">
                     {pills.map((p) => (
                       <button
                         key={p.id}
@@ -162,8 +178,8 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                         onClick={() => setFilter(p.id)}
                         className={`h-6 rounded-md text-[10px] font-semibold transition flex items-center justify-center gap-1 ${
                           filter === p.id
-                            ? "bg-brand-500/20 text-brand-200 border border-brand-500/40"
-                            : "text-slate-400 hover:text-slate-200"
+                            ? "bg-primary text-black"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         {p.label}
@@ -175,11 +191,11 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
                 {sourceVideos.length > 1 && (
                   <div>
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Video Sumber</div>
+                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Video Sumber</div>
                     <select
                       value={videoId}
                       onChange={(e) => setVideoId(e.target.value)}
-                      className="w-full h-7 rounded-lg bg-surface-secondary border border-surface-border text-xs text-slate-300 px-2 focus:outline-none"
+                      className="w-full h-7 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground px-2 focus:outline-none focus:border-primary transition"
                     >
                       <option value="all">Semua video</option>
                       {sourceVideos.map((v) => (
@@ -192,11 +208,11 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                 )}
 
                 <div>
-                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Urutan</div>
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Urutan</div>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as Sort)}
-                    className="w-full h-7 rounded-lg bg-surface-secondary border border-surface-border text-xs text-slate-300 px-2 focus:outline-none"
+                    className="w-full h-7 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground px-2 focus:outline-none focus:border-primary transition"
                   >
                     <option value="order">Urutan asli (scene index)</option>
                     <option value="longest">Durasi terpanjang</option>
@@ -204,7 +220,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   </select>
                 </div>
 
-                <div className="flex justify-end pt-1 border-t border-surface-border/50">
+                <div className="flex justify-end pt-1 border-t border-[#2E2E2E]">
                   <button
                     type="button"
                     onClick={() => {
@@ -212,7 +228,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                       setSort("order");
                       setVideoId("all");
                     }}
-                    className="text-[10px] text-slate-400 hover:text-white"
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
                   >
                     Reset Filter
                   </button>
@@ -223,9 +239,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-2.5">
         {list.length === 0 ? (
-          <p className="text-center text-[11px] text-slate-500 py-10">Tidak ada scene yang cocok.</p>
+          <p className="text-center text-[11px] text-muted-foreground py-10">Tidak ada scene yang cocok.</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
             {list.map((sc) => {
@@ -240,16 +256,16 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   onDoubleClick={() => (selectedClipNumber !== null ? onReplace(sc) : onAppend(sc))}
-                  className={`group rounded-xl overflow-hidden border bg-surface transition cursor-grab active:cursor-grabbing ${
+                  className={`group rounded-xl overflow-hidden border bg-[#161616] transition cursor-grab active:cursor-grabbing ${
                     isCurrent
-                      ? "border-accent-yellow ring-1 ring-accent-yellow/50"
+                      ? "border-primary ring-1 ring-primary/50"
                       : used
-                      ? "border-emerald-500/40 hover:border-emerald-400"
-                      : "border-surface-border hover:border-brand-500/70"
+                      ? "border-primary/40 hover:border-primary"
+                      : "border-[#2E2E2E] hover:border-[#3E3E3E]"
                   }`}
                   title={`${sc.description || "Scene"}\nSeret ke timeline • Double-click: ${selectedClipNumber !== null ? `ganti klip #${selectedClipNumber}` : "tambah di akhir"}`}
                 >
-                  <div className="relative aspect-video bg-slate-900">
+                  <div className="relative aspect-video bg-black">
                     {sc.thumbnail_url && !broken[sc.id] ? (
                       <img
                         src={sc.thumbnail_url}
@@ -260,13 +276,13 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-5 h-5 text-slate-600" />
+                        <Film className="w-5 h-5 text-muted-foreground opacity-50" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 px-1 rounded bg-black/75 text-[9px] font-bold text-slate-200">#{sc.scene_index + 1}</span>
-                    <span className="absolute bottom-1 right-1 px-1 rounded bg-black/75 text-[9px] font-mono text-white">{sc.duration.toFixed(1)}s</span>
+                    <span className="absolute top-1 left-1 px-1 rounded bg-black/80 text-[9px] font-bold text-foreground">#{sc.scene_index + 1}</span>
+                    <span className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[9px] font-mono text-foreground">{sc.duration.toFixed(1)}s</span>
                     {used && (
-                      <span className="absolute top-1 right-1 px-1 rounded bg-emerald-950/90 border border-emerald-400/60 text-[8px] font-bold text-emerald-300 flex items-center gap-0.5">
+                      <span className="absolute top-1 right-1 px-1 rounded bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary flex items-center gap-0.5">
                         <Check className="w-2.5 h-2.5" />
                         {used.length > 1 ? `${used.length}×` : `#${used[0]}`}
                       </span>
@@ -275,14 +291,14 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     <button
                       type="button"
                       onClick={() => onPreview(sc)}
-                      className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-black/70 hover:bg-brand-600 border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-black/70 hover:bg-primary hover:text-black border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                       title="Preview scene"
                     >
-                      <Play className="w-3 h-3 ml-0.5" />
+                      <Play className="w-3 h-3 ml-0.5 fill-current" />
                     </button>
                   </div>
                   <div className="p-1.5 space-y-1">
-                    <p className="text-[10px] text-slate-300 line-clamp-2 leading-tight min-h-[2.2em]">{sc.description || "Scene"}</p>
+                    <p className="text-[10px] text-foreground/90 line-clamp-2 leading-tight min-h-[2.2em]">{sc.description || "Scene"}</p>
                     <div className="grid grid-cols-3 gap-1">
                       <PoolAction
                         title={selectedClipNumber !== null ? `Ganti klip #${selectedClipNumber}` : "Pilih klip di timeline dulu"}
@@ -307,7 +323,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         )}
       </div>
 
-      <div className="px-3 py-1.5 border-t border-surface-border/60 text-[9px] text-slate-500 flex items-center justify-between">
+      <div className="px-3 py-1.5 border-t border-[#2E2E2E] text-[9px] text-muted-foreground flex items-center justify-between bg-[#161616]">
         <span>
           <Replace className="inline w-2.5 h-2.5" /> Ganti • <PlusSquare className="inline w-2.5 h-2.5" /> Sisip • <ListPlus className="inline w-2.5 h-2.5" /> Akhir
         </span>
@@ -339,10 +355,10 @@ function PoolAction({
         e.stopPropagation();
         onClick();
       }}
-      className={`h-6 rounded-md flex items-center justify-center border transition disabled:opacity-30 disabled:cursor-not-allowed ${
+      className={`h-6 rounded-md flex items-center justify-center border transition disabled:opacity-25 disabled:cursor-not-allowed ${
         tone === "brand"
-          ? "bg-brand-500/15 border-brand-500/40 text-brand-200 hover:bg-brand-500 hover:text-white"
-          : "bg-surface-card border-surface-border text-slate-300 hover:border-brand-500/60 hover:text-white"
+          ? "bg-primary/20 border-primary/40 text-primary hover:bg-primary hover:text-black"
+          : "bg-[#121212] border-[#2E2E2E] text-muted-foreground hover:border-primary/50 hover:text-foreground"
       }`}
     >
       {children}
