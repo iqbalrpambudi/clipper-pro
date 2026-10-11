@@ -1114,11 +1114,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       {/* Playback Controls */}
       <div
         className={`w-full ${
-          compact ? "max-w-[240px] sm:max-w-[260px] p-2.5 mt-2.5" : "max-w-sm p-4 mt-4"
-        } glass-panel rounded-2xl border border-surface-border space-y-2`}
+          compact ? "max-w-[240px] sm:max-w-[260px] p-2.5 mt-2.5" : "max-w-sm p-3.5 mt-3.5"
+        } bg-[#141414] rounded-xl border border-[#2E2E2E] shadow-sm space-y-2`}
       >
         {/* Scrubber */}
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+        <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
           <span>{formatTime(currentTimeSec)}</span>
           <input
             type="range"
@@ -1127,35 +1127,38 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             step="0.0333"
             value={currentTimeSec}
             onChange={handleSeek}
-            className="flex-1 accent-brand-500 cursor-pointer h-1.5 bg-surface rounded-lg"
+            className="flex-1 accent-primary cursor-pointer h-1.5 bg-[#1E1E1E] rounded-lg"
           />
           <span>{formatTime(durationSec)}</span>
         </div>
 
         {/* Buttons */}
         <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={handleReset}
-              className="p-2 rounded-xl bg-surface hover:bg-surface-border text-slate-300 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground transition"
               title="Reset ke Awal"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={togglePlay}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-lg shadow-brand-500/20"
+              className="px-3.5 py-1.5 rounded-lg bg-primary text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shadow-xs"
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+              {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
               <span>{isPlaying ? "Pause" : "Play"}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={toggleMute}
-              className={`p-2 rounded-xl border border-surface-border text-xs transition ${
-                isMuted ? "text-rose-400 bg-rose-500/10" : "text-slate-300 bg-surface"
+              className={`p-1.5 rounded-lg border border-[#2E2E2E] text-xs transition ${
+                isMuted ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground bg-[#181818]"
               }`}
               title={isMuted ? "Unmute" : "Mute"}
             >

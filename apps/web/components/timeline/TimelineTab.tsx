@@ -27,6 +27,8 @@ import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, Timeline, TimelineClip, Scene, AudioTrack, Narration, SourceVideo } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   SceneMap,
   appendScene,
@@ -594,64 +596,66 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const selectedScene = selectedClip ? sceneMap.get(selectedClip.scene_id) : undefined;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[640px] max-h-[calc(100vh-120px)] w-full rounded-2xl border border-surface-border bg-[#090A0F] overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[640px] max-h-[calc(100vh-120px)] w-full rounded-xl border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-xl">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-surface-border bg-surface/80 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[#2E2E2E] bg-[#181818] shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5">
-            <Film className="w-4 h-4 text-brand-400" />
+          <span className="font-semibold text-xs text-foreground tracking-tight flex items-center gap-1.5">
+            <Film className="w-4 h-4 text-primary" />
             Timeline Studio
           </span>
-          <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-surface-card border border-surface-border text-slate-300">
+          <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]">
             {clips.length} klip
-          </span>
+          </Badge>
           {isDirty ? (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-300 flex items-center gap-1 animate-pulse">
+            <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1 animate-pulse">
               <AlertCircle className="w-3 h-3" /> Belum disimpan
-            </span>
+            </Badge>
           ) : clips.length > 0 ? (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-400 flex items-center gap-1">
+            <Badge variant="outline" className="border-primary/40 text-primary text-[10px] flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> Tersimpan
-            </span>
+            </Badge>
           ) : null}
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
-            Durasi: <strong className="text-slate-300 font-mono">{Math.round(totalDuration)}s</strong>
+          <span className="text-[11px] text-muted-foreground hidden sm:inline">
+            Durasi: <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {clips.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="xs"
               onClick={() => setIsClearConfirmOpen(true)}
-              className="px-2.5 py-1 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1 transition"
+              className="text-destructive hover:bg-destructive/10 text-xs font-medium flex items-center gap-1 h-7"
               title="Kosongkan timeline"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Kosongkan</span>
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="xs"
             onClick={() => autoMatchMutation.mutate()}
             disabled={autoMatchMutation.isPending}
-            className="px-3 py-1.5 rounded-xl bg-brand-600/20 border border-brand-500/40 hover:bg-brand-500/30 text-brand-300 font-semibold text-xs flex items-center gap-1.5 transition"
+            className="border-primary/30 text-primary hover:bg-primary/10 font-semibold text-xs flex items-center gap-1.5 h-7"
             title="Cocokkan otomatis klip video dengan naskah menggunakan AI"
           >
-            <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
+            <Sparkles className="w-3.5 h-3.5" />
             <span>{autoMatchMutation.isPending ? "Mencocokkan..." : "Auto-Match AI"}</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant={isDirty ? "supabase" : "outline"}
+            size="xs"
             onClick={() => saveTimelineMutation.mutate()}
             disabled={saveTimelineMutation.isPending || !isDirty}
-            className={`px-3.5 py-1.5 rounded-xl text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm ${
-              isDirty
-                ? "bg-brand-600 hover:bg-brand-500 shadow-brand-600/30"
-                : "bg-surface-border text-slate-400 cursor-default"
-            }`}
+            className="text-xs font-semibold flex items-center gap-1.5 h-7"
             title="Simpan timeline (Ctrl/Cmd + S)"
           >
             {saveTimelineMutation.isPending ? (
@@ -660,27 +664,29 @@ export function TimelineTab({ project }: TimelineTabProps) {
               <Save className="w-3.5 h-3.5" />
             )}
             <span>{saveTimelineMutation.isPending ? "Menyimpan..." : "Simpan"}</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant="supabase"
+            size="xs"
             onClick={() => setActiveTab("render")}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1 shadow-md shadow-brand-600/20 transition"
+            className="text-xs font-semibold flex items-center gap-1 h-7"
           >
             <span>Render</span>
             <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Auto-match live progress indicator */}
       {isAutoMatching && (
-        <div className="px-4 py-2 bg-brand-950/40 border-b border-brand-500/40 flex items-center justify-between text-xs text-brand-300 shrink-0">
-          <div className="flex items-center gap-2 font-semibold">
-            <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
+        <div className="px-4 py-2 bg-primary/10 border-b border-primary/20 flex items-center justify-between text-xs text-primary shrink-0">
+          <div className="flex items-center gap-2 font-medium">
+            <Loader2 className="w-4 h-4 animate-spin" />
             <span>AI sedang mencocokkan potongan video dengan naskah...</span>
           </div>
-          <span className="font-mono text-slate-400">
+          <span className="font-mono text-muted-foreground">
             {Math.floor(matchElapsed / 60)}:{String(matchElapsed % 60).padStart(2, "0")}
           </span>
         </div>
@@ -695,15 +701,15 @@ export function TimelineTab({ project }: TimelineTabProps) {
             {/* Upper row: Left Rail + Active Panel (Pool / Inspector / Subtitles) */}
             <div className="flex-1 min-h-0 flex flex-row overflow-hidden border-b border-surface-border/70">
               {/* Vertical Icon Rail */}
-              <div className="w-12 shrink-0 border-r border-surface-border bg-surface/70 flex flex-col items-center py-2.5 justify-between select-none">
+              <div className="w-12 shrink-0 border-r border-[#2E2E2E] bg-[#161616] flex flex-col items-center py-2.5 justify-between select-none">
                 <div className="flex flex-col items-center gap-2 w-full">
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("pool")}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
                       activeSideTab === "pool"
-                        ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                        : "text-slate-400 hover:text-white hover:bg-surface"
+                        ? "bg-primary text-black font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                     }`}
                     title="Media Pool (Koleksi Scene)"
                   >
@@ -713,26 +719,26 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("inspector")}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition relative ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
                       activeSideTab === "inspector"
-                        ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40"
-                        : "text-slate-400 hover:text-white hover:bg-surface"
+                        ? "bg-primary text-black font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                     }`}
                     title="Clip Inspector (Pengaturan Klip)"
                   >
                     <SlidersHorizontal className="w-4 h-4" />
                     {selectedClipIndex !== null && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent-yellow absolute top-1.5 right-1.5" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary absolute top-1.5 right-1.5" />
                     )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("subtitles")}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
                       activeSideTab === "subtitles"
-                        ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                        : "text-slate-400 hover:text-white hover:bg-surface"
+                        ? "bg-primary text-black font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                     }`}
                     title="Subtitle & Word Inspector"
                   >
@@ -902,7 +908,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
           {/* Upper Section: Left Rail + Left Side Drawer + Center Program Monitor */}
           <div className="flex-1 min-h-0 flex flex-row border-b border-surface-border/70 overflow-hidden">
             {/* Vertical Icon Rail */}
-            <div className="w-12 shrink-0 border-r border-surface-border bg-surface/70 flex flex-col items-center py-2.5 justify-between select-none">
+            <div className="w-12 shrink-0 border-r border-[#2E2E2E] bg-[#161616] flex flex-col items-center py-2.5 justify-between select-none">
               <div className="flex flex-col items-center gap-2 w-full">
                 <button
                   type="button"
@@ -910,10 +916,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("pool");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
                     activeSideTab === "pool" && !isDrawerCollapsed
-                      ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                      : "text-slate-400 hover:text-white hover:bg-surface"
+                      ? "bg-primary text-black font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                   }`}
                   title="Media Pool (Koleksi Scene)"
                 >
@@ -926,16 +932,16 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("inspector");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition relative ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
                     activeSideTab === "inspector" && !isDrawerCollapsed
-                      ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40"
-                      : "text-slate-400 hover:text-white hover:bg-surface"
+                      ? "bg-primary text-black font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                   }`}
                   title="Clip Inspector (Pengaturan Klip)"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   {selectedClipIndex !== null && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-yellow absolute top-1.5 right-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary absolute top-1.5 right-1.5" />
                   )}
                 </button>
 
@@ -945,10 +951,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("subtitles");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
                     activeSideTab === "subtitles" && !isDrawerCollapsed
-                      ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                      : "text-slate-400 hover:text-white hover:bg-surface"
+                      ? "bg-primary text-black font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
                   }`}
                   title="Subtitle & Word Inspector"
                 >
@@ -960,7 +966,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               <button
                 type="button"
                 onClick={() => setIsDrawerCollapsed(!isDrawerCollapsed)}
-                className="w-8 h-8 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-surface flex items-center justify-center transition"
+                className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E] flex items-center justify-center transition"
                 title={isDrawerCollapsed ? "Buka panel drawer" : "Tutup panel drawer"}
               >
                 {isDrawerCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -1145,39 +1151,42 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
       {/* Confirm Clear Timeline Modal */}
       {isClearConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-pop">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-[#181818] border border-[#2E2E2E] rounded-xl p-5 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
-                <Trash2 className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+                <Trash2 className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Kosongkan Timeline?</h3>
-                <p className="text-xs text-slate-400">Seluruh klip video pada timeline akan dihapus</p>
+                <h3 className="text-sm font-semibold text-foreground">Kosongkan Timeline?</h3>
+                <p className="text-xs text-muted-foreground">Seluruh klip video pada timeline akan dihapus</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin mengosongkan seluruh susunan timeline? Anda dapat menyusun klip baru secara manual dengan drag & drop scene dari Media Pool atau menggunakan <span className="font-semibold text-white">Auto-Match AI</span> kembali kapan saja.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Apakah Anda yakin ingin mengosongkan seluruh susunan timeline? Anda dapat menyusun klip baru secara manual dengan drag & drop scene dari Media Pool atau menggunakan <span className="font-semibold text-foreground">Auto-Match AI</span> kembali kapan saja.
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border/60">
-              <button
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2E2E]">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsClearConfirmOpen(false)}
-                className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 disabled={clearTimelineMutation.isPending}
                 onClick={() => clearTimelineMutation.mutate()}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition flex items-center gap-2"
+                className="gap-2"
               >
                 {clearTimelineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 <span>Kosongkan Timeline</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>

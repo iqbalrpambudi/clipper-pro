@@ -568,7 +568,7 @@ export default function SettingsPage() {
         {activeSettingsTab === "models" && (
           <form onSubmit={handleSaveModel} className="space-y-6">
             {/* Section 1: LLM & Vision Config */}
-            <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
+            <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-brand-400" />
@@ -705,7 +705,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Section 2: TTS Configuration */}
-            <div className="glass-panel rounded-2xl p-6 border border-surface-border space-y-4">
+            <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
               <div className="flex items-center gap-2">
                 <Volume2 className="w-4 h-4 text-emerald-400" />
                 <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
@@ -772,7 +772,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition transform active:scale-95 flex items-center gap-2"
+                className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-black font-semibold text-xs shadow-xs transition flex items-center gap-2 disabled:opacity-50"
               >
                 {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 <span>{saveMutation.isPending ? "Menyimpan..." : "Simpan Konfigurasi Model"}</span>
@@ -799,7 +799,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={handleOpenCreateModal}
-                  className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand-500/20 transition transform active:scale-95"
+                  className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tambah Preset Baru</span>
@@ -813,10 +813,10 @@ export default function SettingsPage() {
                     <div
                       key={tpl.id}
                       onClick={() => setSelectedTemplateId(tpl.id)}
-                      className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
                         isSelected
-                          ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/15 ring-1 ring-brand-500/30"
-                          : "border-surface-border hover:border-slate-500 bg-surface/50"
+                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
                       }`}
                     >
                       <div>
@@ -861,7 +861,7 @@ export default function SettingsPage() {
 
             {/* Prompt Editor Form */}
             {currentSelectedTemplate && (
-              <form onSubmit={(e) => { e.preventDefault(); updateTemplateMutation.mutate(templateForm); }} className="glass-panel rounded-2xl p-6 border border-surface-border space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); updateTemplateMutation.mutate(templateForm); }} className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs">
                 <div className="flex items-center justify-between border-b border-surface-border pb-4 flex-wrap gap-2">
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
@@ -1108,7 +1108,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={handleOpenCreateSubtitleModal}
-                  className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand-500/20 transition transform active:scale-95"
+                  className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tambah Preset Subtitle Baru</span>
@@ -1123,10 +1123,10 @@ export default function SettingsPage() {
                     <div
                       key={preset.id}
                       onClick={() => setSelectedSubtitlePresetId(preset.id)}
-                      className={`glass-panel rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
                         isSelected
-                          ? "border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/15 ring-1 ring-brand-500/30"
-                          : "border-surface-border hover:border-slate-500 bg-surface/50"
+                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
                       }`}
                     >
                       <div>
@@ -1182,7 +1182,7 @@ export default function SettingsPage() {
                   e.preventDefault();
                   updateSubtitlePresetMutation.mutate(subtitlePresetForm);
                 }}
-                className="glass-panel rounded-2xl p-6 border border-surface-border space-y-6"
+                className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs"
               >
                 {/* Editor Header */}
                 <div className="flex items-center justify-between border-b border-surface-border pb-4 flex-wrap gap-2">
@@ -1695,8 +1695,8 @@ export default function SettingsPage() {
       {/* MODAL: TAMBAH PRESET NASKAH BARU                                          */}
       {/* ========================================================================= */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="glass-panel w-full max-w-2xl bg-[#0E1017] border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between bg-surface/50">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
@@ -1907,8 +1907,8 @@ export default function SettingsPage() {
       {/* MODAL: TAMBAH PRESET SUBTITLE BARU                                        */}
       {/* ========================================================================= */}
       {isCreateSubtitleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="glass-panel w-full max-w-2xl bg-[#0E1017] border border-surface-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between bg-surface/50">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-accent-yellow/10 text-accent-yellow">

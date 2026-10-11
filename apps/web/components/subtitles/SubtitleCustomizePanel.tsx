@@ -20,6 +20,8 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, SubtitleStyle, Narration, AudioTrack } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface SubtitleCustomizePanelProps {
   project: Project & {
@@ -196,28 +198,30 @@ export function SubtitleCustomizePanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-surface-secondary select-none overflow-hidden">
+    <div className="flex flex-col h-full bg-[#141414] select-none overflow-hidden border-r border-[#2E2E2E]">
       {/* Header with Sub-tabs */}
-      <div className="px-3 py-2 border-b border-surface-border bg-surface/80 shrink-0">
+      <div className="px-3.5 py-2.5 border-b border-[#2E2E2E] bg-[#181818] shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <Palette className="w-3.5 h-3.5 text-accent-yellow" />
-            <span className="font-bold text-[11px] text-white uppercase tracking-wider">Kustomisasi Subtitle</span>
+            <Palette className="w-3.5 h-3.5 text-primary" />
+            <span className="font-semibold text-[11px] text-foreground uppercase tracking-wider">Kustomisasi Subtitle</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
+          <div className="flex items-center gap-1.5">
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={handlePreviewASS}
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
               title="Lihat Script File ASS"
             >
               <FileCode className="w-3.5 h-3.5" />
-            </button>
+            </Button>
             <a
               href={api.getSubtitleExportUrl(project.id, "ass")}
               download
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono text-brand-300 hover:text-white bg-brand-500/10 hover:bg-brand-500/20"
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono text-primary hover:text-foreground bg-primary/10 hover:bg-primary/20 border border-primary/20 transition"
               title="Download ASS"
             >
               .ASS
@@ -226,12 +230,12 @@ export function SubtitleCustomizePanel({
         </div>
 
         {/* Sub-tab Switcher: Style / Word Inspector */}
-        <div className="inline-flex w-auto p-0.5 bg-black/40 rounded-lg border border-surface-border">
+        <div className="inline-flex w-full p-0.5 bg-[#121212] rounded-lg border border-[#2E2E2E]">
           <button
             type="button"
             onClick={() => setActiveSubTab("style")}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
-              activeSubTab === "style" ? "bg-brand-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+            className={`flex-1 py-1 rounded-md text-xs font-semibold transition text-center ${
+              activeSubTab === "style" ? "bg-primary text-black shadow-xs" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Style & Preset
@@ -239,8 +243,8 @@ export function SubtitleCustomizePanel({
           <button
             type="button"
             onClick={() => setActiveSubTab("inspector")}
-            className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition ${
-              activeSubTab === "inspector" ? "bg-brand-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+            className={`flex-1 py-1 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition ${
+              activeSubTab === "inspector" ? "bg-primary text-black shadow-xs" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Edit3 className="w-3 h-3" />
@@ -250,23 +254,23 @@ export function SubtitleCustomizePanel({
       </div>
 
       {/* Panel Body */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3.5 custom-scrollbar text-xs">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 text-xs">
         {activeSubTab === "style" ? (
           <div className="max-w-2xl space-y-3.5">
             {/* Presets List */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-slate-300 font-semibold">
-                <span className="flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
+              <div className="flex items-center justify-between text-foreground font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
                   Preset Cepat
                 </span>
-                <Link href="/settings" className="text-[10px] text-brand-400 hover:underline flex items-center gap-0.5">
+                <Link href="/settings" className="text-[10px] text-primary hover:underline flex items-center gap-1">
                   <SettingsIcon className="w-2.5 h-2.5" />
                   <span>Kelola</span>
                 </Link>
               </div>
 
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 max-h-[140px] overflow-y-auto custom-scrollbar pr-0.5">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 max-h-[140px] overflow-y-auto pr-0.5">
                 {presets.map((p) => {
                   const isSelected = style.preset_name === (p.preset_name || p.id);
                   return (
@@ -275,15 +279,15 @@ export function SubtitleCustomizePanel({
                       onClick={() => handleApplyPreset(p)}
                       className={`p-2 rounded-lg border cursor-pointer transition ${
                         isSelected
-                          ? "border-brand-500 bg-brand-500/15 text-white ring-1 ring-brand-500/40"
-                          : "border-surface-border bg-surface/50 text-slate-300 hover:border-slate-500"
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-[#2E2E2E] bg-[#161616] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold truncate">{p.name}</span>
-                        {isSelected && <CheckCircle2 className="w-3 h-3 text-brand-400 shrink-0" />}
+                        <span className="text-[11px] font-semibold truncate">{p.name}</span>
+                        {isSelected && <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />}
                       </div>
-                      <div className="text-[9px] text-slate-400 capitalize truncate">
+                      <div className="text-[9px] text-muted-foreground capitalize truncate">
                         {p.display_mode.replace("_", " ")}
                       </div>
                     </div>
@@ -293,15 +297,15 @@ export function SubtitleCustomizePanel({
             </div>
 
             {/* Typography Controls */}
-            <div className="p-2.5 rounded-xl bg-surface/50 border border-surface-border space-y-2.5">
-              <span className="text-[11px] font-bold text-slate-200 block">Typography & Layout</span>
+            <div className="p-3 rounded-xl bg-[#161616] border border-[#2E2E2E] space-y-3">
+              <span className="text-[11px] font-semibold text-foreground block">Typography & Layout</span>
 
               <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">Font Family</label>
+                <label className="text-muted-foreground block mb-1 text-[11px]">Font Family</label>
                 <select
                   value={style.font_family}
                   onChange={(e) => commitStyle({ ...style, font_family: e.target.value })}
-                  className="w-full px-2 py-1.5 bg-surface rounded-lg border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                  className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
                 >
                   <option value="Montserrat">Montserrat (Modern Bold)</option>
                   <option value="Bebas Neue">Bebas Neue (Hormozi)</option>
@@ -315,8 +319,8 @@ export function SubtitleCustomizePanel({
 
               <div>
                 <div className="flex justify-between items-center mb-1 text-[11px]">
-                  <span className="text-slate-400">Ukuran Font</span>
-                  <span className="font-mono text-brand-300 font-bold">{style.font_size}px</span>
+                  <span className="text-muted-foreground">Ukuran Font</span>
+                  <span className="font-mono text-primary font-bold">{style.font_size}px</span>
                 </div>
                 <input
                   type="range"
@@ -328,17 +332,17 @@ export function SubtitleCustomizePanel({
                   onPointerUp={(e) =>
                     commitStyle({ ...style, font_size: parseInt((e.target as HTMLInputElement).value) }, true)
                   }
-                  className="w-full accent-brand-500 cursor-pointer"
+                  className="w-full accent-primary cursor-pointer"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Display Mode</label>
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Display Mode</label>
                   <select
                     value={style.display_mode}
                     onChange={(e) => commitStyle({ ...style, display_mode: e.target.value as any })}
-                    className="w-full px-2 py-1.5 bg-surface rounded-lg border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                    className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
                   >
                     <option value="per_word">Per-Kata</option>
                     <option value="burst">Burst (2-3)</option>
@@ -347,11 +351,11 @@ export function SubtitleCustomizePanel({
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Posisi</label>
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Posisi</label>
                   <select
                     value={style.position}
                     onChange={(e) => commitStyle({ ...style, position: e.target.value as any })}
-                    className="w-full px-2 py-1.5 bg-surface rounded-lg border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                    className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
                   >
                     <option value="bottom">Bawah</option>
                     <option value="center">Tengah</option>
@@ -362,11 +366,11 @@ export function SubtitleCustomizePanel({
 
               {style.display_mode === "burst" && (
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Kata per Burst</label>
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Kata per Burst</label>
                   <select
                     value={style.burst_word_count}
                     onChange={(e) => commitStyle({ ...style, burst_word_count: parseInt(e.target.value) })}
-                    className="w-full px-2 py-1.5 bg-surface rounded-lg border border-surface-border text-white text-xs font-semibold"
+                    className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
                   >
                     <option value={2}>2 Kata</option>
                     <option value={3}>3 Kata</option>
@@ -376,13 +380,13 @@ export function SubtitleCustomizePanel({
             </div>
 
             {/* Color Controls */}
-            <div className="p-2.5 rounded-xl bg-surface/50 border border-surface-border space-y-2.5">
-              <span className="text-[11px] font-bold text-slate-200 block">Warna & Efek</span>
+            <div className="p-3 rounded-xl bg-[#161616] border border-[#2E2E2E] space-y-3">
+              <span className="text-[11px] font-semibold text-foreground block">Warna & Efek</span>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Normal</label>
-                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-surface border border-surface-border">
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Normal</label>
+                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#121212] border border-[#2E2E2E]">
                     <input
                       type="color"
                       value={style.primary_color}
@@ -392,13 +396,13 @@ export function SubtitleCustomizePanel({
                       }
                       className="w-5 h-5 rounded bg-transparent border-0 cursor-pointer"
                     />
-                    <span className="font-mono text-slate-300 text-[10px] truncate">{style.primary_color}</span>
+                    <span className="font-mono text-muted-foreground text-[10px] truncate">{style.primary_color}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Highlight</label>
-                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-surface border border-surface-border">
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Highlight</label>
+                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#121212] border border-[#2E2E2E]">
                     <input
                       type="color"
                       value={style.highlight_color}
@@ -408,13 +412,13 @@ export function SubtitleCustomizePanel({
                       }
                       className="w-5 h-5 rounded bg-transparent border-0 cursor-pointer"
                     />
-                    <span className="font-mono text-slate-300 text-[10px] truncate">{style.highlight_color}</span>
+                    <span className="font-mono text-muted-foreground text-[10px] truncate">{style.highlight_color}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 text-[11px]">Outline</label>
-                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-surface border border-surface-border">
+                  <label className="text-muted-foreground block mb-1 text-[11px]">Outline</label>
+                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#121212] border border-[#2E2E2E]">
                     <input
                       type="color"
                       value={style.outline_color}
@@ -424,14 +428,14 @@ export function SubtitleCustomizePanel({
                       }
                       className="w-5 h-5 rounded bg-transparent border-0 cursor-pointer"
                     />
-                    <span className="font-mono text-slate-300 text-[10px] truncate">{style.outline_color}</span>
+                    <span className="font-mono text-muted-foreground text-[10px] truncate">{style.outline_color}</span>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-1 text-[11px]">
-                    <span className="text-slate-400">Tebal</span>
-                    <span className="font-mono text-brand-300 font-bold">{style.outline_width}px</span>
+                    <span className="text-muted-foreground">Tebal Outline</span>
+                    <span className="font-mono text-primary font-bold">{style.outline_width}px</span>
                   </div>
                   <input
                     type="range"
@@ -442,18 +446,18 @@ export function SubtitleCustomizePanel({
                     onPointerUp={(e) =>
                       commitStyle({ ...style, outline_width: parseInt((e.target as HTMLInputElement).value) }, true)
                     }
-                    className="w-full accent-brand-500 cursor-pointer"
+                    className="w-full accent-primary cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* Animation */}
               <div>
-                <label className="text-slate-400 block mb-1 text-[11px]">Animasi Highlight</label>
+                <label className="text-muted-foreground block mb-1 text-[11px]">Animasi Highlight</label>
                 <select
                   value={style.highlight_animation}
                   onChange={(e) => commitStyle({ ...style, highlight_animation: e.target.value as any })}
-                  className="w-full px-2 py-1.5 bg-surface rounded-lg border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                  className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
                 >
                   <option value="scale">Scale & Zoom Pop</option>
                   <option value="color">Warna Halus</option>
@@ -464,8 +468,8 @@ export function SubtitleCustomizePanel({
               {style.highlight_animation === "scale" && (
                 <div>
                   <div className="flex justify-between items-center mb-1 text-[11px]">
-                    <span className="text-slate-400">Zoom Factor</span>
-                    <span className="font-mono text-brand-300 font-bold">
+                    <span className="text-muted-foreground">Zoom Factor</span>
+                    <span className="font-mono text-primary font-bold">
                       {(style.scale_factor || 1.15).toFixed(2)}x
                     </span>
                   </div>
@@ -479,27 +483,27 @@ export function SubtitleCustomizePanel({
                     onPointerUp={(e) =>
                       commitStyle({ ...style, scale_factor: parseFloat((e.target as HTMLInputElement).value) }, true)
                     }
-                    className="w-full accent-brand-500 cursor-pointer"
+                    className="w-full accent-primary cursor-pointer"
                   />
                 </div>
               )}
             </div>
 
             {/* Position Offset Sliders */}
-            <div className="p-2.5 rounded-xl bg-black/40 border border-surface-border space-y-2">
-              <div className="flex items-center justify-between text-slate-300 font-semibold text-[11px]">
-                <span className="flex items-center gap-1">
-                  <Sliders className="w-3 h-3 text-brand-400" />
+            <div className="p-3 rounded-xl bg-[#161616] border border-[#2E2E2E] space-y-2">
+              <div className="flex items-center justify-between text-foreground font-semibold text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <Sliders className="w-3 h-3 text-primary" />
                   Koreksi Pixel
                 </span>
-                <span className="font-mono text-[10px] text-brand-300">
+                <span className="font-mono text-[10px] text-primary">
                   X:{style.offset_x || 0} Y:{style.offset_y || 0}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-slate-400 block text-[10px] mb-0.5">Offset Y</span>
+                  <span className="text-muted-foreground block text-[10px] mb-0.5">Offset Y</span>
                   <input
                     type="range"
                     min={-300}
@@ -510,12 +514,12 @@ export function SubtitleCustomizePanel({
                     onPointerUp={(e) =>
                       commitStyle({ ...style, offset_y: parseInt((e.target as HTMLInputElement).value) }, true)
                     }
-                    className="w-full accent-brand-500 cursor-pointer"
+                    className="w-full accent-primary cursor-pointer"
                   />
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[10px] mb-0.5">Offset X</span>
+                  <span className="text-muted-foreground block text-[10px] mb-0.5">Offset X</span>
                   <input
                     type="range"
                     min={-200}
@@ -526,7 +530,7 @@ export function SubtitleCustomizePanel({
                     onPointerUp={(e) =>
                       commitStyle({ ...style, offset_x: parseInt((e.target as HTMLInputElement).value) }, true)
                     }
-                    className="w-full accent-brand-500 cursor-pointer"
+                    className="w-full accent-primary cursor-pointer"
                   />
                 </div>
               </div>
@@ -534,85 +538,95 @@ export function SubtitleCustomizePanel({
 
             {/* Save Buttons */}
             <div className="flex items-center gap-2 pt-1">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsSavePresetOpen(true)}
-                className="h-8 px-4 rounded-lg border border-surface-border bg-surface hover:bg-white/5 text-[11px] text-slate-300 hover:text-white transition"
+                className="text-xs font-medium"
               >
                 Simpan Preset
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="supabase"
+                size="sm"
                 onClick={() => commitStyle(style, true)}
                 disabled={updateStyleMutation.isPending}
-                className="h-8 px-4 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-[11px] shadow transition"
+                className="text-xs font-semibold"
               >
                 {updateStyleMutation.isPending ? "Menyimpan..." : "Simpan Style"}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
           /* Word Inspector Tab */
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-1 pb-1 border-b border-surface-border">
-              <button
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-1 pb-2 border-b border-[#2E2E2E]">
+              <Button
                 type="button"
+                variant="outline"
+                size="xs"
                 onClick={() => matchAudioMutation.mutate()}
                 disabled={matchAudioMutation.isPending || !project.audio}
-                className="h-7 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[10px] font-semibold flex items-center gap-1 transition disabled:opacity-40"
+                className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-[10px] font-semibold gap-1.5 h-7"
                 title="Sinkronkan timing dengan Whisper AI"
               >
                 <Wand2 className={`w-3 h-3 ${matchAudioMutation.isPending ? "animate-spin" : ""}`} />
                 <span>{matchAudioMutation.isPending ? "Sync..." : "Cocokkan AI"}</span>
-              </button>
+              </Button>
 
-              <div className="flex items-center gap-1">
-                <button
+              <div className="flex items-center gap-1.5">
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => {
                     if (project.narration?.segments) {
                       setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
                       showToast("Kata di-reset ke data tersimpan", "info");
                     }
                   }}
-                  className="h-7 px-2 rounded-lg border border-surface-border text-[10px] text-slate-300 hover:text-white bg-surface"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   title="Reset"
                 >
                   <RotateCcw className="w-3 h-3" />
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="supabase"
+                  size="xs"
                   onClick={() => updateSegmentsMutation.mutate(editableSegments)}
                   disabled={updateSegmentsMutation.isPending}
-                  className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] flex items-center gap-1"
+                  className="h-7 gap-1 text-[10px] font-semibold"
                 >
                   <Save className="w-3 h-3" />
                   <span>{updateSegmentsMutation.isPending ? "..." : "Simpan"}</span>
-                </button>
+                </Button>
               </div>
             </div>
 
             {editableSegments.length === 0 ? (
-              <div className="text-center py-8 text-slate-500 text-xs">
+              <div className="text-center py-8 text-muted-foreground text-xs">
                 Belum ada segmen narasi. Generate naskah & TTS terlebih dahulu.
               </div>
             ) : (
               editableSegments.map((seg, segIdx) => (
-                <div key={seg.id || segIdx} className="p-2 rounded-xl bg-surface/70 border border-surface-border space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-bold text-white flex items-center gap-1">
-                      <span className="w-3.5 h-3.5 rounded-full bg-brand-500/20 text-brand-300 flex items-center justify-center text-[8px] font-mono">
+                <div key={seg.id || segIdx} className="p-2.5 rounded-xl bg-[#161616] border border-[#2E2E2E] space-y-2">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[9px] font-mono font-bold">
                         {segIdx + 1}
                       </span>
                       <span>Segmen #{segIdx + 1}</span>
                     </span>
-                    <span className="font-mono text-[9px] bg-black/40 px-1 py-0.5 rounded border border-surface-border">
+                    <span className="font-mono text-[9px] bg-[#121212] px-1.5 py-0.5 rounded border border-[#2E2E2E]">
                       {seg.start_ms}–{seg.end_ms}ms
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {(seg.words || []).map((w: any, wIdx: number) => {
                       const wordStartSec = (w.start_ms || 0) / 1000;
                       const wordEndSec = (w.end_ms || 0) / 1000;
@@ -621,10 +635,10 @@ export function SubtitleCustomizePanel({
                         <div
                           key={w.id || wIdx}
                           onClick={() => onSeek?.(wordStartSec)}
-                          className={`inline-flex items-center gap-1 px-1 py-0.5 rounded border text-[10px] cursor-pointer transition ${
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] cursor-pointer transition ${
                             isCurrent
-                              ? "bg-brand-500/25 border-brand-400 text-white shadow-sm ring-1 ring-brand-400"
-                              : "bg-black/60 border-surface-border hover:border-brand-500/50"
+                              ? "bg-primary/20 border-primary text-foreground shadow-xs ring-1 ring-primary/40"
+                              : "bg-[#121212] border-[#2E2E2E] hover:border-primary/40 text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           <input
@@ -632,14 +646,14 @@ export function SubtitleCustomizePanel({
                             value={w.word}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => handleWordChange(segIdx, wIdx, e.target.value)}
-                            className="bg-surface/90 text-white font-medium focus:outline-none focus:ring-1 focus:ring-brand-500 px-1 py-0.2 rounded w-14 text-[10px]"
+                            className="bg-transparent text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-primary px-1 py-0.5 rounded w-14 text-[10px]"
                           />
-                          <span className="font-mono text-[8px] text-slate-400">{w.start_ms}ms</span>
+                          <span className="font-mono text-[8px] text-muted-foreground">{w.start_ms}ms</span>
                           <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", -50)}
-                              className="text-slate-400 hover:text-white leading-none"
+                              className="text-muted-foreground hover:text-foreground leading-none"
                               title="-50ms"
                             >
                               <ChevronUp className="w-2 h-2" />
@@ -647,7 +661,7 @@ export function SubtitleCustomizePanel({
                             <button
                               type="button"
                               onClick={() => handleWordTimingAdjust(segIdx, wIdx, "start_ms", 50)}
-                              className="text-slate-400 hover:text-white leading-none"
+                              className="text-muted-foreground hover:text-foreground leading-none"
                               title="+50ms"
                             >
                               <ChevronDown className="w-2 h-2" />
@@ -666,22 +680,23 @@ export function SubtitleCustomizePanel({
 
       {/* Modal: ASS Script Viewer */}
       {isAssModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-brand-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+              <FileCode className="w-4 h-4 text-primary" />
               Preview File Subtitle ASS (libass)
             </h3>
-            <div className="flex-1 overflow-y-auto bg-black/80 rounded-xl p-4 border border-surface-border font-mono text-xs text-emerald-400 whitespace-pre">
+            <div className="flex-1 overflow-y-auto bg-[#121212] rounded-lg p-4 border border-[#2E2E2E] font-mono text-xs text-primary whitespace-pre">
               {assContent || "Belum ada subtitle yang digenerate."}
             </div>
             <div className="flex justify-end pt-4">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setIsAssModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-surface text-sm text-slate-300 hover:text-white"
               >
                 Tutup
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -689,27 +704,30 @@ export function SubtitleCustomizePanel({
 
       {/* Modal: Save Preset */}
       {isSavePresetOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-sm font-bold text-white">Simpan sebagai Preset Baru</h3>
-            <input
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-[#181818] border border-[#2E2E2E] rounded-xl p-5 shadow-2xl space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Simpan sebagai Preset Baru</h3>
+            <Input
               type="text"
               required
               placeholder="Nama Preset Kustom"
               value={newPresetName}
               onChange={(e) => setNewPresetName(e.target.value)}
-              className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+              className="text-xs"
             />
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsSavePresetOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="supabase"
+                size="sm"
                 onClick={() => {
                   if (!newPresetName.trim()) return;
                   updateStyleMutation.mutate({
@@ -718,10 +736,9 @@ export function SubtitleCustomizePanel({
                     new_preset_name: newPresetName.trim(),
                   });
                 }}
-                className="px-4 py-1.5 text-xs bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-lg"
               >
                 Simpan
-              </button>
+              </Button>
             </div>
           </div>
         </div>
