@@ -3,7 +3,7 @@ import difflib
 import logging
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 log = logging.getLogger(__name__)
 
@@ -14,14 +14,14 @@ _whisper_model = None
 def get_whisper_model(model_size: str = "base"):
     """Lazy load the shared faster-whisper model instance."""
     global _whisper_model
-    if _whisper_model is None:
+    if not _whisper_model:
         try:
             from faster_whisper import WhisperModel
             # Run on CPU with int8 compute for lightweight fast inference
             _whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
         except Exception as e:
             log.warning("Could not initialize faster-whisper model: %s", e)
-            _whisper_model = False
+            _whisper_model = None
     return _whisper_model
 
 
@@ -33,13 +33,14 @@ def _norm_token(w: str) -> str:
 def _align_fallback(
     segments: List[Dict[str, Any]],
     total_audio_duration_sec: float,
+    offset_ms: int = 0,
 ) -> List[Dict[str, Any]]:
     """Proportional time allocation fallback if Whisper model is unavailable."""
     total_chars = sum(len(seg["text"]) for seg in segments)
     if total_chars == 0:
         return segments
 
-    cur_ms = 0
+    cur_ms = max(0, offset_ms)
     total_ms = int(total_audio_duration_sec * 1000)
 
     aligned = []
@@ -79,6 +80,7 @@ def sequence_anchored_forced_alignment(
     target_segments: List[Dict[str, Any]],
     whisper_words: List[Dict[str, Any]],
     total_audio_duration_sec: float,
+    offset_ms: int = 0,
 ) -> List[Dict[str, Any]]:
     """
     Perform sequence-anchored forced alignment between script segments and Whisper audio timestamps.
@@ -102,7 +104,7 @@ def sequence_anchored_forced_alignment(
     if not flat_targets:
         return target_segments
     if not whisper_words:
-        return _align_fallback(target_segments, total_audio_duration_sec)
+        return _align_fallback(target_segments, total_audio_duration_sec, offset_ms=offset_ms)
 
     t_norms = [t["norm"] for t in flat_targets]
     w_norms = [_norm_token(w["word"]) for w in whisper_words]
@@ -132,13 +134,25 @@ def sequence_anchored_forced_alignment(
                     flat_targets[i]["end_ms"] = cur_t + w_dur
                     cur_t += w_dur
         elif tag == "delete":
-            # Target words omitted in audio: smooth local interpolation
+            # Target words omitted in audio: smooth local interpolation between prev anchor and next anchor
             prev_end = flat_targets[i1 - 1]["end_ms"] if i1 > 0 else 0
+            next_start = whisper_words[j1]["start_ms"] if j1 < len(whisper_words) else prev_end + 250 * (i2 - i1)
+            n_targets = i2 - i1
+            if next_start > prev_end:
+                step = (next_start - prev_end) // n_targets
+            else:
+                step = 200
             cur_t = prev_end
             for i in range(i1, i2):
                 flat_targets[i]["start_ms"] = cur_t
-                flat_targets[i]["end_ms"] = cur_t + 250
-                cur_t += 250
+                flat_targets[i]["end_ms"] = cur_t + max(step, 80)
+                cur_t += step
+
+    # Apply global offset shift if requested
+    if offset_ms != 0:
+        for t in flat_targets:
+            t["start_ms"] = max(0, t["start_ms"] + offset_ms)
+            t["end_ms"] = max(t["start_ms"] + 80, t["end_ms"] + offset_ms)
 
     # Ensure monotonic, strictly positive timestamps
     last_end = 0
@@ -160,6 +174,11 @@ def sequence_anchored_forced_alignment(
         s_start = word_items[0]["start_ms"] if word_items else 0
         s_end = word_items[-1]["end_ms"] if word_items else 0
 
+        # Anchor first segment smoothly: if speech starts within the first 600ms,
+        # anchor segment display at 0ms so subtitle is visible immediately when playback starts
+        if s_idx == 0 and s_start < 600 and offset_ms == 0:
+            s_start = 0
+
         result_segments.append({
             "id": seg.get("id", f"seg-{s_idx+1}"),
             "text": seg["text"],
@@ -175,21 +194,33 @@ async def align_audio_with_text(
     audio_path: str,
     segments: List[Dict[str, Any]],
     total_audio_duration_sec: float,
+    language: Optional[str] = "id",
+    model_size: str = "base",
+    offset_ms: int = 0,
 ) -> List[Dict[str, Any]]:
     """Perform audio-anchored word-level forced alignment against the narration segments."""
     loop = asyncio.get_running_loop()
 
     def _run_whisper() -> List[Dict[str, Any]]:
-        model = get_whisper_model()
+        model = get_whisper_model(model_size)
         if not model:
             return []
 
         try:
+            # IMPORTANT: Never pass the script text itself as initial_prompt.
+            # In Whisper, initial_prompt acts as the transcription prefix from the preceding window.
+            # Passing target text causes Whisper's autoregressive decoder to treat the beginning words
+            # as already spoken, skipping the first 3-5 seconds of audio entirely!
+            generic_prompt = "Transkripsi audio narasi bahasa Indonesia." if (language or "id").startswith("id") else None
+
+            # For synthesized TTS audio, vad_filter is disabled to avoid Silero VAD cutting soft consonants
+            # or adding false onset latency at 0.0s.
             whisper_segments, _ = model.transcribe(
                 audio_path,
-                language="id",
+                language=language or None,
+                initial_prompt=generic_prompt,
                 word_timestamps=True,
-                vad_filter=True,
+                vad_filter=False,
             )
             extracted_words = []
             for seg in whisper_segments:
@@ -211,6 +242,11 @@ async def align_audio_with_text(
 
     if not words_with_timestamps:
         log.info("Whisper returned empty words; applying proportional fallback alignment")
-        return _align_fallback(segments, total_audio_duration_sec)
+        return _align_fallback(segments, total_audio_duration_sec, offset_ms=offset_ms)
 
-    return sequence_anchored_forced_alignment(segments, words_with_timestamps, total_audio_duration_sec)
+    return sequence_anchored_forced_alignment(
+        segments,
+        words_with_timestamps,
+        total_audio_duration_sec,
+        offset_ms=offset_ms,
+    )

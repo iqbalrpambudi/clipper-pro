@@ -77,11 +77,19 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
     t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
     timeline = t_res.scalar_one_or_none()
     if not timeline:
-        timeline = Timeline(project_id=project_id, clips=clips, total_duration=total_dur)
+        timeline = Timeline(
+            project_id=project_id,
+            clips=clips,
+            total_duration=total_dur,
+            has_audio=True,
+            has_subtitles=True,
+        )
         db.add(timeline)
     else:
         timeline.clips = clips
         timeline.total_duration = total_dur
+        timeline.has_audio = True
+        timeline.has_subtitles = True
 
     await db.commit()
     await db.refresh(timeline)
@@ -103,6 +111,8 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
         project_id=timeline.project_id,
         clips=res_clips,
         total_duration=timeline.total_duration,
+        has_audio=getattr(timeline, "has_audio", True),
+        has_subtitles=getattr(timeline, "has_subtitles", True),
     )
 
 
@@ -132,6 +142,8 @@ async def get_timeline(project_id: str, db: AsyncSession = Depends(get_db)):
         project_id=timeline.project_id,
         clips=res_clips,
         total_duration=timeline.total_duration,
+        has_audio=getattr(timeline, "has_audio", True),
+        has_subtitles=getattr(timeline, "has_subtitles", True),
     )
 
 
@@ -150,6 +162,11 @@ async def update_timeline(
     raw_clips = [c.model_dump() for c in payload.clips]
     timeline.clips = raw_clips
     timeline.total_duration = payload.total_duration or max([c["timeline_end"] for c in raw_clips], default=0.0)
+
+    if payload.has_audio is not None:
+        timeline.has_audio = payload.has_audio
+    if payload.has_subtitles is not None:
+        timeline.has_subtitles = payload.has_subtitles
 
     await db.commit()
     await db.refresh(timeline)
@@ -175,15 +192,102 @@ async def update_timeline(
         project_id=timeline.project_id,
         clips=res_clips,
         total_duration=timeline.total_duration,
+        has_audio=getattr(timeline, "has_audio", True),
+        has_subtitles=getattr(timeline, "has_subtitles", True),
     )
 
 
-@router.delete("", status_code=204)
-async def clear_timeline(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Clear/Delete the timeline for a project."""
+@router.delete("", response_model=TimelineResponse)
+async def clear_timeline(
+    project_id: str,
+    clear_audio: bool = True,
+    clear_subtitles: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    """Clear/Reset the timeline tracks for a project."""
     t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
     timeline = t_res.scalar_one_or_none()
-    if timeline:
-        await db.delete(timeline)
-        await db.commit()
-    return None
+    if not timeline:
+        timeline = Timeline(project_id=project_id)
+        db.add(timeline)
+
+    timeline.clips = []
+    timeline.total_duration = 0.0
+    if clear_audio:
+        timeline.has_audio = False
+    if clear_subtitles:
+        timeline.has_subtitles = False
+
+    await db.commit()
+    await db.refresh(timeline)
+
+    return TimelineResponse(
+        id=timeline.id,
+        project_id=timeline.project_id,
+        clips=[],
+        total_duration=0.0,
+        has_audio=timeline.has_audio,
+        has_subtitles=timeline.has_subtitles,
+    )
+
+
+@router.post("/readd-narration", response_model=TimelineResponse)
+async def readd_narration_to_timeline(
+    project_id: str,
+    readd_audio: bool = True,
+    readd_subtitles: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-attach narration audio and/or subtitles back to the timeline."""
+    t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
+    timeline = t_res.scalar_one_or_none()
+    if not timeline:
+        timeline = Timeline(project_id=project_id)
+        db.add(timeline)
+
+    if readd_audio:
+        timeline.has_audio = True
+    if readd_subtitles:
+        timeline.has_subtitles = True
+
+    # Recalculate duration
+    clips_end = max([c.get("timeline_end", 0.0) for c in (timeline.clips or [])], default=0.0)
+    audio_dur = 0.0
+    if timeline.has_audio:
+        a_res = await db.execute(
+            select(AudioTrack)
+            .where(AudioTrack.project_id == project_id)
+            .order_by(AudioTrack.created_at.desc())
+        )
+        audio = a_res.scalars().first()
+        if audio:
+            audio_dur = audio.duration or 0.0
+
+    timeline.total_duration = max(clips_end, audio_dur, 0.0)
+
+    await db.commit()
+    await db.refresh(timeline)
+
+    # Build scenes lookup
+    s_res = await db.execute(select(Scene).where(Scene.project_id == project_id))
+    all_scenes = s_res.scalars().all()
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in v_res.scalars().all()}
+    scenes_map = {s.id: storage.to_relative_url(s.thumbnail_path) for s in all_scenes}
+    scenes_video_map = {s.id: video_url_map.get(s.source_video_id) for s in all_scenes}
+
+    res_clips = []
+    for c in timeline.clips or []:
+        c_copy = dict(c)
+        c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+        res_clips.append(c_copy)
+
+    return TimelineResponse(
+        id=timeline.id,
+        project_id=timeline.project_id,
+        clips=res_clips,
+        total_duration=timeline.total_duration,
+        has_audio=timeline.has_audio,
+        has_subtitles=timeline.has_subtitles,
+    )

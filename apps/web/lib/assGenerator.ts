@@ -165,7 +165,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         for (let j = 0; j < kCount; j++) {
           const targetWord = group[j];
-          const tStart = targetWord.start_ms;
+          const tStart = (i === 0 && j === 0) ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms) : targetWord.start_ms;
           let tEnd: number;
 
           if (j < kCount - 1) {
@@ -212,7 +212,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
       for (let j = 0; j < nWords; j++) {
         const targetWord = words[j];
-        const tStart = targetWord.start_ms;
+        const tStart = j === 0 ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms) : targetWord.start_ms;
         let tEnd: number;
 
         if (j < nWords - 1) {

@@ -26,8 +26,17 @@ class Timeline(Base):
     # }
     clips: Mapped[list] = mapped_column(JSON, default=list)
     total_duration: Mapped[float] = mapped_column(Float, default=0.0)
+    has_audio: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    has_subtitles: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("has_audio", True)
+        kwargs.setdefault("has_subtitles", True)
+        kwargs.setdefault("clips", [])
+        kwargs.setdefault("total_duration", 0.0)
+        super().__init__(**kwargs)
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="timeline")

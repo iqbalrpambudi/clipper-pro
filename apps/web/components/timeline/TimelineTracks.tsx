@@ -33,6 +33,8 @@ interface TimelineTracksProps {
   isPlaying: boolean;
   selectedIndex: number | null;
   loopRange: { start: number; end: number } | null;
+  hasAudio?: boolean;
+  hasSubtitles?: boolean;
   onSelect: (i: number | null) => void;
   onSeek: (t: number) => void;
   getEdgeRange: (i: number) => Bounds | null;
@@ -41,6 +43,9 @@ interface TimelineTracksProps {
   onEdgeDragEnd: () => void;
   onDropScene: (sceneId: string, target: SceneDropTarget) => void;
   onEditSubtitles: () => void;
+  onReaddAudio?: () => void;
+  onReaddSubtitles?: () => void;
+  onReaddAll?: () => void;
 }
 
 const HEADER_W = 84;
@@ -64,6 +69,8 @@ export function TimelineTracks({
   isPlaying,
   selectedIndex,
   loopRange,
+  hasAudio = true,
+  hasSubtitles = true,
   onSelect,
   onSeek,
   getEdgeRange,
@@ -72,6 +79,9 @@ export function TimelineTracks({
   onEdgeDragEnd,
   onDropScene,
   onEditSubtitles,
+  onReaddAudio,
+  onReaddSubtitles,
+  onReaddAll,
 }: TimelineTracksProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -396,15 +406,28 @@ export function TimelineTracks({
               <Subtitles className="w-3.5 h-3.5 text-primary" />
               <span className="text-[11px] font-semibold text-foreground">S1</span>
             </div>
-            <button
-              type="button"
-              onClick={onEditSubtitles}
-              className="text-[9px] text-primary hover:underline flex items-center gap-0.5"
-              title="Edit di Subtitle Studio"
-            >
-              <span>Edit</span>
-              <ArrowRight className="w-2.5 h-2.5" />
-            </button>
+            {segments.length > 0 && hasSubtitles ? (
+              <button
+                type="button"
+                onClick={onEditSubtitles}
+                className="text-[9px] text-primary hover:underline flex items-center gap-0.5"
+                title="Edit di Subtitle Studio"
+              >
+                <span>Edit</span>
+                <ArrowRight className="w-2.5 h-2.5" />
+              </button>
+            ) : onReaddSubtitles ? (
+              <button
+                type="button"
+                onClick={onReaddSubtitles}
+                className="text-[9px] text-primary hover:underline font-semibold"
+                title="Tambahkan subtitle kembali ke timeline"
+              >
+                + Re-add
+              </button>
+            ) : (
+              <span className="text-[9px] text-muted-foreground">Kosong</span>
+            )}
           </div>
 
           {/* V1: Video track header */}
@@ -416,12 +439,26 @@ export function TimelineTracks({
           />
 
           {/* A1: Audio track header */}
-          <TrackHeader
-            height={A_H}
-            icon={<Volume2 className="w-3.5 h-3.5 text-primary" />}
-            label="A1"
-            sub={voice || "Narasi"}
-          />
+          <div style={{ height: A_H }} className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                <Volume2 className="w-3.5 h-3.5 text-primary" /> A1
+              </span>
+              {(audioDuration <= 0 || !hasAudio) && onReaddAudio ? (
+                <button
+                  type="button"
+                  onClick={onReaddAudio}
+                  className="text-[9px] text-primary hover:underline font-semibold"
+                  title="Tambahkan audio kembali ke timeline"
+                >
+                  + Re-add
+                </button>
+              ) : null}
+            </div>
+            <span className="text-[9px] text-muted-foreground truncate">
+              {hasAudio && audioDuration > 0 ? (voice || "Narasi") : "Kosong"}
+            </span>
+          </div>
         </div>
 
         {/* Scrollable Tracks Area */}
@@ -454,29 +491,50 @@ export function TimelineTracks({
               className="absolute left-0 right-0 border-b border-[#2E2E2E] bg-[#121212]"
               style={{ top: RULER_H, height: S_H }}
             >
-              {segments.map((seg, sIdx) => {
-                const st = seg.start_ms / 1000;
-                const en = seg.end_ms / 1000;
-                const active = time >= st && time < en;
-                return (
-                  <div
-                    key={seg.id || sIdx}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      onSeek(st);
-                    }}
-                    className={`absolute top-1 bottom-1 rounded-md px-2 flex items-center overflow-hidden cursor-pointer transition border shadow-xs ${active
-                        ? "bg-primary text-black border-primary font-semibold shadow-xs ring-1 ring-primary/40"
-                        : "bg-[#181818] text-foreground/80 border-[#2E2E2E] hover:border-primary/40"
-                      }`}
-                    style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
-                    title={seg.text}
-                  >
-                    <span className="text-[9px] font-bold text-primary mr-1.5 shrink-0 font-mono">T</span>
-                    <span className="text-[10px] font-medium truncate">{seg.text}</span>
-                  </div>
-                );
-              })}
+              {hasSubtitles && segments.length > 0 ? (
+                segments.map((seg, sIdx) => {
+                  const st = seg.start_ms / 1000;
+                  const en = seg.end_ms / 1000;
+                  const active = time >= st && time < en;
+                  return (
+                    <div
+                      key={seg.id || sIdx}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        onSeek(st);
+                      }}
+                      className={`absolute top-1 bottom-1 rounded-md px-2 flex items-center overflow-hidden cursor-pointer transition border shadow-xs ${active
+                          ? "bg-primary text-black border-primary font-semibold shadow-xs ring-1 ring-primary/40"
+                          : "bg-[#181818] text-foreground/80 border-[#2E2E2E] hover:border-primary/40"
+                        }`}
+                      style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
+                      title={seg.text}
+                    >
+                      <span className="text-[9px] font-bold text-primary mr-1.5 shrink-0 font-mono">T</span>
+                      <span className="text-[10px] font-medium truncate">{seg.text}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div
+                  className="absolute inset-y-1 left-2 right-2 rounded-lg border border-dashed border-[#2E2E2E] flex items-center justify-between px-3 text-[10px] text-muted-foreground"
+                  style={{ maxWidth: Math.max(320, viewportW - 16) }}
+                >
+                  <span>Track Subtitle dinonaktifkan atau kosong</span>
+                  {onReaddSubtitles && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReaddSubtitles();
+                      }}
+                      className="px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold cursor-pointer"
+                    >
+                      + Tambah Subtitle
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* V1: Video clips track */}
@@ -492,11 +550,23 @@ export function TimelineTracks({
             >
               {clips.length === 0 && (
                 <div
-                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex items-center justify-center text-xs transition ${dropHover ? "border-brand-400 bg-brand-500/10 text-brand-200" : "border-surface-border text-slate-500"
+                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-center gap-2 text-xs transition px-4 py-2 text-center ${dropHover ? "border-brand-400 bg-brand-500/10 text-brand-200" : "border-surface-border text-slate-500"
                     }`}
                   style={{ maxWidth: Math.max(320, viewportW - 24) }}
                 >
-                  Seret scene dari Media Pool ke sini untuk mulai menyusun timeline
+                  <span>Seret scene dari Media Pool ke sini untuk mulai menyusun timeline</span>
+                  {(!hasAudio || !hasSubtitles) && onReaddAll && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReaddAll();
+                      }}
+                      className="px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold text-[11px] cursor-pointer"
+                    >
+                      + Re-add Audio & Subtitle
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -638,7 +708,7 @@ export function TimelineTracks({
               style={{ top: RULER_H + S_H + V_H, height: A_H }}
               onPointerDown={(e) => onSeek(Math.min(safeDuration, timeFromClientX(e.clientX)))}
             >
-              {audioDuration > 0 ? (
+              {hasAudio && audioDuration > 0 ? (
                 <div
                   className="absolute top-1 bottom-1 left-0 rounded-lg bg-amber-950/20 ring-1 ring-amber-500/30 overflow-hidden"
                   style={{ width: waveW }}
@@ -653,10 +723,22 @@ export function TimelineTracks({
                 </div>
               ) : (
                 <div
-                  className="absolute inset-y-1 left-2 right-2 rounded-lg border border-dashed border-surface-border flex items-center px-3 text-[10px] text-slate-500"
-                  style={{ maxWidth: viewportW - 16 }}
+                  className="absolute inset-y-1 left-2 right-2 rounded-lg border border-dashed border-[#2E2E2E] flex items-center justify-between px-3 text-[10px] text-muted-foreground"
+                  style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
-                  Belum ada audio narasi (generate di tab TTS)
+                  <span>Track Audio narasi dinonaktifkan atau belum ada</span>
+                  {onReaddAudio && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReaddAudio();
+                      }}
+                      className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 font-semibold cursor-pointer"
+                    >
+                      + Tambah Audio
+                    </button>
+                  )}
                 </div>
               )}
             </div>

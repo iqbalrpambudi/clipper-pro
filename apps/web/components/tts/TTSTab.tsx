@@ -17,6 +17,7 @@ import {
   RotateCw,
   Mic,
   Music,
+  Wand2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -204,6 +205,80 @@ export function TTSTab({ project }: TTSTabProps) {
       showToast(err.message || "Gagal generate audio TTS", "error");
     },
   });
+
+  // Realignment & Timing Micro-Adjustment State
+  const [offsetMs, setOffsetMs] = useState(0);
+  const [isEditTimingMode, setIsEditTimingMode] = useState(false);
+  const [editableSegments, setEditableSegments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (project.narration?.segments) {
+      setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
+    }
+  }, [project.narration?.segments]);
+
+  const realignMutation = useMutation({
+    mutationFn: (params?: { offset_ms?: number }) => {
+      const targetOffset = params?.offset_ms !== undefined ? params.offset_ms : offsetMs;
+      return api.realignTTS(project.id, {
+        offset_ms: targetOffset,
+        language: "id",
+        model_size: "base",
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["project", project.id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          narration: {
+            ...old.narration,
+            segments: data.segments,
+            status: "aligned",
+          },
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Word timestamps berhasil diselaraskan ulang via Whisper AI!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal melakukan realignment kata", "error");
+    },
+  });
+
+  const updateSegmentsMutation = useMutation({
+    mutationFn: (segments: any[]) => api.updateNarrationSegments(project.id, segments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Koreksi timing kata berhasil disimpan!", "success");
+      setIsEditTimingMode(false);
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal menyimpan timing kata", "error");
+    },
+  });
+
+  const handleWordTimingNudge = (segIdx: number, wordIdx: number, deltaMs: number) => {
+    setEditableSegments((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const targetWord = next[segIdx]?.words?.[wordIdx];
+      if (targetWord) {
+        targetWord.start_ms = Math.max(0, (targetWord.start_ms || 0) + deltaMs);
+        targetWord.end_ms = Math.max(targetWord.start_ms + 50, (targetWord.end_ms || 0) + deltaMs);
+        if (next[segIdx].words?.length > 0) {
+          next[segIdx].start_ms = next[segIdx].words[0].start_ms;
+          next[segIdx].end_ms = next[segIdx].words[next[segIdx].words.length - 1].end_ms;
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleGlobalOffsetShift = (deltaMs: number) => {
+    const newOffset = offsetMs + deltaMs;
+    setOffsetMs(newOffset);
+    realignMutation.mutate({ offset_ms: newOffset });
+  };
 
   const playVoiceSample = (voiceId: string) => {
     if (sampleAudioPlaying === voiceId) {
@@ -666,20 +741,103 @@ export function TTSTab({ project }: TTSTabProps) {
               {/* WORD-LEVEL FORCED ALIGNMENT & KARAOKE BREAKDOWN */}
               {project.narration?.segments && project.narration.segments.length > 0 && (
                 <div className="pt-2 border-t border-[#2E2E2E] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <AlignLeft className="w-3.5 h-3.5 text-primary" />
-                      <span>
-                        Hasil Word-Level Alignment ({project.narration.segments.length} Segmen)
-                      </span>
-                    </h4>
-                    <span className="text-[11px] text-muted-foreground">
-                      Klik kata untuk melompat ke audio
-                    </span>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <AlignLeft className="w-3.5 h-3.5 text-primary" />
+                        <span>
+                          Hasil Word-Level Alignment ({project.narration.segments.length} Segmen)
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {isEditTimingMode
+                          ? "Mode koreksi aktif: sesuaikan timing per kata lalu klik Simpan"
+                          : "Klik kata untuk melompat audio • Gunakan Re-align Kata jika timestamp belum presisi"}
+                      </p>
+                    </div>
+
+                    {/* Action Toolbar: Realignment AI & Offset Controls */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Realignment Trigger Button */}
+                      <Button
+                        type="button"
+                        variant="supabase"
+                        size="xs"
+                        onClick={() => realignMutation.mutate({ offset_ms: offsetMs })}
+                        disabled={realignMutation.isPending || isGeneratingTTS || !project.audio?.audio_url}
+                        className="gap-1.5 font-semibold shadow-xs"
+                        title="Jalankan ulang forced word alignment dengan Whisper AI"
+                      >
+                        {realignMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3 h-3" />
+                        )}
+                        <span>{realignMutation.isPending ? "Re-aligning..." : "Re-align Kata (AI)"}</span>
+                      </Button>
+
+                      {/* Global Offset Calibration Box */}
+                      <div className="flex items-center bg-[#181818] border border-[#2E2E2E] rounded-md px-1 py-0.5 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => handleGlobalOffsetShift(-50)}
+                          disabled={realignMutation.isPending}
+                          className="px-1.5 py-0.5 text-muted-foreground hover:text-foreground hover:bg-[#242424] rounded text-[10px] font-mono transition"
+                          title="Geser semua kata 50ms lebih awal (-50ms)"
+                        >
+                          -50ms
+                        </button>
+                        <span className="px-1.5 text-[10px] font-mono text-primary font-bold border-x border-[#2E2E2E]">
+                          {offsetMs >= 0 ? `+${offsetMs}` : offsetMs}ms
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleGlobalOffsetShift(50)}
+                          disabled={realignMutation.isPending}
+                          className="px-1.5 py-0.5 text-muted-foreground hover:text-foreground hover:bg-[#242424] rounded text-[10px] font-mono transition"
+                          title="Geser semua kata 50ms lebih lambat (+50ms)"
+                        >
+                          +50ms
+                        </button>
+                      </div>
+
+                      {/* Toggle Edit Timing Mode */}
+                      <Button
+                        type="button"
+                        variant={isEditTimingMode ? "supabase" : "outline"}
+                        size="xs"
+                        onClick={() => {
+                          if (!isEditTimingMode && project.narration?.segments) {
+                            setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
+                          }
+                          setIsEditTimingMode(!isEditTimingMode);
+                        }}
+                        className="h-7 text-[11px] gap-1"
+                        title="Koreksi manual per-kata"
+                      >
+                        <Sliders className="w-3 h-3" />
+                        <span>{isEditTimingMode ? "Batal Edit" : "Edit Timing"}</span>
+                      </Button>
+
+                      {isEditTimingMode && (
+                        <Button
+                          type="button"
+                          variant="supabase"
+                          size="xs"
+                          onClick={() => updateSegmentsMutation.mutate(editableSegments)}
+                          disabled={updateSegmentsMutation.isPending}
+                          className="h-7 text-[11px] gap-1 font-semibold"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{updateSegmentsMutation.isPending ? "Menyimpan..." : "Simpan"}</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                    {project.narration.segments.map((seg, i) => {
+                  {/* Segments & Word Badges Breakdown */}
+                  <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                    {(isEditTimingMode ? editableSegments : project.narration.segments).map((seg, i) => {
                       const isSegActive =
                         currentTime * 1000 >= seg.start_ms && currentTime * 1000 <= seg.end_ms;
                       return (
@@ -694,16 +852,49 @@ export function TTSTab({ project }: TTSTabProps) {
                           <div className="flex justify-between font-mono text-[10px] text-muted-foreground mb-1.5">
                             <span className="text-primary font-semibold">Segmen #{i + 1}</span>
                             <span>
-                              {formatAudioTime(seg.start_ms / 1000)} — {formatAudioTime(seg.end_ms / 1000)}
+                              {formatAudioTime(seg.start_ms / 1000)} — {formatAudioTime(seg.end_ms / 1000)} ({((seg.end_ms - seg.start_ms) / 1000).toFixed(2)}s)
                             </span>
                           </div>
 
                           <div className="flex flex-wrap gap-1.5">
                             {seg.words && seg.words.length > 0 ? (
-                              seg.words.map((w, wi) => {
+                              seg.words.map((w: any, wi: number) => {
                                 const isWordActive =
                                   currentTime * 1000 >= w.start_ms &&
                                   currentTime * 1000 <= w.end_ms;
+
+                                if (isEditTimingMode) {
+                                  return (
+                                    <div
+                                      key={wi}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[#181818] border border-[#2E2E2E]"
+                                    >
+                                      <span className="font-semibold text-foreground">{w.word}</span>
+                                      <span className="font-mono text-[9px] text-muted-foreground bg-[#121212] px-1 rounded border border-[#2E2E2E]">
+                                        {w.start_ms}ms
+                                      </span>
+                                      <div className="flex items-center gap-0.5 ml-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleWordTimingNudge(i, wi, -50)}
+                                          className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                                          title="Mundurkan 50ms"
+                                        >
+                                          -
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleWordTimingNudge(i, wi, 50)}
+                                          className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                                          title="Majukan 50ms"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
                                 return (
                                   <button
                                     key={wi}
@@ -714,7 +905,7 @@ export function TTSTab({ project }: TTSTabProps) {
                                         ? "bg-primary text-black font-semibold shadow-xs"
                                         : "bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground hover:border-primary/40"
                                     }`}
-                                    title={`${w.start_ms}ms - ${w.end_ms}ms`}
+                                    title={`${w.word} • ${w.start_ms}ms - ${w.end_ms}ms`}
                                   >
                                     {w.word}
                                   </button>

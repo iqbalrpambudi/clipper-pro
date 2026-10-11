@@ -22,6 +22,8 @@ class ClipSchema(BaseModel):
 class TimelineUpdateRequest(BaseModel):
     clips: List[ClipSchema]
     total_duration: Optional[float] = None
+    has_audio: Optional[bool] = None
+    has_subtitles: Optional[bool] = None
 
 
 class TimelineResponse(BaseModel):
@@ -31,3 +33,5 @@ class TimelineResponse(BaseModel):
     project_id: str
     clips: List[Dict[str, Any]] = []
     total_duration: float
+    has_audio: bool = True
+    has_subtitles: bool = True

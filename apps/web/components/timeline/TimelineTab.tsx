@@ -140,6 +140,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
     }
   }, [project.subtitle_style]);
 
+  // Track attachment state (synced with timeline has_audio and has_subtitles)
+  const [isAudioAttached, setIsAudioAttached] = useState<boolean>(project.timeline?.has_audio ?? true);
+  const [isSubtitlesAttached, setIsSubtitlesAttached] = useState<boolean>(project.timeline?.has_subtitles ?? true);
+
+  useEffect(() => {
+    if (project.timeline) {
+      setIsAudioAttached(project.timeline.has_audio ?? true);
+      setIsSubtitlesAttached(project.timeline.has_subtitles ?? true);
+    }
+  }, [project.timeline?.has_audio, project.timeline?.has_subtitles]);
+
   // When a clip is selected, auto-switch the side drawer to inspector
   const handleSelectClip = useCallback((idx: number | null) => {
     setSelectedClipIndex(idx);
@@ -152,9 +163,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
   // Compute total timeline duration
   const totalDuration = useMemo(() => {
     const lastClipEnd = timelineEnd(clips);
-    const audioDur = project.audio?.duration || 0;
-    return Math.max(lastClipEnd, audioDur, 1);
-  }, [clips, project.audio?.duration]);
+    const audioDur = isAudioAttached ? (project.audio?.duration || 0) : 0;
+    return Math.max(lastClipEnd, audioDur, clips.length > 0 || isAudioAttached ? 1 : 0);
+  }, [clips, isAudioAttached, project.audio?.duration]);
 
   // Seek helper
   const seekTo = useCallback((t: number) => {
@@ -203,7 +214,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
   }, [selectedClipIndex, showToast]);
 
   // Audio waveform peaks
-  const { peaks } = useAudioPeaks(project.audio?.audio_url);
+  const { peaks } = useAudioPeaks(isAudioAttached ? project.audio?.audio_url : null);
 
   // Preview modal data (for single scene inspection)
   const [previewData, setPreviewData] = useState<{
@@ -235,6 +246,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
     onSuccess: async (data) => {
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       setClips(data.clips);
+      setIsAudioAttached(data.has_audio ?? true);
+      setIsSubtitlesAttached(data.has_subtitles ?? true);
       showToast("Scene berhasil dicocokkan otomatis dengan naskah!", "success");
       setIsAutoMatching(false);
     },
@@ -248,7 +261,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
     mutationFn: () =>
       api.updateTimeline(project.id, {
         clips,
-        total_duration: timelineEnd(clips),
+        total_duration: totalDuration,
+        has_audio: isAudioAttached,
+        has_subtitles: isSubtitlesAttached,
       }),
     onSuccess: () => {
       serverClipsKey.current = JSON.stringify(clips);
@@ -261,21 +276,66 @@ export function TimelineTab({ project }: TimelineTabProps) {
   });
 
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [clearScope, setClearScope] = useState<"all" | "video_only">("all");
 
   const clearTimelineMutation = useMutation({
-    mutationFn: () => api.clearTimeline(project.id),
-    onSuccess: () => {
+    mutationFn: (scope: "all" | "video_only" = clearScope) =>
+      api.clearTimeline(project.id, {
+        clear_audio: scope === "all",
+        clear_subtitles: scope === "all",
+      }),
+    onSuccess: (_data, variables) => {
+      const scope = variables || clearScope;
       setClips([]);
       setSelectedClipIndex(null);
+      if (scope === "all") {
+        setIsAudioAttached(false);
+        setIsSubtitlesAttached(false);
+      }
+      setTime(0);
+      setSeekRequest((prev) => ({ t: 0, id: prev.id + 1 }));
       setIsClearConfirmOpen(false);
       serverClipsKey.current = JSON.stringify([]);
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Timeline berhasil dikosongkan!", "info");
+      showToast(
+        scope === "all"
+          ? "Seluruh track timeline berhasil dikosongkan!"
+          : "Klip video berhasil dikosongkan!",
+        "info"
+      );
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal mengosongkan timeline", "error");
     },
   });
+
+  const readdNarrationMutation = useMutation({
+    mutationFn: (params?: { readd_audio?: boolean; readd_subtitles?: boolean }) =>
+      api.readdNarrationToTimeline(project.id, params),
+    onSuccess: (_data, variables) => {
+      const addedAudio = variables?.readd_audio ?? true;
+      const addedSubs = variables?.readd_subtitles ?? true;
+      if (addedAudio) setIsAudioAttached(true);
+      if (addedSubs) setIsSubtitlesAttached(true);
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Audio & Subtitle berhasil ditambahkan kembali ke timeline!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal menambahkan audio/subtitle", "error");
+    },
+  });
+
+  const handleReaddAudio = useCallback(() => {
+    readdNarrationMutation.mutate({ readd_audio: true, readd_subtitles: false });
+  }, [readdNarrationMutation]);
+
+  const handleReaddSubtitles = useCallback(() => {
+    readdNarrationMutation.mutate({ readd_audio: false, readd_subtitles: true });
+  }, [readdNarrationMutation]);
+
+  const handleReaddAll = useCallback(() => {
+    readdNarrationMutation.mutate({ readd_audio: true, readd_subtitles: true });
+  }, [readdNarrationMutation]);
 
   // Resize handlers for panels
   useEffect(() => {
@@ -622,12 +682,34 @@ export function TimelineTab({ project }: TimelineTabProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {clips.length > 0 && (
+          {(!isAudioAttached || !isSubtitlesAttached) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={handleReaddAll}
+              disabled={readdNarrationMutation.isPending}
+              className="border-primary/40 text-primary hover:bg-primary/10 font-semibold text-xs flex items-center gap-1.5 h-7"
+              title="Tambahkan kembali audio narasi dan subtitle ke timeline"
+            >
+              {readdNarrationMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Subtitles className="w-3.5 h-3.5" />
+              )}
+              <span>Re-add Audio & Subtitle</span>
+            </Button>
+          )}
+
+          {(clips.length > 0 || isAudioAttached || isSubtitlesAttached) && (
             <Button
               type="button"
               variant="ghost"
               size="xs"
-              onClick={() => setIsClearConfirmOpen(true)}
+              onClick={() => {
+                setClearScope("all");
+                setIsClearConfirmOpen(true);
+              }}
               className="text-destructive hover:bg-destructive/10 text-xs font-medium flex items-center gap-1 h-7"
               title="Kosongkan timeline"
             >
@@ -830,15 +912,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
             >
               <TimelineTracks
                 clips={clips}
-                segments={project.narration?.segments || []}
-                peaks={peaks}
-                audioDuration={project.audio?.duration || totalDuration}
+                segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+                peaks={isAudioAttached ? peaks : null}
+                audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
                 voice={project.audio?.voice}
                 duration={totalDuration}
                 time={time}
                 isPlaying={isPlaying}
                 selectedIndex={selectedClipIndex}
                 loopRange={loopRange}
+                hasAudio={isAudioAttached}
+                hasSubtitles={isSubtitlesAttached}
                 onSelect={handleSelectClip}
                 onSeek={seekTo}
                 getEdgeRange={getEdgeRange}
@@ -849,6 +933,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 onEditSubtitles={() => {
                   setActiveSideTab("subtitles");
                 }}
+                onReaddAudio={handleReaddAudio}
+                onReaddSubtitles={handleReaddSubtitles}
+                onReaddAll={handleReaddAll}
               />
             </div>
           </div>
@@ -869,9 +956,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
           >
             <TimelineMonitor
               clips={clips}
-              audioUrl={project.audio?.audio_url}
+              audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
               duration={totalDuration}
-              segments={project.narration?.segments || []}
+              segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
               aspectRatio={project.aspect_ratio || "9:16"}
               backgroundFill={project.background_fill}
               bgMode={project.background_fill?.mode || "blur"}
@@ -1055,9 +1142,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
             <div className="flex-1 min-h-0 flex flex-col p-2 bg-black/40 overflow-hidden">
               <TimelineMonitor
                 clips={clips}
-                audioUrl={project.audio?.audio_url}
+                audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
                 duration={totalDuration}
-                segments={project.narration?.segments || []}
+                segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
                 aspectRatio={project.aspect_ratio || "16:9"}
                 backgroundFill={project.background_fill}
                 bgMode={project.background_fill?.mode || "blur"}
@@ -1102,15 +1189,17 @@ export function TimelineTab({ project }: TimelineTabProps) {
           >
             <TimelineTracks
               clips={clips}
-              segments={project.narration?.segments || []}
-              peaks={peaks}
-              audioDuration={project.audio?.duration || totalDuration}
+              segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
+              peaks={isAudioAttached ? peaks : null}
+              audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
               voice={project.audio?.voice}
               duration={totalDuration}
               time={time}
               isPlaying={isPlaying}
               selectedIndex={selectedClipIndex}
               loopRange={loopRange}
+              hasAudio={isAudioAttached}
+              hasSubtitles={isSubtitlesAttached}
               onSelect={handleSelectClip}
               onSeek={seekTo}
               getEdgeRange={getEdgeRange}
@@ -1122,6 +1211,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 setActiveSideTab("subtitles");
                 setIsDrawerCollapsed(false);
               }}
+              onReaddAudio={handleReaddAudio}
+              onReaddSubtitles={handleReaddSubtitles}
+              onReaddAll={handleReaddAll}
             />
           </div>
         </div>
@@ -1152,12 +1244,54 @@ export function TimelineTab({ project }: TimelineTabProps) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Kosongkan Timeline?</h3>
-                <p className="text-xs text-muted-foreground">Seluruh klip video pada timeline akan dihapus</p>
+                <p className="text-xs text-muted-foreground">Pilih cakupan track yang ingin dikosongkan</p>
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Apakah Anda yakin ingin mengosongkan seluruh susunan timeline? Anda dapat menyusun klip baru secara manual dengan drag & drop scene dari Media Pool atau menggunakan <span className="font-semibold text-foreground">Auto-Match AI</span> kembali kapan saja.
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setClearScope("all")}
+                className={`w-full p-3 rounded-lg border text-left flex items-start gap-3 transition cursor-pointer ${
+                  clearScope === "all"
+                    ? "bg-destructive/10 border-destructive/50 text-foreground ring-1 ring-destructive/30"
+                    : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E]"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "all" ? "border-destructive bg-destructive" : "border-[#4E4E4E]"}`}>
+                  {clearScope === "all" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-foreground">Kosongkan Semua Track (V1, S1, A1)</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Hapus semua klip video serta lepaskan audio narasi dan subtitle dari timeline.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setClearScope("video_only")}
+                className={`w-full p-3 rounded-lg border text-left flex items-start gap-3 transition cursor-pointer ${
+                  clearScope === "video_only"
+                    ? "bg-primary/10 border-primary/50 text-foreground ring-1 ring-primary/30"
+                    : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E]"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "video_only" ? "border-primary bg-primary" : "border-[#4E4E4E]"}`}>
+                  {clearScope === "video_only" && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-foreground">Hanya Klip Video Saja (V1)</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Hapus klip video tetapi biarkan audio narasi dan subtitle tetap berada di timeline.
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed bg-[#141414] p-2.5 rounded-lg border border-[#2E2E2E]">
+              💡 <strong>Tips:</strong> Jika semua track dikosongkan, Anda dapat menggunakan tombol <span className="text-primary font-semibold">+ Re-add Audio & Subtitle</span> atau <span className="text-primary font-semibold">Auto-Match AI</span> kembali kapan saja.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2E2E]">
@@ -1174,11 +1308,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 variant="destructive"
                 size="sm"
                 disabled={clearTimelineMutation.isPending}
-                onClick={() => clearTimelineMutation.mutate()}
+                onClick={() => clearTimelineMutation.mutate(clearScope)}
                 className="gap-2"
               >
                 {clearTimelineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span>Kosongkan Timeline</span>
+                <span>{clearScope === "all" ? "Kosongkan Semua Track" : "Hapus Klip Video Saja"}</span>
               </Button>
             </div>
           </div>

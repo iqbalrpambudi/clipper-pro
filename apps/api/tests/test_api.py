@@ -143,6 +143,31 @@ def test_sequence_anchored_forced_alignment():
     assert seg2_words["bulunya."] == (3400, 3900)
 
 
+def test_sequence_anchored_forced_alignment_with_offset():
+    from app.services.alignment import sequence_anchored_forced_alignment
+
+    target_segments = [
+        {"id": "seg-1", "text": "Kucing lucu."},
+    ]
+    whisper_words = [
+        {"word": "Kucing", "start_ms": 100, "end_ms": 600},
+        {"word": "lucu.", "start_ms": 600, "end_ms": 1100},
+    ]
+
+    # Test +100ms offset
+    aligned = sequence_anchored_forced_alignment(target_segments, whisper_words, 2.0, offset_ms=100)
+    seg_words = {w["word"]: (w["start_ms"], w["end_ms"]) for w in aligned[0]["words"]}
+    assert seg_words["Kucing"] == (200, 700)
+    assert seg_words["lucu."] == (700, 1200)
+
+    # Test -50ms offset
+    aligned_neg = sequence_anchored_forced_alignment(target_segments, whisper_words, 2.0, offset_ms=-50)
+    seg_words_neg = {w["word"]: (w["start_ms"], w["end_ms"]) for w in aligned_neg[0]["words"]}
+    assert seg_words_neg["Kucing"] == (50, 550)
+    assert seg_words_neg["lucu."] == (550, 1050)
+
+
+
 
 
 def test_openai_adapter_sse_and_json_parsing():
@@ -377,3 +402,36 @@ def test_hash_embedding_deterministic_unit_norm():
     assert a == b
     assert a != c
     assert math.isclose(sum(v * v for v in a), 1.0, rel_tol=1e-6)
+
+
+def test_timeline_schemas_has_audio_and_subtitles():
+    from app.schemas.timeline import TimelineResponse, TimelineUpdateRequest
+    import uuid
+
+    req = TimelineUpdateRequest(clips=[], total_duration=0.0, has_audio=False, has_subtitles=False)
+    assert req.has_audio is False
+    assert req.has_subtitles is False
+
+    res = TimelineResponse(
+        id=str(uuid.uuid4()),
+        project_id=str(uuid.uuid4()),
+        clips=[],
+        total_duration=0.0,
+        has_audio=False,
+        has_subtitles=False,
+    )
+    assert res.has_audio is False
+    assert res.has_subtitles is False
+
+
+def test_timeline_model_defaults():
+    from app.models.timeline import Timeline
+    import uuid
+
+    t = Timeline(project_id=str(uuid.uuid4()))
+    assert t.has_audio is True
+    assert t.has_subtitles is True
+    assert t.clips == []
+    assert t.total_duration == 0.0
+
+

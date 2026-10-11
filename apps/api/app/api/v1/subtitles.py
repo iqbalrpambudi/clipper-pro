@@ -1,6 +1,6 @@
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -17,8 +17,10 @@ from app.schemas.subtitle import (
     SubtitlePreviewResponse,
 )
 from app.schemas.narration import NarrationResponse
+from app.schemas.tts import RealignWordsRequest
 from fastapi.responses import Response
 from app.services.alignment import align_audio_with_text
+from app.core.events import publish_project_event
 from app.services.subtitle_ass import (
     get_builtin_presets,
     generate_ass_subtitles,
@@ -524,7 +526,11 @@ async def export_subtitles(
 
 
 @router.post("/projects/{project_id}/subtitles/match-audio", response_model=NarrationResponse)
-async def match_subtitles_with_audio(project_id: str, db: AsyncSession = Depends(get_db)):
+async def match_subtitles_with_audio(
+    project_id: str,
+    payload: Optional[RealignWordsRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Re-sync narration segments and word timestamps directly against the project's audio using Whisper AI."""
     proj = await db.get(Project, project_id)
     if not proj:
@@ -553,16 +559,33 @@ async def match_subtitles_with_audio(project_id: str, db: AsyncSession = Depends
     if not narration or not narration.segments:
         raise HTTPException(status_code=400, detail="Belum ada naskah narasi untuk disinkronkan.")
 
+    offset_ms = payload.offset_ms if payload else 0
+    language = payload.language if payload else "id"
+    model_size = payload.model_size if payload else "base"
+
     # 3. Run audio-anchored forced alignment via Whisper
     aligned_segments = await align_audio_with_text(
         audio_path=audio_track.file_path,
         segments=narration.segments,
         total_audio_duration_sec=audio_track.duration or 30.0,
+        language=language,
+        model_size=model_size,
+        offset_ms=offset_ms,
     )
 
     narration.segments = aligned_segments
     narration.status = "aligned"
     await db.commit()
     await db.refresh(narration)
+
+    await publish_project_event(
+        project_id,
+        task_type="tts_align",
+        status="success",
+        progress=100,
+        stage="completed",
+        message="Realignment kata selesai! Word timestamp telah disinkronkan ulang dengan audio.",
+        data={"narration_id": narration.id, "segments_count": len(aligned_segments)},
+    )
 
     return NarrationResponse.model_validate(narration)

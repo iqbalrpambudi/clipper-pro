@@ -47,3 +47,10 @@ class AudioTrackResponse(BaseModel):
     duration: float
     estimated_cost: float
     status: str
+
+
+class RealignWordsRequest(BaseModel):
+    offset_ms: int = 0
+    language: Optional[str] = "id"
+    model_size: Optional[str] = "base"
+

@@ -1,5 +1,5 @@
-import asyncio
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,8 +18,12 @@ from app.schemas.tts import (
     CostEstimateResponse,
     TTSGenerateRequest,
     AudioTrackResponse,
+    RealignWordsRequest,
 )
+from app.schemas.narration import NarrationResponse
 from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
+from app.services.alignment import align_audio_with_text
+from app.core.events import publish_project_event
 from app.workers.tasks import generate_tts_and_align_job
 
 router = APIRouter(tags=["tts"])
@@ -184,3 +188,70 @@ async def get_latest_audio(project_id: str, db: AsyncSession = Depends(get_db)):
         estimated_cost=track.estimated_cost,
         status=track.status,
     )
+
+
+@router.post("/projects/{project_id}/tts/realign", response_model=NarrationResponse)
+async def realign_narration_words(
+    project_id: str,
+    payload: Optional[RealignWordsRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-sync word-level forced alignment against the existing audio track using Whisper AI."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    # 1. Fetch active audio track
+    a_res = await db.execute(
+        select(AudioTrack)
+        .where(AudioTrack.project_id == project_id)
+        .order_by(AudioTrack.created_at.desc())
+    )
+    audio_track = a_res.scalars().first()
+    if not audio_track or not audio_track.file_path or not Path(audio_track.file_path).exists():
+        raise HTTPException(
+            status_code=400,
+            detail="File audio narasi belum tersedia. Generate suara TTS terlebih dahulu.",
+        )
+
+    # 2. Fetch narration
+    n_res = await db.execute(
+        select(Narration)
+        .where(Narration.project_id == project_id)
+        .order_by(Narration.created_at.desc())
+    )
+    narration = n_res.scalars().first()
+    if not narration or not narration.segments:
+        raise HTTPException(status_code=400, detail="Belum ada naskah narasi untuk disinkronkan.")
+
+    offset_ms = payload.offset_ms if payload else 0
+    language = payload.language if payload else "id"
+    model_size = payload.model_size if payload else "base"
+
+    # 3. Run audio-anchored forced alignment via Whisper with prior prompt and offset
+    aligned_segments = await align_audio_with_text(
+        audio_path=audio_track.file_path,
+        segments=narration.segments,
+        total_audio_duration_sec=audio_track.duration or 30.0,
+        language=language,
+        model_size=model_size,
+        offset_ms=offset_ms,
+    )
+
+    narration.segments = aligned_segments
+    narration.status = "aligned"
+    await db.commit()
+    await db.refresh(narration)
+
+    # Publish real-time event so open tabs refresh automatically
+    await publish_project_event(
+        project_id,
+        task_type="tts_align",
+        status="success",
+        progress=100,
+        stage="completed",
+        message="Realignment kata selesai! Word timestamp telah disinkronkan ulang dengan audio.",
+        data={"narration_id": narration.id, "segments_count": len(aligned_segments)},
+    )
+
+    return NarrationResponse.model_validate(narration)

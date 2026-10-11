@@ -185,21 +185,52 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  realignTTS: (
+    projectId: string,
+    data?: { offset_ms?: number; language?: string; model_size?: string }
+  ) =>
+    request<Narration>(`/api/v1/projects/${projectId}/tts/realign`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    }),
 
   // Timeline
   autoMatchTimeline: (projectId: string) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline/auto-match`, { method: "POST" }),
   getTimeline: (projectId: string) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline`),
-  updateTimeline: (projectId: string, data: { clips: any[]; total_duration?: number }) =>
+  updateTimeline: (
+    projectId: string,
+    data: { clips: any[]; total_duration?: number; has_audio?: boolean; has_subtitles?: boolean }
+  ) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  clearTimeline: (projectId: string) =>
-    request<any>(`/api/v1/projects/${projectId}/timeline`, {
+  clearTimeline: (
+    projectId: string,
+    options?: { clear_audio?: boolean; clear_subtitles?: boolean }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.clear_audio !== undefined) params.set("clear_audio", String(options.clear_audio));
+    if (options?.clear_subtitles !== undefined) params.set("clear_subtitles", String(options.clear_subtitles));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<Timeline>(`/api/v1/projects/${projectId}/timeline${qs}`, {
       method: "DELETE",
-    }),
+    });
+  },
+  readdNarrationToTimeline: (
+    projectId: string,
+    options?: { readd_audio?: boolean; readd_subtitles?: boolean }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.readd_audio !== undefined) params.set("readd_audio", String(options.readd_audio));
+    if (options?.readd_subtitles !== undefined) params.set("readd_subtitles", String(options.readd_subtitles));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return request<Timeline>(`/api/v1/projects/${projectId}/timeline/readd-narration${qs}`, {
+      method: "POST",
+    });
+  },
 
   // Subtitles
   getSubtitlePresets: () => request<SubtitlePreset[]>("/api/v1/subtitles/presets"),
@@ -230,9 +261,13 @@ export const api = {
     }),
   previewASS: (projectId: string) =>
     request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/preview-ass`),
-  matchSubtitleWithAudio: (projectId: string) =>
+  matchSubtitleWithAudio: (
+    projectId: string,
+    data?: { offset_ms?: number; language?: string; model_size?: string }
+  ) =>
     request<Narration>(`/api/v1/projects/${projectId}/subtitles/match-audio`, {
       method: "POST",
+      body: JSON.stringify(data || {}),
     }),
   getSubtitleExportUrl: (projectId: string, format: "ass" | "srt" | "vtt") =>
     `/api/v1/projects/${projectId}/subtitles/export?format=${format}`,

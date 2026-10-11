@@ -117,6 +117,8 @@ export interface Timeline {
   project_id: string;
   clips: TimelineClip[];
   total_duration: number;
+  has_audio?: boolean;
+  has_subtitles?: boolean;
 }
 
 export interface SubtitleStyle {

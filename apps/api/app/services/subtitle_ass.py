@@ -284,7 +284,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                 for j, target_word in enumerate(group):
                     # Time window for this word being active
-                    t_start = target_word["start_ms"]
+                    t_start = min(seg.get("start_ms", target_word["start_ms"]), target_word["start_ms"]) if (i == 0 and j == 0) else target_word["start_ms"]
                     if j < k_count - 1:
                         t_end = min(group[j + 1]["start_ms"], g_end)
                         if t_end <= t_start:
@@ -323,7 +323,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             n_words = len(words)
 
             for j, target_word in enumerate(words):
-                t_start = target_word["start_ms"]
+                t_start = min(seg_start, target_word["start_ms"]) if j == 0 else target_word["start_ms"]
                 if j < n_words - 1:
                     t_end = min(words[j + 1]["start_ms"], seg_end)
                     if t_end <= t_start:
