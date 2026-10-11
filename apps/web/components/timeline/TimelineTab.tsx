@@ -5,16 +5,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
   Loader2,
-  Save,
   Trash2,
   ArrowRight,
   Film,
   SlidersHorizontal,
   CheckCircle2,
-  AlertCircle,
   Subtitles,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
 } from "lucide-react";
 import { ScenePreviewModal } from "../media/ScenePreviewModal";
 import { TimelineMonitor, SeekRequest } from "./TimelineMonitor";
@@ -22,6 +21,7 @@ import { TimelineTracks, SceneDropTarget } from "./TimelineTracks";
 import { TimelineMediaPool } from "./TimelineMediaPool";
 import { ClipInspector } from "./ClipInspector";
 import { SubtitleCustomizePanel } from "../subtitles/SubtitleCustomizePanel";
+import { VideoLayoutCustomizePanel } from "./VideoLayoutCustomizePanel";
 import { useHistoryState } from "@/hooks/useHistoryState";
 import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
@@ -115,8 +115,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const [selectedClipIndex, setSelectedClipIndex] = useState<number | null>(null);
   const [isLoopingClip, setIsLoopingClip] = useState(false);
 
-  // Left sidebar & drawer state: "pool" (Media Pool), "inspector" (Clip Inspector), or "subtitles" (Subtitle Customizer)
-  const [activeSideTab, setActiveSideTab] = useState<"pool" | "inspector" | "subtitles">("pool");
+  // Left sidebar & drawer state: "pool" (Media Pool), "inspector" (Clip Inspector), "subtitles" (Subtitle Customizer), or "layout" (Aspect Ratio & Display Mode)
+  const [activeSideTab, setActiveSideTab] = useState<"pool" | "inspector" | "subtitles" | "layout">("pool");
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
 
   // Resizable panel dimensions: drawer width and tracks panel height
@@ -125,11 +125,23 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const [isResizingDrawer, setIsResizingDrawer] = useState(false);
   const [isResizingTracks, setIsResizingTracks] = useState(false);
 
+  // Live aspect ratio and background fill states
+  const [liveAspectRatio, setLiveAspectRatio] = useState<string>(project.aspect_ratio || "9:16");
+  const [liveBackgroundFill, setLiveBackgroundFill] = useState<any>(project.background_fill || null);
+
+  useEffect(() => {
+    if (project.aspect_ratio) setLiveAspectRatio(project.aspect_ratio);
+  }, [project.aspect_ratio]);
+
+  useEffect(() => {
+    if (project.background_fill) setLiveBackgroundFill(project.background_fill);
+  }, [project.background_fill]);
+
   // Vertical layout (9:16 or any non-16:9) resizer for vertical preview column width
   const [verticalPreviewWidth, setVerticalPreviewWidth] = useState<number>(440);
   const [isResizingVerticalPreview, setIsResizingVerticalPreview] = useState(false);
 
-  const isVertical = project.aspect_ratio !== "16:9";
+  const isVertical = liveAspectRatio !== "16:9";
 
   // Active subtitle style preview state (syncs live to monitor)
   const [liveSubtitleStyle, setLiveSubtitleStyle] = useState(project.subtitle_style || null);
@@ -258,22 +270,40 @@ export function TimelineTab({ project }: TimelineTabProps) {
   });
 
   const saveTimelineMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (_opts?: { manual?: boolean }) =>
       api.updateTimeline(project.id, {
         clips,
         total_duration: totalDuration,
         has_audio: isAudioAttached,
         has_subtitles: isSubtitlesAttached,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       serverClipsKey.current = JSON.stringify(clips);
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Susunan timeline berhasil disimpan!", "success");
+      if (variables?.manual) {
+        showToast("Susunan timeline berhasil disimpan!", "success");
+      }
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal menyimpan timeline", "error");
     },
   });
+
+  // Autosave timeline edits with debounce (1000ms)
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    if (!isDirty) return;
+
+    const timer = setTimeout(() => {
+      saveTimelineMutation.mutate({});
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [clips, isDirty]);
 
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [clearScope, setClearScope] = useState<"all" | "video_only">("all");
@@ -588,10 +618,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
         return;
       }
 
-      // Save
+      // Save (Ctrl/Cmd + S)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveTimelineMutation.mutate();
+        saveTimelineMutation.mutate({ manual: true });
         return;
       }
 
@@ -667,9 +697,13 @@ export function TimelineTab({ project }: TimelineTabProps) {
           <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]">
             {clips.length} klip
           </Badge>
-          {isDirty ? (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1 animate-pulse">
-              <AlertCircle className="w-3 h-3" /> Belum disimpan
+          {saveTimelineMutation.isPending ? (
+            <Badge variant="outline" className="border-primary/40 text-primary text-[10px] flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
+            </Badge>
+          ) : isDirty ? (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Autosave...
             </Badge>
           ) : clips.length > 0 ? (
             <Badge variant="outline" className="border-primary/40 text-primary text-[10px] flex items-center gap-1">
@@ -733,26 +767,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
           <Button
             type="button"
-            variant={isDirty ? "supabase" : "outline"}
-            size="xs"
-            onClick={() => saveTimelineMutation.mutate()}
-            disabled={saveTimelineMutation.isPending || !isDirty}
-            className="text-xs font-semibold flex items-center gap-1.5 h-7"
-            title="Simpan timeline (Ctrl/Cmd + S)"
-          >
-            {saveTimelineMutation.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
-            <span>{saveTimelineMutation.isPending ? "Menyimpan..." : "Simpan"}</span>
-          </Button>
-
-          <Button
-            type="button"
             variant="supabase"
             size="xs"
-            onClick={() => setActiveTab("render")}
+            onClick={() => {
+              if (isDirty) {
+                saveTimelineMutation.mutate({});
+              }
+              setActiveTab("render");
+            }}
             className="text-xs font-semibold flex items-center gap-1 h-7"
           >
             <span>Render</span>
@@ -823,6 +845,18 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   >
                     <Subtitles className="w-4 h-4" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSideTab("layout")}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "layout"
+                        ? "bg-primary text-black font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
+                      }`}
+                    title="Mode Tampilan & Rasio Video"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -884,6 +918,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     onFillScene={handleFillScene}
                     onPreviewSource={handlePreviewSelectedClipSource}
                     onToggleLoop={toggleLoop}
+                  />
+                ) : activeSideTab === "layout" ? (
+                  <VideoLayoutCustomizePanel
+                    project={project}
+                    onLayoutChange={(ratio, fill) => {
+                      setLiveAspectRatio(ratio);
+                      setLiveBackgroundFill(fill);
+                    }}
                   />
                 ) : (
                   <SubtitleCustomizePanel
@@ -959,9 +1001,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
               audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
               duration={totalDuration}
               segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
-              aspectRatio={project.aspect_ratio || "9:16"}
-              backgroundFill={project.background_fill}
-              bgMode={project.background_fill?.mode || "blur"}
+              aspectRatio={liveAspectRatio}
+              backgroundFill={liveBackgroundFill}
+              bgMode={liveBackgroundFill?.mode || "blur"}
               subtitleStyle={liveSubtitleStyle}
               time={time}
               seekRequest={seekRequest}
@@ -1041,6 +1083,21 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 >
                   <Subtitles className="w-4 h-4" />
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSideTab("layout");
+                    setIsDrawerCollapsed(false);
+                  }}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "layout" && !isDrawerCollapsed
+                      ? "bg-primary text-black font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
+                    }`}
+                  title="Mode Tampilan & Rasio Video"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Collapse toggle */}
@@ -1117,6 +1174,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   onPreviewSource={handlePreviewSelectedClipSource}
                   onToggleLoop={toggleLoop}
                 />
+              ) : activeSideTab === "layout" ? (
+                <VideoLayoutCustomizePanel
+                  project={project}
+                  onLayoutChange={(ratio, fill) => {
+                    setLiveAspectRatio(ratio);
+                    setLiveBackgroundFill(fill);
+                  }}
+                />
               ) : (
                 <SubtitleCustomizePanel
                   project={project}
@@ -1145,9 +1210,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
                 duration={totalDuration}
                 segments={isSubtitlesAttached ? (project.narration?.segments || []) : []}
-                aspectRatio={project.aspect_ratio || "16:9"}
-                backgroundFill={project.background_fill}
-                bgMode={project.background_fill?.mode || "blur"}
+                aspectRatio={liveAspectRatio}
+                backgroundFill={liveBackgroundFill}
+                bgMode={liveBackgroundFill?.mode || "blur"}
                 subtitleStyle={liveSubtitleStyle}
                 time={time}
                 seekRequest={seekRequest}
