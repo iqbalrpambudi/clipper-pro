@@ -20,6 +20,23 @@ import {
   useUpdateProject,
 } from "@/hooks/useProjects";
 import { Project } from "@/types";
+import {
+  Button,
+  Input,
+  Textarea,
+  Badge,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui";
 
 export default function DashboardPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -78,75 +95,78 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090A0F]">
-      {/* Top Navbar */}
-      <header className="border-b border-surface-border bg-surface/80 backdrop-blur-md sticky top-0 z-40">
+    <div className="min-h-screen flex flex-col bg-[#121212]">
+      {/* Top Navbar in Supabase UI style */}
+      <header className="border-b border-[#2E2E2E] bg-[#171717]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-blue flex items-center justify-center shadow-lg shadow-brand-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3ECF8E] to-[#2DA670] flex items-center justify-center shadow-lg shadow-[#3ECF8E]/20 text-[#032817]">
+              <Sparkles className="w-5 h-5 fill-current" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-brand-400">
+                <span className="font-bold text-lg tracking-tight text-white font-sans">
                   Cliper Pro
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 border border-brand-500/30 text-brand-300 font-semibold uppercase tracking-wider">
+                <Badge variant="supabase" className="text-[10px] uppercase font-mono tracking-wider">
                   v1.0 AI
-                </span>
+                </Badge>
               </div>
-              <p className="text-xs text-slate-400">Auto Short Video Maker</p>
+              <p className="text-xs text-muted-foreground">Auto Short Video Maker</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/settings"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-surface-hover border border-surface-border transition"
-            >
-              <SettingsIcon className="w-4 h-4 text-slate-400" />
-              <span>Model Settings</span>
+            <Link href="/settings">
+              <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E]">
+                <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+                <span>Model Settings</span>
+              </Button>
             </Link>
-            <button
+            <Button
               onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white shadow-lg shadow-brand-600/25 transition transform active:scale-95"
+              variant="supabase"
+              size="sm"
+              className="gap-2 text-xs shadow-md shadow-[#3ECF8E]/10"
             >
               <Plus className="w-4 h-4" />
               <span>New Project</span>
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Banner */}
+      {/* Hero Banner with Supabase Aesthetic */}
       <main className="max-w-7xl mx-auto px-6 py-10 flex-1 w-full">
-        <div className="relative rounded-3xl p-8 mb-10 overflow-hidden border border-white/10 bg-gradient-to-br from-surface-card via-surface to-surface-card/60 shadow-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-accent-yellow/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative rounded-2xl p-8 mb-10 overflow-hidden border border-[#2E2E2E] bg-gradient-to-br from-[#1C1C1C] via-[#181818] to-[#141414] shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#3ECF8E]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs font-semibold mb-4">
+            <Badge variant="supabase" className="gap-1.5 px-3 py-1 mb-4">
               <Sparkles className="w-3.5 h-3.5" />
               TikTok & Reels Viral Video Automation
-            </div>
+            </Badge>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
               Ubah Video Panjang Jadi{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-accent-blue to-accent-yellow">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3ECF8E] via-[#34D399] to-[#6EE7B7]">
                 Short Video Viral
               </span>{" "}
               dalam Hitungan Menit.
             </h1>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed mb-6">
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-6">
               Otomatisasi lengkap: deteksi scene visual, generate naskah Bahasa Indonesia dengan LLM pilihan, voice Gemini 2.5 TTS, subtitle karaoke ASS presisi (gaya Hormozi & TikTok), dan render vertikal 9:16 dengan background fill blur.
             </p>
 
-            <button
+            <Button
               onClick={() => setIsCreateOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-950 font-bold hover:bg-slate-100 transition shadow-xl"
+              variant="supabase"
+              size="lg"
+              className="gap-2 font-semibold shadow-lg shadow-[#3ECF8E]/20"
             >
               <span>Mulai Buat Video Baru</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -154,44 +174,47 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">Project Saya</h2>
-            <p className="text-xs text-slate-400">Pilih project untuk masuk ke Studio Editor</p>
+            <p className="text-xs text-muted-foreground">Pilih project untuk masuk ke Studio Editor</p>
           </div>
         </div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-48 rounded-2xl bg-surface-card animate-pulse border border-surface-border" />
+              <div key={n} className="h-48 rounded-xl bg-[#1C1C1C] animate-pulse border border-[#2E2E2E]" />
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <div className="glass-panel rounded-2xl p-12 text-center border-dashed border-2 border-surface-border">
-            <Film className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+          <Card className="p-12 text-center border-dashed border-2 border-[#2E2E2E] bg-[#181818]/50">
+            <Film className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <h3 className="text-base font-semibold text-white mb-1">Belum Ada Project</h3>
-            <p className="text-sm text-slate-400 max-w-sm mx-auto mb-5">
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
               Mulai buat project pertama Anda dengan mengunggah video atau menempel link YouTube.
             </p>
-            <button
+            <Button
               onClick={() => setIsCreateOpen(true)}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold transition"
+              variant="supabase"
+              size="sm"
             >
               Buat Project Pertama
-            </button>
-          </div>
+            </Button>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((proj) => (
-              <div
+              <Card
                 key={proj.id}
-                className="group relative glass-panel rounded-2xl p-5 border border-surface-border hover:border-brand-500/40 transition-all flex flex-col justify-between hover:shadow-xl hover:shadow-brand-500/5"
+                className="group relative border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/50 hover:bg-[#1C1C1C] transition-all duration-200 flex flex-col justify-between hover:shadow-xl hover:shadow-[#3ECF8E]/5"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-300 border border-brand-500/20">
+                <CardHeader className="p-5 pb-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <Badge variant="supabase" className="font-mono text-[11px]">
                       {proj.aspect_ratio} • {proj.resolution}
-                    </span>
+                    </Badge>
                     <div className="flex items-center gap-1">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -199,253 +222,259 @@ export default function DashboardPage() {
                           setEditName(proj.name);
                           setEditDescription(proj.description || "");
                         }}
-                        className="text-slate-500 hover:text-brand-300 p-1.5 rounded-lg hover:bg-white/5 transition"
+                        className="text-muted-foreground hover:text-[#3ECF8E] hover:bg-white/5"
                         title="Edit Nama Project"
                       >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           setProjectToDelete(proj);
                         }}
-                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-white/5 transition"
+                        className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
                         title="Hapus Project"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </div>
 
                   <Link href={`/projects/${proj.id}`}>
-                    <h3 className="text-base font-bold text-white group-hover:text-brand-400 transition mb-2">
+                    <CardTitle className="text-base font-bold text-white group-hover:text-[#3ECF8E] transition">
                       {proj.name}
-                    </h3>
+                    </CardTitle>
                   </Link>
                   {proj.description && (
-                    <p className="text-xs text-slate-400 line-clamp-2 mb-4">
+                    <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1">
                       {proj.description}
-                    </p>
+                    </CardDescription>
                   )}
-                </div>
+                </CardHeader>
 
-                <div className="pt-4 border-t border-surface-border/60 flex items-center justify-between text-xs text-slate-400">
+                <CardFooter className="p-5 pt-3 border-t border-[#2E2E2E]/60 flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1">
-                      <Video className="w-3.5 h-3.5 text-slate-500" />
+                      <Video className="w-3.5 h-3.5 text-muted-foreground" />
                       {proj.source_video_count || 0} Media
                     </span>
                     <span className="flex items-center gap-1">
-                      <Film className="w-3.5 h-3.5 text-slate-500" />
+                      <Film className="w-3.5 h-3.5 text-muted-foreground" />
                       {proj.scene_count || 0} Scene
                     </span>
                   </div>
 
                   <Link
                     href={`/projects/${proj.id}`}
-                    className="flex items-center gap-1 text-brand-400 font-semibold group-hover:translate-x-1 transition"
+                    className="flex items-center gap-1 text-[#3ECF8E] font-medium group-hover:translate-x-0.5 transition"
                   >
                     <span>Studio</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         )}
       </main>
 
-      {/* Modal: New Project */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-1">Buat Project Baru</h3>
-            <p className="text-xs text-slate-400 mb-5">
+      {/* Supabase UI Dialog: New Project */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buat Project Baru</DialogTitle>
+            <DialogDescription>
               Tentukan nama dan format video short yang ingin diproduksi.
-            </p>
+            </DialogDescription>
+          </DialogHeader>
 
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Nama Project
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Mis. Fakta Menakjubkan Lautan"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500 transition"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Aspect Ratio
-                  </label>
-                  <select
-                    value={aspectRatio}
-                    onChange={(e) => setAspectRatio(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="9:16">9:16 (TikTok/Reels/Shorts)</option>
-                    <option value="1:1">1:1 (Square Feed)</option>
-                    <option value="16:9">16:9 (Landscape)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Resolusi
-                  </label>
-                  <select
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500"
-                  >
-                    <option value="1080p">1080p (Full HD)</option>
-                    <option value="720p">720p (Fast Render)</option>
-                  </select>
-                </div>
-              </div>
-
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 transition"
-                >
-                  {createMutation.isPending ? "Membuat..." : "Buat Project"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Edit Project */}
-      {projectToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center gap-2 mb-1">
-              <Edit3 className="w-5 h-5 text-brand-400" />
-              <h3 className="text-lg font-bold text-white">Edit Nama Project</h3>
+          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Nama Project
+              </label>
+              <Input
+                type="text"
+                required
+                placeholder="Mis. Fakta Menakjubkan Lautan"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
             </div>
-            <p className="text-xs text-slate-400 mb-5">
-              Ubah nama atau deskripsi project video Anda.
-            </p>
 
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Nama Project
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Aspect Ratio
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Mis. Fakta Menakjubkan Lautan"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-sm focus:outline-none focus:border-brand-500 transition"
-                  autoFocus
-                />
+                <select
+                  value={aspectRatio}
+                  onChange={(e) => setAspectRatio(e.target.value)}
+                  className="w-full h-9 px-3 py-1 bg-[#181818] rounded-md border border-[#2E2E2E] text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                >
+                  <option value="9:16">9:16 (TikTok/Reels/Shorts)</option>
+                  <option value="1:1">1:1 (Square Feed)</option>
+                  <option value="16:9">16:9 (Landscape)</option>
+                </select>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Deskripsi (Opsional)
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Resolusi
                 </label>
-                <textarea
-                  rows={3}
-                  placeholder="Catatan atau tema video..."
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 transition leading-relaxed resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                <button
-                  type="button"
-                  onClick={() => setProjectToEdit(null)}
-                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+                <select
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  className="w-full h-9 px-3 py-1 bg-[#181818] rounded-md border border-[#2E2E2E] text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 transition flex items-center gap-2"
-                >
-                  {updateMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <span>Simpan Perubahan</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Confirm Delete Project */}
-      {projectToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-scale-pop">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Hapus Project?</h3>
-                <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
+                  <option value="1080p">1080p (Full HD)</option>
+                  <option value="720p">720p (Fast Render)</option>
+                </select>
               </div>
             </div>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin menghapus project{" "}
-              <span className="font-semibold text-white">"{projectToDelete.name}"</span>? Seluruh media video, scene AI, dan naskah di dalamnya akan dihapus permanen.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border/60">
-              <button
+            <DialogFooter className="pt-2">
+              <Button
                 type="button"
-                onClick={() => setProjectToDelete(null)}
-                className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateOpen(false)}
               >
                 Batal
-              </button>
-              <button
-                type="button"
-                id="confirm-delete-project-btn"
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  const id = projectToDelete.id;
-                  setProjectToDelete(null);
-                  deleteMutation.mutate(id);
-                }}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition flex items-center gap-2"
+              </Button>
+              <Button
+                type="submit"
+                variant="supabase"
+                size="sm"
+                disabled={createMutation.isPending}
               >
-                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span>Hapus Project</span>
-              </button>
+                {createMutation.isPending ? "Membuat..." : "Buat Project"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supabase UI Dialog: Edit Project */}
+      <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Edit3 className="w-5 h-5 text-[#3ECF8E]" />
+              <DialogTitle>Edit Nama Project</DialogTitle>
+            </div>
+            <DialogDescription>
+              Ubah nama atau deskripsi project video Anda.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Nama Project
+              </label>
+              <Input
+                type="text"
+                required
+                placeholder="Mis. Fakta Menakjubkan Lautan"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Deskripsi (Opsional)
+              </label>
+              <Textarea
+                rows={3}
+                placeholder="Catatan atau tema video..."
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setProjectToEdit(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="supabase"
+                size="sm"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <span>Simpan Perubahan</span>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supabase UI Dialog: Confirm Delete Project */}
+      <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-white">Hapus Project?</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Tindakan ini tidak dapat dibatalkan
+              </DialogDescription>
             </div>
           </div>
-        </div>
-      )}
+
+          <p className="text-sm text-foreground/80 leading-relaxed py-2">
+            Apakah Anda yakin ingin menghapus project{" "}
+            <span className="font-semibold text-white">"{projectToDelete?.name}"</span>? Seluruh media video, scene AI, dan naskah di dalamnya akan dihapus permanen.
+          </p>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setProjectToDelete(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              id="confirm-delete-project-btn"
+              variant="destructive"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (!projectToDelete) return;
+                const id = projectToDelete.id;
+                setProjectToDelete(null);
+                deleteMutation.mutate(id);
+              }}
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              <span>Hapus Project</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

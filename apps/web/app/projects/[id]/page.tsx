@@ -25,6 +25,7 @@ import { NarrationTab } from "@/components/narration/NarrationTab";
 import { TTSTab } from "@/components/tts/TTSTab";
 import { TimelineTab } from "@/components/timeline/TimelineTab";
 import { RenderTab } from "@/components/render/RenderTab";
+import { Button, Input, Badge } from "@/components/ui";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -183,17 +184,20 @@ export default function ProjectStudioPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090A0F]">
+    <div className="min-h-screen flex flex-col bg-[#121212]">
       {/* Top Header */}
-      <header className="border-b border-surface-border bg-surface/90 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-[#2E2E2E] bg-[#171717]/95 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface-hover transition"
-              title="Dashboard"
-            >
-              <ArrowLeft className="w-5 h-5" />
+            <Link href="/">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-white hover:bg-white/5"
+                title="Dashboard"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
             </Link>
 
             <div>
@@ -214,7 +218,7 @@ export default function ProjectStudioPage({ params }: PageProps) {
                   }}
                   className="flex items-center gap-1.5"
                 >
-                  <input
+                  <Input
                     type="text"
                     required
                     value={editTitle}
@@ -222,13 +226,14 @@ export default function ProjectStudioPage({ params }: PageProps) {
                     onKeyDown={(e) => {
                       if (e.key === "Escape") setIsEditingTitle(false);
                     }}
-                    className="px-2.5 py-1 text-sm font-bold text-white bg-surface rounded-lg border border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 max-w-xs sm:max-w-sm"
+                    className="h-8 text-sm font-bold max-w-xs sm:max-w-sm"
                     autoFocus
                   />
-                  <button
+                  <Button
                     type="submit"
+                    variant="supabase"
+                    size="icon-sm"
                     disabled={updateProjectMutation.isPending}
-                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center shadow-sm"
                     title="Simpan Nama"
                   >
                     {updateProjectMutation.isPending ? (
@@ -236,15 +241,16 @@ export default function ProjectStudioPage({ params }: PageProps) {
                     ) : (
                       <Check className="w-3.5 h-3.5" />
                     )}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon-sm"
                     onClick={() => setIsEditingTitle(false)}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-white/10 text-slate-400 hover:text-white border border-surface-border transition"
                     title="Batal"
                   >
                     <X className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </form>
               ) : (
                 <div className="flex items-center gap-2 group">
@@ -253,52 +259,60 @@ export default function ProjectStudioPage({ params }: PageProps) {
                       setEditTitle(project.name);
                       setIsEditingTitle(true);
                     }}
-                    className="text-base font-bold text-white tracking-tight truncate max-w-xs sm:max-w-md cursor-pointer hover:text-brand-300 transition"
+                    className="text-base font-bold text-white tracking-tight truncate max-w-xs sm:max-w-md cursor-pointer hover:text-[#3ECF8E] transition"
                     title="Klik untuk mengubah nama project"
                   >
                     {project.name}
                   </h1>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => {
                       setEditTitle(project.name);
                       setIsEditingTitle(true);
                     }}
-                    className="text-slate-500 hover:text-brand-300 p-1 rounded-md hover:bg-white/5 transition opacity-60 group-hover:opacity-100"
+                    className="text-muted-foreground hover:text-[#3ECF8E] opacity-60 group-hover:opacity-100"
                     title="Edit Nama Project"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                  </Button>
+                  <Badge variant="supabase" className="font-mono text-[10px]">
                     {project.aspect_ratio} • {project.resolution}
-                  </span>
+                  </Badge>
                 </div>
               )}
-              <p className="text-[11px] text-slate-400">Cliper Pro Auto Studio</p>
+              <p className="text-[11px] text-muted-foreground">Cliper Pro Auto Studio</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/settings"
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface-hover border border-surface-border transition"
-              title="Model Settings"
-            >
-              <SettingsIcon className="w-4 h-4" />
+            <Link href="/settings">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs border-[#2E2E2E]"
+                title="Model Settings"
+              >
+                <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
             </Link>
 
-            <button
+            <Button
               onClick={() => setActiveTab("render")}
-              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-1.5 transition"
+              variant="supabase"
+              size="sm"
+              className="gap-1.5 text-xs shadow-md shadow-[#3ECF8E]/20"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Render Short Video</span>
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="max-w-7xl mx-auto px-6 flex gap-2 overflow-x-auto border-t border-surface-border/40 py-1.5">
+        <div className="max-w-7xl mx-auto px-6 flex gap-1.5 overflow-x-auto border-t border-[#2E2E2E]/60 py-1.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -306,22 +320,21 @@ export default function ProjectStudioPage({ params }: PageProps) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-surface-hover"
+                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+                    : "text-muted-foreground hover:text-white hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isActive ? "bg-white/20 text-white" : "bg-surface border border-surface-border text-slate-400"
-                    }`}
+                  <Badge
+                    variant={isActive ? "supabase" : "secondary"}
+                    className="text-[10px] px-1.5 py-0 h-4"
                   >
                     {tab.badge}
-                  </span>
+                  </Badge>
                 )}
               </button>
             );

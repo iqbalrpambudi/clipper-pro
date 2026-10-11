@@ -1,5 +1,3 @@
-
-
 @font-face {
   font-family: "Anton";
   src: url("/fonts/Anton.ttf") format("truetype");
@@ -53,39 +51,59 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #090A0F;
-  --foreground: #F8FAFC;
+@layer base {
+  :root {
+    --background: 0 0% 7%; /* #121212 */
+    --foreground: 0 0% 93%; /* #EDEDED */
+    --card: 0 0% 11%; /* #1C1C1C */
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 12%; /* #1F1F1F */
+    --popover-foreground: 0 0% 93%;
+    --primary: 153 60% 53%; /* #3ECF8E Supabase Green */
+    --primary-foreground: 153 100% 7%; /* Dark high-contrast text on green */
+    --secondary: 0 0% 16%; /* #292929 */
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 15%; /* #262626 */
+    --muted-foreground: 240 5% 65%; /* #A1A1AA */
+    --accent: 0 0% 16%; /* #282828 */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%; /* #EF4444 */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%; /* #2E2E2E */
+    --input: 0 0% 18%; /* #2E2E2E */
+    --ring: 153 60% 53%; /* #3ECF8E Supabase Green Ring */
+    --radius: 0.5rem;
+  }
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
   overflow-x: hidden;
 }
 
-/* Custom Scrollbars */
+/* Custom Supabase Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(18, 20, 28, 0.6);
+  background: #171717;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: #2E2E2E;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(62, 207, 142, 0.4);
 }
 
-/* Glassmorphism Classes */
+/* Supabase Glass & Panel Classes */
 .glass-panel {
-  background: rgba(18, 20, 28, 0.75);
+  background: rgba(28, 28, 28, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -96,21 +114,21 @@ body {
 }
 
 .glass-panel-hover:hover {
-  background: rgba(26, 29, 40, 0.85);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  background: rgba(38, 38, 38, 0.95);
+  border-color: rgba(62, 207, 142, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 .glass-button {
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(62, 207, 142, 0.12);
+  border: 1px solid rgba(62, 207, 142, 0.28);
   backdrop-filter: blur(8px);
   transition: all 0.2s ease;
 }
 
 .glass-button:hover {
-  background: rgba(99, 102, 241, 0.3);
-  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(62, 207, 142, 0.22);
+  border-color: rgba(62, 207, 142, 0.5);
   transform: translateY(-1px);
 }
 
@@ -120,10 +138,10 @@ body {
 }
 
 .glow-brand {
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 25px rgba(62, 207, 142, 0.35);
 }
 
-/* Range input styling */
+/* Range input styling with Supabase green */
 input[type="range"] {
-  accent-color: #6366F1;
+  accent-color: #3ECF8E;
 }
