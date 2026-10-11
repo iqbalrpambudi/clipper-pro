@@ -25,12 +25,7 @@ import {
   Check,
   MessageSquareQuote,
   Clapperboard,
-  Zap,
   Search,
-  Ghost,
-  Mountain,
-  Repeat,
-  Swords,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -59,9 +54,9 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const { showToast, setActiveTab } = useStudioStore();
 
   const [selectedCategory, setSelectedCategory] = useState<
-    "all" | "film" | "viral" | "fakta" | "edukasi" | "custom"
+    "all" | "recap" | "fakta" | "edukasi" | "showcase" | "opini" | "custom"
   >("all");
-  const [selectedTemplateId, setSelectedTemplateId] = useState("alur_film");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("recap_cinematic");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("dramatis");
   const [targetDuration, setTargetDuration] = useState(60);
@@ -95,19 +90,22 @@ export function NarrationTab({ project }: NarrationTabProps) {
     }
   }, [project.narration]);
 
-  // Helper categorization
+  // Helper categorization across the 5 pillars
   const getTemplateCategory = (
     tpl: NarrationTemplate
-  ): "all" | "film" | "viral" | "fakta" | "edukasi" | "custom" => {
+  ): "all" | "recap" | "fakta" | "edukasi" | "showcase" | "opini" | "custom" => {
     if (!tpl.is_builtin || tpl.category === "custom") return "custom";
     if (
-      tpl.category === "film" ||
-      tpl.category === "viral" ||
+      tpl.category === "recap" ||
       tpl.category === "fakta" ||
-      tpl.category === "edukasi"
+      tpl.category === "edukasi" ||
+      tpl.category === "showcase" ||
+      tpl.category === "opini"
     ) {
       return tpl.category;
     }
+    // Backward compatibility mapping if old cache exists
+    if (tpl.category === "film" || tpl.category === "viral") return "recap";
     return "custom";
   };
 
@@ -115,71 +113,59 @@ export function NarrationTab({ project }: NarrationTabProps) {
     if (tpl.sub_category) {
       return tpl.sub_category;
     }
-    return "Kustom";
+    return tpl.is_builtin ? "Standar" : "Kustom";
   };
 
   const getTemplateIcon = (tpl: NarrationTemplate) => {
-    const sub = tpl.sub_category || "";
     const cat = getTemplateCategory(tpl);
-    if (cat === "film") {
-      switch (sub) {
-        case "Aksi":
-          return <Film className="w-4 h-4 text-purple-400 shrink-0" />;
-        case "Komedi":
-          return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
-        case "Heist & Trik":
-          return <ShieldAlert className="w-4 h-4 text-cyan-400 shrink-0" />;
-        case "Drama":
-          return <Heart className="w-4 h-4 text-pink-400 shrink-0" />;
-        case "Misteri":
-          return <Search className="w-4 h-4 text-indigo-400 shrink-0" />;
-        case "Horor":
-          return <Ghost className="w-4 h-4 text-red-400 shrink-0" />;
-        case "Perjalanan":
-          return <Mountain className="w-4 h-4 text-emerald-400 shrink-0" />;
-        case "Plot Twist":
-          return <Repeat className="w-4 h-4 text-violet-400 shrink-0" />;
-        case "Epik & Perang":
-          return <Swords className="w-4 h-4 text-orange-400 shrink-0" />;
+    if (cat === "recap") {
+      if (tpl.id === "story_parodi") {
+        return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
       }
-      return <Clapperboard className="w-4 h-4 text-purple-400 shrink-0" />;
-    }
-    if (cat === "viral") {
-      if (sub === "POV Imersif")
-        return <Search className="w-4 h-4 text-fuchsia-400 shrink-0" />;
-      if (sub === "Proses & Transformasi")
-        return <Code className="w-4 h-4 text-teal-400 shrink-0" />;
-      return <Flame className="w-4 h-4 text-rose-400 shrink-0" />;
+      return <Film className="w-4 h-4 text-purple-400 shrink-0" />;
     }
     if (cat === "fakta") {
-      if (sub === "Bongkar Mitos")
-        return <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />;
-      if (sub === "Ranking & Top List")
-        return <Repeat className="w-4 h-4 text-orange-400 shrink-0" />;
-      return <Lightbulb className="w-4 h-4 text-accent-yellow shrink-0" />;
+      if (tpl.id === "fakta_ranking") {
+        return <Flame className="w-4 h-4 text-orange-400 shrink-0" />;
+      }
+      return <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />;
     }
     if (cat === "edukasi") {
-      if (sub === "Explainer & Analogi")
+      if (tpl.id === "edukasi_explainer") {
         return <MessageSquareQuote className="w-4 h-4 text-cyan-400 shrink-0" />;
-      if (sub === "Otopsi Kesalahan")
-        return <Search className="w-4 h-4 text-red-400 shrink-0" />;
-      return <BookOpen className="w-4 h-4 text-accent-blue shrink-0" />;
+      }
+      return <BookOpen className="w-4 h-4 text-sky-400 shrink-0" />;
     }
-    return <BookOpen className="w-4 h-4 text-[#3ECF8E] shrink-0" />;
+    if (cat === "showcase") {
+      if (tpl.id === "showcase_review") {
+        return <Search className="w-4 h-4 text-emerald-400 shrink-0" />;
+      }
+      return <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />;
+    }
+    if (cat === "opini") {
+      if (tpl.id === "opini_komentar") {
+        return <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />;
+      }
+      return <Heart className="w-4 h-4 text-pink-400 shrink-0" />;
+    }
+    return <Code className="w-4 h-4 text-[#3ECF8E] shrink-0" />;
   };
 
   const categoryCounts = useMemo(() => {
     const counts = {
       all: templates.length,
-      film: 0,
-      viral: 0,
+      recap: 0,
       fakta: 0,
       edukasi: 0,
+      showcase: 0,
+      opini: 0,
       custom: 0,
     };
     templates.forEach((t) => {
       const cat = getTemplateCategory(t);
-      counts[cat]++;
+      if (cat in counts) {
+        counts[cat as keyof typeof counts]++;
+      }
     });
     return counts;
   }, [templates]);
@@ -286,35 +272,18 @@ export function NarrationTab({ project }: NarrationTabProps) {
 
               <button
                 type="button"
-                onClick={() => setSelectedCategory("film")}
+                onClick={() => setSelectedCategory("recap")}
                 className={cn(
                   "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                  selectedCategory === "film"
+                  selectedCategory === "recap"
                     ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E]"
                     : "text-muted-foreground hover:text-white"
                 )}
               >
                 <Clapperboard className="w-3 h-3 text-purple-400" />
-                <span>Film</span>
+                <span>Alur Cerita</span>
                 <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.film}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("viral")}
-                className={cn(
-                  "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                  selectedCategory === "viral"
-                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E]"
-                    : "text-muted-foreground hover:text-white"
-                )}
-              >
-                <Zap className="w-3 h-3 text-rose-400" />
-                <span>Viral</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.viral}
+                  {categoryCounts.recap}
                 </span>
               </button>
 
@@ -351,6 +320,59 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   {categoryCounts.edukasi}
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("showcase")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
+                  selectedCategory === "showcase"
+                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E]"
+                    : "text-muted-foreground hover:text-white"
+                )}
+              >
+                <Sparkles className="w-3 h-3 text-teal-400" />
+                <span>Showcase</span>
+                <span className="text-[10px] opacity-75 font-mono">
+                  {categoryCounts.showcase}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("opini")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
+                  selectedCategory === "opini"
+                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E]"
+                    : "text-muted-foreground hover:text-white"
+                )}
+              >
+                <MessageSquareQuote className="w-3 h-3 text-pink-400" />
+                <span>Opini & POV</span>
+                <span className="text-[10px] opacity-75 font-mono">
+                  {categoryCounts.opini}
+                </span>
+              </button>
+
+              {categoryCounts.custom > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("custom")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
+                    selectedCategory === "custom"
+                      ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E]"
+                      : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  <Code className="w-3 h-3 text-[#3ECF8E]" />
+                  <span>Kustom</span>
+                  <span className="text-[10px] opacity-75 font-mono">
+                    {categoryCounts.custom}
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Template Card Items */}

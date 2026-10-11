@@ -12,6 +12,7 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 
 async def seed_templates(db: AsyncSession):
     """Seed builtin templates if not existing or sync builtin definitions."""
+    active_builtin_ids = {item["id"] for item in DEFAULT_TEMPLATES}
     for item in DEFAULT_TEMPLATES:
         t = await db.get(NarrationTemplate, item["id"])
         if not t:
@@ -33,6 +34,17 @@ async def seed_templates(db: AsyncSession):
             t.description = item["description"]
             t.category = item["category"]
             t.sub_category = item["sub_category"]
+            t.system_prompt = item["system_prompt"]
+            t.user_prompt_template = item["user_prompt_template"]
+            t.default_tone = item["default_tone"]
+            t.default_voice = item["default_voice"]
+
+    # Clean up obsolete builtins that have been consolidated
+    res = await db.execute(select(NarrationTemplate).where(NarrationTemplate.is_builtin == True))
+    for old_t in res.scalars().all():
+        if old_t.id not in active_builtin_ids:
+            await db.delete(old_t)
+
     await db.commit()
 
 

@@ -18,12 +18,12 @@ import {
   Code,
   Check,
   BookOpen,
-  Flame,
   Lightbulb,
   Film,
   Plus,
   Trash2,
   X,
+  MessageSquareQuote,
   Palette,
   Sliders,
   Type,
@@ -822,11 +822,12 @@ export default function SettingsPage() {
                       <div>
                         <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {tpl.id === "fakta_unik" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />}
-                            {tpl.id === "konten_viral" && <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
-                            {tpl.id === "edukasi_singkat" && <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
-                            {tpl.id === "alur_film" && <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
-                            {!["fakta_unik", "konten_viral", "edukasi_singkat", "alur_film"].includes(tpl.id) && (
+                            {tpl.category === "recap" && <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+                            {tpl.category === "fakta" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />}
+                            {tpl.category === "edukasi" && <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
+                            {tpl.category === "showcase" && <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                            {tpl.category === "opini" && <MessageSquareQuote className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+                            {!["recap", "fakta", "edukasi", "showcase", "opini"].includes(tpl.category) && (
                               <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             )}
                             <span className="text-xs font-bold text-white truncate min-w-0" title={tpl.name}>
@@ -969,10 +970,11 @@ export default function SettingsPage() {
                       onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
-                      <option value="film">Alur Cerita Film</option>
-                      <option value="viral">Konten Viral</option>
+                      <option value="recap">Alur Cerita & Story</option>
                       <option value="fakta">Fakta & Trivia</option>
                       <option value="edukasi">Edukasi & Tips</option>
+                      <option value="showcase">Showcase & Review</option>
+                      <option value="opini">Opini & POV</option>
                       <option value="custom">Kustom</option>
                     </select>
                   </div>
@@ -1809,10 +1811,11 @@ export default function SettingsPage() {
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="custom">Kustom</option>
-                    <option value="film">Alur Cerita Film</option>
-                    <option value="viral">Konten Viral</option>
+                    <option value="recap">Alur Cerita & Story</option>
                     <option value="fakta">Fakta & Trivia</option>
                     <option value="edukasi">Edukasi & Tips</option>
+                    <option value="showcase">Showcase & Review</option>
+                    <option value="opini">Opini & POV</option>
                   </select>
                 </div>
 

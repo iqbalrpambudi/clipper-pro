@@ -15,6 +15,7 @@ from app.services.narrative import (
     generate_narration_script,
     split_into_sentence_segments,
     DEFAULT_TEMPLATES,
+    LEGACY_TEMPLATE_ALIASES,
 )
 
 router = APIRouter(prefix="/projects/{project_id}/narration", tags=["narration"])
@@ -30,16 +31,25 @@ async def generate_narration(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
-    # Fetch template
-    template = await db.get(NarrationTemplate, payload.template_id)
+    # Fetch template with legacy ID alias resolution
+    target_tpl_id = LEGACY_TEMPLATE_ALIASES.get(payload.template_id, payload.template_id)
+    template = await db.get(NarrationTemplate, target_tpl_id)
+    if not template and target_tpl_id != payload.template_id:
+        template = await db.get(NarrationTemplate, payload.template_id)
+
+    category = "recap"
     if not template:
-        # Fallback to default
-        t_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
+        # Fallback to default matching target_tpl_id or first
+        t_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == target_tpl_id), None)
+        if not t_data:
+            t_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
         sys_prompt = t_data["system_prompt"]
         usr_template = t_data["user_prompt_template"]
+        category = t_data.get("category", "recap")
     else:
         sys_prompt = template.system_prompt
         usr_template = template.user_prompt_template
+        category = template.category or "recap"
 
     # Fetch scenes summary for context
     scenes_res = await db.execute(
@@ -70,6 +80,7 @@ async def generate_narration(
             target_duration=payload.target_duration,
             scenes_summary=scenes_summary,
             custom_prompt=payload.custom_prompt,
+            category=category,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal generate naskah dari AI: {str(e)}")
