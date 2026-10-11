@@ -10,6 +10,7 @@ import {
   COLOR_GRADING_CANVAS_FILTER,
   snapToFrame,
 } from "@/lib/timeline/frameMath";
+import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 
 
 
@@ -941,6 +942,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
         <div
           ref={canvasContainerRef}
           className="absolute inset-0 z-20 pointer-events-none w-full h-full overflow-hidden flex items-center justify-center"
+        />
+
+        {/* Watermark Video Text Overlay */}
+        <WatermarkOverlay
+          watermark={project.watermark}
+          containerWidth={frameWidth}
+          containerHeight={frameWidth * (canvasHeight / canvasWidth)}
         />
 
         {/* Hidden Dual-Video Decoder Pipeline */}

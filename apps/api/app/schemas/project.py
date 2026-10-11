@@ -12,12 +12,30 @@ class BackgroundFillSchema(BaseModel):
     color_grading: bool = True
 
 
+class WatermarkSchema(BaseModel):
+    enabled: bool = False
+    text: str = ""
+    font_family: str = "Poppins"
+    font_size: int = 36
+    font_color: str = "#FFFFFF"
+    opacity: float = 0.85
+    position: str = "bottom-right"  # top-left, top-center, top-right, center, bottom-left, bottom-center, bottom-right
+    offset_x: int = 30
+    offset_y: int = 30
+    has_background: bool = False
+    background_color: str = "#000000"
+    background_opacity: float = 0.5
+    has_shadow: bool = True
+    shadow_color: str = "#000000"
+
+
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
     background_fill: BackgroundFillSchema = BackgroundFillSchema()
+    watermark: Optional[WatermarkSchema] = None
 
 
 class ProjectCreate(ProjectBase):
@@ -30,6 +48,7 @@ class ProjectUpdate(BaseModel):
     aspect_ratio: Optional[str] = None
     resolution: Optional[str] = None
     background_fill: Optional[BackgroundFillSchema] = None
+    watermark: Optional[WatermarkSchema] = None
     status: Optional[str] = None
 
 

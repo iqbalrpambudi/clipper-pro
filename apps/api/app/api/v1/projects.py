@@ -54,6 +54,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         aspect_ratio=payload.aspect_ratio,
         resolution=payload.resolution,
         background_fill=payload.background_fill.model_dump(),
+        watermark=payload.watermark.model_dump() if payload.watermark else None,
     )
     db.add(proj)
     await db.flush()
@@ -107,6 +108,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
     bg_fill = proj.background_fill if isinstance(proj.background_fill, dict) else {"mode": "blur", "color": "#000000"}
+    watermark_dict = proj.watermark if isinstance(proj.watermark, dict) else None
     resp = ProjectDetailResponse(
         id=proj.id,
         name=proj.name,
@@ -115,6 +117,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         aspect_ratio=proj.aspect_ratio,
         resolution=proj.resolution,
         background_fill=bg_fill,
+        watermark=watermark_dict,
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         source_video_count=len(proj.source_videos),
@@ -290,6 +293,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.resolution = payload.resolution
     if payload.background_fill is not None:
         proj.background_fill = payload.background_fill.model_dump()
+    if payload.watermark is not None:
+        proj.watermark = payload.watermark.model_dump()
     if payload.status is not None:
         proj.status = payload.status
 

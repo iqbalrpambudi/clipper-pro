@@ -86,7 +86,7 @@ export const api = {
   getProject: (id: string) => request<Project & { source_videos: SourceVideo[]; scenes: Scene[]; narration?: Narration | null; audio?: AudioTrack | null; timeline?: Timeline | null; subtitle_style?: SubtitleStyle | null; render_jobs?: RenderJob[] }>(`/api/v1/projects/${id}`),
   createProject: (data: { name: string; description?: string; aspect_ratio?: string; resolution?: string }) =>
     request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
-  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'aspect_ratio' | 'resolution' | 'background_fill'>>) =>
+  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark'>>) =>
     request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteProject: (id: string) =>
     request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),

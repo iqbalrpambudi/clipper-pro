@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
@@ -16,11 +16,13 @@ import {
   ShieldCheck,
   Trash2,
   HardDrive,
+  Stamp,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle, RenderJob } from "@/types";
+import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle, RenderJob, WatermarkConfig } from "@/types";
 import { PreviewPlayer } from "./PreviewPlayer";
+import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
@@ -51,6 +53,15 @@ export function RenderTab({ project }: RenderTabProps) {
   const [antiCopyright, setAntiCopyright] = useState(project.background_fill?.anti_copyright ?? true);
   const [dynamicZoom, setDynamicZoom] = useState(project.background_fill?.dynamic_zoom ?? true);
   const [colorGrading, setColorGrading] = useState(project.background_fill?.color_grading ?? true);
+
+  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(project.watermark || null);
+  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+
+  useEffect(() => {
+    if (project.watermark) {
+      setLiveWatermark(project.watermark);
+    }
+  }, [project.watermark]);
 
   const [confirmDeleteJobId, setConfirmDeleteJobId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
@@ -158,9 +169,10 @@ export function RenderTab({ project }: RenderTabProps) {
         dynamic_zoom: dynamicZoom,
         color_grading: colorGrading,
       },
+      watermark: liveWatermark,
       resolution,
     };
-  }, [project, antiCopyright, dynamicZoom, colorGrading, resolution]);
+  }, [project, antiCopyright, dynamicZoom, colorGrading, liveWatermark, resolution]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -249,6 +261,77 @@ export function RenderTab({ project }: RenderTabProps) {
                   </div>
                 </label>
               </div>
+            </div>
+
+            {/* Watermark Video (Teks Overlay) */}
+            <div className="rounded-xl p-4 bg-[#141414] border border-[#2E2E2E] space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Stamp className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Watermark Video (Teks Overlay)</span>
+                </div>
+                {liveWatermark?.enabled ? (
+                  <Badge variant="default" className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    Aktif: {liveWatermark.text || "@watermark"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground border-[#333]">
+                    Nonaktif
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Menyematkan teks overlay transparan dengan font dan posisi kustom langsung ke hasil render video.
+              </p>
+
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowWatermarkModal(!showWatermarkModal)}
+                  className="text-xs flex items-center gap-1.5 h-8 border-[#333] hover:border-primary/50 text-foreground"
+                >
+                  <Stamp className="w-3.5 h-3.5 text-primary" />
+                  <span>{showWatermarkModal ? "Tutup Pengaturan Watermark" : "Sesuaikan Font & Posisi"}</span>
+                </Button>
+
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={liveWatermark?.enabled ?? false}
+                    onChange={(e) => {
+                      const updated = {
+                        ...(liveWatermark || {
+                          text: "@cliperpro",
+                          font_family: "Poppins",
+                          font_size: 34,
+                          font_color: "#FFFFFF",
+                          opacity: 0.85,
+                          position: "bottom-right",
+                          offset_x: 32,
+                          offset_y: 32,
+                          has_background: false,
+                          has_shadow: true,
+                        }),
+                        enabled: e.target.checked,
+                      };
+                      setLiveWatermark(updated);
+                      updateProjectMutation.mutate({ watermark: updated });
+                    }}
+                    className="rounded border-[#2E2E2E] text-primary focus:ring-primary/30 w-4 h-4"
+                  />
+                  <span>Terapkan saat Render</span>
+                </label>
+              </div>
+
+              {showWatermarkModal && (
+                <div className="pt-3 border-t border-[#262626]">
+                  <WatermarkCustomizePanel
+                    project={{ ...project, watermark: liveWatermark }}
+                    onWatermarkChange={(wm) => setLiveWatermark(wm)}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

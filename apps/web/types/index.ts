@@ -13,11 +13,29 @@ export interface Project {
     dynamic_zoom?: boolean;
     color_grading?: boolean;
   };
+  watermark?: WatermarkConfig | null;
   created_at: string;
   updated_at: string;
   source_video_count?: number;
   scene_count?: number;
   subtitle_style?: SubtitleStyle | null;
+}
+
+export interface WatermarkConfig {
+  enabled: boolean;
+  text: string;
+  font_family: string;
+  font_size: number;
+  font_color: string;
+  opacity: number;
+  position: "top-left" | "top-center" | "top-right" | "center" | "bottom-left" | "bottom-center" | "bottom-right";
+  offset_x: number;
+  offset_y: number;
+  has_background?: boolean;
+  background_color?: string;
+  background_opacity?: number;
+  has_shadow?: boolean;
+  shadow_color?: string;
 }
 
 export interface SourceVideo {

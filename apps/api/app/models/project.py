@@ -17,6 +17,7 @@ class Project(Base):
     aspect_ratio: Mapped[str] = mapped_column(String(20), default="9:16")  # 9:16, 1:1, 16:9
     resolution: Mapped[str] = mapped_column(String(20), default="1080p")  # 1080p, 720p
     background_fill: Mapped[dict] = mapped_column(JSON, default=lambda: {"mode": "blur", "color": "#000000"})
+    watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

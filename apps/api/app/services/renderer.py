@@ -34,6 +34,114 @@ async def _run_ffmpeg(cmd: List[str]) -> tuple[int, bytes]:
     return proc.returncode or 0, stderr
 
 
+def _build_watermark_filter(
+    watermark: Dict[str, Any],
+    temp_dir: Path,
+    video_w: int,
+    video_h: int,
+) -> Optional[str]:
+    """Build an FFmpeg drawtext filter string for watermark overlay."""
+    if not watermark or not watermark.get("enabled"):
+        return None
+
+    text = str(watermark.get("text") or "").strip()
+    if not text:
+        return None
+
+    # Write text to a file in temp_dir to safely handle colons, quotes, emojis, and newlines
+    text_file = temp_dir / "watermark_text.txt"
+    with open(text_file, "w", encoding="utf-8") as f:
+        f.write(text)
+    esc_text_file = _escape_filter_path(str(text_file))
+
+    # Font path resolution
+    fonts_dir = Path(__file__).resolve().parent.parent / "fonts"
+    font_family = str(watermark.get("font_family") or "Poppins").strip().lower()
+
+    font_map = {
+        "poppins": "Poppins.ttf",
+        "montserrat": "Montserrat.ttf",
+        "anton": "Anton.ttf",
+        "bebas neue": "BebasNeue.ttf",
+        "bebasneue": "BebasNeue.ttf",
+        "oswald": "Oswald.ttf",
+        "roboto": "Roboto.ttf",
+        "inter": "Inter.ttf",
+    }
+    font_filename = font_map.get(font_family, "Poppins.ttf")
+    font_path = fonts_dir / font_filename
+    if not font_path.exists():
+        fallback = next(fonts_dir.glob("*.ttf"), None)
+        font_path = fallback if fallback else font_path
+
+    esc_font_path = _escape_filter_path(str(font_path))
+
+    # Scale font size and offsets relative to baseline width 1080
+    scale = video_w / 1080.0
+    base_font_size = float(watermark.get("font_size", 36) or 36)
+    font_size = max(12, int(round(base_font_size * scale)))
+
+    base_ox = float(watermark.get("offset_x", 30) or 30)
+    base_oy = float(watermark.get("offset_y", 30) or 30)
+    ox = max(4, int(round(base_ox * scale)))
+    oy = max(4, int(round(base_oy * scale)))
+
+    # Color & opacity
+    color_hex = str(watermark.get("font_color") or "#FFFFFF").strip().lstrip("#")
+    if len(color_hex) != 6:
+        color_hex = "FFFFFF"
+    opacity = float(watermark.get("opacity", 0.85) if watermark.get("opacity") is not None else 0.85)
+    opacity = max(0.05, min(1.0, opacity))
+    font_color_arg = f"0x{color_hex}@{opacity:.2f}"
+
+    # Positioning expressions
+    pos = str(watermark.get("position") or "bottom-right").lower().replace(" ", "-")
+    if pos == "top-left":
+        pos_expr = f"x={ox}:y={oy}"
+    elif pos == "top-center":
+        pos_expr = f"x=(w-text_w)/2:y={oy}"
+    elif pos == "top-right":
+        pos_expr = f"x=w-text_w-{ox}:y={oy}"
+    elif pos == "center":
+        pos_expr = f"x=(w-text_w)/2:y=(h-text_h)/2"
+    elif pos == "bottom-left":
+        pos_expr = f"x={ox}:y=h-text_h-{oy}"
+    elif pos == "bottom-center":
+        pos_expr = f"x=(w-text_w)/2:y=h-text_h-{oy}"
+    else:  # default bottom-right
+        pos_expr = f"x=w-text_w-{ox}:y=h-text_h-{oy}"
+
+    filter_opts = [
+        f"fontfile='{esc_font_path}'",
+        f"textfile='{esc_text_file}'",
+        f"fontsize={font_size}",
+        f"fontcolor={font_color_arg}",
+        pos_expr,
+    ]
+
+    # Background box / badge if enabled
+    if watermark.get("has_background"):
+        bg_hex = str(watermark.get("background_color") or "#000000").strip().lstrip("#")
+        if len(bg_hex) != 6:
+            bg_hex = "000000"
+        bg_opacity = float(watermark.get("background_opacity", 0.5) if watermark.get("background_opacity") is not None else 0.5)
+        bg_opacity = max(0.05, min(1.0, bg_opacity))
+        borderw = max(4, int(round(8 * scale)))
+        filter_opts.append(f"box=1:boxcolor=0x{bg_hex}@{bg_opacity:.2f}:boxborderw={borderw}")
+
+    # Shadow & outline for crisp readability over video
+    if watermark.get("has_shadow", True):
+        shadow_hex = str(watermark.get("shadow_color") or "#000000").strip().lstrip("#")
+        if len(shadow_hex) != 6:
+            shadow_hex = "000000"
+        s_dist = max(1, int(round(2 * scale)))
+        filter_opts.append(f"shadowcolor=0x{shadow_hex}@0.6:shadowx={s_dist}:shadowy={s_dist}")
+        b_stroke = max(1, int(round(1.5 * scale)))
+        filter_opts.append(f"borderw={b_stroke}:bordercolor=0x{shadow_hex}@0.7")
+
+    return "drawtext=" + ":".join(filter_opts)
+
+
 async def render_timeline_video(
     clips: List[Dict[str, Any]],
     source_videos_map: Dict[str, str],  # source_video_id -> file_path
@@ -43,6 +151,7 @@ async def render_timeline_video(
     aspect_ratio: str = "9:16",
     resolution: str = "1080p",
     background_fill: Optional[Dict[str, Any]] = None,
+    watermark: Optional[Dict[str, Any]] = None,
     is_preview: bool = False,
     progress_callback: Optional[Callable[[int, str], Any]] = None,
 ) -> str:
@@ -259,6 +368,12 @@ async def render_timeline_video(
 
         final_inputs = ["-i", str(concatenated_video)]
         filter_chains = []
+
+        # Video filter: add watermark overlay if enabled
+        if watermark and watermark.get("enabled"):
+            wm_filter = _build_watermark_filter(watermark, temp_dir, w, h)
+            if wm_filter:
+                filter_chains.append(wm_filter)
 
         # Video filter: add subtitles if ass file provided
         if ass_subtitle_path and Path(ass_subtitle_path).exists():

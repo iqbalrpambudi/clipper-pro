@@ -435,3 +435,84 @@ def test_timeline_model_defaults():
     assert t.total_duration == 0.0
 
 
+def test_watermark_filter_builder(tmp_path):
+    from app.services.renderer import _build_watermark_filter
+    from app.schemas.project import WatermarkSchema
+
+    wm = WatermarkSchema(
+        enabled=True,
+        text="@cliper_channel",
+        font_family="Poppins",
+        font_size=40,
+        font_color="#FFE600",
+        opacity=0.8,
+        position="bottom-right",
+        offset_x=45,
+        offset_y=35,
+        has_background=True,
+        background_color="#121212",
+        background_opacity=0.6,
+        has_shadow=True,
+    ).model_dump()
+
+    filter_str = _build_watermark_filter(wm, tmp_path, video_w=1080, video_h=1920)
+    assert filter_str is not None
+    assert "drawtext=" in filter_str
+    assert "Poppins.ttf" in filter_str
+    assert "0xFFE600@0.80" in filter_str
+    assert "w-text_w-45" in filter_str
+    assert "h-text_h-35" in filter_str
+    assert "box=1" in filter_str
+    assert "0x121212@0.60" in filter_str
+    assert "shadowcolor=" in filter_str
+
+    # Test disabled watermark returns None
+    wm_disabled = WatermarkSchema(enabled=False, text="hello").model_dump()
+    assert _build_watermark_filter(wm_disabled, tmp_path, 1080, 1920) is None
+
+
+@pytest.mark.asyncio
+async def test_project_watermark_update():
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Create project
+        create_res = await client.post("/api/v1/projects", json={"name": "Watermark Test Project"})
+        assert create_res.status_code == 201
+        proj_id = create_res.json()["id"]
+
+        # Patch project with watermark
+        wm_data = {
+            "enabled": True,
+            "text": "@brand_video",
+            "font_family": "Bebas Neue",
+            "font_size": 48,
+            "font_color": "#FFFFFF",
+            "opacity": 0.9,
+            "position": "top-right",
+            "offset_x": 30,
+            "offset_y": 40,
+            "has_background": False,
+            "has_shadow": True,
+        }
+        patch_res = await client.patch(
+            f"/api/v1/projects/{proj_id}",
+            json={"watermark": wm_data},
+        )
+        assert patch_res.status_code == 200
+        patched = patch_res.json()
+        assert patched["watermark"]["enabled"] is True
+        assert patched["watermark"]["text"] == "@brand_video"
+        assert patched["watermark"]["font_family"] == "Bebas Neue"
+
+        # Fetch project detail
+        get_res = await client.get(f"/api/v1/projects/{proj_id}")
+        assert get_res.status_code == 200
+        detail = get_res.json()
+        assert detail["watermark"]["enabled"] is True
+        assert detail["watermark"]["text"] == "@brand_video"
+        assert detail["watermark"]["position"] == "top-right"
+
+

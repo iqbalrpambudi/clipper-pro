@@ -18,7 +18,8 @@ import {
   Maximize2,
   Move,
 } from "lucide-react";
-import { SentenceSegment, TimelineClip, SubtitleStyle } from "@/types";
+import { SentenceSegment, TimelineClip, SubtitleStyle, WatermarkConfig } from "@/types";
+import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 import {
   COMPOSITION_FPS,
@@ -73,6 +74,7 @@ interface TimelineMonitorProps {
   canRedo?: boolean;
   onSplit?: () => void;
   canSplit?: boolean;
+  watermark?: WatermarkConfig | null;
   onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
 }
 
@@ -82,6 +84,7 @@ export function TimelineMonitor({
   duration,
   segments,
   subtitleStyle,
+  watermark,
   aspectRatio,
   backgroundFill,
   bgMode = "blur",
@@ -914,6 +917,13 @@ export function TimelineMonitor({
             ref={canvasContainerRef}
             className="absolute inset-0 pointer-events-none"
             style={{ width: "100%", height: "100%" }}
+          />
+
+          {/* Watermark Video Text Overlay */}
+          <WatermarkOverlay
+            watermark={watermark}
+            containerWidth={frameDimensions.width}
+            containerHeight={frameDimensions.height}
           />
 
           {/* Fallback CSS Subtitle Overlay (if WASM not yet ready) */}

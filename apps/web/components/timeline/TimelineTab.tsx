@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
+  Stamp,
 } from "lucide-react";
 import { ScenePreviewModal } from "../media/ScenePreviewModal";
 import { TimelineMonitor, SeekRequest } from "./TimelineMonitor";
@@ -22,11 +23,12 @@ import { TimelineMediaPool } from "./TimelineMediaPool";
 import { ClipInspector } from "./ClipInspector";
 import { SubtitleCustomizePanel } from "../subtitles/SubtitleCustomizePanel";
 import { VideoLayoutCustomizePanel } from "./VideoLayoutCustomizePanel";
+import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { useHistoryState } from "@/hooks/useHistoryState";
 import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Timeline, TimelineClip, Scene, AudioTrack, Narration, SourceVideo } from "@/types";
+import { Project, Timeline, TimelineClip, Scene, AudioTrack, Narration, SourceVideo, WatermarkConfig } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -117,8 +119,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const [selectedClipIndex, setSelectedClipIndex] = useState<number | null>(null);
   const [isLoopingClip, setIsLoopingClip] = useState(false);
 
-  // Left sidebar & drawer state: "pool" (Media Pool), "inspector" (Clip Inspector), "subtitles" (Subtitle Customizer), or "layout" (Aspect Ratio & Display Mode)
-  const [activeSideTab, setActiveSideTab] = useState<"pool" | "inspector" | "subtitles" | "layout">("pool");
+  // Left sidebar & drawer state: "pool" (Media Pool), "inspector" (Clip Inspector), "subtitles" (Subtitle Customizer), "layout" (Aspect Ratio), or "watermark" (Text Watermark Overlay)
+  const [activeSideTab, setActiveSideTab] = useState<"pool" | "inspector" | "subtitles" | "layout" | "watermark">("pool");
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
 
   // Resizable panel dimensions: drawer width and tracks panel height
@@ -153,6 +155,15 @@ export function TimelineTab({ project }: TimelineTabProps) {
       setLiveSubtitleStyle(project.subtitle_style);
     }
   }, [project.subtitle_style]);
+
+  // Active watermark preview state (syncs live to monitor)
+  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(project.watermark || null);
+
+  useEffect(() => {
+    if (project.watermark) {
+      setLiveWatermark(project.watermark);
+    }
+  }, [project.watermark]);
 
   // Track attachment state (synced with timeline has_audio and has_subtitles)
   const [isAudioAttached, setIsAudioAttached] = useState<boolean>(project.timeline?.has_audio ?? true);
@@ -863,6 +874,18 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSideTab("watermark")}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "watermark"
+                        ? "bg-primary text-black font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
+                      }`}
+                    title="Watermark Video (Teks & Posisi)"
+                  >
+                    <Stamp className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -933,6 +956,13 @@ export function TimelineTab({ project }: TimelineTabProps) {
                       setLiveBackgroundFill(fill);
                     }}
                   />
+                ) : activeSideTab === "watermark" ? (
+                  <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <WatermarkCustomizePanel
+                      project={project}
+                      onWatermarkChange={(wm) => setLiveWatermark(wm)}
+                    />
+                  </div>
                 ) : (
                   <SubtitleCustomizePanel
                     project={project}
@@ -1011,6 +1041,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               backgroundFill={liveBackgroundFill}
               bgMode={liveBackgroundFill?.mode || "blur"}
               subtitleStyle={liveSubtitleStyle}
+              watermark={liveWatermark}
               time={time}
               seekRequest={seekRequest}
               isPlaying={isPlaying}
@@ -1104,6 +1135,21 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 >
                   <Maximize2 className="w-4 h-4" />
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSideTab("watermark");
+                    setIsDrawerCollapsed(false);
+                  }}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "watermark" && !isDrawerCollapsed
+                      ? "bg-primary text-black font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
+                    }`}
+                  title="Watermark Video (Teks & Posisi)"
+                >
+                  <Stamp className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Collapse toggle */}
@@ -1188,6 +1234,13 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setLiveBackgroundFill(fill);
                   }}
                 />
+              ) : activeSideTab === "watermark" ? (
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <WatermarkCustomizePanel
+                    project={project}
+                    onWatermarkChange={(wm) => setLiveWatermark(wm)}
+                  />
+                </div>
               ) : (
                 <SubtitleCustomizePanel
                   project={project}
@@ -1220,6 +1273,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 backgroundFill={liveBackgroundFill}
                 bgMode={liveBackgroundFill?.mode || "blur"}
                 subtitleStyle={liveSubtitleStyle}
+                watermark={liveWatermark}
                 time={time}
                 seekRequest={seekRequest}
                 isPlaying={isPlaying}

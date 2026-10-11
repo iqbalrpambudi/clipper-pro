@@ -645,6 +645,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 aspect_ratio=project.aspect_ratio,
                 resolution=project.resolution,
                 background_fill=project.background_fill,
+                watermark=project.watermark,
                 is_preview=(job.render_type == "preview"),
                 progress_callback=_progress,
             )
