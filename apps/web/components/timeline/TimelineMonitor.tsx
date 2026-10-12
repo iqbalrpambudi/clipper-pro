@@ -245,9 +245,10 @@ export function TimelineMonitor({
       const curClip = clips[activeIdx];
       const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
 
-      ctx.clearRect(0, 0, cW, cH);
-
-      const isVideoReady = Boolean(activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0);
+      // Video is drawable if it has valid dimensions and metadata loaded (readyState >= 1).
+      // Even during an ongoing seek, readyState can be 1 while still holding the current frame buffer.
+      // Checking readyState >= 1 prevents falling back to the poster thumbnail, eliminating all flicker/blink!
+      const isVideoReady = Boolean(activeVid && activeVid.videoWidth > 0 && activeVid.readyState >= 1);
 
       // Always resolve and cache clip thumbnail for immediate poster rendering
       let thumbImg: HTMLImageElement | undefined = undefined;
@@ -438,6 +439,8 @@ export function TimelineMonitor({
   // Single seek execution for video decoders and compositor
   const executeSeek = useCallback(
     (t: number) => {
+      currentTimeRef.current = t;
+
       const audio = audioRef.current;
       if (audio && Number.isFinite(audio.duration)) {
         if (t < audio.duration) {
@@ -454,8 +457,30 @@ export function TimelineMonitor({
       const seekClip = clips[idx];
 
       if (seekClip) {
-        const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
-        const otherVid = activeVideoSlot.current === 0 ? videoRefB.current : videoRefA.current;
+        let currentSlot = activeVideoSlot.current;
+        let activeVid = currentSlot === 0 ? videoRefA.current : videoRefB.current;
+        let otherVid = currentSlot === 0 ? videoRefB.current : videoRefA.current;
+
+        // Smart slot swap: If the other video element already has this clip loaded (e.g. from preloading)
+        // and activeVid does not, swap slots instantly to avoid reloading!
+        const seekUrl = seekClip.video_url || "";
+        const isOtherReady = Boolean(
+          otherVid &&
+          seekUrl &&
+          (otherVid.getAttribute("src") === seekUrl || otherVid.src === seekUrl) &&
+          otherVid.videoWidth > 0
+        );
+        const isActiveCur = Boolean(
+          activeVid &&
+          seekUrl &&
+          (activeVid.getAttribute("src") === seekUrl || activeVid.src === seekUrl)
+        );
+
+        if (isOtherReady && !isActiveCur) {
+          activeVideoSlot.current = currentSlot === 0 ? 1 : 0;
+          activeVid = otherVid;
+          otherVid = currentSlot === 0 ? videoRefA.current : videoRefB.current;
+        }
 
         const clipProgress = Math.max(0, t - seekClip.timeline_start);
         const targetTime = Math.min(
@@ -464,10 +489,13 @@ export function TimelineMonitor({
         );
 
         if (activeVid) {
-          if (activeVid.getAttribute("src") !== seekClip.video_url) {
-            activeVid.src = seekClip.video_url || "";
+          const curSrc = activeVid.getAttribute("src") || activeVid.src;
+          if (curSrc !== seekClip.video_url && seekClip.video_url) {
+            activeVid.src = seekClip.video_url;
           }
-          activeVid.currentTime = targetTime;
+          if (Math.abs(activeVid.currentTime - targetTime) > 0.001) {
+            activeVid.currentTime = targetTime;
+          }
           activeVid.playbackRate = seekClip.speed || 1.0;
           if (playingRef.current) activeVid.play().catch(() => {});
         }
@@ -498,6 +526,45 @@ export function TimelineMonitor({
     [clips, canvasWidth, canvasHeight, isJassubReady, renderCanvasFrame]
   );
 
+  // Listen for video decoder 'seeked' and 'loadeddata' events
+  // When paused, as soon as the target frame finishes decoding in background,
+  // immediately repaint the canvas so the user sees the exact frame without lag or stale frame.
+  useEffect(() => {
+    const handleFrameReady = (slot: 0 | 1) => () => {
+      if (!playingRef.current && activeVideoSlot.current === slot) {
+        renderCanvasFrame(currentTimeRef.current);
+        if (jassubRef.current && isJassubReady) {
+          jassubRef.current.manualRender({
+            expectedDisplayTime: performance.now(),
+            width: canvasWidth,
+            height: canvasHeight,
+            mediaTime: currentTimeRef.current,
+          });
+        }
+      }
+    };
+
+    const vidA = videoRefA.current;
+    const vidB = videoRefB.current;
+
+    const onSeekedA = handleFrameReady(0);
+    const onLoadedA = handleFrameReady(0);
+    const onSeekedB = handleFrameReady(1);
+    const onLoadedB = handleFrameReady(1);
+
+    vidA?.addEventListener("seeked", onSeekedA);
+    vidA?.addEventListener("loadeddata", onLoadedA);
+    vidB?.addEventListener("seeked", onSeekedB);
+    vidB?.addEventListener("loadeddata", onLoadedB);
+
+    return () => {
+      vidA?.removeEventListener("seeked", onSeekedA);
+      vidA?.removeEventListener("loadeddata", onLoadedA);
+      vidB?.removeEventListener("seeked", onSeekedB);
+      vidB?.removeEventListener("loadeddata", onLoadedB);
+    };
+  }, [renderCanvasFrame, isJassubReady, canvasWidth, canvasHeight]);
+
   // External seek requests
   useEffect(() => {
     executeSeek(seekRequest.t);
@@ -513,15 +580,6 @@ export function TimelineMonitor({
   // High-Precision Playback Compositor Loop (Audio clock / RAF)
   useEffect(() => {
     if (!isPlaying) {
-      renderCanvasFrame(currentTimeRef.current);
-      if (jassubRef.current && isJassubReady) {
-        jassubRef.current.manualRender({
-          expectedDisplayTime: performance.now(),
-          width: canvasWidth,
-          height: canvasHeight,
-          mediaTime: currentTimeRef.current,
-        });
-      }
       return;
     }
 
@@ -582,9 +640,9 @@ export function TimelineMonitor({
         return;
       }
 
-      // Throttle time publishing to parent React tree to ~12.5 FPS (every 0.08s) during playback
-      // This eliminates 60% of React DOM re-renders across the timeline while keeping timecode readout responsive.
-      if (Math.abs(curTime - lastPub) >= 0.08) {
+      // Publish time to parent React tree at 30 FPS (every 1/30s) during playback
+      // Matches composition framerate for real-time playhead tracking with zero delay.
+      if (Math.abs(curTime - lastPub) >= 1 / 30) {
         lastPub = curTime;
         cbRef.current.onTimeChange(curTime);
       }
@@ -672,6 +730,8 @@ export function TimelineMonitor({
       audio?.pause();
       videoRefA.current?.pause();
       videoRefB.current?.pause();
+      cbRef.current.onTimeChange(currentTimeRef.current);
+      renderCanvasFrame(currentTimeRef.current);
     };
   }, [
     isPlaying,
@@ -1094,10 +1154,18 @@ export function TimelineMonitor({
           )}
 
           {activeClip && (
-            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-bold text-white font-mono pointer-events-none shadow z-30">
-              #{activeClipIdx + 1}
-              {activeClip.speed && Math.abs(activeClip.speed - 1) > 0.02 ? ` • ${activeClip.speed}x` : ""}
-            </span>
+            <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none z-30">
+              <span className="px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white font-mono shadow backdrop-blur-xs border border-white/10">
+                #{activeClipIdx + 1}
+                {activeClip.speed && Math.abs(activeClip.speed - 1) > 0.02 ? ` • ${activeClip.speed}x` : ""}
+              </span>
+              {!isPlaying && (
+                <span className="px-1.5 py-0.5 rounded bg-black/80 text-primary border border-primary/30 text-[10px] font-mono font-bold shadow backdrop-blur-xs">
+                  F{Math.round(Math.max(0, time - activeClip.timeline_start) * 30)}/
+                  {Math.round((activeClip.timeline_end - activeClip.timeline_start) * 30)}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>

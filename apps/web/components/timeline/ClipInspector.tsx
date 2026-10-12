@@ -117,7 +117,33 @@ function SelectedInspector({
   const winLeft = ((clip.clip_start - bounds.start) / span) * 100;
   const winWidth = ((clip.clip_end - clip.clip_start) / span) * 100;
   const inClip = time >= clip.timeline_start && time < clip.timeline_end;
-  const srcPlayhead = inClip ? clip.clip_start + (time - clip.timeline_start) * (clip.speed || 1) : null;
+
+  // Stationary playhead cut guide:
+  // Captured when the playhead moves on timeline, clip selection changes, or speed changes,
+  // but explicitly kept stationary during slip dragging so it acts as an exact cutting guide!
+  const anchorSrcPlayheadRef = useRef<number | null>(null);
+  const lastClipIdRef = useRef<string | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
+  const lastSpeedRef = useRef<number | null>(null);
+
+  if (
+    lastClipIdRef.current !== clip.id ||
+    lastTimeRef.current !== time ||
+    lastSpeedRef.current !== (clip.speed || 1)
+  ) {
+    lastClipIdRef.current = clip.id;
+    lastTimeRef.current = time;
+    lastSpeedRef.current = clip.speed || 1;
+    if (inClip) {
+      anchorSrcPlayheadRef.current = clip.clip_start + (time - clip.timeline_start) * (clip.speed || 1);
+    } else {
+      anchorSrcPlayheadRef.current = null;
+    }
+  }
+
+  const guidePlayhead = anchorSrcPlayheadRef.current;
+  const guidePercent =
+    guidePlayhead !== null ? Math.max(0, Math.min(100, ((guidePlayhead - bounds.start) / span) * 100)) : null;
 
   const commitDuration = () => {
     const v = parseFloat(durDraft.replace(",", "."));
@@ -232,8 +258,17 @@ function SelectedInspector({
               onPointerCancel={onSlipUp}
               title="Geser untuk memilih bagian scene yang dipakai"
             />
-            {srcPlayhead !== null && (
-              <div className="absolute top-0 bottom-0 w-px bg-rose-500 pointer-events-none" style={{ left: `${((srcPlayhead - bounds.start) / span) * 100}%` }} />
+            {guidePercent !== null && (
+              <div
+                className="absolute top-0 bottom-0 pointer-events-none z-20"
+                style={{ left: `${guidePercent}%` }}
+                title="Posisi Playhead (Panduan Pemotongan)"
+              >
+                {/* Diamond playhead marker on top */}
+                <div className="absolute -translate-x-1/2 top-0 w-2 h-2 bg-rose-500 rotate-45 -mt-1 rounded-xs shadow-md" />
+                {/* Vertical guide line */}
+                <div className="absolute top-0 bottom-0 w-px bg-rose-500 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
+              </div>
             )}
           </div>
           <div className="flex justify-between text-[9px] font-mono text-muted-foreground mt-1">

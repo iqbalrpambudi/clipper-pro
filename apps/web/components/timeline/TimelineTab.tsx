@@ -114,6 +114,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
   // Playhead & transport state
   const [time, setTime] = useState(0);
+  const timeRef = useRef(time);
+  timeRef.current = time;
+
+  const handleTimeChange = useCallback((t: number) => {
+    timeRef.current = t;
+    setTime(t);
+  }, []);
+
   const [seekRequest, setSeekRequest] = useState<SeekRequest>({ t: 0, id: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipIndex, setSelectedClipIndex] = useState<number | null>(null);
@@ -199,16 +207,24 @@ export function TimelineTab({ project }: TimelineTabProps) {
   // Seek helper
   const seekTo = useCallback((t: number) => {
     const target = Math.max(0, t);
+    timeRef.current = target;
     setTime(target);
     setSeekRequest((prev) => ({ t: target, id: prev.id + 1 }));
   }, []);
 
-  // Step playhead by frame (1/30s) or seconds
+  // Step playhead by frame (1/30s) or seconds (frame-aligned)
   const stepFrames = useCallback(
     (frames: number) => {
-      seekTo(time + frames * (1 / 30));
+      // Pause playback immediately so user enters frame-inspection mode
+      setIsPlaying(false);
+      const curFrame = Math.round(timeRef.current * 30);
+      const targetFrame = Math.max(0, Math.min(Math.round(totalDuration * 30), curFrame + frames));
+      const targetTime = targetFrame / 30;
+      timeRef.current = targetTime;
+      setTime(targetTime);
+      setSeekRequest((prev) => ({ t: targetTime, id: prev.id + 1 }));
     },
-    [seekTo, time]
+    [totalDuration]
   );
 
   // Jump to previous / next cut point
@@ -216,15 +232,16 @@ export function TimelineTab({ project }: TimelineTabProps) {
     (dir: -1 | 1) => {
       const cuts = cutPoints(clips);
       if (cuts.length === 0) return;
+      const cur = timeRef.current;
       if (dir === -1) {
-        const prev = [...cuts].reverse().find((c) => c < time - 0.04);
+        const prev = [...cuts].reverse().find((c) => c < cur - 0.04);
         seekTo(prev !== undefined ? prev : 0);
       } else {
-        const next = cuts.find((c) => c > time + 0.04);
+        const next = cuts.find((c) => c > cur + 0.04);
         seekTo(next !== undefined ? next : totalDuration);
       }
     },
-    [clips, seekTo, time, totalDuration]
+    [clips, seekTo, totalDuration]
   );
 
   // Loop range for active clip
@@ -1047,7 +1064,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               isPlaying={isPlaying}
               loopRange={loopRange}
               onPlayingChange={setIsPlaying}
-              onTimeChange={setTime}
+              onTimeChange={handleTimeChange}
               onSeek={seekTo}
               onStep={stepFrames}
               onJumpCut={jumpCut}
@@ -1279,7 +1296,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 isPlaying={isPlaying}
                 loopRange={loopRange}
                 onPlayingChange={setIsPlaying}
-                onTimeChange={setTime}
+                onTimeChange={handleTimeChange}
                 onSeek={seekTo}
                 onStep={stepFrames}
                 onJumpCut={jumpCut}

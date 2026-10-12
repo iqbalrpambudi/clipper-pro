@@ -787,13 +787,12 @@ export function TimelineTracks({
               </div>
             )}
 
-            {/* Red Playhead (spans through all tracks from top to bottom) */}
+            {/* Red Playhead (spans through all tracks from top to bottom, GPU-accelerated) */}
             <div
-              className="absolute top-0 z-30 pointer-events-none"
+              className="absolute top-0 left-0 z-30 pointer-events-none will-change-transform"
               style={{
-                left: x(time),
+                transform: `translate3d(${x(time)}px, 0, 0)`,
                 height: trackTotalH,
-                transition: isPlaying ? "left 0.08s linear" : "none",
               }}
             >
               <div className="absolute -translate-x-1/2 top-0 w-3 h-3 bg-rose-500 rotate-45 -mt-1.5 rounded-sm shadow-md" />
