@@ -286,6 +286,21 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
       const isVideoReady = Boolean(activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0);
 
+      // Always resolve and cache clip thumbnail for immediate poster rendering
+      let thumbImg: HTMLImageElement | undefined = undefined;
+      if (curClip?.thumbnail_url) {
+        thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
+        if (!thumbImg) {
+          thumbImg = new Image();
+          thumbImg.crossOrigin = "anonymous";
+          thumbImg.src = curClip.thumbnail_url;
+          thumbnailImgCache.current.set(curClip.thumbnail_url, thumbImg);
+          thumbImg.onload = () => {
+            renderCanvasFrame(currentTimeRef.current);
+          };
+        }
+      }
+
       // 1. Render Background
       if (bgMode === "cover") {
         // Fullscreen cover: video fills entire canvas, background layer is omitted
@@ -311,24 +326,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
         ctx.filter = "blur(12px) brightness(0.70)";
         ctx.drawImage(bCanvas, -25, -25, cW + 50, cH + 50);
         ctx.restore();
-      } else if (bgMode === "blur" && curClip?.thumbnail_url) {
-        let thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
-        if (!thumbImg) {
-          thumbImg = new Image();
-          thumbImg.crossOrigin = "anonymous";
-          thumbImg.src = curClip.thumbnail_url;
-          thumbnailImgCache.current.set(curClip.thumbnail_url, thumbImg);
-          thumbImg.onload = () => renderCanvasFrame(timeSec);
-        }
-        if (thumbImg.complete && thumbImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.filter = "blur(30px) brightness(0.70)";
-          ctx.drawImage(thumbImg, -25, -25, cW + 50, cH + 50);
-          ctx.restore();
-        } else {
-          ctx.fillStyle = "#000000";
-          ctx.fillRect(0, 0, cW, cH);
-        }
+      } else if (bgMode === "blur" && thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.filter = "blur(30px) brightness(0.70)";
+        ctx.drawImage(thumbImg, -25, -25, cW + 50, cH + 50);
+        ctx.restore();
       } else {
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, cW, cH);
@@ -396,56 +398,83 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
         ctx.drawImage(activeVid, destX, destY, destW, destH);
         ctx.restore();
-      } else if (curClip?.thumbnail_url) {
-        const thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
-        if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
-          ctx.save();
-          const vW = thumbImg.naturalWidth;
-          const vH = thumbImg.naturalHeight;
-          const videoAspect = vW / vH;
-          const canvasAspect = cW / cH;
+      } else if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+        ctx.save();
+        const vW = thumbImg.naturalWidth;
+        const vH = thumbImg.naturalHeight;
+        const videoAspect = vW / vH;
+        const canvasAspect = cW / cH;
 
-          let destW = cW;
-          let destH = cH;
-          let destX = 0;
-          let destY = 0;
+        let destW = cW;
+        let destH = cH;
+        let destX = 0;
+        let destY = 0;
 
-          if (bgMode === "cover") {
-            if (videoAspect > canvasAspect) {
-              destH = cH;
-              destW = cH * videoAspect;
-              destX = (cW - destW) / 2;
-              destY = 0;
-            } else {
-              destW = cW;
-              destH = cW / videoAspect;
-              destX = 0;
-              destY = (cH - destH) / 2;
-            }
+        if (bgMode === "cover") {
+          if (videoAspect > canvasAspect) {
+            destH = cH;
+            destW = cH * videoAspect;
+            destX = (cW - destW) / 2;
+            destY = 0;
           } else {
-            if (videoAspect > canvasAspect) {
-              destW = cW * userZoom;
-              destH = (cW / videoAspect) * userZoom;
-              destX = (cW - destW) / 2;
-              destY = (cH - destH) / 2;
-            } else {
-              destH = cH * userZoom;
-              destW = (cH * videoAspect) * userZoom;
-              destX = (cW - destW) / 2;
-              destY = (cH - destH) / 2;
-            }
+            destW = cW;
+            destH = cW / videoAspect;
+            destX = 0;
+            destY = (cH - destH) / 2;
           }
-
-          if (colorGrading) {
-            ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+        } else {
+          if (videoAspect > canvasAspect) {
+            destW = cW * userZoom;
+            destH = (cW / videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          } else {
+            destH = cH * userZoom;
+            destW = (cH * videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
           }
-          ctx.drawImage(thumbImg, destX, destY, destW, destH);
-          ctx.restore();
         }
+
+        // Apply Dynamic Zoom (Ken Burns) matching FFmpeg zoompan
+        if (dynamicZoom && curClip) {
+          const elapsedInClip = Math.max(0, timeSec - curClip.timeline_start);
+          const frameInClip = Math.floor(elapsedInClip * COMPOSITION_FPS);
+          const zoom = calculateKenBurnsZoom(frameInClip, activeIdx % 2 === 0);
+
+          ctx.translate(cW / 2, cH / 2);
+          ctx.scale(zoom, zoom);
+          ctx.translate(-cW / 2, -cH / 2);
+        }
+
+        if (colorGrading) {
+          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+        } else {
+          ctx.filter = "none";
+        }
+        ctx.drawImage(thumbImg, destX, destY, destW, destH);
+        ctx.restore();
       }
     },
     [clips, project.background_fill, durationSec]
   );
+
+  // Eagerly preload thumbnails for all timeline clips
+  useEffect(() => {
+    clips.forEach((c) => {
+      if (c.thumbnail_url && !thumbnailImgCache.current.has(c.thumbnail_url)) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = c.thumbnail_url;
+        img.onload = () => {
+          if (!isPlaying) {
+            renderCanvasFrame(currentTimeRef.current);
+          }
+        };
+        thumbnailImgCache.current.set(c.thumbnail_url, img);
+      }
+    });
+  }, [clips, isPlaying, renderCanvasFrame]);
 
   // High-Precision Unified Compositor Loop (Audio Clock + Dual-Video Ping-Pong + Canvas + JASSUB)
   useEffect(() => {

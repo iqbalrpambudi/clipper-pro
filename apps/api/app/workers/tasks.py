@@ -650,9 +650,49 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 progress_callback=_progress,
             )
 
+            # Generate poster thumbnail snapshot from the rendered video
+            thumb_file = renders_dir / f"render_{job.render_type}_{job.id}_thumb.jpg"
+            thumb_path_str: Optional[str] = None
+            try:
+                thumb_cmd = [
+                    "ffmpeg", "-y",
+                    "-ss", "00:00:00.500",
+                    "-i", final_mp4,
+                    "-vframes", "1",
+                    "-q:v", "2",
+                    str(thumb_file),
+                ]
+                proc = await asyncio.create_subprocess_exec(
+                    *thumb_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await proc.communicate()
+                if not thumb_file.exists() or thumb_file.stat().st_size == 0:
+                    fallback_cmd = [
+                        "ffmpeg", "-y",
+                        "-ss", "00:00:00.000",
+                        "-i", final_mp4,
+                        "-vframes", "1",
+                        "-q:v", "2",
+                        str(thumb_file),
+                    ]
+                    proc_fb = await asyncio.create_subprocess_exec(
+                        *fallback_cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    await proc_fb.communicate()
+
+                if thumb_file.exists() and thumb_file.stat().st_size > 0:
+                    thumb_path_str = str(thumb_file)
+            except Exception as te:
+                log.warning("Could not generate render thumbnail for job %s: %s", job.id, te)
+
             job.status = "completed"
             job.progress = 100
             job.output_file_path = final_mp4
+            job.thumbnail_path = thumb_path_str
             job.completed_at = datetime.utcnow()
             job.log_output = "Video berhasil dirender."
             await db.commit()
@@ -668,6 +708,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     "job_id": render_job_id,
                     "render_type": job.render_type,
                     "output_url": storage.to_relative_url(final_mp4),
+                    "thumbnail_url": storage.to_relative_url(thumb_path_str),
                 },
             )
 

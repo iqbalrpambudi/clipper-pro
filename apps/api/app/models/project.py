@@ -88,6 +88,7 @@ class RenderJob(Base):
     status: Mapped[str] = mapped_column(String(50), default="queued")  # queued, rendering, completed, failed
     progress: Mapped[int] = mapped_column(Integer, default=0)
     output_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     log_output: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

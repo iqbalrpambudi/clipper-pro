@@ -101,6 +101,7 @@ class RenderJobResponse(BaseModel):
     status: str
     progress: int
     output_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     file_size_bytes: Optional[int] = None
     log_output: Optional[str] = None
     error_message: Optional[str] = None

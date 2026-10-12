@@ -516,3 +516,34 @@ async def test_project_watermark_update():
         assert detail["watermark"]["position"] == "top-right"
 
 
+@pytest.mark.asyncio
+async def test_render_job_thumbnail_resolution(tmp_path, monkeypatch):
+    from app.core.storage import StorageManager
+    sm = StorageManager()
+    monkeypatch.setattr(sm.settings, "STORAGE_PATH", str(tmp_path))
+    proj_id = "test-proj-thumb"
+    renders_dir = sm.get_renders_dir(proj_id)
+    renders_dir.mkdir(parents=True, exist_ok=True)
+
+    job_id = "test-job-123"
+    mp4_file = renders_dir / f"render_final_{job_id}.mp4"
+    mp4_file.write_bytes(b"dummy mp4")
+
+    thumb_file = renders_dir / f"render_final_{job_id}_thumb.jpg"
+    thumb_file.write_bytes(b"dummy thumb jpg")
+
+    # 1. Resolve with explicit thumbnail_path
+    url1 = sm.resolve_render_job_thumbnail_url(thumbnail_path=str(thumb_file))
+    assert url1 is not None
+    assert url1.endswith(f"render_final_{job_id}_thumb.jpg")
+
+    # 2. Resolve via output_file_path matching sibling thumb
+    url2 = sm.resolve_render_job_thumbnail_url(output_file_path=str(mp4_file))
+    assert url2 is not None
+    assert url2.endswith(f"render_final_{job_id}_thumb.jpg")
+
+    # 3. None when file does not exist
+    url3 = sm.resolve_render_job_thumbnail_url(thumbnail_path="/non/existent/thumb.jpg")
+    assert url3 is None
+
+

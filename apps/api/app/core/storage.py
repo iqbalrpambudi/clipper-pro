@@ -63,6 +63,43 @@ class StorageManager:
             return self.base_dir / rel_str
         return Path(rel_url)
 
+    def resolve_render_job_thumbnail_url(
+        self,
+        thumbnail_path: Optional[str | Path] = None,
+        output_file_path: Optional[str | Path] = None,
+    ) -> Optional[str]:
+        """Resolves relative URL for a render job thumbnail, auto-extracting from video if missing."""
+        if thumbnail_path:
+            p = Path(thumbnail_path)
+            if p.exists() and p.is_file() and p.stat().st_size > 0:
+                return self.to_relative_url(p)
+
+        if output_file_path:
+            out_p = Path(output_file_path)
+            if out_p.exists() and out_p.is_file():
+                thumb_p = out_p.parent / f"{out_p.stem}_thumb.jpg"
+                if thumb_p.exists() and thumb_p.is_file() and thumb_p.stat().st_size > 0:
+                    return self.to_relative_url(thumb_p)
+                try:
+                    import subprocess
+                    subprocess.run(
+                        [
+                            "ffmpeg", "-y",
+                            "-ss", "00:00:00.500",
+                            "-i", str(out_p),
+                            "-vframes", "1",
+                            "-q:v", "2",
+                            str(thumb_p),
+                        ],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if thumb_p.exists() and thumb_p.stat().st_size > 0:
+                        return self.to_relative_url(thumb_p)
+                except Exception:
+                    pass
+        return None
+
     def get_file_size(self, abs_path: Optional[str | Path]) -> Optional[int]:
         if not abs_path:
             return None

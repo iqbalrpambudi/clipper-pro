@@ -17,6 +17,7 @@ import {
   Trash2,
   HardDrive,
   Stamp,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -56,6 +57,7 @@ export function RenderTab({ project }: RenderTabProps) {
 
   const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(project.watermark || null);
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+  const [previewModalVideo, setPreviewModalVideo] = useState<{ url: string; title: string; poster?: string | null } | null>(null);
 
   useEffect(() => {
     if (project.watermark) {
@@ -552,26 +554,82 @@ export function RenderTab({ project }: RenderTabProps) {
                   })()}
 
                   {job.status === "completed" && job.output_url && (
-                    <div className="pt-2 border-t border-[#2E2E2E] flex items-center justify-between">
-                      <a
-                        href={job.output_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline flex items-center gap-1 text-[11px]"
+                    <div className="pt-2.5 border-t border-[#262626] flex gap-3 items-center">
+                      {/* Video Thumbnail Preview */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewModalVideo({
+                            url: job.output_url!,
+                            title: `Hasil Render ${job.render_type.toUpperCase()} (${job.id.slice(0, 8)})`,
+                            poster: job.thumbnail_url,
+                          })
+                        }
+                        className="relative group cursor-pointer w-20 h-28 rounded-lg overflow-hidden border border-[#2E2E2E] bg-black shrink-0 shadow-sm transition hover:border-primary/60 focus:outline-none"
+                        title="Klik untuk pratinjau video hasil render"
                       >
-                        <Play className="w-3 h-3" /> Putar Video
-                      </a>
-                      <Button
-                        variant="supabase"
-                        size="xs"
-                        asChild
-                        className="gap-1.5 font-semibold text-[11px] h-7"
-                      >
-                        <a href={`/api/v1/projects/${project.id}/render/download/${job.id}`}>
-                          <Download className="w-3 h-3" />
-                          <span>Download MP4</span>
-                        </a>
-                      </Button>
+                        {job.thumbnail_url ? (
+                          <img
+                            src={job.thumbnail_url}
+                            alt={`Thumbnail ${job.id}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-[#181818] text-muted-foreground p-1 text-center">
+                            <Film className="w-5 h-5 text-muted-foreground/60 mb-1" />
+                            <span className="text-[9px] leading-tight font-medium">Video Siap</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[8px] font-mono text-white/90">
+                          MP4
+                        </div>
+                      </button>
+
+                      {/* Details & Actions */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-medium text-foreground truncate">
+                            File video MP4 berhasil dirender & siap dipakai
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono truncate">
+                            {job.output_url.split("/").pop()}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() =>
+                              setPreviewModalVideo({
+                                url: job.output_url!,
+                                title: `Hasil Render ${job.render_type.toUpperCase()} (${job.id.slice(0, 8)})`,
+                                poster: job.thumbnail_url,
+                              })
+                            }
+                            className="text-[11px] h-7 gap-1 border-[#333] hover:border-primary/50 text-foreground"
+                          >
+                            <Play className="w-3 h-3 text-primary fill-primary" />
+                            <span>Putar Video</span>
+                          </Button>
+                          <Button
+                            variant="supabase"
+                            size="xs"
+                            asChild
+                            className="gap-1.5 font-semibold text-[11px] h-7"
+                          >
+                            <a href={`/api/v1/projects/${project.id}/render/download/${job.id}`}>
+                              <Download className="w-3 h-3" />
+                              <span>Download MP4</span>
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -580,6 +638,63 @@ export function RenderTab({ project }: RenderTabProps) {
           )}
         </SectionPanel>
       </div>
+
+      {/* Video Preview Modal */}
+      {previewModalVideo && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewModalVideo(null)}
+        >
+          <div
+            className="bg-[#141414] border border-[#2E2E2E] rounded-2xl overflow-hidden max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2E2E2E] bg-[#181818]">
+              <div className="flex items-center gap-2">
+                <Film className="w-4 h-4 text-primary" />
+                <h4 className="text-xs font-semibold text-foreground truncate">{previewModalVideo.title}</h4>
+              </div>
+              <button
+                onClick={() => setPreviewModalVideo(null)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 flex items-center justify-center bg-black">
+              <video
+                src={previewModalVideo.url}
+                poster={previewModalVideo.poster || undefined}
+                controls
+                autoPlay
+                playsInline
+                className="max-h-[65vh] w-auto rounded-lg shadow-lg"
+              />
+            </div>
+            <div className="p-3 border-t border-[#2E2E2E] bg-[#181818] flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPreviewModalVideo(null)}
+                className="text-xs h-8 border-[#333]"
+              >
+                Tutup
+              </Button>
+              <Button
+                variant="supabase"
+                size="sm"
+                asChild
+                className="text-xs h-8 gap-1.5"
+              >
+                <a href={previewModalVideo.url} download>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

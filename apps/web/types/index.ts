@@ -178,6 +178,7 @@ export interface RenderJob {
   status: "queued" | "rendering" | "completed" | "failed";
   progress: number;
   output_url?: string | null;
+  thumbnail_url?: string | null;
   file_size_bytes?: number | null;
   log_output?: string | null;
   error_message?: string | null;
