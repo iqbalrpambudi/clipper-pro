@@ -1,4 +1,5 @@
 import pytest
+from typing import Optional
 from app.services.subtitle_ass import hex_to_ass_color, ms_to_ass_time, generate_ass_subtitles
 from app.services.tts import estimate_tts_cost
 from app.services.narrative import split_into_sentence_segments
@@ -370,6 +371,119 @@ async def test_gemini_tts_missing_key_throws_error(tmp_path, monkeypatch):
             api_key="",
             voice="Puck",
         )
+
+
+def test_split_text_for_tts():
+    from app.services.tts import _split_text_for_tts
+
+    # Short text remains a single chunk
+    short_text = "Halo semuanya, selamat datang di channel kami."
+    assert _split_text_for_tts(short_text, max_chars=2400) == [short_text]
+
+    # Long text with multiple paragraphs splits cleanly
+    p1 = "Kalimat pertama paragraf satu. " * 40  # ~1240 chars
+    p2 = "Kalimat pertama paragraf dua tanpa titik " * 10  # ~410 chars, total > 1400 chars
+    full = f"{p1.strip()}\n\n{p2.strip()}"
+    chunks = _split_text_for_tts(full, max_chars=1400)
+    assert len(chunks) == 2
+    assert chunks[0].endswith(".")
+    assert all(len(c) <= 1400 for c in chunks)
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_payload_includes_system_instruction_and_temperature(tmp_path, monkeypatch):
+    from app.services.tts import generate_gemini_tts
+    import httpx
+
+    captured_payload = {}
+
+    class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def post(self, url, json=None, **kwargs):
+            nonlocal captured_payload
+            captured_payload = json
+            return httpx.Response(status_code=400, text="intentional stop after payload capture")
+
+    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+
+    out_file = tmp_path / "test.mp3"
+    with pytest.raises(RuntimeError):
+        await generate_gemini_tts(
+            text="Halo dunia",
+            output_path=str(out_file),
+            api_key="dummy_key",
+            voice="Puck",
+        )
+
+    assert "systemInstruction" in captured_payload
+    assert captured_payload["generationConfig"]["temperature"] == 0.1
+    assert captured_payload["generationConfig"]["responseModalities"] == ["AUDIO"]
+
+
+def test_build_master_scriptwriting_directive_includes_parameters():
+    from app.services.narrative import build_master_scriptwriting_directive
+
+    directive = build_master_scriptwriting_directive(
+        topic="Pembuatan Sepeda Gerobak",
+        tone="santai",
+        target_duration=60,
+        word_count=132,
+    )
+    assert "Pembuatan Sepeda Gerobak" in directive
+    assert "santai" in directive
+    assert "60 detik" in directive
+    assert "132 kata" in directive
+    assert "DILARANG MELEBIHI" in directive
+
+
+@pytest.mark.asyncio
+async def test_generate_narration_script_injects_parameters_into_master_prompt():
+    from app.services.narrative import generate_narration_script
+    from app.services.ai_adapters.base import BaseLLMAdapter
+
+    captured_args = {}
+
+    class DummyAdapter(BaseLLMAdapter):
+        async def generate_chat(self, prompt: str, system_prompt: Optional[str] = None, **kwargs) -> str:
+            captured_args["prompt"] = prompt
+            captured_args["system_prompt"] = system_prompt
+            return "Ini kalimat hook pertama yang memikat. Ini narasi kelanjutan yang mengalir padat."
+
+        async def analyze_vision(self, image_paths: list, prompt: str) -> dict:
+            return {}
+
+        async def generate_embedding(self, text: str) -> list:
+            return []
+
+    adapter = DummyAdapter()
+    result = await generate_narration_script(
+        adapter=adapter,
+        system_prompt="System template base.",
+        user_prompt_template="Topik: {topic}\nDurasi: {target_duration}\nVisual:\n{scene_context}",
+        topic="Robot Canggih",
+        tone="tegang",
+        target_duration=45,
+        scenes_summary=[],
+    )
+
+    assert "Robot Canggih" in captured_args["system_prompt"]
+    assert "tegang" in captured_args["system_prompt"]
+    assert "45 detik" in captured_args["system_prompt"]
+    # Dual-anchoring in user prompt
+    assert "PENGINGAT KETAT DURASI, INTONASI & ALUR NARASI" in captured_args["prompt"]
+    assert "45 detik" in captured_args["prompt"]
+    assert "tegang" in captured_args["prompt"]
+    assert "Ini kalimat hook pertama" in result
+
+
 
 
 

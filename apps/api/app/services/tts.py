@@ -276,6 +276,18 @@ async def generate_gemini_tts(
             models_to_try.append(m)
 
     payload = {
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": (
+                        "Anda adalah narator voiceover profesional. "
+                        "Bacakan naskah dengan tempo stabil, artikulasi jelas, "
+                        "nada narasi dokumenter yang tenang, dan pertahankan intonasi serta "
+                        "energi vokal yang konsisten dari awal hingga akhir tanpa lonjakan emosi yang tiba-tiba."
+                    )
+                }
+            ]
+        },
         "contents": [
             {
                 "parts": [
@@ -286,6 +298,7 @@ async def generate_gemini_tts(
             }
         ],
         "generationConfig": {
+            "temperature": 0.1,
             "responseModalities": ["AUDIO"],
             "speechConfig": {
                 "voiceConfig": {
@@ -456,32 +469,62 @@ async def get_or_generate_voice_sample(
     return sample_path
 
 
-def _split_text_for_tts(text: str, max_chars: int = 1200) -> List[str]:
-    """Split long script into TTS-safe chunks at sentence boundaries (~<=max_chars each)."""
+def _split_text_for_tts(text: str, max_chars: int = 2400) -> List[str]:
+    """Split long script into TTS-safe chunks at paragraph/sentence boundaries (~<=max_chars each).
+
+    Uses a higher chunk budget (2400 chars ~ 2.5-3 mins audio) to minimize chunk boundary
+    intonation shifts, and guarantees each intermediate chunk ends with clean terminal
+    punctuation (. ! ?) so Gemini TTS does not produce hanging pitch artifacts.
+    """
     text = text.strip()
-    if len(text) <= max_chars:
-        return [text]
-    sentences = re.split(r"(?<=[.!?])\s+", text)
+    if not text or len(text) <= max_chars:
+        return [text] if text else []
+
+    paragraphs = [p.strip() for p in re.split(r"\n+", text) if p.strip()]
+    raw_units: List[str] = []
+
+    for p in paragraphs:
+        if len(p) <= max_chars:
+            raw_units.append(p)
+        else:
+            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if s.strip()]
+            for s in sentences:
+                while len(s) > max_chars:
+                    clauses = [c.strip() for c in re.split(r"(?<=[,;:])\s+", s) if c.strip()]
+                    if len(clauses) > 1 and len(clauses[0]) <= max_chars:
+                        raw_units.append(clauses[0])
+                        s = s[len(clauses[0]):].strip()
+                    else:
+                        raw_units.append(s[:max_chars])
+                        s = s[max_chars:].strip()
+                if s:
+                    raw_units.append(s)
+
     chunks: List[str] = []
     cur = ""
-    for s in sentences:
-        # Oversized single sentence: hard-split at max_chars
-        while len(s) > max_chars:
-            if cur:
-                chunks.append(cur)
-                cur = ""
-            chunks.append(s[:max_chars])
-            s = s[max_chars:]
-        if not s:
+    for unit in raw_units:
+        if not unit:
             continue
-        if cur and len(cur) + 1 + len(s) > max_chars:
+        separator = " " if cur else ""
+        if cur and len(cur) + len(separator) + len(unit) > max_chars:
             chunks.append(cur)
-            cur = s
+            cur = unit
         else:
-            cur = f"{cur} {s}".strip()
+            cur = f"{cur}{separator}{unit}".strip()
+
     if cur:
         chunks.append(cur)
-    return chunks
+
+    # Ensure non-final chunks end with clean terminal punctuation (. ! ?)
+    # to avoid awkward rising or truncated pitch at chunk boundaries
+    cleaned_chunks: List[str] = []
+    for i, chk in enumerate(chunks):
+        c = chk.strip()
+        if i < len(chunks) - 1 and not c.endswith((".", "!", "?", "…")):
+            c = f"{c}."
+        cleaned_chunks.append(c)
+
+    return cleaned_chunks
 
 async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
     """Concatenate mp3 parts via ffmpeg concat demuxer; returns total duration."""
@@ -513,13 +556,11 @@ async def generate_speech_audio(
 ) -> float:
     """Entrypoint for TTS audio generation.
 
-    Gemini TTS: long scripts are chunked at sentence boundaries (~1200 chars),
-    synthesized per chunk, then concatenated — single calls fail/truncate on
-    multi-minute narrations. ponytail: 1200 chars ≈ 60-80s audio; add streaming
-    TTS if latency ever matters.
+    Gemini TTS: long scripts are chunked at sentence/paragraph boundaries (~2400 chars),
+    synthesized per chunk, then concatenated. 2400 chars ≈ 2.5-3 mins audio.
     """
     if provider.lower() == "gemini":
-        chunks = _split_text_for_tts(text)
+        chunks = _split_text_for_tts(text, max_chars=2400)
         if len(chunks) == 1:
             return await generate_gemini_tts(
                 chunks[0],

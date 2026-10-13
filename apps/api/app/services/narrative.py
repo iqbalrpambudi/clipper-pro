@@ -6,39 +6,76 @@ from app.services.ai_adapters.base import BaseLLMAdapter
 
 log = logging.getLogger(__name__)
 
-# Master instruction injected into EVERY preset's system prompt (builtin + custom) at
-# generation time. Enforces elite short-form video retention standards without breaking template structures.
-MASTER_SCRIPTWRITING_DIRECTIVE = (
-    "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PENDEK (WAJIB DIIKUTI) ===\n"
-    "Anda adalah script writer profesional kelas atas untuk platform video vertikal (TikTok, Instagram Reels, YouTube Shorts).\n"
-    "Tuliskan naskah narasi yang MEMIKAT RETENSI TINGGI dari detik pertama sampai detik terakhir:\n"
-    "\n"
-    "1. HOOK MEMATIKAN (Detik 0-3):\n"
-    "   - Kalimat pertama HARUS langsung menghentikan scroll dengan menyengat rasa penasaran, emosi, atau tensi (maksimal 10-12 kata).\n"
-    "   - DILARANG menggunakan kata pembuka klise basi: 'Halo semuanya', 'Di video kali ini', 'Tahukah kamu bahwa', "
-    "'Pernahkah kamu', 'Kali ini kita akan membahas', 'Di video ini terlihat'. Langsung masuk ke inti!\n"
-    "\n"
-    "2. ALUR MENGALIR & INTEGRASI VISUAL:\n"
-    "   - Jadikan ringkasan materi video sebagai tulang punggung cerita yang mengalir utuh dan berkesinambungan.\n"
-    "   - DILARANG menyebut istilah teknis editor: 'scene', 'shot', 'klip', 'timestamp', 'di layar terlihat', 'kamera menunjukkan'. "
-    "Ceritakan apa yang SEDANG TERJADI secara hidup, bukan mendeskripsikan file video.\n"
-    "   - Hubungkan antar kalimat dengan transisi sebab-akibat alami ('namun', 'akibatnya', 'sampai akhirnya').\n"
-    "\n"
-    "3. BAHASA LISAN NATURAL & ANTI-ROBOTIK AI:\n"
-    "   - Gunakan Bahasa Indonesia percakapan modern yang lugas, percaya diri, dan berjiwa (bukan bahasa buku kaku atau terjemahan mesin).\n"
-    "   - HINDARI pengulangan kata klise AI: 'ternyata', 'siapa sangka', 'namun tak disangka', 'yang paling menarik adalah'.\n"
-    "   - Variasikan ritme: kombinasikan kalimat pendek menghentak untuk tensi dengan kalimat mengalir untuk penjelasan.\n"
-    "\n"
-    "4. PENUTUP MEMBEKAS & ENGAGEMENT LOOP:\n"
-    "   - Akhiri naskah dengan kesimpulan bermakna, payoff memuaskan, atau pertanyaan reflektif yang memancing audiens berkomentar secara organik.\n"
-    "   - HINDARI ajakan murah: 'jangan lupa like, comment, subscribe'.\n"
-    "\n"
-    "5. OUTPUT STERIL & SIAP TTS:\n"
-    "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
-    "   - DILARANG menyertakan kalimat sapaan AI seperti 'Tentu, ini naskahnya:'.\n"
-    "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Tegang] atau (Tertawa).\n"
-    "   - DILARANG menyertakan label struktur seperti 'HOOK:', 'ISI:', 'LANGKAH 1:', 'PENUTUP:'."
-)
+def build_master_scriptwriting_directive(
+    topic: str = "",
+    tone: str = "santai",
+    target_duration: int = 60,
+    word_count: int = 132,
+) -> str:
+    """Master instruction injected into EVERY preset's system prompt (builtin + custom) at
+    generation time. Enforces elite short-form video retention standards with strict duration,
+    word-count budget, and tone adherence at the system level so the LLM never loses context.
+    """
+    clean_topic = (topic or "").strip() or "Sesuai materi visual video"
+    clean_tone = (tone or "").strip() or "santai"
+    min_words = int(word_count * 0.85)
+    max_words = int(word_count * 1.15)
+
+    return (
+        "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PENDEK (WAJIB DIIKUTI) ===\n"
+        "Anda adalah script writer profesional kelas atas untuk platform video vertikal (TikTok, Instagram Reels, YouTube Shorts).\n"
+        "Tuliskan naskah narasi yang MEMIKAT RETENSI TINGGI dari detik pertama sampai detik terakhir.\n"
+        "\n"
+        "🎯 PARAMETER UTAMA PROYEK INI (PRIORITAS TERTINGGI, WAJIB PATUH KETAT):\n"
+        f"• Topik Narasi: {clean_topic}\n"
+        f"• Nada Bicara & Intonasi: {clean_tone}\n"
+        f"• Target Durasi Suara: {target_duration} detik\n"
+        f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
+        "\n"
+        "1. KEPATUHAN KETAT TARGET DURASI & PANJANG KATA (CRITICAL CONSTRAINT):\n"
+        f"   - Target durasi video HANYA {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
+        "   - JANGAN menceritakan seluruh adegan atau seluruh tahapan jika materi video panjang. "
+        "Fokus HANYA pada 2 sampai 4 momen/tahapan paling berdampak dan padatkan kalimatnya.\n"
+        "   - Kualitas retensi ditentukan oleh kepadatan cerita yang pas dengan durasi, bukan banyaknya kata.\n"
+        "\n"
+        "2. KONSISTENSI TONE & INTONASI:\n"
+        f"   - Pertahankan gaya bicara, intonasi, dan warna vokal '{clean_tone}' secara konsisten dari kalimat pembuka hingga kalimat terakhir.\n"
+        "\n"
+        "3. HOOK MEMATIKAN (Detik 0-3):\n"
+        "   - Kalimat pertama HARUS langsung menghentikan scroll dengan menyengat rasa penasaran, emosi, atau tensi (maksimal 10-12 kata).\n"
+        "   - DILARANG menggunakan kata pembuka klise basi: 'Halo semuanya', 'Di video kali ini', 'Tahukah kamu bahwa', "
+        "'Pernahkah kamu', 'Kali ini kita akan membahas', 'Di video ini terlihat'. Langsung masuk ke inti!\n"
+        "\n"
+        "4. ALUR MENGALIR, JEMBATAN TRANSISI & ANTI-STACCATO (CRITICAL FLOW):\n"
+        "   - HINDARI GAYA CATATAN LOG / INVENTARIS: DILARANG membuat rentetan kalimat pendek terpotong-potong tanpa subjek atau jembatan jelas "
+        "(contoh buruk: 'Lalu api menyala. Besi dipotong. Hasilnya jalan.'). Ini membuat narasi terasa kaku dan patah-patah saat dibacakan TTS.\n"
+        "   - WAJIB gunakan frasa jembatan transisi alami antar kalimat dan antar tahapan "
+        "(contoh baik: 'Setelah rangka beres, barulah sasis dirakit...', 'Tantangan terberatnya justru di sistem kelistrikan...', 'Semua kerja keras terbayar saat kendaraan ini melaju...').\n"
+        "   - JAGA KRONOLOGI & KAUSALITAS LOGIS: Pastikan urutan aksi runtut secara fisik (bahan disiapkan dan diukur dulu, dipotong, baru dilas; bukan membalik urutan sebab-akibat).\n"
+        "   - THE REVEAL & CLIMAX: Tampilkan momen pembuktian/hasil akhir dengan kalimat deskriptif yang memuaskan dan bernyawa, bukan sekadar kalimat singkat datar.\n"
+        "   - Jadikan materi video sebagai tulang punggung cerita yang mengalir utuh dan berkesinambungan.\n"
+        "   - DILARANG menyebut istilah teknis editor: 'scene', 'shot', 'klip', 'timestamp', 'di layar terlihat', 'kamera menunjukkan'. "
+        "Ceritakan apa yang SEDANG TERJADI secara hidup, bukan mendeskripsikan file video.\n"
+        "\n"
+        "5. BAHASA LISAN NATURAL & ANTI-ROBOTIK AI:\n"
+        "   - Gunakan Bahasa Indonesia percakapan modern yang lugas, percaya diri, dan berjiwa (bukan bahasa buku kaku atau terjemahan mesin).\n"
+        "   - HINDARI pengulangan kata klise AI: 'ternyata', 'siapa sangka', 'namun tak disangka', 'yang paling menarik adalah'.\n"
+        "   - Variasikan ritme: kombinasikan kalimat pendek menghentak untuk tensi dengan kalimat mengalir untuk penjelasan.\n"
+        "\n"
+        "6. PENUTUP MEMBEKAS & ENGAGEMENT LOOP:\n"
+        "   - Akhiri naskah dengan kesimpulan bermakna, payoff memuaskan, atau pertanyaan reflektif yang memancing audiens berkomentar secara organik.\n"
+        "   - HINDARI ajakan murah: 'jangan lupa like, comment, subscribe'.\n"
+        "\n"
+        "7. OUTPUT STERIL & SIAP TTS:\n"
+        "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
+        "   - DILARANG menyertakan kalimat sapaan AI seperti 'Tentu, ini naskahnya:'.\n"
+        "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Tegang] atau (Tertawa).\n"
+        "   - DILARANG menyertakan label struktur seperti 'HOOK:', 'ISI:', 'LANGKAH 1:', 'PENUTUP:'."
+    )
+
+
+# Static default for backward compatibility
+MASTER_SCRIPTWRITING_DIRECTIVE = build_master_scriptwriting_directive()
 
 # Backward-compatibility alias map for legacy templates to prevent breakage in older projects
 LEGACY_TEMPLATE_ALIASES = {
@@ -264,10 +301,10 @@ DEFAULT_TEMPLATES = [
             "\n"
             "STRUKTUR NARASI:\n"
             "1. Hook Kontras Mentah (Detik 0-3): Tunjukkan kontras antara bahan mentah biasa dengan potensi hasil akhirnya ('Bongkahan kayu lapuk ini bakal disulap jadi karya bernilai puluhan juta').\n"
-            "2. Langkah Demi Langkah: Ceritakan tahapan proses yang tampak di layar dengan insight menarik per tahapan.\n"
+            "2. Alur Proses Mengalir: Hubungkan tahapan pengerjaan dengan kalimat jembatan alami yang logis dan runtut (bukan rentetan kalimat kaku atau daftar log). Ceritakan proses dari persiapan bahan, pemotongan, hingga perakitan secara berkesinambungan.\n"
             "3. Titik Kritis / Momen Rawan Gagal: Soroti satu fase yang paling membutuhkan ketelitian tinggi atau rawan gagal bila salah langkah.\n"
-            "4. The Big Reveal: Tunjukkan hasil akhir karya dengan rasa kagum yang memuaskan mata penonton.\n"
-            "5. Apresiasi Dedikasi: Ajak penonton mengapresiasi waktu dan tenaga yang dicurahkan sang kreator."
+            "4. The Big Reveal: Tunjukkan hasil akhir karya yang berfungsi sempurna dengan kepuasan visual dan emosional yang memuaskan rasa penasaran penonton (jangan hanya kalimat pendek datar).\n"
+            "5. Apresiasi Dedikasi: Ajak penonton mengapresiasi waktu dan ketekunan yang dicurahkan sang kreator."
         ),
         "user_prompt_template": (
             "Karya / Proses yang Dibuat: {topic}\n"
@@ -582,20 +619,42 @@ async def generate_narration_script(
     else:
         scene_context_str = "Tidak ada metadata scene spesifik."
 
+    clean_topic = topic or "Fakta menarik seputar video ini"
+    min_words = int(word_count * 0.85)
+    max_words = int(word_count * 1.15)
+
     if custom_prompt:
         user_prompt = f"{custom_prompt}\n\nKonteks visual video:\n{scene_context_str}"
     else:
         user_prompt = user_prompt_template.format(
-            topic=topic or "Fakta menarik seputar video ini",
+            topic=clean_topic,
             tone=tone,
             target_duration=target_duration,
             word_count=word_count,
             scene_context=scene_context_str,
         )
 
+    # Dual-Anchoring: Tegaskan kembali batas durasi, intonasi & alur mengalir di akhir user prompt
+    # agar recency bias LLM memperkuat instruksi sistem.
+    user_prompt += (
+        f"\n\n--- PENGINGAT KETAT DURASI, INTONASI & ALUR NARASI (WAJIB DIPATUHI) ---\n"
+        f"• Topik: {clean_topic}\n"
+        f"• Intonasi / Nada Bicara: {tone}\n"
+        f"• Target Durasi: {target_duration} detik (KORIDOR KETAT: {min_words} - {max_words} kata, target ~{word_count} kata).\n"
+        f"• Alur Bicara: Wajib mengalir alami dengan kalimat penghubung/jembatan antar tahapan; DILARANG kalimat patah-patah/staccato.\n"
+        f"Tulis HANYA naskah narasi final yang padat, mengalir hidup, dan langsung siap dibacakan oleh voiceover (TTS):"
+    )
+
+    master_directive = build_master_scriptwriting_directive(
+        topic=clean_topic,
+        tone=tone,
+        target_duration=target_duration,
+        word_count=word_count,
+    )
+
     raw_response = await adapter.generate_chat(
         prompt=user_prompt,
-        system_prompt=system_prompt + MASTER_SCRIPTWRITING_DIRECTIVE,
+        system_prompt=system_prompt + master_directive,
     )
 
     # Clean any accidental conversational prefixes like "Tentu! Ini naskahnya:"
