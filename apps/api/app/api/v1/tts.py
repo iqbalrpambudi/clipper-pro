@@ -201,13 +201,26 @@ async def realign_narration_words(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
-    # 1. Fetch active audio track
+    # 1. Fetch active audio track (prefer ready status)
     a_res = await db.execute(
         select(AudioTrack)
-        .where(AudioTrack.project_id == project_id)
+        .where(
+            AudioTrack.project_id == project_id,
+            AudioTrack.status == "ready",
+            AudioTrack.file_path.isnot(None),
+        )
         .order_by(AudioTrack.created_at.desc())
     )
     audio_track = a_res.scalars().first()
+    if not audio_track or not audio_track.file_path or not Path(audio_track.file_path).exists():
+        # Fallback to any audio track with an existing file
+        a_res_any = await db.execute(
+            select(AudioTrack)
+            .where(AudioTrack.project_id == project_id, AudioTrack.file_path.isnot(None))
+            .order_by(AudioTrack.created_at.desc())
+        )
+        audio_track = a_res_any.scalars().first()
+
     if not audio_track or not audio_track.file_path or not Path(audio_track.file_path).exists():
         raise HTTPException(
             status_code=400,
@@ -221,22 +234,44 @@ async def realign_narration_words(
         .order_by(Narration.created_at.desc())
     )
     narration = n_res.scalars().first()
-    if not narration or not narration.segments:
+    if not narration:
         raise HTTPException(status_code=400, detail="Belum ada naskah narasi untuk disinkronkan.")
+
+    # Determine segments to align
+    from app.services.narrative import split_into_sentence_segments
+    target_segments = None
+    if payload and payload.segments:
+        target_segments = payload.segments
+    elif narration.segments and len(narration.segments) > 0:
+        target_segments = narration.segments
+    elif narration.raw_text:
+        target_segments = split_into_sentence_segments(narration.raw_text)
+
+    if not target_segments:
+        raise HTTPException(status_code=400, detail="Belum ada segmen narasi untuk disinkronkan.")
 
     offset_ms = payload.offset_ms if payload else 0
     language = payload.language if payload else "id"
     model_size = payload.model_size if payload else "base"
 
-    # 3. Run audio-anchored forced alignment via Whisper with prior prompt and offset
-    aligned_segments = await align_audio_with_text(
-        audio_path=audio_track.file_path,
-        segments=narration.segments,
-        total_audio_duration_sec=audio_track.duration or 30.0,
-        language=language,
-        model_size=model_size,
-        offset_ms=offset_ms,
-    )
+    # 3. Strictly run audio-anchored forced alignment via Whisper AI
+    try:
+        aligned_segments = await align_audio_with_text(
+            audio_path=audio_track.file_path,
+            segments=target_segments,
+            total_audio_duration_sec=audio_track.duration or 30.0,
+            language=language,
+            model_size=model_size,
+            offset_ms=offset_ms,
+            force_realignment=True,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Realignment error for project %s: %s", project_id, e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal melakukan realign kata via Whisper AI: {str(e)}",
+        )
 
     narration.segments = aligned_segments
     narration.status = "aligned"

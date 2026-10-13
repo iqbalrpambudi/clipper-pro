@@ -564,15 +564,24 @@ async def match_subtitles_with_audio(
     language = payload.language if payload else "id"
     model_size = payload.model_size if payload else "base"
 
-    # 3. Run audio-anchored forced alignment via Whisper
-    aligned_segments = await align_audio_with_text(
-        audio_path=audio_track.file_path,
-        segments=narration.segments,
-        total_audio_duration_sec=audio_track.duration or 30.0,
-        language=language,
-        model_size=model_size,
-        offset_ms=offset_ms,
-    )
+    # 3. Run audio-anchored forced alignment via Whisper AI
+    try:
+        aligned_segments = await align_audio_with_text(
+            audio_path=audio_track.file_path,
+            segments=narration.segments,
+            total_audio_duration_sec=audio_track.duration or 30.0,
+            language=language,
+            model_size=model_size,
+            offset_ms=offset_ms,
+            force_realignment=True,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Subtitles match audio error: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal mencocokkan subtitle dengan audio via Whisper AI: {str(e)}",
+        )
 
     narration.segments = aligned_segments
     narration.status = "aligned"

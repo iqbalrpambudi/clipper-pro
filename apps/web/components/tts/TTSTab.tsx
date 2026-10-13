@@ -218,15 +218,18 @@ export function TTSTab({ project }: TTSTabProps) {
   }, [project.narration?.segments]);
 
   const realignMutation = useMutation({
-    mutationFn: (params?: { offset_ms?: number }) => {
+    mutationFn: (params?: { offset_ms?: number; model_size?: string }) => {
       const targetOffset = params?.offset_ms !== undefined ? params.offset_ms : offsetMs;
       return api.realignTTS(project.id, {
         offset_ms: targetOffset,
         language: "id",
-        model_size: "base",
+        model_size: params?.model_size || "base",
       });
     },
     onSuccess: (data) => {
+      if (data?.segments) {
+        setEditableSegments(JSON.parse(JSON.stringify(data.segments)));
+      }
       queryClient.setQueryData(["project", project.id], (old: any) => {
         if (!old) return old;
         return {

@@ -187,7 +187,7 @@ export const api = {
     }),
   realignTTS: (
     projectId: string,
-    data?: { offset_ms?: number; language?: string; model_size?: string }
+    data?: { offset_ms?: number; language?: string; model_size?: string; segments?: any[] }
   ) =>
     request<Narration>(`/api/v1/projects/${projectId}/tts/realign`, {
       method: "POST",

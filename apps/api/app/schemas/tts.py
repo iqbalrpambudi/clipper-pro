@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict
 
 
@@ -53,4 +53,5 @@ class RealignWordsRequest(BaseModel):
     offset_ms: int = 0
     language: Optional[str] = "id"
     model_size: Optional[str] = "base"
+    segments: Optional[List[Dict[str, Any]]] = None
 
