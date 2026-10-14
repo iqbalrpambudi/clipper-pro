@@ -71,6 +71,7 @@ def _build_adapter(
             api_key=api_key,
             chat_model=chat_model,
             vision_model=vision_model,
+            gemini_key=tts_key or settings.GEMINI_API_KEY,
         )
 
     # Priority 2: Gemini model or explicit Google endpoint
@@ -89,6 +90,7 @@ def _build_adapter(
         api_key=api_key,
         chat_model=chat_model,
         vision_model=vision_model,
+        gemini_key=tts_key or settings.GEMINI_API_KEY,
     )
 
 

@@ -676,3 +676,42 @@ def test_tts_generate_request_accepts_model():
     assert req.model == "gemini-3.8-flash-tts"
 
 
+def test_edge_tts_normalization():
+    from app.services.tts import _normalize_edge_rate, _normalize_edge_pitch
+
+    assert _normalize_edge_rate("10%") == "+10%"
+    assert _normalize_edge_rate("-10%") == "-10%"
+    assert _normalize_edge_rate("+15%") == "+15%"
+    assert _normalize_edge_rate("") == "+0%"
+    assert _normalize_edge_rate(None) == "+0%"
+
+    assert _normalize_edge_pitch("5Hz") == "+5Hz"
+    assert _normalize_edge_pitch("-5Hz") == "-5Hz"
+    assert _normalize_edge_pitch("+10Hz") == "+10Hz"
+    assert _normalize_edge_pitch("") == "+0Hz"
+    assert _normalize_edge_pitch(None) == "+0Hz"
+
+
+@pytest.mark.asyncio
+async def test_alignment_empty_segments_safe():
+    from app.services.alignment import align_audio_with_text, sequence_anchored_forced_alignment, _align_fallback
+
+    assert await align_audio_with_text("/dummy/path.mp3", [], 10.0) == []
+    assert await align_audio_with_text("/dummy/path.mp3", None, 10.0) == []
+    assert sequence_anchored_forced_alignment([], [], 10.0) == []
+    assert sequence_anchored_forced_alignment(None, [], 10.0) == []
+    assert _align_fallback([], 10.0) == []
+    assert _align_fallback(None, 10.0) == []
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_audio_empty_text():
+    from app.services.tts import generate_speech_audio
+
+    with pytest.raises(ValueError, match="Teks narasi tidak boleh kosong"):
+        await generate_speech_audio("", "/tmp/out.mp3")
+
+    with pytest.raises(ValueError, match="Teks narasi tidak boleh kosong"):
+        await generate_speech_audio("   ", "/tmp/out.mp3")
+
+

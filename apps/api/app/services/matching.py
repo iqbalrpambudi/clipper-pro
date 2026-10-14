@@ -1,8 +1,26 @@
+import re
 import uuid
 import numpy as np
 from typing import List, Dict, Any, Optional
 from app.services.ai_adapters.base import BaseLLMAdapter
 from app.core.frame_math import snap_to_frame, sec_to_frame, frame_to_sec, COMPOSITION_FPS
+
+
+STOPWORDS = {
+    "dan", "di", "ke", "dari", "yang", "ini", "itu", "untuk", "pada", "adalah",
+    "cuma", "bisa", "lewat", "saat", "lalu", "akan", "jadi", "juga", "dengan",
+    "the", "and", "in", "to", "of", "a", "is", "for", "on", "at", "by", "with",
+}
+
+
+def _calc_lexical_overlap(text1: str, text2: str) -> float:
+    """Calculate token Jaccard-like overlap between narration window and scene metadata."""
+    t1 = set(re.findall(r"\w+", text1.lower())) - STOPWORDS
+    t2 = set(re.findall(r"\w+", text2.lower())) - STOPWORDS
+    if not t1 or not t2:
+        return 0.0
+    common = t1 & t2
+    return len(common) / max(len(t1), 1)
 
 
 def cosine_similarity(v1: Any, v2: Any) -> float:
@@ -181,15 +199,20 @@ async def match_scenes_to_segments(
         window_embeddings.append(emb)
 
     clips: List[Dict[str, Any]] = []
-    used_scene_ids = set()
+    recent_scene_ids: List[str] = []
+    global_used_ids = set()
+
+    total_video_dur = max((sc.get("end_time", 0.0) for sc in scenes), default=1.0)
+    total_audio_dur = total_audio_duration_sec or (windows[-1]["end_sec"] if windows else 1.0)
 
     for i, win in enumerate(windows):
         win_emb = window_embeddings[i]
         start_sec = win["start_sec"]
         end_sec = win["end_sec"]
         target_duration = max(round(end_sec - start_sec, 2), 1.5)
+        p_win = (start_sec + end_sec) / (2.0 * max(total_audio_dur, 1.0))
 
-        # 3. Score all candidate scenes with Duration Suitability factor
+        # 3. Score all candidate scenes with Hybrid Search + Recency + Chrono Flow + Duration Fit
         scored_scenes = []
         for sc in scenes:
             sc_emb = sc.get("embedding")
@@ -197,27 +220,52 @@ async def match_scenes_to_segments(
             if sc_emb is not None and win_emb is not None:
                 sim = cosine_similarity(win_emb, sc_emb)
 
-            # Strong bonus for unused scenes to ensure rich visual diversity and avoid duplicate back-to-back shots
-            usage_penalty = 0.50 if sc["id"] in used_scene_ids else 1.0
+            # Lexical keyword match boost (hybrid search)
+            sc_text = f"{sc.get('description', '')} {' '.join(sc.get('tags') or [])} {sc.get('transcript', '')}"
+            lex = _calc_lexical_overlap(win["text"], sc_text)
+            relevance = 0.65 * sim + 0.35 * min(1.0, lex * 2.0)
 
-            # Duration Suitability:
-            sc_dur = sc.get("duration", 4.0)
-            if sc_dur < 1.8:
-                # Heavy penalty for micro-scenes (< 1.8s) to prevent flash cuts
-                dur_fit = 0.35
-            elif sc_dur >= target_duration:
-                dur_fit = 1.0
-            elif sc_dur >= 2.0:
-                dur_fit = 0.85
+            # Recency penalty: strong deterrent against repeating the same shot back-to-back
+            if recent_scene_ids and sc["id"] == recent_scene_ids[-1]:
+                recency_penalty = 0.12  # Strict: never duplicate immediately consecutive scene
+            elif len(recent_scene_ids) >= 2 and sc["id"] == recent_scene_ids[-2]:
+                recency_penalty = 0.45
+            elif len(recent_scene_ids) >= 3 and sc["id"] == recent_scene_ids[-3]:
+                recency_penalty = 0.75
+            elif sc["id"] in global_used_ids:
+                recency_penalty = 0.90  # Mild penalty to prefer fresh unshown footage
             else:
-                dur_fit = max(0.5, sc_dur / target_duration)
+                recency_penalty = 1.0
 
-            score = sim * usage_penalty * dur_fit
+            # Proportional Duration Fit (allows smooth 0.70x-0.95x speed stretching without harsh cut-off)
+            sc_dur = sc.get("duration", 4.0)
+            ratio = sc_dur / target_duration
+            if sc_dur >= target_duration:
+                dur_fit = 1.0
+            elif ratio >= 0.70:
+                dur_fit = 0.92
+            elif ratio >= 0.50:
+                dur_fit = 0.75
+            else:
+                dur_fit = 0.40  # Micro-scenes (<1.0s) or excessive stretching
+
+            # Narrative Chronological Arc Affinity: gentle alignment with story progress
+            p_sc = sc.get("start_time", 0.0) / max(total_video_dur, 1.0)
+            dist = abs(p_win - p_sc)
+            if p_win < 0.15 and p_sc < 0.20:
+                chrono_bonus = 1.15  # Hook / Opening alignment
+            elif p_win > 0.85 and p_sc > 0.80:
+                chrono_bonus = 1.15  # Climax / Ending alignment
+            else:
+                chrono_bonus = 1.0 + 0.10 * max(0.0, 1.0 - dist * 1.5)
+
+            score = relevance * recency_penalty * dur_fit * chrono_bonus
             scored_scenes.append((score, sc))
 
         scored_scenes.sort(key=lambda x: x[0], reverse=True)
         best_scene = scored_scenes[0][1]
-        used_scene_ids.add(best_scene["id"])
+        recent_scene_ids.append(best_scene["id"])
+        global_used_ids.add(best_scene["id"])
 
         scene_dur = best_scene.get("duration", 4.0)
         scene_start = best_scene.get("start_time", 0.0)

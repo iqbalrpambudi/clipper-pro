@@ -148,6 +148,30 @@ def estimate_tts_cost(text: str, provider: str = "gemini") -> CostEstimateRespon
     )
 
 
+def _normalize_edge_rate(rate: Optional[str]) -> str:
+    """Ensure Edge-TTS rate string format is signed like +10%, -10%, or +0%."""
+    if not rate:
+        return "+0%"
+    r = rate.strip()
+    if not r.endswith("%"):
+        r = f"{r}%"
+    if not r.startswith(("+", "-")):
+        r = f"+{r}"
+    return r
+
+
+def _normalize_edge_pitch(pitch: Optional[str]) -> str:
+    """Ensure Edge-TTS pitch string format is signed like +5Hz, -5Hz, or +0Hz."""
+    if not pitch:
+        return "+0Hz"
+    p = pitch.strip()
+    if not p.lower().endswith("hz"):
+        p = f"{p}Hz"
+    if not p.startswith(("+", "-")):
+        p = f"+{p}"
+    return p
+
+
 async def generate_edge_tts(
     text: str,
     output_path: str,
@@ -159,7 +183,9 @@ async def generate_edge_tts(
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    communicate = edge_tts.Communicate(text, voice=voice, rate=rate, pitch=pitch)
+    norm_rate = _normalize_edge_rate(rate)
+    norm_pitch = _normalize_edge_pitch(pitch)
+    communicate = edge_tts.Communicate(text, voice=voice, rate=norm_rate, pitch=norm_pitch)
     await communicate.save(str(out_p))
 
     return await get_audio_duration(str(out_p))
@@ -273,18 +299,21 @@ async def generate_gemini_tts(
         if m not in models_to_try:
             models_to_try.append(m)
 
+    clean_text = " ".join(line.strip() for line in text.splitlines() if line.strip())
+
     payload = {
         "contents": [
             {
                 "parts": [
                     {
-                        "text": text
+                        "text": clean_text
                     }
                 ]
             }
         ],
         "generationConfig": {
             "temperature": 0.1,
+            "maxOutputTokens": 8192,
             "responseModalities": ["AUDIO"],
             "speechConfig": {
                 "voiceConfig": {
@@ -347,14 +376,20 @@ async def generate_gemini_tts(
                 mime_type = inline_data.get("mimeType", "")
                 audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
 
+                # Silence removal filter: cleanly eliminates dead trailing zero-byte silence pads
+                # produced by LLM audio token generation while retaining a natural 0.3s ending pause.
+                trim_silence_filter = (
+                    "areverse,silenceremove=start_periods=1:start_duration=0.5:start_threshold=-50dB,areverse,apad=pad_dur=0.3"
+                )
+                combined_filter = (
+                    f"{audio_filter},{trim_silence_filter}" if audio_filter else trim_silence_filter
+                )
+
                 # Gemini 3.8 TTS returns WAV (RIFF) by default; 2.5 returns raw PCM — always
                 # transcode to MP3 so downstream (concat, browser playback) stays consistent.
                 is_wav = raw_bytes.startswith(b"RIFF") or "wav" in mime_type.lower()
                 if is_wav:
-                    cmd = ["ffmpeg", "-y", "-i", "-"]
-                    if audio_filter:
-                        cmd.extend(["-af", audio_filter])
-                    cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
+                    cmd = ["ffmpeg", "-y", "-i", "-", "-af", combined_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
                     proc = await asyncio.create_subprocess_exec(
                         *cmd,
                         stdin=asyncio.subprocess.PIPE,
@@ -371,11 +406,8 @@ async def generate_gemini_tts(
                     # Raw PCM (24kHz 16-bit mono): feed with explicit format flags
                     cmd = [
                         "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+                        "-af", combined_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
                     ]
-                    if audio_filter:
-                        cmd.extend(["-af", audio_filter])
-                    cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k", str(out_p)])
-
                     proc = await asyncio.create_subprocess_exec(
                         *cmd,
                         stdin=asyncio.subprocess.PIPE,
@@ -386,19 +418,16 @@ async def generate_gemini_tts(
                     if proc.returncode != 0:
                         raise RuntimeError(f"FFmpeg PCM transcode failed: {stderr.decode()}")
                 else:
-                    if audio_filter:
-                        proc = await asyncio.create_subprocess_exec(
-                            "ffmpeg", "-y", "-i", "-", "-af", audio_filter,
-                            "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
-                            stdin=asyncio.subprocess.PIPE,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                        )
-                        _, stderr = await proc.communicate(input=raw_bytes)
-                        if proc.returncode != 0:
-                            raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
-                    else:
-                        out_p.write_bytes(raw_bytes)
+                    cmd = ["ffmpeg", "-y", "-i", "-", "-af", combined_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _, stderr = await proc.communicate(input=raw_bytes)
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"FFmpeg audio filter failed: {stderr.decode()}")
 
                 return await get_audio_duration(str(out_p))
         except Exception as e:
@@ -457,11 +486,11 @@ async def get_or_generate_voice_sample(
     return sample_path
 
 
-def _split_text_for_tts(text: str, max_chars: int = 2400) -> List[str]:
+def _split_text_for_tts(text: str, max_chars: int = 1000) -> List[str]:
     """Split long script into TTS-safe chunks at paragraph/sentence boundaries (~<=max_chars each).
 
-    Uses a higher chunk budget (2400 chars ~ 2.5-3 mins audio) to minimize chunk boundary
-    intonation shifts, and guarantees each intermediate chunk ends with clean terminal
+    Uses a chunk budget (1000 chars ~ 60-75s audio) to keep LLM audio generation within reliable
+    token and memory limits, and guarantees each intermediate chunk ends with clean terminal
     punctuation (. ! ?) so Gemini TTS does not produce hanging pitch artifacts.
     """
     text = text.strip()
@@ -544,11 +573,15 @@ async def generate_speech_audio(
 ) -> float:
     """Entrypoint for TTS audio generation.
 
-    Gemini TTS: long scripts are chunked at sentence/paragraph boundaries (~2400 chars),
-    synthesized per chunk, then concatenated. 2400 chars ≈ 2.5-3 mins audio.
+    Gemini TTS: long scripts are chunked at sentence/paragraph boundaries (~1000 chars),
+    synthesized per chunk, then concatenated. 1000 chars ≈ 60-75s audio.
     """
+    clean_text = (text or "").strip()
+    if not clean_text:
+        raise ValueError("Teks narasi tidak boleh kosong.")
+
     if provider.lower() == "gemini":
-        chunks = _split_text_for_tts(text, max_chars=2400)
+        chunks = _split_text_for_tts(clean_text, max_chars=1000)
         if len(chunks) == 1:
             return await generate_gemini_tts(
                 chunks[0],
@@ -580,7 +613,7 @@ async def generate_speech_audio(
                 Path(p).unlink(missing_ok=True)
     else:
         return await generate_edge_tts(
-            text,
+            clean_text,
             output_path,
             voice=voice,
             rate=rate,

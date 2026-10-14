@@ -371,9 +371,14 @@ async def generate_tts_and_align_job(
             )
 
             # Step 2: Alignment
+            target_segments = narration.segments
+            if not target_segments:
+                from app.services.narrative import split_into_sentence_segments
+                target_segments = split_into_sentence_segments(narration.raw_text or "")
+
             aligned_segments = await align_audio_with_text(
                 audio_path=str(audio_file),
-                segments=narration.segments,
+                segments=target_segments,
                 total_audio_duration_sec=duration,
             )
 
@@ -445,22 +450,25 @@ async def generate_tts_and_align_job(
 
             clips_count = 0
             if all_scenes:
-                clips = await match_scenes_to_segments(
-                    adapter,
-                    aligned_segments,
-                    all_scenes,
-                    total_audio_duration_sec=duration,
-                )
-                clips_count = len(clips)
-                t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
-                timeline = t_res.scalar_one_or_none()
-                if not timeline:
-                    timeline = Timeline(project_id=project_id, clips=clips, total_duration=duration)
-                    db.add(timeline)
-                else:
-                    timeline.clips = clips
-                    timeline.total_duration = duration
-                await db.commit()
+                try:
+                    clips = await match_scenes_to_segments(
+                        adapter,
+                        aligned_segments,
+                        all_scenes,
+                        total_audio_duration_sec=duration,
+                    )
+                    clips_count = len(clips)
+                    t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
+                    timeline = t_res.scalar_one_or_none()
+                    if not timeline:
+                        timeline = Timeline(project_id=project_id, clips=clips, total_duration=duration)
+                        db.add(timeline)
+                    else:
+                        timeline.clips = clips
+                        timeline.total_duration = duration
+                    await db.commit()
+                except Exception as scene_err:
+                    log.warning("Scene matching after TTS failed (non-fatal): %s", scene_err)
 
             await publish_project_event(
                 project_id,

@@ -44,12 +44,14 @@ def _align_fallback(
     offset_ms: int = 0,
 ) -> List[Dict[str, Any]]:
     """Proportional time allocation fallback if Whisper model is unavailable."""
+    if not segments:
+        return []
     total_chars = sum(len(seg.get("text", "")) for seg in segments)
     if total_chars == 0:
         return segments
 
     cur_ms = max(0, offset_ms)
-    total_ms = int(total_audio_duration_sec * 1000)
+    total_ms = max(int(total_audio_duration_sec * 1000), 1000)
 
     aligned = []
     for s_idx, seg in enumerate(segments):
@@ -99,6 +101,8 @@ def sequence_anchored_forced_alignment(
     Compound words or split tokens (e.g. 'biasamu' <-> ['biasa', 'amu']) are merged,
     and pause/omission gaps never cause word drift for subsequent sentences.
     """
+    if not target_segments:
+        return []
     flat_targets = []
     for s_idx, seg in enumerate(target_segments):
         seg_text = seg.get("text", "")
@@ -229,6 +233,9 @@ async def align_audio_with_text(
     If force_realignment is True, Whisper MUST succeed and process the audio;
     it will not silently mask failures with proportional fallback.
     """
+    if not segments:
+        return []
+
     loop = asyncio.get_running_loop()
 
     def _run_whisper() -> List[Dict[str, Any]]:

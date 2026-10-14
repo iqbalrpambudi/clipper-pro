@@ -269,30 +269,38 @@ class GeminiAdapter(OpenAICompatibleAdapter):
         return await super().analyze_vision(image_paths, prompt)
 
     async def generate_embedding(self, text: str) -> List[float]:
-        """Real embedding via Gemini OpenAI-compat endpoint (text-embedding-004).
+        """Real embedding via Gemini embedContent endpoint (gemini-embedding-001 with 768 dims).
 
         Falls back to local semantic hash on quota exhaustion / API failure.
         """
         if not self._quota_exhausted and self.api_key:
-            try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.post(
-                        f"{self.base_url}/embeddings",
-                        headers=self._get_headers(),
-                        json={"model": self.embedding_model, "input": text},
-                    )
-                    if resp.status_code == 200:
-                        vec = resp.json()["data"][0]["embedding"]
-                        return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
-                    if resp.status_code == 429:
-                        err_text = resp.text.lower()
-                        if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
-                            log.warning("Gemini embedding quota exhausted; falling back to hash embeddings (degraded).")
-                            self._quota_exhausted = True
-                    else:
-                        log.warning("Gemini embedding API returned %d; falling back to hash embeddings (degraded)", resp.status_code)
-            except Exception as e:
-                log.warning("Gemini embedding API failed (%s); falling back to hash embeddings (degraded)", e)
+            candidate_models = ["gemini-embedding-001", "gemini-embedding-2-preview", "text-embedding-004"]
+            for em_model in candidate_models:
+                clean_model = em_model.removeprefix("models/")
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:embedContent?key={self.api_key}"
+                try:
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        resp = await client.post(
+                            url,
+                            json={
+                                "model": f"models/{clean_model}",
+                                "content": {"parts": [{"text": text}]},
+                                "outputDimensionality": EMBEDDING_DIM,
+                            },
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            vec = data.get("embedding", {}).get("values", [])
+                            if vec:
+                                return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+                        if resp.status_code == 429:
+                            err_text = resp.text.lower()
+                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
+                                log.warning("Gemini embedding quota exhausted; falling back to hash embeddings (degraded).")
+                                self._quota_exhausted = True
+                                break
+                except Exception as e:
+                    log.warning("Gemini embedding API failed for %s (%s)", em_model, e)
 
         self._embedding_degraded = True
         return hash_embedding(text)

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 import httpx
+from app.core.config import get_settings
 from app.services.ai_adapters.base import BaseLLMAdapter, EMBEDDING_DIM, hash_embedding
 
 log = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         chat_model: str = "gpt-4o-mini",
         vision_model: str = "gpt-4o-mini",
         embedding_model: str = "text-embedding-3-small",
+        gemini_key: Optional[str] = None,
     ):
         raw_url = (base_url or "https://api.openai.com/v1").rstrip("/")
         # In Docker containers, localhost/127.0.0.1 on the host is reached via host.docker.internal
@@ -28,6 +30,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             raw_url = f"{raw_url}/v1"
         self.base_url = raw_url
         self.api_key = api_key or ""
+        self.gemini_key = gemini_key or ""
         self.chat_model = chat_model
         self.vision_model = vision_model or chat_model
         self.embedding_model = embedding_model
@@ -336,22 +339,46 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         return list(results)
 
     async def generate_embedding(self, text: str) -> List[float]:
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    f"{self.base_url}/embeddings",
-                    headers=self._get_headers(),
-                    json={"model": self.embedding_model, "input": text},
-                )
-                if resp.status_code == 200:
-                    vec = resp.json()["data"][0]["embedding"]
-                    return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
-                log.warning(
-                    "Embedding API returned HTTP %s; scene matching will be degraded",
-                    resp.status_code,
-                )
-        except Exception as e:
-            log.warning("Embedding API failed (%s); scene matching will be degraded", e)
+        if self.api_key:
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        f"{self.base_url}/embeddings",
+                        headers=self._get_headers(),
+                        json={"model": self.embedding_model, "input": text},
+                    )
+                    if resp.status_code == 200:
+                        vec = resp.json()["data"][0]["embedding"]
+                        return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+            except Exception as e:
+                log.warning("OpenAI-compatible embedding API failed (%s)", e)
+
+        # Fallback to Gemini native embedding if Gemini API key is available
+        settings = get_settings()
+        gemini_key = (
+            getattr(self, "gemini_key", None)
+            or (self.api_key if self.api_key and ("AIza" in self.api_key or "AQ." in self.api_key) else "")
+            or settings.GEMINI_API_KEY
+            or settings.AI_API_KEY
+        )
+        if gemini_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={gemini_key}"
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        url,
+                        json={
+                            "model": "models/gemini-embedding-001",
+                            "content": {"parts": [{"text": text}]},
+                            "outputDimensionality": EMBEDDING_DIM,
+                        },
+                    )
+                    if resp.status_code == 200:
+                        vec = resp.json().get("embedding", {}).get("values", [])
+                        if vec:
+                            return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+            except Exception as ge:
+                log.warning("Fallback Gemini embedding failed: %s", ge)
 
         self._embedding_degraded = True
         return hash_embedding(text)
