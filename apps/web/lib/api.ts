@@ -180,7 +180,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ text, provider }),
     }),
-  generateTTS: (projectId: string, data: { provider?: string; voice?: string; rate?: string; pitch?: string }) =>
+  generateTTS: (
+    projectId: string,
+    data: { provider?: string; voice?: string; rate?: string; pitch?: string; model?: string }
+  ) =>
     request<AudioTrack>(`/api/v1/projects/${projectId}/tts/generate`, {
       method: "POST",
       body: JSON.stringify(data),

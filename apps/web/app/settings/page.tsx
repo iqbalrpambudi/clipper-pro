@@ -739,9 +739,12 @@ export default function SettingsPage() {
                       <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (stabil)</option>
                       <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
                       <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (murah, volume tinggi)</option>
+                      <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
+                      <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
+                      <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
                     </select>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      3.8: kualitas acting lebih bagus &amp; stabil untuk narasi panjang. 2.5: default lama, tidak berubah.
+                      Pilih model Gemini TTS aktif. Bila kuota RPD model 2.5 habis, Anda dapat beralih ke 3.8 Flash atau model lainnya.
                     </p>
                   </div>
                 )}

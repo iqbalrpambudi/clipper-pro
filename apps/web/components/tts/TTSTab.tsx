@@ -18,6 +18,8 @@ import {
   Mic,
   Music,
   Wand2,
+  Cpu,
+  Info,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -34,6 +36,45 @@ interface TTSTabProps {
   };
 }
 
+export const GEMINI_TTS_MODELS = [
+  {
+    id: "gemini-2.5-flash-preview-tts",
+    name: "Gemini 2.5 Flash TTS",
+    badge: "Stabil (Default)",
+    desc: "Artikulasi jernih & latensi seimbang. Pilihan default standar.",
+  },
+  {
+    id: "gemini-3.8-flash-tts",
+    name: "Gemini 3.8 Flash TTS",
+    badge: "Kualitas Studio",
+    desc: "Vokal kualitas studio, dinamika emosi & intonasi acting lebih ekspresif.",
+  },
+  {
+    id: "gemini-3.8-flash-lite-tts",
+    name: "Gemini 3.8 Flash-Lite TTS",
+    badge: "Cepat & Hemat",
+    desc: "Latensi super rendah & kuota ringan, ideal saat butuh volume tinggi.",
+  },
+  {
+    id: "gemini-flash-latest",
+    name: "Gemini Flash Latest",
+    badge: "Auto Latest",
+    desc: "Model Gemini Flash versi terbaru yang otomatis diperbarui oleh Google.",
+  },
+  {
+    id: "gemini-3.1-flash-tts-preview",
+    name: "Gemini 3.1 Flash TTS Preview",
+    badge: "Preview 3.1",
+    desc: "Arsitektur preview 3.1 dengan kestabilan ritme vokal.",
+  },
+  {
+    id: "gemini-2.5-pro-preview-tts",
+    name: "Gemini 2.5 Pro TTS Preview",
+    badge: "Pro High-Res",
+    desc: "Model Pro dengan bobot vokal tebal untuk storytelling dokumenter.",
+  },
+];
+
 function formatAudioTime(secs: number): string {
   if (isNaN(secs) || secs < 0) return "00:00";
   const m = Math.floor(secs / 60);
@@ -47,8 +88,24 @@ export function TTSTab({ project }: TTSTabProps) {
 
   const [selectedVoice, setSelectedVoice] = useState("Puck");
   const [provider, setProvider] = useState("gemini");
+  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash-preview-tts");
   const [rate, setRate] = useState("+0%");
   const [pitch, setPitch] = useState("+0Hz");
+
+  // Fetch active config to sync saved tts_provider
+  const { data: appConfig } = useQuery({
+    queryKey: ["model-config"],
+    queryFn: api.getModelConfig,
+  });
+
+  useEffect(() => {
+    if (appConfig?.tts_provider && appConfig.tts_provider.startsWith("gemini-")) {
+      setGeminiModel(appConfig.tts_provider);
+    }
+  }, [appConfig]);
+
+  const selectedModelObj =
+    GEMINI_TTS_MODELS.find((m) => m.id === geminiModel) || GEMINI_TTS_MODELS[0];
 
   // Sample voice audio state
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
@@ -194,6 +251,7 @@ export function TTSTab({ project }: TTSTabProps) {
         voice: selectedVoice,
         rate,
         pitch,
+        model: provider === "gemini" ? geminiModel : undefined,
       });
     },
     onSuccess: async () => {
@@ -302,7 +360,8 @@ export function TTSTab({ project }: TTSTabProps) {
     setSampleAudioPlaying(voiceId);
     setLoadingSampleVoiceId(voiceId);
 
-    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}&t=${Date.now()}`;
+    const modelParam = provider === "gemini" ? `&model=${encodeURIComponent(geminiModel)}` : "";
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&t=${Date.now()}`;
     audio.src = sampleUrl;
     audio.oncanplay = () => {
       setLoadingSampleVoiceId(null);
@@ -389,13 +448,13 @@ export function TTSTab({ project }: TTSTabProps) {
                   setProvider("gemini");
                   setSelectedVoice("Puck");
                 }}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                className={`px-3 py-1 rounded-md text-[11px] font-medium transition ${
                   provider === "gemini"
                     ? "bg-primary text-black font-semibold shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Gemini 2.5
+                Gemini
               </button>
               <button
                 type="button"
@@ -403,17 +462,54 @@ export function TTSTab({ project }: TTSTabProps) {
                   setProvider("edge");
                   setSelectedVoice("id-ID-GadisNeural");
                 }}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+                className={`px-3 py-1 rounded-md text-[11px] font-medium transition ${
                   provider === "edge"
                     ? "bg-primary text-black font-semibold shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Edge Natural
+                Edge
               </button>
             </div>
           }
         >
+          {/* Gemini Model Selection Box */}
+          {provider === "gemini" && (
+            <div className="mb-3.5 p-3 rounded-xl bg-[#121212] border border-[#2E2E2E] space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-semibold text-foreground">Model Gemini TTS</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0">
+                  {selectedModelObj?.badge || "Gemini"}
+                </Badge>
+              </div>
+
+              <select
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-primary transition"
+              >
+                {GEMINI_TTS_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.badge}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
+                <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
+                <p>
+                  {selectedModelObj?.desc}{" "}
+                  <span className="text-primary/90 font-medium">
+                    (Bila limit RPD model 2.5 habis, Anda bisa langsung ganti ke 3.8 Flash atau model lain di sini).
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Voice Cards List (scrollable) */}
           <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
             {filteredVoices.map((v) => {

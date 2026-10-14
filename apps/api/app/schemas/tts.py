@@ -31,6 +31,7 @@ class TTSGenerateRequest(BaseModel):
     voice: Optional[str] = None
     rate: str = "+0%"
     pitch: str = "+0Hz"
+    model: Optional[str] = None
 
 
 class AudioTrackResponse(BaseModel):

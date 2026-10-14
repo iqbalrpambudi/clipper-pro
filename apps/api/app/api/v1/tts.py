@@ -38,6 +38,7 @@ async def list_voices():
 async def get_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
+    model: Optional[str] = None,
     force: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
@@ -45,13 +46,13 @@ async def get_voice_sample(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     api_key = ""
-    tts_model = "gemini-2.5-flash"
+    tts_model = model or "gemini-2.5-flash-preview-tts"
     if cfg:
         if cfg.tts_api_key_encrypted:
             api_key = decrypt_secret(cfg.tts_api_key_encrypted)
         elif cfg.api_key_encrypted:
             api_key = decrypt_secret(cfg.api_key_encrypted)
-        if cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
+        if not model and cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
             tts_model = cfg.tts_provider
 
     try:
@@ -127,6 +128,7 @@ async def trigger_tts_generation(
             provider,
             payload.rate,
             payload.pitch,
+            payload.model,
         )
         await pool.close()
     except Exception:
@@ -139,6 +141,7 @@ async def trigger_tts_generation(
                 provider,
                 payload.rate,
                 payload.pitch,
+                payload.model,
             )
         )
 

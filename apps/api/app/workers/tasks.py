@@ -309,6 +309,7 @@ async def generate_tts_and_align_job(
     provider: str = "gemini",
     rate: str = "+0%",
     pitch: str = "+0Hz",
+    model: Optional[str] = None,
 ) -> None:
     """Async task to generate TTS audio and run forced word alignment."""
     async with SessionLocal() as db:
@@ -319,14 +320,15 @@ async def generate_tts_and_align_job(
         narration.status = "tts_generating"
         await db.commit()
 
+        display_target = f"{model or voice}" if provider == "gemini" else voice
         await publish_project_event(
             project_id,
             task_type="tts_align",
             status="progress",
             progress=15,
             stage="tts_synthesizing",
-            message=f"Mensintesis audio narasi AI dengan {provider.upper()} ({voice})...",
-            data={"narration_id": narration_id, "provider": provider, "voice": voice},
+            message=f"Mensintesis audio narasi AI dengan {provider.upper()} ({display_target})...",
+            data={"narration_id": narration_id, "provider": provider, "voice": voice, "model": model},
         )
 
         audio_dir = storage.get_audio_dir(project_id)
@@ -337,13 +339,13 @@ async def generate_tts_and_align_job(
             res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
-            tts_model = "gemini-2.5-flash"
+            tts_model = model or "gemini-2.5-flash-preview-tts"
             if cfg:
                 if cfg.tts_api_key_encrypted:
                     api_key = decrypt_secret(cfg.tts_api_key_encrypted)
                 elif cfg.api_key_encrypted:
                     api_key = decrypt_secret(cfg.api_key_encrypted)
-                if cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
+                if not model and cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
                     tts_model = cfg.tts_provider
 
             # Step 1: TTS generation

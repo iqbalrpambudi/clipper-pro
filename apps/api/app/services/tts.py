@@ -267,27 +267,13 @@ async def generate_gemini_tts(
     for m in [
         "gemini-3.8-flash-tts",
         "gemini-3.8-flash-lite-tts",
-        "gemini-flash-latest",
         "gemini-3.1-flash-tts-preview",
         "gemini-2.5-flash-preview-tts",
-        "gemini-2.5-pro-preview-tts",
     ]:
         if m not in models_to_try:
             models_to_try.append(m)
 
     payload = {
-        "systemInstruction": {
-            "parts": [
-                {
-                    "text": (
-                        "Anda adalah narator voiceover profesional. "
-                        "Bacakan naskah dengan tempo stabil, artikulasi jelas, "
-                        "nada narasi dokumenter yang tenang, dan pertahankan intonasi serta "
-                        "energi vokal yang konsisten dari awal hingga akhir tanpa lonjakan emosi yang tiba-tiba."
-                    )
-                }
-            ]
-        },
         "contents": [
             {
                 "parts": [
@@ -437,7 +423,9 @@ async def get_or_generate_voice_sample(
 
     clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
     clean_voice = re.sub(r"[^\w\-]", "", voice)
-    sample_path = cache_dir / f"sample_{clean_prov}_{clean_voice}.mp3"
+    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov == "gemini" else ""
+    suffix = f"_{clean_model}" if clean_model else ""
+    sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}.mp3"
 
     if not force_refresh and sample_path.exists() and sample_path.stat().st_size > 1000:
         return sample_path

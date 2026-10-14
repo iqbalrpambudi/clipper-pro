@@ -391,7 +391,7 @@ def test_split_text_for_tts():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tts_payload_includes_system_instruction_and_temperature(tmp_path, monkeypatch):
+async def test_gemini_tts_payload_structure_and_temperature(tmp_path, monkeypatch):
     from app.services.tts import generate_gemini_tts
     import httpx
 
@@ -423,7 +423,7 @@ async def test_gemini_tts_payload_includes_system_instruction_and_temperature(tm
             voice="Puck",
         )
 
-    assert "systemInstruction" in captured_payload
+    assert "systemInstruction" not in captured_payload
     assert captured_payload["generationConfig"]["temperature"] == 0.1
     assert captured_payload["generationConfig"]["responseModalities"] == ["AUDIO"]
 
@@ -659,5 +659,20 @@ async def test_render_job_thumbnail_resolution(tmp_path, monkeypatch):
     # 3. None when file does not exist
     url3 = sm.resolve_render_job_thumbnail_url(thumbnail_path="/non/existent/thumb.jpg")
     assert url3 is None
+
+
+def test_tts_generate_request_accepts_model():
+    from app.schemas.tts import TTSGenerateRequest
+
+    req = TTSGenerateRequest(
+        provider="gemini",
+        voice="Puck",
+        rate="+10%",
+        pitch="+0Hz",
+        model="gemini-3.8-flash-tts",
+    )
+    assert req.provider == "gemini"
+    assert req.voice == "Puck"
+    assert req.model == "gemini-3.8-flash-tts"
 
 
