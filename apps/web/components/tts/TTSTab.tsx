@@ -20,6 +20,7 @@ import {
   Wand2,
   Cpu,
   Info,
+  StopCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -38,10 +39,10 @@ interface TTSTabProps {
 
 export const GEMINI_TTS_MODELS = [
   {
-    id: "gemini-2.5-flash-preview-tts",
-    name: "Gemini 2.5 Flash TTS",
-    badge: "Stabil (Default)",
-    desc: "Artikulasi jernih & latensi seimbang. Pilihan default standar.",
+    id: "gemini-3.8-flash-lite-tts",
+    name: "Gemini 3.8 Flash-Lite TTS",
+    badge: "Direkomendasikan (Cepat & Hemat)",
+    desc: "Latensi super cepat, bebas kuota hemat, artikulasi jernih tanpa jeda.",
   },
   {
     id: "gemini-3.8-flash-tts",
@@ -50,22 +51,22 @@ export const GEMINI_TTS_MODELS = [
     desc: "Vokal kualitas studio, dinamika emosi & intonasi acting lebih ekspresif.",
   },
   {
-    id: "gemini-3.8-flash-lite-tts",
-    name: "Gemini 3.8 Flash-Lite TTS",
-    badge: "Cepat & Hemat",
-    desc: "Latensi super rendah & kuota ringan, ideal saat butuh volume tinggi.",
-  },
-  {
-    id: "gemini-flash-latest",
-    name: "Gemini Flash Latest",
-    badge: "Auto Latest",
-    desc: "Model Gemini Flash versi terbaru yang otomatis diperbarui oleh Google.",
+    id: "gemini-2.5-flash-preview-tts",
+    name: "Gemini 2.5 Flash TTS",
+    badge: "Stabil",
+    desc: "Artikulasi jernih & latensi seimbang.",
   },
   {
     id: "gemini-3.1-flash-tts-preview",
     name: "Gemini 3.1 Flash TTS Preview",
     badge: "Preview 3.1",
     desc: "Arsitektur preview 3.1 dengan kestabilan ritme vokal.",
+  },
+  {
+    id: "gemini-flash-latest",
+    name: "Gemini Flash Latest",
+    badge: "Auto Latest",
+    desc: "Model Gemini Flash versi terbaru yang otomatis diperbarui oleh Google.",
   },
   {
     id: "gemini-2.5-pro-preview-tts",
@@ -88,7 +89,7 @@ export function TTSTab({ project }: TTSTabProps) {
 
   const [selectedVoice, setSelectedVoice] = useState("Puck");
   const [provider, setProvider] = useState("gemini");
-  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash-preview-tts");
+  const [geminiModel, setGeminiModel] = useState("gemini-3.8-flash-lite-tts");
   const [rate, setRate] = useState("+0%");
   const [pitch, setPitch] = useState("+0Hz");
 
@@ -263,6 +264,17 @@ export function TTSTab({ project }: TTSTabProps) {
       showToast(err.message || "Gagal generate audio TTS", "error");
     },
   });
+
+  const handleCancelTTS = async () => {
+    try {
+      await api.cancelProjectTasks(project.id);
+      setIsGeneratingTTS(false);
+      showToast("Proses pembuatan audio dibatalkan", "info");
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
+    } catch (err: any) {
+      showToast(err.message || "Gagal membatalkan TTS", "error");
+    }
+  };
 
   // Realignment & Timing Micro-Adjustment State
   const [offsetMs, setOffsetMs] = useState(0);
@@ -626,11 +638,11 @@ export function TTSTab({ project }: TTSTabProps) {
             {isGeneratingTTS && (
               <div className="p-3.5 rounded-xl bg-[#141414] border border-primary/40 space-y-2 shadow-sm">
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-primary font-medium truncate max-w-[240px]">
+                  <div className="flex items-center gap-2 text-primary font-medium truncate max-w-[200px]">
                     <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                     <span className="truncate">{generationStepText || "Memproses audio TTS..."}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground shrink-0">
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground shrink-0">
                     <span>
                       {Math.floor(generationElapsed / 60)}:
                       {String(generationElapsed % 60).padStart(2, "0")}
@@ -638,6 +650,14 @@ export function TTSTab({ project }: TTSTabProps) {
                     <Badge variant="supabase" className="text-[10px] py-0 px-1.5 font-bold">
                       {Math.round(generationProgress)}%
                     </Badge>
+                    <button
+                      type="button"
+                      onClick={handleCancelTTS}
+                      className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                      title="Batalkan proses TTS"
+                    >
+                      Batal
+                    </button>
                   </div>
                 </div>
                 <div className="w-full bg-[#1C1C1C] rounded-full h-1.5 overflow-hidden border border-[#2E2E2E]">
@@ -649,26 +669,41 @@ export function TTSTab({ project }: TTSTabProps) {
               </div>
             )}
 
-            {/* Generate Button */}
-            <Button
-              variant="supabase"
-              size="lg"
-              className="w-full h-11 text-xs font-semibold gap-2"
-              onClick={() => generateTTSMutation.mutate()}
-              disabled={generateTTSMutation.isPending || isGeneratingTTS || !narrationText}
-            >
-              {isGeneratingTTS ? (
-                <>
+            {/* Generate & Cancel Buttons */}
+            {isGeneratingTTS ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="supabase"
+                  size="lg"
+                  className="flex-1 h-11 text-xs font-semibold gap-2 cursor-wait opacity-85"
+                  disabled
+                >
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Membuat Audio ({Math.round(generationProgress)}%)...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Generate Suara & Word Alignment</span>
-                </>
-              )}
-            </Button>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="h-11 px-4 text-xs font-bold gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                  onClick={handleCancelTTS}
+                  title="Batalkan pembuatan audio & alignment"
+                >
+                  <StopCircle className="w-4 h-4" />
+                  <span>Batal</span>
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="supabase"
+                size="lg"
+                className="w-full h-11 text-xs font-semibold gap-2"
+                onClick={() => generateTTSMutation.mutate()}
+                disabled={generateTTSMutation.isPending || !narrationText}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Generate Suara & Word Alignment</span>
+              </Button>
+            )}
           </div>
         </SectionPanel>
       </div>

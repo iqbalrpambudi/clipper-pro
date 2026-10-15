@@ -273,6 +273,38 @@ async def trigger_youtube_download(
     )
 
 
+@router.post("/{video_id}/cancel")
+async def cancel_video_processing(
+    project_id: str,
+    video_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel and interrupt an in-flight video download or scene detection task."""
+    video = await db.get(SourceVideo, video_id)
+    if not video or video.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Video tidak ditemukan")
+
+    from app.services.cancellation import request_cancellation
+    await request_cancellation(project_id, video_id=video_id)
+
+    video.status = "failed"
+    video.error_message = "Proses dibatalkan oleh pengguna"
+    await db.commit()
+
+    await publish_project_event(
+        project_id,
+        task_type="youtube_download" if video.origin == "ytdlp" else "scene_detect",
+        status="error",
+        progress=0,
+        stage="cancelled",
+        message=f"Proses untuk video '{video.filename}' berhasil dibatalkan.",
+        error="Dibatalkan",
+        data={"video_id": video_id},
+    )
+
+    return {"status": "cancelled", "message": f"Proses video '{video.filename}' berhasil dibatalkan."}
+
+
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_source_video(
     project_id: str,
@@ -282,6 +314,10 @@ async def delete_source_video(
     video = await db.get(SourceVideo, video_id)
     if not video or video.project_id != project_id:
         raise HTTPException(status_code=404, detail="Video tidak ditemukan")
+
+    # Cancel any active worker process (yt-dlp or scene detection) immediately before deleting
+    from app.services.cancellation import request_cancellation
+    await request_cancellation(project_id, video_id=video_id)
 
     if video.file_path and Path(video.file_path).exists():
         try:

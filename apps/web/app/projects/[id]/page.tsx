@@ -27,8 +27,23 @@ interface PageProps {
 
 export default function ProjectStudioPage({ params }: PageProps) {
   const { id } = use(params);
-  const { activeTab, setActiveTab, activeTask, setActiveTask } = useStudioStore();
+  const {
+    activeTab,
+    setActiveTab,
+    activeTask,
+    setActiveTask,
+    setCurrentProjectId,
+    tasksByProject,
+  } = useStudioStore();
   const updateProjectMutation = useUpdateProject();
+
+  // Scope active project ID in store
+  useEffect(() => {
+    setCurrentProjectId(id);
+    return () => {
+      setCurrentProjectId(null);
+    };
+  }, [id, setCurrentProjectId]);
 
   // Establish SSE real-time connection for worker tasks
   useProjectEvents(id);
@@ -37,20 +52,25 @@ export default function ProjectStudioPage({ params }: PageProps) {
 
   // Restore activeTask on page refresh from project database state if not yet set by SSE
   useEffect(() => {
-    if (!project || activeTask) return;
+    if (!project || project.id !== id) return;
+    const projectTask = tasksByProject[id];
+    if (projectTask) return;
 
     const downloadingVid = project.source_videos?.find((v: any) => v.status === "downloading");
     if (downloadingVid) {
-      setActiveTask({
-        project_id: project.id,
-        task_type: "youtube_download",
-        status: "progress",
-        progress: downloadingVid.progress || 15,
-        stage: "downloading",
-        message: `Mendownload video '${downloadingVid.filename}'...`,
-        error: null,
-        data: { video_id: downloadingVid.id, filename: downloadingVid.filename },
-      });
+      setActiveTask(
+        {
+          project_id: project.id,
+          task_type: "youtube_download",
+          status: "progress",
+          progress: downloadingVid.progress || 15,
+          stage: "downloading",
+          message: `Mendownload video '${downloadingVid.filename}'...`,
+          error: null,
+          data: { video_id: downloadingVid.id, filename: downloadingVid.filename },
+        },
+        id
+      );
       return;
     }
 
@@ -58,16 +78,19 @@ export default function ProjectStudioPage({ params }: PageProps) {
       (v: any) => v.status === "processing" || v.status === "pending"
     );
     if (processingVid) {
-      setActiveTask({
-        project_id: project.id,
-        task_type: "scene_detect",
-        status: "progress",
-        progress: processingVid.progress || 25,
-        stage: "vision_tagging",
-        message: `Menganalisis visual AI scene '${processingVid.filename}'...`,
-        error: null,
-        data: { video_id: processingVid.id, filename: processingVid.filename },
-      });
+      setActiveTask(
+        {
+          project_id: project.id,
+          task_type: "scene_detect",
+          status: "progress",
+          progress: processingVid.progress || 25,
+          stage: "vision_tagging",
+          message: `Menganalisis visual AI scene '${processingVid.filename}'...`,
+          error: null,
+          data: { video_id: processingVid.id, filename: processingVid.filename },
+        },
+        id
+      );
       return;
     }
 
@@ -75,53 +98,61 @@ export default function ProjectStudioPage({ params }: PageProps) {
       (j: any) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
     );
     if (activeJob) {
-      setActiveTask({
-        project_id: project.id,
-        task_type: "render",
-        status: "progress",
-        progress: activeJob.progress || 10,
-        stage: "rendering",
-        message: "Sedang me-render video final...",
-        error: null,
-        data: { job_id: activeJob.id },
-      });
+      setActiveTask(
+        {
+          project_id: project.id,
+          task_type: "render",
+          status: "progress",
+          progress: activeJob.progress || 10,
+          stage: "rendering",
+          message: "Sedang me-render video final...",
+          error: null,
+          data: { job_id: activeJob.id },
+        },
+        id
+      );
       return;
     }
 
     if (project.narration?.status === "tts_generating") {
-      setActiveTask({
-        project_id: project.id,
-        task_type: "tts_align",
-        status: "progress",
-        progress: 25,
-        stage: "tts_synthesizing",
-        message: "Mensintesis audio narasi AI...",
-        error: null,
-        data: {},
-      });
+      setActiveTask(
+        {
+          project_id: project.id,
+          task_type: "tts_align",
+          status: "progress",
+          progress: 25,
+          stage: "tts_synthesizing",
+          message: "Mensintesis audio narasi AI...",
+          error: null,
+          data: {},
+        },
+        id
+      );
     }
-  }, [project, activeTask, setActiveTask]);
+  }, [project, id, tasksByProject, setActiveTask]);
 
   // Clean up activeTask if the task is already finished in DB
   useEffect(() => {
-    if (!activeTask || !project) return;
+    if (!activeTask || !project || project.id !== id) return;
+    if (activeTask.project_id !== id) return;
+
     if (activeTask.status === "progress") {
       const vidId = activeTask.data?.video_id;
       const vid = vidId ? project.source_videos?.find((v: any) => v.id === vidId) : null;
 
       if (activeTask.task_type === "youtube_download") {
         if (vid && vid.status !== "downloading") {
-          setActiveTask(null);
+          setActiveTask(null, id);
         }
       }
 
       if (activeTask.task_type === "scene_detect") {
         if (vid && vid.status === "ready") {
-          setActiveTask(null);
+          setActiveTask(null, id);
         }
       }
     }
-  }, [project, activeTask, setActiveTask]);
+  }, [project, id, activeTask, setActiveTask]);
 
   if (isLoading) {
     return (

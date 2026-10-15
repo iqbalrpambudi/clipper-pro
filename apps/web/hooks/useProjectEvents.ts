@@ -64,7 +64,7 @@ export function useProjectEvents(projectId: string) {
           clearTimerRef.current = null;
         }
 
-        setActiveTask(task);
+        setActiveTask(task, projectId);
 
         // Auto-refresh queries for real-time sync during render or tasks
         if (task.task_type === "render") {
@@ -85,7 +85,7 @@ export function useProjectEvents(projectId: string) {
 
           // Retain success status briefly, then auto-dismiss
           clearTimerRef.current = setTimeout(() => {
-            setActiveTask(null);
+            setActiveTask(null, projectId);
           }, 3500);
         } else if (task.status === "error") {
           if (watchdogTimerRef.current) {
@@ -93,15 +93,20 @@ export function useProjectEvents(projectId: string) {
             watchdogTimerRef.current = null;
           }
 
-          showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
+          const isCancelled = task.stage === "cancelled" || task.error === "Dibatalkan";
+          if (isCancelled) {
+            showToast(task.message || "Proses worker berhasil dibatalkan", "info");
+          } else {
+            showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
+          }
           queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId], refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: ["scenes", projectId], refetchType: "all" });
 
-          // Keep error visible longer so user can read what went wrong
+          // Keep cancelled toast brief, error visible longer
           clearTimerRef.current = setTimeout(() => {
-            setActiveTask(null);
-          }, 7000);
+            setActiveTask(null, projectId);
+          }, isCancelled ? 2500 : 7000);
         }
       } catch (err) {
         console.warn("[SSE] Error parsing event message", err);

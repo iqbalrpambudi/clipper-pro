@@ -18,6 +18,7 @@ import {
   HardDrive,
   Stamp,
   X,
+  StopCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -136,6 +137,18 @@ export function RenderTab({ project }: RenderTabProps) {
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal membersihkan riwayat render", "error");
+    },
+  });
+
+  const cancelJobMutation = useMutation({
+    mutationFn: (jobId: string) => api.cancelRenderJob(project.id, jobId),
+    onSuccess: async (data) => {
+      await refetchJobs();
+      await queryClient.refetchQueries({ queryKey: ["project", project.id] });
+      showToast(data.message || "Rendering video berhasil dibatalkan", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal membatalkan rendering", "error");
     },
   });
 
@@ -482,6 +495,25 @@ export function RenderTab({ project }: RenderTabProps) {
                         <Badge variant="destructive" className="text-[10px] gap-1 font-semibold">
                           <AlertCircle className="w-3 h-3" /> Gagal
                         </Badge>
+                      )}
+
+                      {/* Cancel in-flight render job */}
+                      {(job.status === "rendering" || job.status === "queued") && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => cancelJobMutation.mutate(job.id)}
+                          disabled={cancelJobMutation.isPending && cancelJobMutation.variables === job.id}
+                          className="h-6 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1 px-2 shadow-sm"
+                          title="Batalkan proses render video ini"
+                        >
+                          {cancelJobMutation.isPending && cancelJobMutation.variables === job.id ? (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          ) : (
+                            <StopCircle className="w-2.5 h-2.5" />
+                          )}
+                          <span>Batalkan</span>
+                        </Button>
                       )}
 
                       {/* Delete Single Job Action */}

@@ -23,6 +23,11 @@ from app.services.alignment import align_audio_with_text
 from app.services.matching import match_scenes_to_segments
 from app.services.subtitle_ass import generate_ass_subtitles
 from app.services.renderer import render_timeline_video
+from app.services.cancellation import (
+    is_cancelled,
+    TaskCancelledException,
+    clear_cancellation,
+)
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +59,8 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
         out_file = out_dir / f"yt_{video.id}.mp4"
 
         async def _progress(pct: int):
+            if await is_cancelled(video.project_id, video_id=video_id):
+                raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")
             bounded_pct = max(5, min(pct, 95))
             async with SessionLocal() as inner_db:
                 v = await inner_db.get(SourceVideo, video_id)
@@ -76,7 +83,14 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 output_path=str(out_file),
                 format_id=video.selected_resolution,
                 progress_callback=_progress,
+                project_id=video.project_id,
+                video_id=video.id,
             )
+
+            if await is_cancelled(video.project_id, video_id=video_id):
+                Path(downloaded_path).unlink(missing_ok=True)
+                raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")
+
             meta = await get_video_metadata(downloaded_path)
 
             # Enforce duration cap for downloads too (not just /yt-info)
@@ -103,6 +117,9 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                         video.filename = clean_t if clean_t.lower().endswith(".mp4") else f"{clean_t}.mp4"
                 except Exception as ex:
                     log.debug("Could not resolve video title from yt-dlp metadata: %s", ex)
+
+            if await is_cancelled(video.project_id, video_id=video_id):
+                raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")
 
             # Smooth direct transition to scene detection (do NOT set ready here)
             video.status = "processing"
@@ -132,6 +149,24 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
 
             # Auto trigger scene detection for downloaded video
             await detect_scenes_job(ctx, video_id)
+
+        except TaskCancelledException as ce:
+            log.info("YouTube download was cancelled for %s: %s", video_id, ce)
+            video.status = "failed"
+            video.error_message = "Download dibatalkan oleh pengguna"
+            await db.commit()
+
+            await publish_project_event(
+                video.project_id,
+                task_type="youtube_download",
+                status="error",
+                progress=0,
+                stage="cancelled",
+                message="Download video dibatalkan oleh pengguna.",
+                error="Dibatalkan",
+                data={"video_id": video_id},
+            )
+            return
 
         except Exception as e:
             log.exception("YouTube download failed for %s", video_id)
@@ -176,6 +211,9 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
         scene_out_dir = storage.get_scenes_dir(video.project_id)
 
         try:
+            if await is_cancelled(video.project_id, video_id=video_id):
+                raise TaskCancelledException("Deteksi scene dibatalkan oleh pengguna.")
+
             # Capture old scene rows so their thumbnails can be cleaned from disk
             old_res = await db.execute(
                 select(Scene.thumbnail_path).where(Scene.source_video_id == video_id)
@@ -188,6 +226,9 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
 
             scenes_data = await detect_scenes(video.file_path, str(scene_out_dir))
             total_scenes = len(scenes_data)
+
+            if await is_cancelled(video.project_id, video_id=video_id):
+                raise TaskCancelledException("Deteksi scene dibatalkan oleh pengguna.")
 
             # Old thumbnails no longer referenced -> delete from disk
             for tp in old_thumbnails:
@@ -221,6 +262,9 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
             batches = [scenes_data[i : i + BATCH_SIZE] for i in range(0, total_scenes, BATCH_SIZE)]
 
             for bi in range(0, len(batches), BATCH_CONCURRENCY):
+                if await is_cancelled(video.project_id, video_id=video_id):
+                    raise TaskCancelledException("Analisis visual scene dibatalkan oleh pengguna.")
+
                 wave = batches[bi : bi + BATCH_CONCURRENCY]
 
                 # Analisis beberapa batch secara paralel
@@ -261,6 +305,9 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                     data={"video_id": video_id, "current": min(processed_count, total_scenes), "total": total_scenes},
                 )
 
+            if await is_cancelled(video.project_id, video_id=video_id):
+                raise TaskCancelledException("Deteksi visual scene dibatalkan oleh pengguna.")
+
             video.status = "ready"
             video.progress = 100
             await db.commit()
@@ -281,6 +328,24 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                     "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
                 },
             )
+
+        except TaskCancelledException as ce:
+            log.info("Scene detection cancelled for %s: %s", video_id, ce)
+            video.status = "failed"
+            video.error_message = "Analisis scene dibatalkan oleh pengguna"
+            await db.commit()
+
+            await publish_project_event(
+                video.project_id,
+                task_type="scene_detect",
+                status="error",
+                progress=0,
+                stage="cancelled",
+                message="Analisis visual scene dibatalkan oleh pengguna.",
+                error="Dibatalkan",
+                data={"video_id": video_id},
+            )
+            return
 
         except Exception as e:
             log.exception("Scene detection failed for video %s", video_id)
@@ -335,11 +400,14 @@ async def generate_tts_and_align_job(
         audio_file = audio_dir / f"tts_{narration.id}.mp3"
 
         try:
+            if await is_cancelled(project_id):
+                raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
             # Retrieve active ModelConfig for decrypted API key & model
             res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
-            tts_model = model or "gemini-2.5-flash-preview-tts"
+            tts_model = model or "gemini-3.8-flash-lite-tts"
             if cfg:
                 if cfg.tts_api_key_encrypted:
                     api_key = decrypt_secret(cfg.tts_api_key_encrypted)
@@ -348,7 +416,8 @@ async def generate_tts_and_align_job(
                 if not model and cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
                     tts_model = cfg.tts_provider
 
-            # Step 1: TTS generation
+            # Step 1: TTS generation with per-segment chunking to prevent silent segment 2
+            fallback_info: Dict[str, Any] = {}
             duration = await generate_speech_audio(
                 text=narration.raw_text,
                 output_path=str(audio_file),
@@ -358,17 +427,36 @@ async def generate_tts_and_align_job(
                 pitch=pitch,
                 api_key=api_key,
                 model=tts_model,
+                segments=narration.segments,
+                fallback_info=fallback_info,
             )
 
-            await publish_project_event(
-                project_id,
-                task_type="tts_align",
-                status="progress",
-                progress=50,
-                stage="forced_alignment",
-                message="Audio selesai. Menjalankan forced word-level alignment & timestamping...",
-                data={"narration_id": narration_id, "duration": duration},
-            )
+            actual_provider = fallback_info.get("fallback_provider", provider)
+            actual_voice = fallback_info.get("fallback_voice", voice)
+
+            if await is_cancelled(project_id):
+                raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
+            if fallback_info.get("fell_back"):
+                await publish_project_event(
+                    project_id,
+                    task_type="tts_align",
+                    status="progress",
+                    progress=50,
+                    stage="forced_alignment",
+                    message=f"Gemini quota limit tercapai, dialihkan ke Edge-TTS ({actual_voice}). Word alignment sedang disinkronkan...",
+                    data={"narration_id": narration_id, "duration": duration, "provider": actual_provider, "voice": actual_voice},
+                )
+            else:
+                await publish_project_event(
+                    project_id,
+                    task_type="tts_align",
+                    status="progress",
+                    progress=50,
+                    stage="forced_alignment",
+                    message="Audio selesai. Menjalankan forced word-level alignment & timestamping...",
+                    data={"narration_id": narration_id, "duration": duration},
+                )
 
             # Step 2: Alignment
             target_segments = narration.segments
@@ -386,7 +474,7 @@ async def generate_tts_and_align_job(
             narration.status = "aligned"
 
             # Cost estimation
-            cost_est = estimate_tts_cost(narration.raw_text, provider)
+            cost_est = estimate_tts_cost(narration.raw_text, actual_provider)
 
             # Find existing generating AudioTrack or create new
             track_res = await db.execute(
@@ -399,8 +487,8 @@ async def generate_tts_and_align_job(
                 track = AudioTrack(
                     project_id=project_id,
                     narration_id=narration.id,
-                    provider=provider,
-                    voice=voice,
+                    provider=actual_provider,
+                    voice=actual_voice,
                     rate=rate,
                     pitch=pitch,
                     file_path=str(audio_file),
@@ -410,8 +498,8 @@ async def generate_tts_and_align_job(
                 )
                 db.add(track)
             else:
-                track.provider = provider
-                track.voice = voice
+                track.provider = actual_provider
+                track.voice = actual_voice
                 track.rate = rate
                 track.pitch = pitch
                 track.file_path = str(audio_file)
@@ -487,6 +575,31 @@ async def generate_tts_and_align_job(
                     "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
                 },
             )
+
+        except TaskCancelledException as ce:
+            log.info("TTS/Alignment was cancelled for narration %s: %s", narration_id, ce)
+            narration.status = "failed"
+            t_res = await db.execute(
+                select(AudioTrack)
+                .where(AudioTrack.project_id == project_id, AudioTrack.narration_id == narration.id)
+                .order_by(AudioTrack.created_at.desc())
+            )
+            failed_track = t_res.scalars().first()
+            if failed_track:
+                failed_track.status = "failed"
+            await db.commit()
+
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="error",
+                progress=0,
+                stage="cancelled",
+                message="Pembuatan suara dan alignment dibatalkan oleh pengguna.",
+                error="Dibatalkan",
+                data={"narration_id": narration_id},
+            )
+            return
 
         except Exception as e:
             log.exception("TTS/Alignment failed for narration %s", narration_id)
@@ -646,6 +759,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             )
 
         try:
+            if await is_cancelled(project.id, job_id=render_job_id):
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+
             final_mp4 = await render_timeline_video(
                 clips=timeline.clips,
                 source_videos_map=source_videos_map,
@@ -658,7 +774,13 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 watermark=project.watermark,
                 is_preview=(job.render_type == "preview"),
                 progress_callback=_progress,
+                project_id=project.id,
+                job_id=render_job_id,
             )
+
+            if await is_cancelled(project.id, job_id=render_job_id):
+                Path(final_mp4).unlink(missing_ok=True)
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
 
             # Generate poster thumbnail snapshot from the rendered video
             thumb_file = renders_dir / f"render_{job.render_type}_{job.id}_thumb.jpg"
@@ -721,6 +843,25 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     "thumbnail_url": storage.to_relative_url(thumb_path_str),
                 },
             )
+
+        except TaskCancelledException as ce:
+            log.info("Render job %s was cancelled by user: %s", render_job_id, ce)
+            job.status = "failed"
+            job.error_message = "Rendering dibatalkan oleh pengguna"
+            job.log_output = "Rendering video dibatalkan oleh pengguna."
+            await db.commit()
+
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="error",
+                progress=0,
+                stage="cancelled",
+                message="Rendering video dibatalkan oleh pengguna.",
+                error="Dibatalkan",
+                data={"job_id": render_job_id},
+            )
+            return
 
         except Exception as e:
             log.exception("Render job %s failed", render_job_id)

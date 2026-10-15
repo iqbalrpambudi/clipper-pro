@@ -10,6 +10,7 @@ from app.api.v1.subtitles import router as subtitles_router
 from app.api.v1.render import router as render_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.events import router as events_router
+from app.api.v1.tasks import router as tasks_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -24,4 +25,5 @@ api_router.include_router(subtitles_router)
 api_router.include_router(render_router)
 api_router.include_router(settings_router)
 api_router.include_router(events_router)
+api_router.include_router(tasks_router)
 

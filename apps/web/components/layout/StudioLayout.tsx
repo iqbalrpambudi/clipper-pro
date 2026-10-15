@@ -40,6 +40,7 @@ export interface StudioLayoutProps {
 
 export function StudioLayout({
   projectName,
+  projectId,
   aspectRatio,
   resolution,
   activeTab,
@@ -221,7 +222,7 @@ export function StudioLayout({
       </header>
 
       {/* Real-time Global Worker Task Floating Indicator */}
-      <GlobalTaskIndicator />
+      <GlobalTaskIndicator projectId={projectId} />
 
       {/* Main Studio Body Canvas */}
       <main

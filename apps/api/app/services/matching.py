@@ -237,17 +237,24 @@ async def match_scenes_to_segments(
             else:
                 recency_penalty = 1.0
 
-            # Proportional Duration Fit (allows smooth 0.70x-0.95x speed stretching without harsh cut-off)
+            # Anti-Flash & Anti-Micro-Cut Duration Fit
+            # In professional video editing, a visual shot must be at least 1.8s (or 54 frames)
+            # to be comprehensible to human viewers without feeling like an abrupt flash.
+            # Micro-scenes (<1.8s) get an 85% penalty so they are strictly avoided if normal footage exists.
             sc_dur = sc.get("duration", 4.0)
             ratio = sc_dur / target_duration
-            if sc_dur >= target_duration:
-                dur_fit = 1.0
-            elif ratio >= 0.70:
-                dur_fit = 0.92
-            elif ratio >= 0.50:
-                dur_fit = 0.75
+            if sc_dur < 1.8:
+                dur_fit = 0.15  # Severe penalty against micro-scenes (<1.8s) to prevent "scene nyempil"
+            elif sc_dur >= target_duration + 0.5:
+                dur_fit = 1.15  # Generous headroom: centers smoothly without touching cut boundaries
+            elif sc_dur >= target_duration:
+                dur_fit = 1.05  # Perfect fit
+            elif ratio >= 0.75:
+                dur_fit = 0.92  # Gentle smooth stretch (speed 0.75x - 0.95x)
+            elif ratio >= 0.60:
+                dur_fit = 0.60  # Moderate stretch
             else:
-                dur_fit = 0.40  # Micro-scenes (<1.0s) or excessive stretching
+                dur_fit = 0.25  # Severe stretch required
 
             # Narrative Chronological Arc Affinity: gentle alignment with story progress
             p_sc = sc.get("start_time", 0.0) / max(total_video_dur, 1.0)
@@ -271,11 +278,14 @@ async def match_scenes_to_segments(
         scene_start = best_scene.get("start_time", 0.0)
         scene_end = best_scene.get("end_time", scene_start + scene_dur)
 
-        # Anti-bleed safe boundaries: keep a minimum safety margin (33ms at start, 66ms at end)
-        # to ensure cuts NEVER touch or bleed into the first frame of the next scene.
-        safe_scene_start = round(scene_start + (0.033 if scene_start > 0.1 else 0.0), 3)
-        safe_scene_end = round(max(safe_scene_start + 0.5, scene_end - 0.066), 3)
-        safe_available_dur = round(max(0.4, safe_scene_end - safe_scene_start), 3)
+        # Anti-bleed safe boundaries: keep a strict safety margin
+        # (120ms at start, 150ms at end; approx 4 to 5 frames at 30fps)
+        # to ensure cuts NEVER touch or bleed into the first/last frame of adjacent scenes.
+        head_margin = 0.120 if scene_start > 0.15 else 0.033
+        tail_margin = 0.150
+        safe_scene_start = round(scene_start + head_margin, 3)
+        safe_scene_end = round(max(safe_scene_start + 0.4, scene_end - tail_margin), 3)
+        safe_available_dur = round(max(0.3, safe_scene_end - safe_scene_start), 3)
 
         # Metode A: Center-Weighted Slice Extraction (Scene cukup panjang untuk window narasi)
         if safe_available_dur >= target_duration:
@@ -301,37 +311,26 @@ async def match_scenes_to_segments(
             # Scene lebih pendek dari window narasi:
             diff = round(target_duration - safe_available_dur, 2)
 
-            # Jika selisih wajar (<= 1.6s) atau hanya ada 1 scene kandidat, gunakan Smart Speed Stretch
-            # Speed dihitung secara presisi: speed = safe_available_dur / target_duration
-            # sehingga footage sumber pas terpakai dari safe_start hingga safe_end tanpa bleed!
-            if diff <= 1.6 or len(scored_scenes) < 2:
-                exact_speed = round(safe_available_dur / target_duration, 3)
-                clips.append({
-                    "id": str(uuid.uuid4()),
-                    "segment_id": win["primary_segment_id"],
-                    "scene_id": best_scene["id"],
-                    "source_video_id": best_scene["source_video_id"],
-                    "timeline_start": snap_to_frame(start_sec),
-                    "timeline_end": snap_to_frame(end_sec),
-                    "clip_start": snap_to_frame(safe_scene_start),
-                    "clip_end": snap_to_frame(safe_scene_end),
-                    "speed": max(0.70, min(0.98, exact_speed)),
-                    "text": win["text"],
-                    "thumbnail_url": best_scene.get("thumbnail_url"),
-                    "background_fill_override": None,
-                })
-            else:
-                # Jika selisih besar, bagi menjadi 2 potongan seimbang HANYA jika kedua potongan >= 1.8s
+            # Hanya bagi menjadi 2 scene jika window narasi panjang (>= 4.4s) DAN kedua potongan >= 2.2s.
+            # Ini mencegah rapid micro-cuts (scene berganti terlalu cepat di tengah kalimat).
+            should_split = (
+                target_duration >= 4.4
+                and len(scored_scenes) >= 2
+                and safe_available_dur >= 2.0
+            )
+
+            if should_split:
                 half_time = round(target_duration / 2.0, 2)
                 second_scene = scored_scenes[1][1]
                 s2_dur = second_scene.get("duration", 4.0)
                 s2_start = second_scene.get("start_time", 0.0)
                 s2_end = second_scene.get("end_time", s2_start + s2_dur)
-                s2_safe_start = round(s2_start + (0.033 if s2_start > 0.1 else 0.0), 3)
-                s2_safe_end = round(max(s2_safe_start + 0.5, s2_end - 0.066), 3)
-                s2_safe_dur = round(max(0.4, s2_safe_end - s2_safe_start), 3)
+                s2_head_margin = 0.120 if s2_start > 0.15 else 0.033
+                s2_safe_start = round(s2_start + s2_head_margin, 3)
+                s2_safe_end = round(max(s2_safe_start + 0.4, s2_end - 0.150), 3)
+                s2_safe_dur = round(max(0.3, s2_safe_end - s2_safe_start), 3)
 
-                if half_time >= 1.8 and safe_available_dur >= 1.8 and s2_safe_dur >= 1.8:
+                if s2_safe_dur >= 2.0:
                     # Clip 1
                     s1_slack = max(0.0, safe_available_dur - half_time)
                     s1_offset = round(s1_slack / 2.0, 3)
@@ -375,23 +374,26 @@ async def match_scenes_to_segments(
                         "thumbnail_url": second_scene.get("thumbnail_url"),
                         "background_fill_override": None,
                     })
+                    used_scene_ids = global_used_ids
                     used_scene_ids.add(second_scene["id"])
-                else:
-                    # Fallback: stretch best_scene safely without making any micro-cut
-                    exact_speed = round(safe_available_dur / target_duration, 3)
-                    clips.append({
-                        "id": str(uuid.uuid4()),
-                        "segment_id": win["primary_segment_id"],
-                        "scene_id": best_scene["id"],
-                        "source_video_id": best_scene["source_video_id"],
-                        "timeline_start": snap_to_frame(start_sec),
-                        "timeline_end": snap_to_frame(end_sec),
-                        "clip_start": snap_to_frame(safe_scene_start),
-                        "clip_end": snap_to_frame(safe_scene_end),
-                        "speed": max(0.70, min(0.98, exact_speed)),
-                        "text": win["text"],
-                        "thumbnail_url": best_scene.get("thumbnail_url"),
-                        "background_fill_override": None,
-                    })
+                    continue
+
+            # Default: Single continuous shot dengan Smart Speed Stretch
+            # Menjamin 1 ide kalimat = 1 visual utuh tanpa potongan 'nyempil' di tengah kalimat.
+            exact_speed = round(safe_available_dur / target_duration, 3)
+            clips.append({
+                "id": str(uuid.uuid4()),
+                "segment_id": win["primary_segment_id"],
+                "scene_id": best_scene["id"],
+                "source_video_id": best_scene["source_video_id"],
+                "timeline_start": snap_to_frame(start_sec),
+                "timeline_end": snap_to_frame(end_sec),
+                "clip_start": snap_to_frame(safe_scene_start),
+                "clip_end": snap_to_frame(safe_scene_end),
+                "speed": max(0.68, min(0.98, exact_speed)),
+                "text": win["text"],
+                "thumbnail_url": best_scene.get("thumbnail_url"),
+                "background_fill_override": None,
+            })
 
     return clips

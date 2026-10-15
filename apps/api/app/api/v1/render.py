@@ -203,3 +203,36 @@ async def download_rendered_video(
         media_type="video/mp4",
     )
 
+
+@router.post("/jobs/{job_id}/cancel")
+async def cancel_render_job(
+    project_id: str,
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel and interrupt an active video rendering job."""
+    job = await db.get(RenderJob, job_id)
+    if not job or job.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Render job tidak ditemukan")
+
+    from app.services.cancellation import request_cancellation
+    from app.core.events import publish_project_event
+    await request_cancellation(project_id, job_id=job_id)
+
+    job.status = "failed"
+    job.error_message = "Rendering dibatalkan oleh pengguna"
+    await db.commit()
+
+    await publish_project_event(
+        project_id,
+        task_type="render",
+        status="error",
+        progress=0,
+        stage="cancelled",
+        message="Rendering video berhasil dibatalkan dan diinterupsi.",
+        error="Dibatalkan",
+        data={"job_id": job_id},
+    )
+
+    return {"status": "cancelled", "message": "Rendering video berhasil dibatalkan."}
+

@@ -18,19 +18,35 @@ def _escape_filter_path(path: str) -> str:
     escaped = str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return escaped
 
-async def _run_ffmpeg(cmd: List[str]) -> tuple[int, bytes]:
+from app.services.cancellation import (
+    register_process,
+    unregister_process,
+    is_cancelled,
+    TaskCancelledException,
+)
+
+
+async def _run_ffmpeg(cmd: List[str], proc_key: Optional[str] = None) -> tuple[int, bytes]:
     """Run an ffmpeg command, killing the child if the task is cancelled."""
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
+    if proc_key:
+        register_process(proc_key, proc)
     try:
         _, stderr = await proc.communicate()
-    except asyncio.CancelledError:
-        proc.kill()
-        await proc.wait()
+    except (asyncio.CancelledError, TaskCancelledException):
+        try:
+            proc.kill()
+            await proc.wait()
+        except ProcessLookupError:
+            pass
         raise
+    finally:
+        if proc_key:
+            unregister_process(proc_key)
     return proc.returncode or 0, stderr
 
 
@@ -154,10 +170,14 @@ async def render_timeline_video(
     watermark: Optional[Dict[str, Any]] = None,
     is_preview: bool = False,
     progress_callback: Optional[Callable[[int, str], Any]] = None,
+    project_id: Optional[str] = None,
+    job_id: Optional[str] = None,
 ) -> str:
-    """Render structured timeline into final MP4 video using FFmpeg."""
+    """Render structured timeline into final MP4 video using FFmpeg with instant cancellation support."""
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    proc_key = f"render:{job_id}" if job_id else f"render:{out_p.stem}"
 
     # Resolution dimensions
     if aspect_ratio == "9:16":
@@ -191,6 +211,10 @@ async def render_timeline_video(
         total_clips = len(clips)
 
         for idx, clip in enumerate(clips):
+            # Check cancellation at each clip boundary
+            if await is_cancelled(project_id, job_id=job_id):
+                log.info("Rendering cancelled by user at clip %d/%d (job=%s)", idx, total_clips, job_id)
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
             vid_id = clip["source_video_id"]
             src_file = source_videos_map.get(vid_id)
             if not src_file or not Path(src_file).exists():
@@ -283,6 +307,10 @@ async def render_timeline_video(
                     f"[bg_solid][fg]overlay=(W-w)/2:(H-h)/2:shortest=1,setsar=1,fps=30{post_chain}"
                 )
 
+            # Input demuxer read duration: give a slight +0.3s buffer so container packet boundaries
+            # never starve the decoder before trim filter finishes its exact safe_read_duration.
+            demux_read_dur = safe_read_duration + 0.30
+
             cut_cmd = [
                 "ffmpeg",
                 "-y",
@@ -290,7 +318,7 @@ async def render_timeline_video(
                 "-ss",
                 f"{clip_start:.4f}",
                 "-t",
-                f"{safe_read_duration:.4f}",
+                f"{demux_read_dur:.4f}",
                 "-i",
                 src_file,
                 "-filter_complex",
@@ -309,7 +337,7 @@ async def render_timeline_video(
                 str(chunk_out),
             ]
 
-            ret, stderr = await _run_ffmpeg(cut_cmd)
+            ret, stderr = await _run_ffmpeg(cut_cmd, proc_key=proc_key)
             if ret != 0:
                 log.error("Clip chunk %d failed: %s", idx, stderr.decode()[-300:])
                 failed_clips.append(
@@ -356,7 +384,7 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(55, "Menggabungkan urutan klip video...")
 
-        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd)
+        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key)
         if ret_concat != 0:
             err_msg = stderr_concat.decode()[-400:]
             log.error("Concat failed: %s", err_msg)
@@ -426,7 +454,7 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(85, "Merender hasil akhir video...")
 
-        ret_final, stderr_final = await _run_ffmpeg(cmd_final)
+        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key)
 
         if ret_final != 0:
             err_msg = stderr_final.decode()[-400:]

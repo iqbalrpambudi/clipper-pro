@@ -69,7 +69,7 @@ export default function SettingsPage() {
   const [visionModel, setVisionModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [ttsProvider, setTtsProvider] = useState("gemini");
-  const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
+  const [ttsModel, setTtsModel] = useState("gemini-3.8-flash-lite-tts");
   const [ttsApiKey, setTtsApiKey] = useState("");
 
   const [testResult, setTestResult] = useState<any>(null);
@@ -193,7 +193,7 @@ export default function SettingsPage() {
       if (config.tts_provider && config.tts_provider.startsWith("gemini-")) {
         setTtsModel(config.tts_provider);
       } else {
-        setTtsModel("gemini-2.5-flash-preview-tts");
+        setTtsModel("gemini-3.8-flash-lite-tts");
       }
     }
   }, [config]);
@@ -736,15 +736,15 @@ export default function SettingsPage() {
                       onChange={(e) => setTtsModel(e.target.value)}
                       className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
-                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (stabil)</option>
+                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (direkomendasikan, cepat & hemat)</option>
                       <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
-                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (murah, volume tinggi)</option>
-                      <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
+                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (stabil)</option>
                       <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
+                      <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
                       <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
                     </select>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Pilih model Gemini TTS aktif. Bila kuota RPD model 2.5 habis, Anda dapat beralih ke 3.8 Flash atau model lainnya.
+                      Pilih model Gemini TTS aktif. Gemini 3.8 Flash-Lite direkomendasikan karena performa cepat, tanpa jeda senyap, dan hemat kuota.
                     </p>
                   </div>
                 )}

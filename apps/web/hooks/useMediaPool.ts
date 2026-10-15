@@ -26,7 +26,7 @@ export function useDeleteMedia(projectId: string) {
 
       // Instantly clear active task if it was on this video
       if (activeTask?.data?.video_id === vidId) {
-        setActiveTask(null);
+        setActiveTask(null, projectId);
       }
 
       return { prevProject };
@@ -42,6 +42,23 @@ export function useDeleteMedia(projectId: string) {
     },
     onSuccess: () => {
       showToast("Video dihapus dari Media Pool", "info");
+    },
+  });
+}
+
+export function useCancelMedia(projectId: string) {
+  const queryClient = useQueryClient();
+  const { showToast, setActiveTask } = useStudioStore();
+
+  return useMutation({
+    mutationFn: (vidId: string) => api.cancelMedia(projectId, vidId),
+    onSuccess: (res) => {
+      showToast(res.message || "Proses video dibatalkan", "info");
+      setActiveTask(null, projectId);
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal membatalkan proses video", "error");
     },
   });
 }

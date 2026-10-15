@@ -264,7 +264,7 @@ async def generate_gemini_tts(
     voice: str = "Puck",
     rate: str = "+0%",
     pitch: str = "+0Hz",
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: str = "gemini-3.8-flash-lite-tts",
 ) -> float:
     """Generate audio via Gemini API multimodal audio endpoint (:generateContent) with rate & pitch tuning."""
     settings = get_settings()
@@ -276,7 +276,7 @@ async def generate_gemini_tts(
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    clean_model = (model or "gemini-2.5-flash-preview-tts").strip().removeprefix("models/")
+    clean_model = (model or "gemini-3.8-flash-lite-tts").strip().removeprefix("models/")
 
     # Normalize voice name to Gemini prebuilt voice catalog
     voice_lookup = {
@@ -288,11 +288,11 @@ async def generate_gemini_tts(
     }
     actual_voice = voice_lookup.get(voice.lower().strip(), voice.strip())
 
-    # Supported multimodal audio TTS model candidates
+    # Supported multimodal audio TTS model candidates in priority order
     models_to_try = [clean_model]
     for m in [
-        "gemini-3.8-flash-tts",
         "gemini-3.8-flash-lite-tts",
+        "gemini-3.8-flash-tts",
         "gemini-3.1-flash-tts-preview",
         "gemini-2.5-flash-preview-tts",
     ]:
@@ -301,6 +301,11 @@ async def generate_gemini_tts(
 
     clean_text = " ".join(line.strip() for line in text.splitlines() if line.strip())
 
+    # CRITICAL: Gemini TTS models read whatever text is in the parts directly.
+    # Never add meta-prompt instructions (e.g. "Please read aloud...") or systemInstruction
+    # because the TTS model will either speak the instruction aloud, get confused, or fail with HTTP 400.
+    # Do NOT pass maxOutputTokens or temperature: omitting them allows the audio decoder to stop
+    # naturally with finishReason: STOP as soon as it finishes reciting the provided text.
     payload = {
         "contents": [
             {
@@ -313,7 +318,6 @@ async def generate_gemini_tts(
         ],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 8192,
             "responseModalities": ["AUDIO"],
             "speechConfig": {
                 "voiceConfig": {
@@ -331,6 +335,12 @@ async def generate_gemini_tts(
         try:
             async with httpx.AsyncClient(timeout=90.0) as client:
                 resp = await client.post(url, json=payload)
+                # If model rejects systemInstruction with HTTP 400, retry without it
+                if resp.status_code == 400 and "systemInstruction" in payload:
+                    fallback_payload = dict(payload)
+                    fallback_payload.pop("systemInstruction", None)
+                    resp = await client.post(url, json=fallback_payload)
+
                 if resp.status_code in (429, 500, 503, 504):
                     err_json = {}
                     try:
@@ -376,10 +386,17 @@ async def generate_gemini_tts(
                 mime_type = inline_data.get("mimeType", "")
                 audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
 
-                # Silence removal filter: cleanly eliminates dead trailing zero-byte silence pads
-                # produced by LLM audio token generation while retaining a natural 0.3s ending pause.
+                # Silence removal filter:
+                # 1. silenceremove=stop_periods=-1:stop_duration=1.4:stop_threshold=-45dB:
+                #    Compresses any abnormal silence pause >1.4s down to a natural ~1.0s breath,
+                #    while preserving normal 0.8-1.0s natural conversational breath pauses.
+                # 2. areverse,silenceremove=start_periods=1:start_duration=0.5:start_threshold=-45dB,areverse:
+                #    Eliminates trailing silence pads produced by LLM token generation.
+                # 3. apad=pad_dur=0.25:
+                #    Preserves a natural 250ms cadence pause at the chunk end.
                 trim_silence_filter = (
-                    "areverse,silenceremove=start_periods=1:start_duration=0.5:start_threshold=-50dB,areverse,apad=pad_dur=0.3"
+                    "silenceremove=stop_periods=-1:stop_duration=1.4:stop_threshold=-45dB,"
+                    "areverse,silenceremove=start_periods=1:start_duration=0.5:start_threshold=-45dB,areverse,apad=pad_dur=0.25"
                 )
                 combined_filter = (
                     f"{audio_filter},{trim_silence_filter}" if audio_filter else trim_silence_filter
@@ -440,7 +457,7 @@ async def generate_gemini_tts(
 async def get_or_generate_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: str = "gemini-3.8-flash-lite-tts",
     api_key: Optional[str] = None,
     force_refresh: bool = False,
 ) -> Path:
@@ -486,36 +503,38 @@ async def get_or_generate_voice_sample(
     return sample_path
 
 
-def _split_text_for_tts(text: str, max_chars: int = 1000) -> List[str]:
-    """Split long script into TTS-safe chunks at paragraph/sentence boundaries (~<=max_chars each).
+def _split_text_for_tts(text: str, max_chars: int = 850) -> List[str]:
+    """Split script into TTS-safe chunks at sentence/paragraph boundaries (~<=max_chars each).
 
-    Uses a chunk budget (1000 chars ~ 60-75s audio) to keep LLM audio generation within reliable
-    token and memory limits, and guarantees each intermediate chunk ends with clean terminal
+    Uses a balanced chunk budget (default 850 chars ~ 50-60s audio) to keep LLM multimodal audio
+    generation within reliable token limits while maintaining consistent intonation and minimizing
+    the number of API requests. Guarantees each intermediate chunk ends with clean terminal
     punctuation (. ! ?) so Gemini TTS does not produce hanging pitch artifacts.
     """
     text = text.strip()
-    if not text or len(text) <= max_chars:
-        return [text] if text else []
+    if not text:
+        return []
 
     paragraphs = [p.strip() for p in re.split(r"\n+", text) if p.strip()]
     raw_units: List[str] = []
 
     for p in paragraphs:
-        if len(p) <= max_chars:
-            raw_units.append(p)
-        else:
-            sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if s.strip()]
-            for s in sentences:
-                while len(s) > max_chars:
-                    clauses = [c.strip() for c in re.split(r"(?<=[,;:])\s+", s) if c.strip()]
-                    if len(clauses) > 1 and len(clauses[0]) <= max_chars:
-                        raw_units.append(clauses[0])
-                        s = s[len(clauses[0]):].strip()
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if s.strip()]
+        for s in sentences:
+            if len(s) <= max_chars:
+                raw_units.append(s)
+            else:
+                # If a single sentence exceeds max_chars, split on clauses
+                clauses = [c.strip() for c in re.split(r"(?<=[,;:])\s+", s) if c.strip()]
+                cur_clause = ""
+                for c in clauses:
+                    if cur_clause and len(cur_clause) + len(c) + 1 > max_chars:
+                        raw_units.append(cur_clause)
+                        cur_clause = c
                     else:
-                        raw_units.append(s[:max_chars])
-                        s = s[max_chars:].strip()
-                if s:
-                    raw_units.append(s)
+                        cur_clause = f"{cur_clause} {c}".strip() if cur_clause else c
+                if cur_clause:
+                    raw_units.append(cur_clause)
 
     chunks: List[str] = []
     cur = ""
@@ -569,48 +588,91 @@ async def generate_speech_audio(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     api_key: Optional[str] = None,
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: str = "gemini-3.8-flash-lite-tts",
+    segments: Optional[List[Dict[str, Any]]] = None,
+    fallback_info: Optional[Dict[str, Any]] = None,
 ) -> float:
     """Entrypoint for TTS audio generation.
 
-    Gemini TTS: long scripts are chunked at sentence/paragraph boundaries (~1000 chars),
-    synthesized per chunk, then concatenated. 1000 chars ≈ 60-75s audio.
+    Gemini TTS: For standard videos (<= 950 chars ≈ 60s), audio is synthesized in a single continuous
+    pass to ensure 100% natural and consistent intonation without inter-sentence pitch shifts or
+    dead silence, while conserving API quota. For longer videos (> 950 chars), text is chunked into
+    balanced blocks of ~850 chars at natural sentence boundaries and concatenated cleanly.
     """
     clean_text = (text or "").strip()
     if not clean_text:
         raise ValueError("Teks narasi tidak boleh kosong.")
 
     if provider.lower() == "gemini":
-        chunks = _split_text_for_tts(clean_text, max_chars=1000)
-        if len(chunks) == 1:
-            return await generate_gemini_tts(
-                chunks[0],
-                output_path,
-                api_key=api_key,
-                voice=voice,
-                rate=rate,
-                pitch=pitch,
-                model=model,
-            )
-        out_p = Path(output_path)
-        parts: List[str] = []
         try:
-            for i, chunk in enumerate(chunks):
-                part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
-                await generate_gemini_tts(
-                    chunk,
-                    part_path,
+            # 1. Standard short-form videos (<= 950 chars ≈ 60 seconds):
+            # Synthesize in a single continuous call for unbroken intonation, 0 dead silence, and 1 API request.
+            if len(clean_text) <= 950:
+                return await generate_gemini_tts(
+                    clean_text,
+                    output_path,
                     api_key=api_key,
                     voice=voice,
                     rate=rate,
                     pitch=pitch,
                     model=model,
                 )
-                parts.append(part_path)
-            return await _concat_mp3s(parts, output_path)
-        finally:
-            for p in parts:
-                Path(p).unlink(missing_ok=True)
+
+            # 2. Long-form narrations (> 950 chars ≈ 1.5 - 3+ mins):
+            # Split into large balanced chunks (~850 chars) at natural sentence breaks.
+            chunks = _split_text_for_tts(clean_text, max_chars=850)
+            if len(chunks) == 1:
+                return await generate_gemini_tts(
+                    chunks[0],
+                    output_path,
+                    api_key=api_key,
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                    model=model,
+                )
+
+            out_p = Path(output_path)
+            parts: List[str] = []
+            try:
+                for i, chunk in enumerate(chunks):
+                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                    await generate_gemini_tts(
+                        chunk,
+                        part_path,
+                        api_key=api_key,
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        model=model,
+                    )
+                    parts.append(part_path)
+                return await _concat_mp3s(parts, output_path)
+            finally:
+                for p in parts:
+                    Path(p).unlink(missing_ok=True)
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "quota" in err_msg or "429" in err_msg or "resource_exhausted" in err_msg:
+                log.warning(
+                    "Gemini TTS quota exceeded (%s). Automatically falling back to Edge-TTS to guarantee audible speech...",
+                    e,
+                )
+                edge_voice = "id-ID-ArdiNeural" if voice in ("Charon", "Fenrir", "Orus") else "id-ID-GadisNeural"
+                if fallback_info is not None:
+                    fallback_info["fell_back"] = True
+                    fallback_info["original_provider"] = "gemini"
+                    fallback_info["fallback_provider"] = "edge"
+                    fallback_info["fallback_voice"] = edge_voice
+
+                return await generate_edge_tts(
+                    clean_text,
+                    output_path,
+                    voice=edge_voice,
+                    rate=rate,
+                    pitch=pitch,
+                )
+            raise
     else:
         return await generate_edge_tts(
             clean_text,

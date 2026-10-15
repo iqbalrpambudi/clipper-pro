@@ -127,15 +127,29 @@ async def get_video_info(url: str) -> YTInfoResponse:
     )
 
 
+from app.services.cancellation import (
+    register_process,
+    unregister_process,
+    is_cancelled,
+    clear_cancellation,
+    TaskCancelledException,
+)
+
+
 async def download_video(
     url: str,
     output_path: str,
     format_id: Optional[str] = None,
     progress_callback: Optional[Callable[[int], Any]] = None,
+    project_id: Optional[str] = None,
+    video_id: Optional[str] = None,
 ) -> str:
-    """Download video with yt-dlp and track stdout progress."""
+    """Download video with yt-dlp, track stdout progress, and support instant cancellation."""
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    if project_id or video_id:
+        await clear_cancellation(project_id, video_id=video_id)
 
     # If format_id is specified (like 137 for 1080p video only), combine with bestaudio
     if format_id and "+" not in format_id and "best" not in format_id:
@@ -157,47 +171,71 @@ async def download_video(
         url,
     ]
 
-    log.info("Running download cmd: %s", " ".join(cmd))
+    proc_key = f"video:{video_id}" if video_id else f"download:{out_p.stem}"
+    log.info("Running download cmd: %s (key=%s)", " ".join(cmd), proc_key)
+
     # Merge stderr into stdout: reading stdout while stderr stays a full PIPE would deadlock.
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
+    register_process(proc_key, proc)
 
     percent_regex = re.compile(r"\[download\]\s+([0-9\.]+)%")
     tail_lines: List[str] = []
 
-    while True:
-        line = await proc.stdout.readline()
-        if not line:
-            break
-        text = line.decode(errors="replace").strip()
-        tail_lines.append(text)
-        if len(tail_lines) > 40:
-            tail_lines.pop(0)
-        match = percent_regex.search(text)
-        if match:
-            pct = int(float(match.group(1)))
-            if progress_callback:
-                if asyncio.iscoroutinefunction(progress_callback):
-                    await progress_callback(pct)
-                else:
-                    progress_callback(pct)
+    try:
+        while True:
+            # Check cancellation flag before reading next line
+            if await is_cancelled(project_id, video_id=video_id):
+                log.info("Cancellation detected during yt-dlp download for video %s", video_id)
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+                await proc.wait()
+                out_p.unlink(missing_ok=True)
+                raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")
 
-    await proc.wait()
-    if proc.returncode != 0:
-        err_msg = "\n".join(tail_lines)[-400:]
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            text = line.decode(errors="replace").strip()
+            tail_lines.append(text)
+            if len(tail_lines) > 40:
+                tail_lines.pop(0)
+            match = percent_regex.search(text)
+            if match:
+                pct = int(float(match.group(1)))
+                if progress_callback:
+                    if asyncio.iscoroutinefunction(progress_callback):
+                        await progress_callback(pct)
+                    else:
+                        progress_callback(pct)
+
+        await proc.wait()
+        if proc.returncode != 0:
+            err_msg = "\n".join(tail_lines)[-400:]
+            out_p.unlink(missing_ok=True)
+            raise RuntimeError(f"Gagal mendownload video YouTube: {err_msg}")
+
+        if progress_callback:
+            if asyncio.iscoroutinefunction(progress_callback):
+                await progress_callback(100)
+            else:
+                progress_callback(100)
+
+        return str(out_p)
+    except (asyncio.CancelledError, TaskCancelledException):
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
         out_p.unlink(missing_ok=True)
-        raise RuntimeError(f"Gagal mendownload video YouTube: {err_msg}")
-
-    if progress_callback:
-        if asyncio.iscoroutinefunction(progress_callback):
-            await progress_callback(100)
-        else:
-            progress_callback(100)
-
-    return str(out_p)
+        raise
+    finally:
+        unregister_process(proc_key)
 
 
 async def get_ytdlp_version() -> str:

@@ -16,12 +16,15 @@ import {
   MessageSquare,
   Wrench,
   MoreVertical,
+  StopCircle,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
 import { useStudioStore } from "@/lib/store";
 import { Project, SourceVideo, Scene } from "@/types";
+import { api } from "@/lib/api";
 import {
   useDeleteMedia,
+  useCancelMedia,
   useDownloadYT,
   useUploadMedia,
   useModelConfig,
@@ -110,6 +113,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const transcribeMutation = useTranscribeScenes(project.id);
   const repairThumbnailsMutation = useRepairThumbnails(project.id);
   const deleteMutation = useDeleteMedia(project.id);
+  const cancelMediaMutation = useCancelMedia(project.id);
   const downloadYTMutation = useDownloadYT(project.id);
   const uploadMediaMutation = useUploadMedia(project.id);
 
@@ -400,15 +404,35 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         )}
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setVideoToDelete(vid)}
-                        className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 h-6 w-6"
-                        title="Hapus video"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        {(vid.status === "downloading" || vid.status === "processing") && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => cancelMediaMutation.mutate(vid.id)}
+                            disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                            className="h-6 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1 px-2 shadow-sm"
+                            title="Batalkan proses video ini"
+                          >
+                            {cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id ? (
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            ) : (
+                              <StopCircle className="w-2.5 h-2.5" />
+                            )}
+                            <span>Batal</span>
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setVideoToDelete(vid)}
+                          className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 h-6 w-6"
+                          title="Hapus video"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Title */}
@@ -444,7 +468,18 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <div className="mb-2 space-y-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
                         <div className="flex items-center justify-between text-[10px] text-amber-300">
                           <span className="truncate">{dlMessage}</span>
-                          <span className="font-mono font-bold">{dlProgress}%</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold">{dlProgress}%</span>
+                            <button
+                              type="button"
+                              onClick={() => cancelMediaMutation.mutate(vid.id)}
+                              disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                              className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
+                              title="Batalkan proses download"
+                            >
+                              Batal
+                            </button>
+                          </div>
                         </div>
                         <div className="w-full bg-black/40 rounded-full h-1 overflow-hidden">
                           <div
@@ -460,7 +495,18 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <div className="mb-2 space-y-1 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
                         <div className="flex items-center justify-between text-[10px] text-[#3ECF8E]">
                           <span className="truncate">{detectMessage}</span>
-                          <span className="font-mono font-bold">{detectProgress}%</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold">{detectProgress}%</span>
+                            <button
+                              type="button"
+                              onClick={() => cancelMediaMutation.mutate(vid.id)}
+                              disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                              className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
+                              title="Batalkan proses deteksi"
+                            >
+                              Batal
+                            </button>
+                          </div>
                         </div>
                         <div className="w-full bg-black/40 rounded-full h-1 overflow-hidden">
                           <div
@@ -632,6 +678,14 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 <span className="text-[#3ECF8E] font-bold">
                   {Math.round(retagProgress)}%
                 </span>
+                <button
+                  type="button"
+                  onClick={() => api.cancelProjectTasks(project.id)}
+                  className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                  title="Batalkan proses tagging"
+                >
+                  Batal
+                </button>
               </div>
             </div>
             <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
@@ -661,6 +715,14 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 <span className="text-sky-400 font-bold">
                   {Math.round(transcribeProgress)}%
                 </span>
+                <button
+                  type="button"
+                  onClick={() => api.cancelProjectTasks(project.id)}
+                  className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                  title="Batalkan proses transkripsi"
+                >
+                  Batal
+                </button>
               </div>
             </div>
             <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">

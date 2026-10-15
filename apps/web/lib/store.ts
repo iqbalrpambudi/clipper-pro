@@ -30,8 +30,18 @@ interface StudioState {
   isFastPreviewRunning: boolean;
   setIsFastPreviewRunning: (running: boolean) => void;
 
+  // Active Project Scoping
+  currentProjectId: string | null;
+  setCurrentProjectId: (id: string | null) => void;
+
+  // Multi-project Isolated Task Tracking
+  tasksByProject: Record<string, TaskEvent | null>;
+  setProjectTask: (projectId: string, task: TaskEvent | null) => void;
+  getProjectTask: (projectId: string) => TaskEvent | null;
+
+  // Active Task for current project (backwards-compatible)
   activeTask: TaskEvent | null;
-  setActiveTask: (task: TaskEvent | null) => void;
+  setActiveTask: (task: TaskEvent | null, projectId?: string) => void;
 
   toast: { message: string; type: "success" | "error" | "info" } | null;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
@@ -39,7 +49,7 @@ interface StudioState {
 }
 
 
-export const useStudioStore = create<StudioState>((set) => ({
+export const useStudioStore = create<StudioState>((set, get) => ({
   activeTab: "media",
   setActiveTab: (activeTab) => set({ activeTab }),
 
@@ -55,8 +65,42 @@ export const useStudioStore = create<StudioState>((set) => ({
   isFastPreviewRunning: false,
   setIsFastPreviewRunning: (isFastPreviewRunning) => set({ isFastPreviewRunning }),
 
+  currentProjectId: null,
+  setCurrentProjectId: (currentProjectId) => {
+    set((state) => ({
+      currentProjectId,
+      activeTask: currentProjectId ? state.tasksByProject[currentProjectId] || null : null,
+    }));
+  },
+
+  tasksByProject: {},
+  setProjectTask: (projectId, task) => {
+    set((state) => {
+      const nextTasks = { ...state.tasksByProject, [projectId]: task };
+      return {
+        tasksByProject: nextTasks,
+        activeTask: state.currentProjectId === projectId ? task : state.activeTask,
+      };
+    });
+  },
+  getProjectTask: (projectId) => {
+    return get().tasksByProject[projectId] || null;
+  },
+
   activeTask: null,
-  setActiveTask: (activeTask) => set({ activeTask }),
+  setActiveTask: (task, projectId) => {
+    set((state) => {
+      const targetProjectId = task?.project_id || projectId || state.currentProjectId;
+      if (!targetProjectId) {
+        return { activeTask: task };
+      }
+      const nextTasks = { ...state.tasksByProject, [targetProjectId]: task };
+      return {
+        tasksByProject: nextTasks,
+        activeTask: state.currentProjectId === targetProjectId ? task : state.activeTask,
+      };
+    });
+  },
 
   toast: null,
 

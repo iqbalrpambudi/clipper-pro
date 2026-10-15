@@ -348,7 +348,7 @@ async def detect_scenes(
     video_path: str,
     output_dir: str,
     threshold: float = 27.0,
-    min_scene_len_sec: float = 0.8,
+    min_scene_len_sec: float = 1.2,
 ) -> List[Dict[str, Any]]:
     """Detect scenes in video and extract representative thumbnails."""
     meta = await get_video_metadata(video_path)

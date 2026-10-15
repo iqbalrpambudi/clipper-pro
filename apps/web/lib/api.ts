@@ -109,6 +109,15 @@ export const api = {
     }),
   deleteMedia: (projectId: string, videoId: string) =>
     request<void>(`/api/v1/projects/${projectId}/media/${videoId}`, { method: "DELETE" }),
+  cancelMedia: (projectId: string, videoId: string) =>
+    request<{ status: string; message: string }>(`/api/v1/projects/${projectId}/media/${videoId}/cancel`, { method: "POST" }),
+
+  // Background Tasks / Worker Cancellation
+  cancelProjectTasks: (projectId: string) =>
+    request<{ status: string; message: string; cancelled_videos: number; cancelled_renders: number; cancelled_audio: number }>(
+      `/api/v1/projects/${projectId}/tasks/cancel`,
+      { method: "POST" }
+    ),
 
   // Scenes
   getScenes: (projectId: string) =>
@@ -292,6 +301,8 @@ export const api = {
       `/api/v1/projects/${projectId}/render/jobs`,
       { method: "DELETE" }
     ),
+  cancelRenderJob: (projectId: string, jobId: string) =>
+    request<{ status: string; message: string }>(`/api/v1/projects/${projectId}/render/jobs/${jobId}/cancel`, { method: "POST" }),
 
   // Settings
   getModelConfig: () => request<ModelConfig>("/api/v1/settings/config"),
