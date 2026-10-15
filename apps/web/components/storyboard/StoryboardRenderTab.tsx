@@ -1,0 +1,384 @@
+"use client";
+
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Download,
+  Play,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Trash2,
+  HardDrive,
+  StopCircle,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { useStudioStore } from "@/lib/store";
+import { Project, RenderJob, StoryboardItem } from "@/types";
+import { Button, Badge } from "@/components/ui";
+
+interface StoryboardRenderTabProps {
+  project: Project & {
+    narration?: any;
+    audio?: any;
+    storyboard_items?: StoryboardItem[];
+    render_jobs?: RenderJob[];
+  };
+}
+
+function formatBytes(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
+  const queryClient = useQueryClient();
+  const { showToast, activeTask, setActiveTab } = useStudioStore();
+
+  const [resolution, setResolution] = useState(project.resolution || "1080p");
+  const [activePlaybackUrl, setActivePlaybackUrl] = useState<string | null>(null);
+
+  const audio = (project as any).audio || (project as any).audio_track;
+  const items: StoryboardItem[] = project.storyboard_items || [];
+  const readyItemsCount = items.filter((it) => it.status === "ready" && it.image_url).length;
+
+  const { data: renderJobs = [] } = useQuery({
+    queryKey: ["render-jobs", project.id],
+    queryFn: () => api.getRenderJobs(project.id),
+    initialData: project.render_jobs || [],
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const isRunning = data?.some((j: RenderJob) => j.status === "rendering" || j.status === "queued");
+      return isRunning ? 2000 : false;
+    },
+  });
+
+  const renderFinalMutation = useMutation({
+    mutationFn: () => api.renderFinal(project.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Proses render video 16:9 dimulai di background!", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal memulai render video", "error");
+    },
+  });
+
+  const deleteJobMutation = useMutation({
+    mutationFn: (jobId: string) => api.deleteRenderJob(project.id, jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
+      showToast("File render berhasil dihapus.", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal menghapus file render", "error");
+    },
+  });
+
+  const cancelJobMutation = useMutation({
+    mutationFn: (jobId: string) => api.cancelRenderJob(project.id, jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
+      showToast("Rendering video dibatalkan.", "info");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal membatalkan render", "error");
+    },
+  });
+
+  const isRendering =
+    renderJobs.some((j) => j.status === "rendering" || j.status === "queued") ||
+    activeTask?.task_type === "render";
+
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+      {/* Step Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
+              Langkah 5 dari 5
+            </span>
+            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
+              Final Export Landscape 16:9
+            </Badge>
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Render & Export Video Storyboard 16:9
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Susun gambar ilustrasi dengan efek Ken Burns dinamis, padukan dengan audio narasi suara dan subtitle ASS, lalu export ke MP4 Full HD.
+          </p>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setActiveTab("storyboard_timeline")}
+          className="border-[#2E2E2E] text-xs"
+        >
+          Kembali ke Timeline
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Render Settings & CTA (5 Cols) */}
+        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xl">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
+              <Download className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Pengaturan Render Final</h3>
+              <p className="text-[11px] text-muted-foreground">Format 16:9 Landscape Full HD</p>
+            </div>
+          </div>
+
+          {/* Video Specs Checklist */}
+          <div className="space-y-2 p-3.5 rounded-xl bg-black/40 border border-[#262626] text-xs">
+            <div className="flex items-center justify-between text-slate-300">
+              <span>Aspect Ratio:</span>
+              <span className="font-mono font-bold text-violet-400">16:9 (Landscape)</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-300">
+              <span>Durasi Audio:</span>
+              <span className="font-mono font-bold text-white">
+                {audio?.duration ? `${Math.round(audio.duration)} detik` : "Belum ada audio"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-300">
+              <span>Kesiapan Gambar:</span>
+              <span className="font-mono font-bold text-emerald-400">
+                {readyItemsCount} dari {items.length} Siap
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-300">
+              <span>Efek Transisi:</span>
+              <span className="font-mono font-bold text-white">Ken Burns Zoom/Pan</span>
+            </div>
+          </div>
+
+          {/* Resolution Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Resolusi Video
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: "1080p", label: "1080p (Full HD)", desc: "1920 × 1080 • Kualitas Terbaik" },
+                { id: "720p", label: "720p (HD)", desc: "1280 × 720 • Render Cepat" },
+              ].map((res) => (
+                <button
+                  key={res.id}
+                  type="button"
+                  onClick={() => setResolution(res.id)}
+                  className={`p-3 rounded-xl border text-left transition ${
+                    resolution === res.id
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs font-bold">{res.label}</div>
+                  <div className="text-[10px] text-muted-foreground">{res.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Render CTA */}
+          <div className="space-y-3 pt-2">
+            <Button
+              onClick={() => renderFinalMutation.mutate()}
+              disabled={isRendering || renderFinalMutation.isPending || !audio}
+              className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xl shadow-violet-500/20 gap-2"
+            >
+              {isRendering || renderFinalMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Sedang Me-render Video Final 16:9...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Render Video Storyboard 16:9 (MP4)</span>
+                </>
+              )}
+            </Button>
+
+            {!audio && (
+              <p className="text-[11px] text-amber-400/90 text-center">
+                ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum me-render.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Active Jobs & Render History (7 Cols) */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Active Job Live Progress */}
+          {isRendering && (
+            <div className="p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                  <h4 className="text-xs font-bold text-white font-mono">
+                    Sedang Me-render Video Final ({activeTask?.progress || 25}%)
+                  </h4>
+                </div>
+                {renderJobs[0] && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => cancelJobMutation.mutate(renderJobs[0].id)}
+                    className="text-rose-400 hover:text-rose-300 text-xs h-7 gap-1"
+                  >
+                    <StopCircle className="w-3.5 h-3.5" />
+                    <span>Batalkan</span>
+                  </Button>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-300"
+                  style={{ width: `${Math.max(5, activeTask?.progress || 25)}%` }}
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground font-mono">
+                {activeTask?.message || "FFmpeg sedang menggabungkan ilustrasi hand-drawn, audio, dan subtitle..."}
+              </p>
+            </div>
+          )}
+
+          {/* Video Player for Selected Output */}
+          {activePlaybackUrl && (
+            <div className="rounded-2xl border border-[#2E2E2E] bg-black p-4 space-y-3 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white font-mono">
+                  Pemutar Hasil Render Final
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActivePlaybackUrl(null)}
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  Tutup
+                </button>
+              </div>
+              <video
+                src={activePlaybackUrl}
+                controls
+                autoPlay
+                className="w-full aspect-video rounded-xl bg-black"
+              />
+            </div>
+          )}
+
+          {/* Render History List */}
+          <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2E2E2E]">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-violet-400" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Riwayat File Render ({renderJobs.length})
+                </h4>
+              </div>
+            </div>
+
+            {renderJobs.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                Belum ada video yang dirender untuk project ini. Klik tombol render di samping untuk memulai.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {renderJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="p-4 rounded-xl border border-[#2E2E2E] bg-[#141414] hover:border-violet-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      {job.status === "completed" ? (
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                      ) : job.status === "rendering" || job.status === "queued" ? (
+                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 shrink-0">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
+                          <AlertCircle className="w-5 h-5" />
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">
+                            Video Storyboard 16:9
+                          </span>
+                          <span
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                              job.status === "completed"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : job.status === "rendering"
+                                ? "bg-violet-500/10 text-violet-300"
+                                : "bg-rose-500/10 text-rose-400"
+                            }`}
+                          >
+                            {job.status}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                          Ukuran: {formatBytes(job.file_size_bytes)} • {new Date(job.created_at).toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {job.status === "completed" && job.output_url && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActivePlaybackUrl(job.output_url!)}
+                          className="border-[#2E2E2E] text-xs h-8 gap-1.5"
+                        >
+                          <Play className="w-3.5 h-3.5 text-violet-400" />
+                          <span>Putar</span>
+                        </Button>
+
+                        <a
+                          href={job.output_url}
+                          download={`storyboard_${project.id}.mp4`}
+                          className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-violet-500/20"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Unduh MP4</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteJobMutation.mutate(job.id)}
+                          className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                          title="Hapus file"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

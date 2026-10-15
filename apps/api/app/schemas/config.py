@@ -9,6 +9,10 @@ class ModelConfigUpdate(BaseModel):
     api_key: Optional[str] = None  # Plaintext from user, will be encrypted
     tts_provider: Optional[str] = None
     tts_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
+    image_base_url: Optional[str] = None
+    image_model: Optional[str] = None
+    image_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
+    image_system_prompt: Optional[str] = None
 
 
 class ModelConfigResponse(BaseModel):
@@ -24,6 +28,11 @@ class ModelConfigResponse(BaseModel):
     tts_provider: str
     tts_api_key_masked: Optional[str] = None
     has_tts_api_key: bool = False
+    image_base_url: Optional[str] = None
+    image_model: str = "dall-e-3"
+    image_api_key_masked: Optional[str] = None
+    has_image_api_key: bool = False
+    image_system_prompt: Optional[str] = None
     is_active: bool
 
 
@@ -40,3 +49,17 @@ class TestConnectionResponse(BaseModel):
     vision_model_status: str
     latency_ms: int
     message: str
+
+
+class TestImageConnectionRequest(BaseModel):
+    base_url: Optional[str] = None
+    image_model: Optional[str] = None
+    api_key: Optional[str] = None
+
+
+class TestImageConnectionResponse(BaseModel):
+    success: bool
+    image_model_status: str
+    latency_ms: int
+    message: str
+

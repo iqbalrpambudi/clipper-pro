@@ -69,7 +69,7 @@ Perintah ini akan:
 
 | Service | URL |
 |---------|-----|
-| **Web UI** | http://localhost:3000 |
+| **Web UI** | http://localhost:3030 |
 | **API Docs** | http://localhost:8080/docs |
 | **API Health** | http://localhost:8080/healthz |
 
@@ -103,7 +103,7 @@ Salin `.env.example` ke `.env` dan sesuaikan:
 
 | Variable | Default | Deskripsi |
 |----------|---------|-----------|
-| `WEB_PORT` | `3000` | Port Web UI |
+| `WEB_PORT` | `3030` | Port Web UI |
 | `API_PORT` | `8080` | Port API |
 | `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection string |
 | `REDIS_URL` | `redis://redis:6379/0` | Redis connection string |

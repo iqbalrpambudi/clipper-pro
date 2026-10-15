@@ -1,10 +1,28 @@
 import { create } from "zustand";
 
-export type StudioTab = "media" | "narration" | "tts" | "timeline" | "subtitles" | "render";
+export type StudioTab =
+  | "media"
+  | "narration"
+  | "tts"
+  | "timeline"
+  | "subtitles"
+  | "render"
+  | "storyboard_script"
+  | "storyboard_voice"
+  | "storyboard_images"
+  | "storyboard_timeline"
+  | "storyboard_render";
 
 export interface TaskEvent {
   project_id: string;
-  task_type: "youtube_download" | "scene_detect" | "scene_retag" | "scene_transcribe" | "tts_align" | "render";
+  task_type:
+    | "youtube_download"
+    | "scene_detect"
+    | "scene_retag"
+    | "scene_transcribe"
+    | "tts_align"
+    | "render"
+    | "storyboard_images";
   status: "queued" | "progress" | "success" | "error";
   progress: number;
   stage: string;

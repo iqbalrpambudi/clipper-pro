@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 2147483648  # 2GB
     MAX_SOURCE_DURATION_MINS: int = 30
 
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080"
+    CORS_ORIGINS: str = "http://localhost:3030,http://127.0.0.1:3030,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080"
     ENCRYPTION_KEY: str = "dGhpcy1pcy1hLTMyLWJ5dGUtc2VjcmV0LWtleS1mb3ItZGI="
 
     AI_BASE_URL: str = ""
@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     TTS_PROVIDER: str = "gemini"
     GEMINI_API_KEY: str = ""
     GEMINI_TTS_VOICE: str = "Puck"
+
+    IMAGE_BASE_URL: str = "https://api.openai.com/v1"
+    IMAGE_API_KEY: str = ""
+    IMAGE_MODEL: str = "dall-e-3"
+    IMAGE_SYSTEM_PROMPT: str = (
+        "Minimalist hand-drawn ink and pencil sketch illustration, black and white drawing on clean textured cream paper, "
+        "expressive loose linework, editorial storyboard cartoon aesthetic, clear single focal point, "
+        "cinematic 16:9 composition, no text, no letters, no watermark, high contrast vector feel"
+    )
 
     @property
     def cors_origin_list(self) -> List[str]:

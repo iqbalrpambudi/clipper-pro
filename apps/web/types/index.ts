@@ -2,6 +2,7 @@ export interface Project {
   id: string;
   name: string;
   description?: string | null;
+  project_type?: "short_video" | "long_storyboard";
   status: string;
   aspect_ratio: string;
   resolution: string;
@@ -18,6 +19,8 @@ export interface Project {
   updated_at: string;
   source_video_count?: number;
   scene_count?: number;
+  storyboard_count?: number;
+  storyboard_items?: StoryboardItem[];
   subtitle_style?: SubtitleStyle | null;
 }
 
@@ -220,5 +223,31 @@ export interface ModelConfig {
   tts_provider: string;
   tts_api_key_masked?: string | null;
   has_tts_api_key: boolean;
+  image_base_url?: string | null;
+  image_model?: string;
+  image_api_key_masked?: string | null;
+  has_image_api_key?: boolean;
+  image_system_prompt?: string | null;
   is_active: boolean;
 }
+
+export interface StoryboardItem {
+  id: string;
+  project_id: string;
+  narration_id?: string | null;
+  chapter_title?: string | null;
+  segment_id: string;
+  order_index: number;
+  script_text: string;
+  image_prompt: string;
+  image_url?: string | null;
+  motion_effect: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static";
+  start_time: number;
+  end_time: number;
+  duration: number;
+  status: "pending" | "generating" | "ready" | "failed";
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+

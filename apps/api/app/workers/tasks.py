@@ -11,18 +11,22 @@ from app.core.config import get_settings
 from app.models.project import Project, SourceVideo, Scene, RenderJob
 from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline, SubtitleStyle
+from app.models.storyboard import StoryboardItem
 from app.models.config import ModelConfig
 from app.core.security import decrypt_secret
 from app.core.events import publish_project_event
 from app.services.ytdlp import download_video, get_video_info
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
+from app.services.storyboard import sync_storyboard_timing_from_alignment
+from app.services.image_gen import generate_single_image
 from app.services.vision_tagger import analyze_scenes_batch
 from app.services.tts import generate_speech_audio, estimate_tts_cost
 from app.services.alignment import align_audio_with_text
 from app.services.matching import match_scenes_to_segments
 from app.services.subtitle_ass import generate_ass_subtitles
 from app.services.renderer import render_timeline_video
+from app.services.storyboard_renderer import render_storyboard_video
 from app.services.cancellation import (
     is_cancelled,
     TaskCancelledException,
@@ -558,6 +562,12 @@ async def generate_tts_and_align_job(
                 except Exception as scene_err:
                     log.warning("Scene matching after TTS failed (non-fatal): %s", scene_err)
 
+            # Auto-sync storyboard item timing if this project has storyboard items
+            try:
+                await sync_storyboard_timing_from_alignment(db, project_id, aligned_segments)
+            except Exception as sb_err:
+                log.warning("Auto sync storyboard timing after TTS failed (non-fatal): %s", sb_err)
+
             await publish_project_event(
                 project_id,
                 task_type="tts_align",
@@ -658,29 +668,6 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         out_ext = "mp4"
         out_file = renders_dir / f"render_{job.render_type}_{job.id}.{out_ext}"
 
-        # Fetch timeline
-        t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
-        timeline = t_res.scalar_one_or_none()
-        if not timeline or not timeline.clips:
-            job.status = "failed"
-            job.error_message = "Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu."
-            await db.commit()
-            await publish_project_event(
-                project.id,
-                task_type="render",
-                status="error",
-                progress=0,
-                stage="failed",
-                message="Timeline klip kosong. Lakukan pencocokan scene terlebih dahulu.",
-                error="Timeline klip kosong",
-                data={"job_id": render_job_id},
-            )
-            return
-
-        # Fetch source videos map
-        v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
-        source_videos_map = {v.id: v.file_path for v in v_res.scalars().all() if v.file_path}
-
         # Fetch latest audio track
         a_res = await db.execute(
             select(AudioTrack)
@@ -759,24 +746,101 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             )
 
         try:
-            if await is_cancelled(project.id, job_id=render_job_id):
-                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+            if project.project_type == "long_storyboard":
+                # Fetch storyboard items
+                sb_res = await db.execute(
+                    select(StoryboardItem)
+                    .where(StoryboardItem.project_id == project.id)
+                    .order_by(StoryboardItem.segment_id.asc(), StoryboardItem.image_index.asc())
+                )
+                sb_items = sb_res.scalars().all()
+                valid_items = [it for it in sb_items if it.file_path and Path(it.file_path).exists()]
 
-            final_mp4 = await render_timeline_video(
-                clips=timeline.clips,
-                source_videos_map=source_videos_map,
-                audio_path=audio_path,
-                ass_subtitle_path=ass_file_path,
-                output_path=str(out_file),
-                aspect_ratio=project.aspect_ratio,
-                resolution=project.resolution,
-                background_fill=project.background_fill,
-                watermark=project.watermark,
-                is_preview=(job.render_type == "preview"),
-                progress_callback=_progress,
-                project_id=project.id,
-                job_id=render_job_id,
-            )
+                if not valid_items:
+                    job.status = "failed"
+                    job.error_message = "Belum ada gambar adegan storyboard yang siap dirender. Silakan generate gambar terlebih dahulu."
+                    await db.commit()
+                    await publish_project_event(
+                        project.id,
+                        task_type="render",
+                        status="error",
+                        progress=0,
+                        stage="failed",
+                        message="Belum ada gambar adegan storyboard yang siap dirender.",
+                        error="Gambar storyboard belum digenerate",
+                        data={"job_id": render_job_id},
+                    )
+                    return
+
+                items_data = [
+                    {
+                        "id": it.id,
+                        "file_path": it.file_path,
+                        "duration": it.duration or 4.0,
+                        "motion_effect": it.motion_effect or "zoom_in",
+                        "script_text": it.script_text,
+                    }
+                    for it in valid_items
+                ]
+
+                if await is_cancelled(project.id, job_id=render_job_id):
+                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+
+                final_mp4 = await render_storyboard_video(
+                    items=items_data,
+                    audio_path=audio_path,
+                    ass_subtitle_path=ass_file_path,
+                    output_path=str(out_file),
+                    aspect_ratio=project.aspect_ratio or "16:9",
+                    resolution=project.resolution or "1080p",
+                    watermark=project.watermark,
+                    is_preview=(job.render_type == "preview"),
+                    progress_callback=_progress,
+                    project_id=project.id,
+                    job_id=render_job_id,
+                )
+            else:
+                # Short video mode: Fetch timeline and source videos
+                t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
+                timeline = t_res.scalar_one_or_none()
+                if not timeline or not timeline.clips:
+                    job.status = "failed"
+                    job.error_message = "Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu."
+                    await db.commit()
+                    await publish_project_event(
+                        project.id,
+                        task_type="render",
+                        status="error",
+                        progress=0,
+                        stage="failed",
+                        message="Timeline klip kosong. Lakukan pencocokan scene terlebih dahulu.",
+                        error="Timeline klip kosong",
+                        data={"job_id": render_job_id},
+                    )
+                    return
+
+                # Fetch source videos map
+                v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
+                source_videos_map = {v.id: v.file_path for v in v_res.scalars().all() if v.file_path}
+
+                if await is_cancelled(project.id, job_id=render_job_id):
+                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+
+                final_mp4 = await render_timeline_video(
+                    clips=timeline.clips,
+                    source_videos_map=source_videos_map,
+                    audio_path=audio_path,
+                    ass_subtitle_path=ass_file_path,
+                    output_path=str(out_file),
+                    aspect_ratio=project.aspect_ratio,
+                    resolution=project.resolution,
+                    background_fill=project.background_fill,
+                    watermark=project.watermark,
+                    is_preview=(job.render_type == "preview"),
+                    progress_callback=_progress,
+                    project_id=project.id,
+                    job_id=render_job_id,
+                )
 
             if await is_cancelled(project.id, job_id=render_job_id):
                 Path(final_mp4).unlink(missing_ok=True)
@@ -997,4 +1061,105 @@ async def transcribe_scenes_job(
             message=f"Transkripsi dialog selesai! {total_updated} scene berhasil diberi label percakapan.",
             data={"total_updated": total_updated},
         )
+
+
+async def generate_storyboard_images_job(
+    ctx: Dict[str, Any],
+    project_id: str,
+    item_ids: Optional[List[str]] = None,
+) -> None:
+    """Async background task to generate storyboard illustrations via AI image provider."""
+    async with SessionLocal() as db:
+        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+        cfg = res.scalar_one_or_none()
+
+        base_url = cfg.image_base_url if cfg else None
+        model = cfg.image_model if cfg else "dall-e-3"
+        api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
+        style_prompt = cfg.image_system_prompt if cfg else None
+
+        stmt = select(StoryboardItem).where(StoryboardItem.project_id == project_id)
+        if item_ids:
+            stmt = stmt.where(StoryboardItem.id.in_(item_ids))
+        else:
+            stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path == None))
+
+        stmt = stmt.order_by(StoryboardItem.order_index.asc())
+        items_res = await db.execute(stmt)
+        items = list(items_res.scalars().all())
+        total_items = len(items)
+
+        if total_items == 0:
+            await publish_project_event(
+                project_id,
+                task_type="storyboard_images",
+                status="success",
+                progress=100,
+                stage="completed",
+                message="Semua gambar ilustrasi sudah siap.",
+                data={"total_generated": 0},
+            )
+            return
+
+        await publish_project_event(
+            project_id,
+            task_type="storyboard_images",
+            status="progress",
+            progress=5,
+            stage="starting",
+            message=f"Memulai pembuatan {total_items} ilustrasi hand-drawn...",
+            data={"total_items": total_items},
+        )
+
+        success_count = 0
+        for idx, it in enumerate(items):
+            if await is_cancelled(project_id):
+                raise TaskCancelledException("Pembuatan gambar ilustrasi dibatalkan oleh pengguna.")
+
+            it.status = "generating"
+            await db.commit()
+
+            progress_pct = int(5 + ((idx / total_items) * 90))
+            await publish_project_event(
+                project_id,
+                task_type="storyboard_images",
+                status="progress",
+                progress=progress_pct,
+                stage="generating",
+                message=f"Menghasilkan ilustrasi {idx + 1} dari {total_items}...",
+                data={"item_id": it.id, "current": idx + 1, "total": total_items},
+            )
+
+            try:
+                f_path, rel_url = await generate_single_image(
+                    prompt=it.image_prompt,
+                    project_id=project_id,
+                    item_id=it.id,
+                    base_url=base_url,
+                    api_key=api_key,
+                    model=model,
+                    style_prompt=style_prompt,
+                    size="1792x1024",
+                )
+                it.file_path = f_path
+                it.status = "ready"
+                it.error_message = None
+                success_count += 1
+            except Exception as e:
+                log.warning("Image gen failed for storyboard item %s: %s", it.id, e)
+                it.status = "failed"
+                it.error_message = str(e)
+
+            await db.commit()
+
+        await publish_project_event(
+            project_id,
+            task_type="storyboard_images",
+            status="success",
+            progress=100,
+            stage="completed",
+            message=f"Selesai! {success_count} dari {total_items} ilustrasi berhasil di-generate.",
+            data={"total_items": total_items, "success_count": success_count},
+        )
+
 

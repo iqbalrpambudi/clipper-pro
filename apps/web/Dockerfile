@@ -8,5 +8,5 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-EXPOSE 3000
+EXPOSE 3030
 CMD ["npm", "run", "dev"]

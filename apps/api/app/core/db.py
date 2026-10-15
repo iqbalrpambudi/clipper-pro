@@ -44,4 +44,10 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_audio BOOLEAN DEFAULT TRUE;"))
         await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_subtitles BOOLEAN DEFAULT TRUE;"))
         await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS watermark JSON DEFAULT NULL;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type VARCHAR(50) DEFAULT 'short_video';"))
         await conn.execute(text("ALTER TABLE render_jobs ADD COLUMN IF NOT EXISTS thumbnail_path VARCHAR(500);"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_base_url VARCHAR(500);"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_model VARCHAR(100) DEFAULT 'dall-e-3';"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_api_key_encrypted TEXT;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_system_prompt TEXT;"))
+

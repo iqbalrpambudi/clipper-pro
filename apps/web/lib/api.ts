@@ -11,6 +11,7 @@ import {
   RenderJob,
   VoiceInfo,
   ModelConfig,
+  StoryboardItem,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -84,9 +85,9 @@ export const api = {
   // Projects
   getProjects: () => request<Project[]>("/api/v1/projects"),
   getProject: (id: string) => request<Project & { source_videos: SourceVideo[]; scenes: Scene[]; narration?: Narration | null; audio?: AudioTrack | null; timeline?: Timeline | null; subtitle_style?: SubtitleStyle | null; render_jobs?: RenderJob[] }>(`/api/v1/projects/${id}`),
-  createProject: (data: { name: string; description?: string; aspect_ratio?: string; resolution?: string }) =>
+  createProject: (data: { name: string; description?: string; project_type?: "short_video" | "long_storyboard"; aspect_ratio?: string; resolution?: string }) =>
     request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
-  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark'>>) =>
+  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'project_type' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark'>>) =>
     request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteProject: (id: string) =>
     request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
@@ -306,7 +307,18 @@ export const api = {
 
   // Settings
   getModelConfig: () => request<ModelConfig>("/api/v1/settings/config"),
-  saveModelConfig: (data: { base_url?: string | null; chat_model: string; vision_model: string; api_key?: string; tts_provider?: string; tts_api_key?: string }) =>
+  saveModelConfig: (data: {
+    base_url?: string | null;
+    chat_model?: string;
+    vision_model?: string;
+    api_key?: string;
+    tts_provider?: string;
+    tts_api_key?: string;
+    image_base_url?: string | null;
+    image_model?: string;
+    image_api_key?: string;
+    image_system_prompt?: string | null;
+  }) =>
     request<ModelConfig>("/api/v1/settings/config", {
       method: "POST",
       body: JSON.stringify(data),
@@ -316,6 +328,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  testImageConnection: (data: { base_url?: string; image_model?: string; api_key?: string }) =>
+    request<{ success: boolean; message: string; latency_ms?: number; image_model_status?: string }>(
+      "/api/v1/settings/test-image-connection",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
   getAvailableModels: (baseUrl?: string, apiKey?: string) => {
     const params = new URLSearchParams();
     if (baseUrl) params.set("base_url", baseUrl);
@@ -325,4 +345,54 @@ export const api = {
       headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
     });
   },
+
+  // Storyboard (Long Video Explainer)
+  generateStoryboardScript: (
+    projectId: string,
+    data: {
+      topic: string;
+      target_duration_mins: number;
+      tone: string;
+      images_per_segment: number;
+      custom_instructions?: string;
+    }
+  ) =>
+    request<{
+      success: boolean;
+      project_id: string;
+      narration: any;
+      storyboard_items: StoryboardItem[];
+    }>(`/api/v1/projects/${projectId}/storyboard/generate-script`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getStoryboardItems: (projectId: string) =>
+    request<StoryboardItem[]>(`/api/v1/projects/${projectId}/storyboard/items`),
+  updateStoryboardItem: (
+    projectId: string,
+    itemId: string,
+    data: Partial<Pick<StoryboardItem, "chapter_title" | "script_text" | "image_prompt" | "motion_effect" | "start_time" | "end_time" | "duration">>
+  ) =>
+    request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  generateSingleStoryboardImage: (projectId: string, itemId: string) =>
+    request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`, {
+      method: "POST",
+    }),
+  generateAllStoryboardImages: (projectId: string, data?: { item_ids?: string[] }) =>
+    request<{
+      success: boolean;
+      total_processed: number;
+      success_count: number;
+      fail_count: number;
+    }>(`/api/v1/projects/${projectId}/storyboard/generate-all-images`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    }),
+  syncStoryboardTiming: (projectId: string) =>
+    request<{ success: boolean; message: string }>(`/api/v1/projects/${projectId}/storyboard/sync-timing`, {
+      method: "POST",
+    }),
 };

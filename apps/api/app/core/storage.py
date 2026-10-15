@@ -39,6 +39,11 @@ class StorageManager:
         p.mkdir(parents=True, exist_ok=True)
         return p
 
+    def get_storyboard_dir(self, project_id: str) -> Path:
+        p = self.get_project_dir(project_id) / "storyboard"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     def get_fonts_dir(self) -> Path:
         p = self.base_dir / "fonts"
         p.mkdir(parents=True, exist_ok=True)

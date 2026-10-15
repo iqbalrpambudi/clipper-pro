@@ -4,6 +4,7 @@ from app.workers.tasks import (
     detect_scenes_job,
     generate_tts_and_align_job,
     render_video_job,
+    generate_storyboard_images_job,
 )
 from app.services.cancellation import start_cancellation_listener
 
@@ -18,6 +19,7 @@ class WorkerSettings:
         detect_scenes_job,
         generate_tts_and_align_job,
         render_video_job,
+        generate_storyboard_images_job,
     ]
     redis_settings = get_redis_settings()
     max_jobs = 4

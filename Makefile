@@ -8,7 +8,7 @@ up: .env
 	$(COMPOSE) up -d
 	@echo "===================================================="
 	@echo "Cliper Pro is starting up!"
-	@echo "Web UI:   http://localhost:$(or $(WEB_PORT),3000)"
+	@echo "Web UI:   http://localhost:$(or $(WEB_PORT),3030)"
 	@echo "API Docs: http://localhost:$(or $(API_PORT),8080)/docs"
 	@echo "===================================================="
 

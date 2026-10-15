@@ -89,7 +89,7 @@ export function useUpdateProject() {
       data,
     }: {
       id: string;
-      data: Partial<Pick<Project, "name" | "description" | "aspect_ratio" | "resolution" | "background_fill">>;
+      data: Partial<Pick<Project, "name" | "description" | "project_type" | "aspect_ratio" | "resolution" | "background_fill">>;
     }) => api.updateProject(id, data),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });

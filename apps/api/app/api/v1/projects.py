@@ -8,6 +8,7 @@ from app.core.storage import storage
 from app.models.project import Project, SourceVideo, Scene, RenderJob
 from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline, SubtitleStyle
+from app.models.storyboard import StoryboardItem
 from app.schemas.project import (
     ProjectCreate,
     ProjectUpdate,
@@ -28,9 +29,11 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
             Project,
             func.count(func.distinct(SourceVideo.id)).label("video_count"),
             func.count(func.distinct(Scene.id)).label("scene_count"),
+            func.count(func.distinct(StoryboardItem.id)).label("storyboard_count"),
         )
         .outerjoin(SourceVideo, Project.id == SourceVideo.project_id)
         .outerjoin(Scene, Project.id == Scene.project_id)
+        .outerjoin(StoryboardItem, Project.id == StoryboardItem.project_id)
         .group_by(Project.id)
         .order_by(Project.created_at.desc())
     )
@@ -38,20 +41,24 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     rows = res.all()
 
     output = []
-    for proj, v_count, s_count in rows:
+    for proj, v_count, s_count, sb_count in rows:
         resp = ProjectResponse.model_validate(proj)
         resp.source_video_count = v_count
         resp.scene_count = s_count
+        resp.storyboard_count = sb_count
         output.append(resp)
     return output
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_db)):
+    # If long storyboard mode, default aspect ratio to 16:9 if user left it 9:16
+    aspect = "16:9" if payload.project_type == "long_storyboard" and payload.aspect_ratio == "9:16" else payload.aspect_ratio
     proj = Project(
         name=payload.name,
         description=payload.description,
-        aspect_ratio=payload.aspect_ratio,
+        project_type=payload.project_type,
+        aspect_ratio=aspect,
         resolution=payload.resolution,
         background_fill=payload.background_fill.model_dump(),
         watermark=payload.watermark.model_dump() if payload.watermark else None,
@@ -100,6 +107,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             selectinload(Project.timeline),
             selectinload(Project.subtitle_style),
             selectinload(Project.render_jobs),
+            selectinload(Project.storyboard_items),
         )
     )
     res = await db.execute(stmt)
@@ -113,6 +121,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         id=proj.id,
         name=proj.name,
         description=proj.description,
+        project_type=proj.project_type,
         status=proj.status,
         aspect_ratio=proj.aspect_ratio,
         resolution=proj.resolution,
@@ -122,6 +131,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         updated_at=proj.updated_at,
         source_video_count=len(proj.source_videos),
         scene_count=len(proj.scenes),
+        storyboard_count=len(proj.storyboard_items),
     )
 
     # Map file urls
@@ -275,6 +285,27 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         for j in proj.render_jobs
     ]
 
+    resp.storyboard_items = [
+        {
+            "id": it.id,
+            "project_id": it.project_id,
+            "chapter_title": it.chapter_title,
+            "segment_id": it.segment_id,
+            "order_index": it.order_index,
+            "script_text": it.script_text,
+            "image_prompt": it.image_prompt,
+            "image_url": storage.to_relative_url(it.file_path),
+            "motion_effect": it.motion_effect,
+            "start_time": it.start_time,
+            "end_time": it.end_time,
+            "duration": it.duration,
+            "status": it.status,
+            "error_message": it.error_message,
+            "created_at": it.created_at,
+        }
+        for it in sorted(proj.storyboard_items, key=lambda x: x.order_index)
+    ]
+
     return resp
 
 
@@ -288,6 +319,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.name = payload.name
     if payload.description is not None:
         proj.description = payload.description
+    if payload.project_type is not None:
+        proj.project_type = payload.project_type
     if payload.aspect_ratio is not None:
         proj.aspect_ratio = payload.aspect_ratio
     if payload.resolution is not None:

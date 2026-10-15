@@ -13,9 +13,12 @@ from app.schemas.config import (
     ModelConfigResponse,
     TestConnectionRequest,
     TestConnectionResponse,
+    TestImageConnectionRequest,
+    TestImageConnectionResponse,
 )
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
+from app.services.image_gen import test_image_connection
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -36,6 +39,10 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
             api_key_encrypted=encrypt_secret(settings.AI_API_KEY) if settings.AI_API_KEY else None,
             tts_provider=settings.TTS_PROVIDER,
             tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None,
+            image_base_url=settings.IMAGE_BASE_URL,
+            image_model=settings.IMAGE_MODEL,
+            image_api_key_encrypted=encrypt_secret(settings.IMAGE_API_KEY) if settings.IMAGE_API_KEY else None,
+            image_system_prompt=settings.IMAGE_SYSTEM_PROMPT,
         )
         db.add(cfg)
         await db.commit()
@@ -43,6 +50,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
+    raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -55,6 +63,11 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
+        image_base_url=cfg.image_base_url,
+        image_model=cfg.image_model or "dall-e-3",
+        image_api_key_masked=mask_secret(raw_image_key),
+        has_image_api_key=bool(raw_image_key),
+        image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
         is_active=cfg.is_active,
     )
 
@@ -64,6 +77,7 @@ async def save_model_configuration(
     payload: ModelConfigUpdate,
     db: AsyncSession = Depends(get_db),
 ):
+    settings = get_settings()
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     if not cfg:
@@ -82,12 +96,21 @@ async def save_model_configuration(
         cfg.tts_provider = payload.tts_provider
     if payload.tts_api_key is not None and payload.tts_api_key.strip():
         cfg.tts_api_key_encrypted = encrypt_secret(payload.tts_api_key.strip())
+    if payload.image_base_url is not None:
+        cfg.image_base_url = payload.image_base_url
+    if payload.image_model is not None:
+        cfg.image_model = payload.image_model
+    if payload.image_api_key is not None and payload.image_api_key.strip():
+        cfg.image_api_key_encrypted = encrypt_secret(payload.image_api_key.strip())
+    if payload.image_system_prompt is not None:
+        cfg.image_system_prompt = payload.image_system_prompt
 
     await db.commit()
     await db.refresh(cfg)
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
+    raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -100,6 +123,11 @@ async def save_model_configuration(
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
+        image_base_url=cfg.image_base_url,
+        image_model=cfg.image_model or "dall-e-3",
+        image_api_key_masked=mask_secret(raw_image_key),
+        has_image_api_key=bool(raw_image_key),
+        image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
         is_active=cfg.is_active,
     )
 
@@ -167,6 +195,33 @@ async def test_model_connection(
             message=f"Gagal terhubung ke model: {str(e)}",
         )
 
+
+@router.post("/test-image-connection", response_model=TestImageConnectionResponse)
+async def test_image_model_connection(
+    payload: TestImageConnectionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    api_key = payload.api_key
+    base_url = payload.base_url
+    image_model = payload.image_model
+
+    if not api_key:
+        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+        cfg = res.scalar_one_or_none()
+        if cfg and cfg.image_api_key_encrypted:
+            api_key = decrypt_secret(cfg.image_api_key_encrypted)
+        if not base_url and cfg:
+            base_url = cfg.image_base_url
+        if not image_model and cfg:
+            image_model = cfg.image_model
+
+    result = await test_image_connection(base_url=base_url, api_key=api_key, model=image_model)
+    return TestImageConnectionResponse(
+        success=result["success"],
+        image_model_status=result["image_model_status"],
+        latency_ms=result["latency_ms"],
+        message=result["message"],
+    )
 
 
 _MODELS_CACHE: dict = {}

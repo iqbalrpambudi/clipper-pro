@@ -6,7 +6,7 @@ x-api-env: &api-env
   STORAGE_PATH: /app/storage
   MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-2147483648}
   MAX_SOURCE_DURATION_MINS: ${MAX_SOURCE_DURATION_MINS:-30}
-  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3030,http://127.0.0.1:3030,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080}
   ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dGhpcy1pcy1hLTMyLWJ5dGUtc2VjcmV0LWtleS1mb3ItZGI=}
   AI_BASE_URL: ${AI_BASE_URL:-}
   AI_API_KEY: ${AI_API_KEY:-}
@@ -28,7 +28,7 @@ services:
       context: ../../apps/web
       target: dev
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3030}:3030"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
       INTERNAL_API_URL: http://api:8080

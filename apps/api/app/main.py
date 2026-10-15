@@ -9,6 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.core.db import init_db, SessionLocal
+import app.models
 from app.models.project import Scene, SourceVideo
 from sqlalchemy import select, text
 from app.api.v1.router import api_router

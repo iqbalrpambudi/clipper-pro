@@ -9,6 +9,7 @@ import {
   Layers,
   Download,
   Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
@@ -20,6 +21,13 @@ import { NarrationTab } from "@/components/narration/NarrationTab";
 import { TTSTab } from "@/components/tts/TTSTab";
 import { TimelineTab } from "@/components/timeline/TimelineTab";
 import { RenderTab } from "@/components/render/RenderTab";
+import {
+  StoryboardScriptTab,
+  StoryboardVoiceTab,
+  StoryboardImagesTab,
+  StoryboardTimelineTab,
+  StoryboardRenderTab,
+} from "@/components/storyboard";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -49,6 +57,34 @@ export default function ProjectStudioPage({ params }: PageProps) {
   useProjectEvents(id);
 
   const { data: project, isLoading, error } = useProject(id);
+
+  // Normalize activeTab when project type is loaded
+  useEffect(() => {
+    if (!project) return;
+    const isSb = project.project_type === "long_storyboard";
+    const sbTabs = [
+      "storyboard_script",
+      "storyboard_voice",
+      "storyboard_images",
+      "storyboard_timeline",
+      "storyboard_render",
+    ];
+    const shortTabList = ["media", "narration", "tts", "timeline", "render"];
+
+    if (isSb && !sbTabs.includes(activeTab)) {
+      if (activeTab === "narration") setActiveTab("storyboard_script");
+      else if (activeTab === "tts") setActiveTab("storyboard_voice");
+      else if (activeTab === "timeline") setActiveTab("storyboard_timeline");
+      else if (activeTab === "render") setActiveTab("storyboard_render");
+      else setActiveTab("storyboard_script");
+    } else if (!isSb && !shortTabList.includes(activeTab)) {
+      if (activeTab === "storyboard_script") setActiveTab("narration");
+      else if (activeTab === "storyboard_voice") setActiveTab("tts");
+      else if (activeTab === "storyboard_timeline") setActiveTab("timeline");
+      else if (activeTab === "storyboard_render") setActiveTab("render");
+      else setActiveTab("media");
+    }
+  }, [project, activeTab, setActiveTab]);
 
   // Restore activeTask on page refresh from project database state if not yet set by SSE
   useEffect(() => {
@@ -176,7 +212,9 @@ export default function ProjectStudioPage({ params }: PageProps) {
     );
   }
 
-  const tabs: StudioNavTab[] = [
+  const isStoryboard = project.project_type === "long_storyboard";
+
+  const shortTabs: StudioNavTab[] = [
     {
       id: "media",
       label: "1. Media Pool",
@@ -211,6 +249,41 @@ export default function ProjectStudioPage({ params }: PageProps) {
     },
   ];
 
+  const storyboardTabs: StudioNavTab[] = [
+    {
+      id: "storyboard_script",
+      label: "1. Ide & Naskah",
+      icon: FileText,
+      badge: project.narration ? "Siap" : undefined,
+    },
+    {
+      id: "storyboard_voice",
+      label: "2. Suara & Sync",
+      icon: Volume2,
+      badge: (project as any).audio ? "Siap" : undefined,
+    },
+    {
+      id: "storyboard_images",
+      label: "3. Ilustrasi AI",
+      icon: ImageIcon,
+      badge: (project as any).storyboard_items?.length
+        ? `${(project as any).storyboard_items.length} Slot`
+        : undefined,
+    },
+    {
+      id: "storyboard_timeline",
+      label: "4. Timeline & Motion",
+      icon: Layers,
+      badge: "16:9",
+    },
+    {
+      id: "storyboard_render",
+      label: "5. Render 16:9",
+      icon: Download,
+      badge: (project as any).render_jobs?.length ? `${(project as any).render_jobs.length} Job` : undefined,
+    },
+  ];
+
   const handleRenameProject = async (newName: string) => {
     await updateProjectMutation.mutateAsync({
       id: project.id,
@@ -226,16 +299,42 @@ export default function ProjectStudioPage({ params }: PageProps) {
       resolution={project.resolution}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      tabs={tabs}
+      tabs={isStoryboard ? storyboardTabs : shortTabs}
       onRenameProject={handleRenameProject}
       isRenaming={updateProjectMutation.isPending}
-      onRenderClick={() => setActiveTab("render")}
+      onRenderClick={() => setActiveTab(isStoryboard ? "storyboard_render" : "render")}
     >
-      {activeTab === "media" && <MediaPoolTab project={project} />}
-      {activeTab === "narration" && <NarrationTab project={project} />}
-      {activeTab === "tts" && <TTSTab project={project} />}
-      {activeTab === "timeline" && <TimelineTab project={project} />}
-      {activeTab === "render" && <RenderTab project={project} />}
+      {isStoryboard ? (
+        <>
+          {(activeTab === "storyboard_script" ||
+            !["storyboard_voice", "storyboard_images", "storyboard_timeline", "storyboard_render"].includes(
+              activeTab
+            )) && <StoryboardScriptTab project={project as any} />}
+          {activeTab === "storyboard_voice" && (
+            <StoryboardVoiceTab project={project as any} />
+          )}
+          {activeTab === "storyboard_images" && (
+            <StoryboardImagesTab project={project as any} />
+          )}
+          {activeTab === "storyboard_timeline" && (
+            <StoryboardTimelineTab project={project as any} />
+          )}
+          {activeTab === "storyboard_render" && (
+            <StoryboardRenderTab project={project as any} />
+          )}
+        </>
+      ) : (
+        <>
+          {(activeTab === "media" ||
+            !["narration", "tts", "timeline", "render"].includes(activeTab)) && (
+            <MediaPoolTab project={project} />
+          )}
+          {activeTab === "narration" && <NarrationTab project={project} />}
+          {activeTab === "tts" && <TTSTab project={project} />}
+          {activeTab === "timeline" && <TimelineTab project={project} />}
+          {activeTab === "render" && <RenderTab project={project} />}
+        </>
+      )}
     </StudioLayout>
   );
 }

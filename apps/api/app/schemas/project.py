@@ -32,6 +32,7 @@ class WatermarkSchema(BaseModel):
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
+    project_type: str = "short_video"  # short_video | long_storyboard
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
     background_fill: BackgroundFillSchema = BackgroundFillSchema()
@@ -45,6 +46,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    project_type: Optional[str] = None
     aspect_ratio: Optional[str] = None
     resolution: Optional[str] = None
     background_fill: Optional[BackgroundFillSchema] = None
@@ -118,6 +120,7 @@ class ProjectResponse(ProjectBase):
     updated_at: datetime
     source_video_count: int = 0
     scene_count: int = 0
+    storyboard_count: int = 0
 
 
 class ProjectDetailResponse(ProjectResponse):
@@ -128,3 +131,4 @@ class ProjectDetailResponse(ProjectResponse):
     timeline: Optional[Dict[str, Any]] = None
     subtitle_style: Optional[Dict[str, Any]] = None
     render_jobs: List[RenderJobResponse] = []
+    storyboard_items: List[Dict[str, Any]] = []
