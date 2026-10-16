@@ -15,13 +15,25 @@ log = logging.getLogger(__name__)
 
 
 def normalize_endpoint_url(url: Optional[str]) -> str:
-    """Normalize endpoint URL, converting host localhost to host.docker.internal when inside Docker."""
+    """Normalize endpoint URL, converting host localhost to host.docker.internal when inside Docker and ensuring /v1 path."""
     raw = (url or "").strip().rstrip("/")
     if not raw:
         return ""
     # In Docker containers, host localhost/127.0.0.1 must be reached via host.docker.internal
     normalized = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw)
+
+    # Strip subpaths if user accidentally pasted full endpoint
+    for sub in ("/images/generations", "/chat/completions", "/images/generate", "/models"):
+        if normalized.endswith(sub):
+            normalized = normalized[:-len(sub)].rstrip("/")
+
+    # Ensure /v1 for standard OpenAI-compatible and local proxy endpoints (e.g. InferHub, LocalAI, vLLM, Runware)
+    # If the URL is already ending with /v1 (or /v2 etc), keep it. If not, and it does not contain googleapis, append /v1
+    if not re.search(r"/v\d+$", normalized) and "googleapis.com" not in normalized:
+        normalized = f"{normalized}/v1"
+
     return normalized
+
 
 
 def ensure_16_9_image(img_bytes: bytes) -> bytes:

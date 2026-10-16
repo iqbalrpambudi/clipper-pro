@@ -363,6 +363,18 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                             </div>
                           )}
 
+                          {/* Voiceover Narration sentence */}
+                          {item.script_text && (
+                            <div className="bg-black/40 px-2.5 py-1.5 rounded-lg border border-[#222]">
+                              <span className="text-[9px] uppercase font-semibold text-violet-400 font-mono block mb-0.5">
+                                Narasi Suara:
+                              </span>
+                              <p className="text-[11px] text-slate-200 font-sans italic line-clamp-2 leading-relaxed">
+                                &ldquo;{item.script_text}&rdquo;
+                              </p>
+                            </div>
+                          )}
+
                           {/* Motion Effect Selector & Action Button */}
                           <div className="space-y-2 pt-2 border-t border-[#262626]">
                             <div className="flex items-center justify-between text-[10px]">

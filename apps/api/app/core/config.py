@@ -36,13 +36,15 @@ class Settings(BaseSettings):
     IMAGE_CONCURRENCY: int = 2
     IMAGE_SYSTEM_PROMPT: str = (
         "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). "
-        "A minimal, storybook-style 2D line-art illustration, loose and clean black ink doodle, "
-        "hand-drawn sketchy feeling with varying pen stroke thickness, on an isolated stark plain pure white background. "
-        "Minimalist expressive doodle style, simple black dots for eyes, round pale head, charming clean proportions. "
-        "Extremely sparse environment with only essential loosely-drawn contextual props, ample negative space on plain white background. "
-        "Highly limited and selective color palette with muted, desaturated watercolor wash fills, subtle transparency and soft brush strokes, "
-        "maintaining a gentle, calm, everyday slice-of-life storytelling mood. "
-        "Pure white background, no 3D rendering, no heavy gradients, no borders, no frames, no text, no watermark."
+        "Educational explainer storyboard illustration in a distinctive hand-drawn cartoon doodle comic style. "
+        "Features iconic minimalist stick-figure characters with large, smooth, perfectly round bald white heads (no hair), "
+        "simple solid black dot eyes with expressive eyebrows, and thin black stick limbs. "
+        "Characters wear loose draped robes, tunics, or simple stylized fabric garments with fluid folds. "
+        "Clean, confident black ink linework with subtle sketchy hatching and expressive gestures. "
+        "Warm vintage parchment and tea-stained paper background texture with aged cream, sandy beige, and warm desert sepia watercolor washes. "
+        "Hand-painted watercolor fills with earthy tones (ochre, terracotta, warm sand, muted tan, subtle olive accents) and soft pigment bleeding. "
+        "Diagrammatic storytelling elements, clean visual metaphors, subtle rough hand-drawn border vignette, ample negative space. "
+        "No 3D CGI, no photorealism, no glossy gradients, no clutter, no digital text artifacts."
     )
 
     @property

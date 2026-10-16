@@ -37,7 +37,7 @@ import { NarrationTemplate, SubtitlePreset } from "@/types";
 import { Button } from "@/components/ui";
 
 const DEFAULT_IMAGE_STYLE_PROMPT =
-  "A minimal, storybook-style 2D line-art illustration, loose and clean black ink doodle, hand-drawn sketchy feeling with varying pen stroke thickness, on an isolated stark plain pure white background. Minimalist expressive doodle style, simple black dots for eyes, round pale head, charming clean proportions. Extremely sparse environment with only essential loosely-drawn contextual props, ample negative space on plain white background. Highly limited and selective color palette with muted, desaturated watercolor wash fills, subtle transparency and soft brush strokes, maintaining a gentle, calm, everyday slice-of-life storytelling mood. Pure white background, no 3D rendering, no heavy gradients, no borders, no frames, no text, no watermark.";
+  "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). Educational explainer storyboard illustration in a distinctive hand-drawn cartoon doodle comic style. Features iconic minimalist stick-figure characters with large, smooth, perfectly round bald white heads (no hair), simple solid black dot eyes with expressive eyebrows, and thin black stick limbs. Characters wear loose draped robes, tunics, or simple stylized fabric garments with fluid folds. Clean, confident black ink linework with subtle sketchy hatching and expressive gestures. Warm vintage parchment and tea-stained paper background texture with aged cream, sandy beige, and warm desert sepia watercolor washes. Hand-painted watercolor fills with earthy tones (ochre, terracotta, warm sand, muted tan, subtle olive accents) and soft pigment bleeding. Diagrammatic storytelling elements, clean visual metaphors, subtle rough hand-drawn border vignette, ample negative space. No 3D CGI, no photorealism, no glossy gradients, no clutter, no digital text artifacts.";
 
 const FONT_OPTIONS = [
   "Montserrat",
@@ -964,7 +964,7 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-slate-300">
-                      Master Style Prompt Preset (Konsistensi Gambar Hand-drawn)
+                      Master Style Prompt Preset (Doodle Explainer / Parchment Stickman)
                     </label>
                     <button
                       type="button"
@@ -972,18 +972,18 @@ export default function SettingsPage() {
                       className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
                     >
                       <RotateCcw className="w-2.5 h-2.5" />
-                      <span>Reset ke Default Hand-drawn</span>
+                      <span>Reset ke Preset Referensi</span>
                     </button>
                   </div>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={imageSystemPrompt}
                     onChange={(e) => setImageSystemPrompt(e.target.value)}
                     placeholder="Instruksi gaya visual yang akan digabungkan ke setiap adegan..."
                     className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya visual ilustrasi tetap seragam (hitam-putih sketch / textured paper / editorial storyboard) dari awal sampai akhir.
+                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam, parchment tea-stained watercolor) dari awal sampai akhir.
                   </p>
                 </div>
               </div>
