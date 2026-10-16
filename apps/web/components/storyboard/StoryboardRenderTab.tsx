@@ -161,6 +161,47 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               <span>Efek Transisi:</span>
               <span className="font-mono font-bold text-white">Ken Burns Zoom/Pan</span>
             </div>
+            <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-[#222222]">
+              <span>Status Subtitle:</span>
+              <span className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}>
+                {project.subtitle_style?.enabled !== false ? "Aktif (Burn-in)" : "Nonaktif (Tanpa Subtitle)"}
+              </span>
+            </div>
+          </div>
+
+          {/* Subtitle Option Toggle Checklist */}
+          <div className="p-3.5 rounded-xl bg-black/40 border border-[#262626] flex items-center justify-between text-xs">
+            <label htmlFor="render-subtitles-toggle" className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                id="render-subtitles-toggle"
+                type="checkbox"
+                checked={project.subtitle_style?.enabled !== false}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  await api.updateSubtitleStyle(project.id, {
+                    ...(project.subtitle_style || {}),
+                    enabled: checked,
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+                  showToast(
+                    checked ? "Subtitle diaktifkan untuk render." : "Subtitle dinonaktifkan (render tanpa subtitle).",
+                    "info"
+                  );
+                }}
+                className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+              />
+              <span className="font-semibold text-white">Sertakan Subtitle pada Render Video</span>
+            </label>
+            <Badge
+              variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
+              className={`text-[10px] font-mono ${
+                project.subtitle_style?.enabled !== false
+                  ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                  : "bg-[#222222] text-slate-400 border border-[#333333]"
+              }`}
+            >
+              {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
+            </Badge>
           </div>
 
           {/* Resolution Selector */}

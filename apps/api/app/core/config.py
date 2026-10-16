@@ -33,10 +33,16 @@ class Settings(BaseSettings):
     IMAGE_BASE_URL: str = "https://api.openai.com/v1"
     IMAGE_API_KEY: str = ""
     IMAGE_MODEL: str = "dall-e-3"
+    IMAGE_CONCURRENCY: int = 2
     IMAGE_SYSTEM_PROMPT: str = (
-        "Minimalist hand-drawn ink and pencil sketch illustration, black and white drawing on clean textured cream paper, "
-        "expressive loose linework, editorial storyboard cartoon aesthetic, clear single focal point, "
-        "cinematic 16:9 composition, no text, no letters, no watermark, high contrast vector feel"
+        "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). "
+        "A minimal, storybook-style 2D line-art illustration, loose and clean black ink doodle, "
+        "hand-drawn sketchy feeling with varying pen stroke thickness, on an isolated stark plain pure white background. "
+        "Minimalist expressive doodle style, simple black dots for eyes, round pale head, charming clean proportions. "
+        "Extremely sparse environment with only essential loosely-drawn contextual props, ample negative space on plain white background. "
+        "Highly limited and selective color palette with muted, desaturated watercolor wash fills, subtle transparency and soft brush strokes, "
+        "maintaining a gentle, calm, everyday slice-of-life storytelling mood. "
+        "Pure white background, no 3D rendering, no heavy gradients, no borders, no frames, no text, no watermark."
     )
 
     @property

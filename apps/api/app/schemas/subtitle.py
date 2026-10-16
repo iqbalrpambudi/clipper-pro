@@ -41,6 +41,7 @@ class StyleFieldsMixin(BaseModel):
 
 class SubtitleStyleBase(StyleFieldsMixin):
     preset_name: str = "viral_tiktok"  # viral_tiktok | hormozi_punch | minimalist | custom
+    enabled: bool = True
     description: Optional[str] = None
     font_family: str = "Poppins"
     font_size: int = 56

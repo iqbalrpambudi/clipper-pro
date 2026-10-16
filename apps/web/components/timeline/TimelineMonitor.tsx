@@ -849,12 +849,12 @@ export function TimelineMonitor({
     try {
       const refResX = aspectRatio === "16:9" ? 1920 : 1080;
       const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-      const newAss = generateAssSubtitles(
+      const newAss = subtitleStyle?.enabled !== false ? generateAssSubtitles(
         segments,
         subtitleStyle || {},
         refResX,
         refResY
-      );
+      ) : "";
       if (jassubRef.current.renderer?.setTrack) {
         jassubRef.current.renderer.setTrack(newAss);
       }
@@ -1015,7 +1015,7 @@ export function TimelineMonitor({
           />
 
           {/* Fallback CSS Subtitle Overlay (if WASM not yet ready) */}
-          {!isJassubReady && activeSegment && (
+          {!isJassubReady && subtitleStyle?.enabled !== false && activeSegment && (
             <div
               className="absolute left-0 right-0 z-20 px-4 flex justify-center text-center select-none pointer-events-none"
               style={{
@@ -1118,7 +1118,7 @@ export function TimelineMonitor({
           )}
 
           {/* Interactive Drag Handle for Subtitle Positioning */}
-          {onUpdateSubtitlePosition && (
+          {onUpdateSubtitlePosition && subtitleStyle?.enabled !== false && (
             <div
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}

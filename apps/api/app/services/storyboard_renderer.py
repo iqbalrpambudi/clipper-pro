@@ -16,6 +16,7 @@ from app.services.cancellation import (
     TaskCancelledException,
 )
 from app.services.renderer import _run_ffmpeg, _escape_filter_path, _build_watermark_filter
+from app.core.storage import storage
 
 log = logging.getLogger(__name__)
 
@@ -74,8 +75,8 @@ def _build_zoompan_filter(
         y_expr = "ih/2-(ih/zoom/2)"
 
     vf = (
-        f"scale={scale_w}:{scale_h}:force_original_aspect_ratio=increase,"
-        f"crop={scale_w}:{scale_h},"
+        f"scale={scale_w}:{scale_h}:force_original_aspect_ratio=decrease,"
+        f"pad={scale_w}:{scale_h}:(ow-iw)/2:(oh-ih)/2:color=white,"
         f"zoompan=z='{zoom_expr}':x='{x_expr}':y='{y_expr}':d=1:s={w}x{h}:fps={fps}"
     )
     return vf
@@ -121,7 +122,19 @@ async def render_storyboard_video(
         if progress_callback:
             await progress_callback(5, "Menyiapkan aset gambar ilustrasi storyboard...")
 
-        valid_items = [it for it in items if it.get("file_path") and Path(it["file_path"]).exists()]
+        valid_items = []
+        for it in items:
+            fp = it.get("file_path")
+            if not fp:
+                continue
+            p = Path(fp)
+            if not p.exists():
+                p = storage.to_absolute_path(fp)
+            if p and p.exists():
+                it_copy = dict(it)
+                it_copy["file_path"] = str(p)
+                valid_items.append(it_copy)
+
         if not valid_items:
             raise RuntimeError("Tidak ada gambar storyboard yang siap dirender. Silakan generate gambar adegan terlebih dahulu.")
 
@@ -131,7 +144,9 @@ async def render_storyboard_video(
         # Calculate total specified duration of items
         sum_item_dur = sum(float(it.get("duration") or 4.0) for it in valid_items)
         
-        # If total audio is longer than sum of items, scale or adjust last item duration
+        # Check if items have start_time from Whisper alignment
+        has_start_times = any(it.get("start_time") is not None for it in valid_items)
+
         scale_ratio = 1.0
         if audio_dur > 0 and sum_item_dur > 0:
             scale_ratio = audio_dur / sum_item_dur
@@ -145,26 +160,33 @@ async def render_storyboard_video(
 
             img_path = str(item["file_path"])
             base_duration = float(item.get("duration") or 4.0)
-            
-            # Adjust duration according to audio sync
-            if audio_dur > 0 and 0.5 < scale_ratio < 2.0:
-                duration = base_duration * scale_ratio
-            else:
-                duration = base_duration
 
-            # Ensure minimum duration
-            duration = max(1.0, duration)
-            
-            # If last item, stretch slightly if still behind total audio
-            if idx == total_items - 1 and audio_dur > (current_elapsed + duration):
-                duration = audio_dur - current_elapsed + 0.5
+            # Precise timing: use start_time to next start_time to bridge pauses seamlessly
+            if has_start_times and item.get("start_time") is not None:
+                cur_start = float(item["start_time"])
+                if idx < total_items - 1 and valid_items[idx + 1].get("start_time") is not None:
+                    next_start = float(valid_items[idx + 1]["start_time"])
+                    duration = max(1.0, next_start - cur_start)
+                else:
+                    if audio_dur > cur_start:
+                        duration = max(1.0, audio_dur - cur_start)
+                    else:
+                        duration = max(1.0, base_duration)
+            else:
+                if audio_dur > 0 and 0.5 < scale_ratio < 2.0:
+                    duration = base_duration * scale_ratio
+                else:
+                    duration = base_duration
+                duration = max(1.0, duration)
+                if idx == total_items - 1 and audio_dur > (current_elapsed + duration):
+                    duration = audio_dur - current_elapsed + 0.5
 
             current_elapsed += duration
             total_frames = max(15, sec_to_frame(duration))
             actual_dur = frame_to_sec(total_frames)
 
             motion = item.get("motion_effect", "zoom_in")
-            chunk_out = temp_dir / f"sb_chunk_{idx:04d}.mp4"
+            chunk_out = temp_dir / f"sb_chunk_{idx:04d}.ts"
 
             # Build motion filter
             vf_filter = _build_zoompan_filter(motion, total_frames, w, h, fps=COMPOSITION_FPS)
@@ -179,10 +201,14 @@ async def render_storyboard_video(
                 "-i", img_path,
                 "-filter_complex", vf_filter,
                 "-t", f"{actual_dur:.4f}",
+                "-r", "30",
                 "-fps_mode", "cfr",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-crf", "22",
+                "-g", "30",
+                "-keyint_min", "30",
+                "-sc_threshold", "0",
                 "-pix_fmt", "yuv420p",
                 "-an",
                 str(chunk_out),
@@ -209,7 +235,7 @@ async def render_storyboard_video(
             for cf in clip_files:
                 f.write(f"file '{cf.resolve()}'\n")
 
-        concatenated_video = temp_dir / "sb_concatenated.mp4"
+        concatenated_video = temp_dir / "sb_concatenated.ts"
         concat_cmd = [
             "ffmpeg",
             "-y",

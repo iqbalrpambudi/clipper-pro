@@ -369,6 +369,7 @@ async def update_project_subtitle_style(
         db.add(style)
 
     style.preset_name = payload.preset_name
+    style.enabled = payload.enabled
     style.font_family = payload.font_family
     style.font_size = payload.font_size
     style.font_weight = payload.font_weight

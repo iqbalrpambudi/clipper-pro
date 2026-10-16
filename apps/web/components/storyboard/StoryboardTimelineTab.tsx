@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Layers,
@@ -12,10 +12,17 @@ import {
   Image as ImageIcon,
   Volume2,
   VolumeX,
+  Type,
+  Sparkles,
+  Move,
+  Flame,
+  Zap,
+  Eye,
+  Save,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, StoryboardItem } from "@/types";
+import { Project, StoryboardItem, SubtitleStyle } from "@/types";
 import { Button, Badge } from "@/components/ui";
 
 interface StoryboardTimelineTabProps {
@@ -23,8 +30,85 @@ interface StoryboardTimelineTabProps {
     narration?: any;
     audio?: any;
     storyboard_items?: StoryboardItem[];
+    subtitle_style?: SubtitleStyle | null;
   };
 }
+
+// Popular 1-Click Color Schemes matching Short Clipper
+const COLOR_PRESETS = [
+  {
+    name: "TikTok Viral",
+    icon: Flame,
+    font_family: "Poppins",
+    primary_color: "#FFFFFF",
+    highlight_color: "#FFE600",
+    outline_color: "#000000",
+    outline_width: 4,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "burst" as const,
+  },
+  {
+    name: "Cyber Aqua",
+    icon: Zap,
+    font_family: "Poppins",
+    primary_color: "#FFFFFF",
+    highlight_color: "#00E5FF",
+    outline_color: "#000000",
+    outline_width: 4,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "burst" as const,
+  },
+  {
+    name: "Neon Lime",
+    icon: Sparkles,
+    font_family: "Montserrat",
+    primary_color: "#FFFFFF",
+    highlight_color: "#39FF14",
+    outline_color: "#000000",
+    outline_width: 4,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "burst" as const,
+  },
+  {
+    name: "Hot Sunset",
+    icon: Flame,
+    font_family: "Poppins",
+    primary_color: "#FFFFFF",
+    highlight_color: "#FF453A",
+    outline_color: "#000000",
+    outline_width: 4,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "burst" as const,
+  },
+  {
+    name: "Minimal Clean",
+    icon: Eye,
+    font_family: "Inter",
+    primary_color: "#F8FAFC",
+    highlight_color: "#38BDF8",
+    outline_color: "#0F172A",
+    outline_width: 2,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "full_sentence" as const,
+  },
+  {
+    name: "Caption Box",
+    icon: Layers,
+    font_family: "Poppins",
+    primary_color: "#FFFFFF",
+    highlight_color: "#FFE600",
+    outline_color: "#000000",
+    outline_width: 0,
+    box_color: "#000000",
+    box_opacity: 0.75,
+    display_mode: "burst" as const,
+  },
+];
 
 export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const queryClient = useQueryClient();
@@ -37,11 +121,60 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
   // Playback state
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoFrameRef = useRef<HTMLDivElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
 
+  // Inspector tab: "motion" vs "subtitles"
+  const [activeRightTab, setActiveRightTab] = useState<"motion" | "subtitles">("subtitles");
+
+  // Subtitle Style State (WYSIWYG 16:9 canvas)
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(() => ({
+    enabled: project.subtitle_style?.enabled !== false,
+    preset_name: project.subtitle_style?.preset_name || "viral_tiktok",
+    font_family: project.subtitle_style?.font_family || "Poppins",
+    font_size: project.subtitle_style?.font_size ?? 38,
+    font_weight: project.subtitle_style?.font_weight || "Bold",
+    primary_color: project.subtitle_style?.primary_color || "#FFFFFF",
+    highlight_color: project.subtitle_style?.highlight_color || "#FFE600",
+    outline_color: project.subtitle_style?.outline_color || "#000000",
+    outline_width: project.subtitle_style?.outline_width ?? 4,
+    box_color: project.subtitle_style?.box_color || "#000000",
+    box_opacity: project.subtitle_style?.box_opacity ?? 0.0,
+    position: project.subtitle_style?.position || "bottom",
+    offset_y: project.subtitle_style?.offset_y ?? -30,
+    offset_x: project.subtitle_style?.offset_x ?? 0,
+    display_mode: project.subtitle_style?.display_mode || "burst",
+    burst_word_count: project.subtitle_style?.burst_word_count ?? 2,
+    highlight_animation: project.subtitle_style?.highlight_animation || "scale",
+    scale_factor: project.subtitle_style?.scale_factor ?? 1.15,
+    emoji_enabled: false,
+  }));
+
+  // Frame dimension measurement for pixel-perfect responsive scaling
+  const [frameDimensions, setFrameDimensions] = useState({ width: 640, height: 360 });
+  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0, initialOffsetX: 0, initialOffsetY: 0 });
+
+  useEffect(() => {
+    if (!videoFrameRef.current) return;
+    const updateSize = () => {
+      if (videoFrameRef.current) {
+        setFrameDimensions({
+          width: videoFrameRef.current.clientWidth || 640,
+          height: videoFrameRef.current.clientHeight || 360,
+        });
+      }
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(videoFrameRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Update item motion mutation
   const updateItemMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<StoryboardItem> }) =>
       api.updateStoryboardItem(project.id, id, data),
@@ -51,6 +184,18 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal memperbarui motion", "error");
+    },
+  });
+
+  // Save Subtitle Style mutation
+  const updateStyleMutation = useMutation({
+    mutationFn: (newStyle: SubtitleStyle) => api.updateSubtitleStyle(project.id, newStyle),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Gaya subtitle tersimpan untuk render final!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal menyimpan subtitle", "error");
     },
   });
 
@@ -90,19 +235,100 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  // Find active storyboard item for currentTime
-  const activeItem =
-    items.find((it) => currentTime >= it.start_time && currentTime < it.end_time) ||
-    items[0] ||
-    null;
+  // FIX: Active storyboard item selector without gap glitch!
+  // Uses the latest item whose start_time <= currentTime, spanning naturally until next item starts.
+  const activeItem = useMemo(() => {
+    if (!items.length) return null;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (currentTime >= (items[i].start_time || 0)) {
+        return items[i];
+      }
+    }
+    return items[0];
+  }, [items, currentTime]);
 
-  // Find active narration segment
-  const activeSegment =
-    segments.find((seg) => {
-      const start = (seg.start_ms || 0) / 1000;
-      const end = (seg.end_ms || 0) / 1000;
-      return currentTime >= start && currentTime <= end;
-    }) || null;
+  // Active narration segment selector (with generous audio pause bridging)
+  const activeSegment = useMemo(() => {
+    if (!segments.length) return null;
+    const curMs = currentTime * 1000;
+    const direct = segments.find((seg: any) => curMs >= seg.start_ms && curMs <= (seg.end_ms + 250));
+    if (direct) return direct;
+    for (let i = segments.length - 1; i >= 0; i--) {
+      if (curMs >= segments[i].start_ms && (i === segments.length - 1 || curMs < segments[i + 1].start_ms)) {
+        return segments[i];
+      }
+    }
+    return segments[0] || null;
+  }, [segments, currentTime]);
+
+  // Subtitle Scaling Math relative to 1920x1080 Landscape
+  const scale = frameDimensions.width / 1920;
+  const scaleY = frameDimensions.height / 1080;
+  const scaledFontSize = Math.max(9, Math.round((subtitleStyle.font_size || 38) * scale));
+  const scaledOutlineWidth = Math.max(0.5, Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2)));
+  const scaledOffsetY = Math.round((subtitleStyle.offset_y || 0) * scaleY);
+  const scaledOffsetX = Math.round((subtitleStyle.offset_x || 0) * scale);
+  const isScaleAnim = subtitleStyle.highlight_animation !== "color" && subtitleStyle.highlight_animation !== "none";
+  const zoomScale = isScaleAnim ? (subtitleStyle.scale_factor ?? 1.15) : 1.0;
+
+  // Active words & burst calculations
+  const curMs = currentTime * 1000;
+  const segWords: any[] = activeSegment?.words || [];
+  let activeWordIndex = -1;
+  if (segWords.length > 0) {
+    activeWordIndex = segWords.findIndex((w: any) => curMs >= w.start_ms && curMs <= (w.end_ms + 180));
+  }
+
+  const burstCount = Math.max(2, subtitleStyle.burst_word_count || 2);
+  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] = [];
+  if (subtitleStyle.display_mode === "burst" && segWords.length > 0) {
+    for (let i = 0; i < segWords.length; i += burstCount) {
+      const group = segWords.slice(i, i + burstCount);
+      const gStart = group[0].start_ms;
+      const gEnd = group[group.length - 1].end_ms;
+      if (curMs >= gStart && curMs <= gEnd + 250) {
+        activeBurstGroup = group.map((item: any, localIdx: number) => ({
+          ...item,
+          isActive: i + localIdx === activeWordIndex,
+        }));
+        break;
+      }
+    }
+  }
+
+  // Interactive Drag-to-Position on Subtitle
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDraggingSubtitle(true);
+    dragStartPos.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialOffsetX: subtitleStyle.offset_x || 0,
+      initialOffsetY: subtitleStyle.offset_y || 0,
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingSubtitle) return;
+    const deltaX = e.clientX - dragStartPos.current.x;
+    const deltaY = e.clientY - dragStartPos.current.y;
+    const newAssDeltaX = Math.round(deltaX / (scale || 1));
+    const newAssDeltaY = Math.round(deltaY / (scaleY || 1));
+    setSubtitleStyle((prev) => ({
+      ...prev,
+      offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
+      offset_y: dragStartPos.current.initialOffsetY + newAssDeltaY,
+    }));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDraggingSubtitle) return;
+    setIsDraggingSubtitle(false);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+    updateStyleMutation.mutate(subtitleStyle);
+  };
 
   // Compute CSS animation class for active motion effect
   const getMotionAnimationClass = (effect: string) => {
@@ -112,9 +338,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       case "zoom_out":
         return "scale-100 scale-x-105 transition-transform duration-[6000ms] ease-out";
       case "pan_left":
-        return "translate-x-2 scale-105 transition-transform duration-[6000ms] ease-out";
+        return "translate-x-3 scale-105 transition-transform duration-[6000ms] ease-out";
       case "pan_right":
-        return "-translate-x-2 scale-105 transition-transform duration-[6000ms] ease-out";
+        return "-translate-x-3 scale-105 transition-transform duration-[6000ms] ease-out";
       default:
         return "scale-100 transition-none";
     }
@@ -130,14 +356,14 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               Langkah 4 dari 5
             </span>
             <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Timeline & Motion Sync
+              Timeline, Motion & Studio Subtitle WYSIWYG
             </Badge>
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
-            Preview Video 16:9 & Penataan Motion Ken Burns
+            Preview Video 16:9 & Studio Kustomisasi Subtitle
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tonton simulasi preview video landscape 16:9 dengan sinkronisasi gambar dan narasi suara secara real-time sebelum proses render final.
+            Tonton simulasi preview video landscape 16:9 dengan live karaoke subtitle dan penataan visual adegan secara real-time.
           </p>
         </div>
 
@@ -172,11 +398,14 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
         />
       )}
 
-      {/* Main Preview Player & Active Scene Details */}
+      {/* Main Preview Player & Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: 16:9 Landscape Video Player Screen (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="relative aspect-video rounded-2xl bg-black border border-[#2E2E2E] overflow-hidden shadow-2xl flex items-center justify-center">
+          <div
+            ref={videoFrameRef}
+            className="relative aspect-video rounded-2xl bg-black border border-[#2E2E2E] overflow-hidden shadow-2xl flex items-center justify-center select-none"
+          >
             {activeItem && activeItem.image_url ? (
               <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
                 <img
@@ -197,19 +426,145 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               </div>
             )}
 
-            {/* Subtitle / Narration Lower-Third Overlay */}
-            {activeSegment && (
-              <div className="absolute bottom-5 inset-x-6 text-center z-10 pointer-events-none">
-                <div className="inline-block bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-2xl">
-                  <p className="text-sm font-medium text-white drop-shadow-md leading-relaxed">
-                    {activeSegment.text}
-                  </p>
+            {/* WYSIWYG Live Subtitle Overlay */}
+            {subtitleStyle.enabled !== false && activeSegment && (
+              <div
+                className="absolute left-0 right-0 z-20 px-6 flex justify-center text-center select-none pointer-events-none"
+                style={{
+                  top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
+                  bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
+                  transform: `translate(${scaledOffsetX}px, ${
+                    subtitleStyle.position === "center"
+                      ? `calc(-50% + ${scaledOffsetY}px)`
+                      : subtitleStyle.position === "bottom"
+                      ? `${-scaledOffsetY}px`
+                      : `${scaledOffsetY}px`
+                  })`,
+                }}
+              >
+                {/* 1. Burst Mode (2-3 kata) */}
+                {subtitleStyle.display_mode === "burst" && activeBurstGroup.length > 0 ? (
+                  <div
+                    style={{
+                      fontSize: `${scaledFontSize}px`,
+                      fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
+                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 700,
+                      color: subtitleStyle.primary_color || "#FFFFFF",
+                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                      backgroundColor:
+                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
+                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
+                      borderRadius: "6px",
+                    }}
+                    className="flex items-center justify-center gap-2 uppercase tracking-wide"
+                  >
+                    {activeBurstGroup.map((w, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          color: w.isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                          transition: "all 0.08s ease-out",
+                          display: "inline-block",
+                        }}
+                      >
+                        {w.word}
+                      </span>
+                    ))}
+                  </div>
+                ) : subtitleStyle.display_mode === "per_word" && activeWordIndex !== -1 && segWords[activeWordIndex] ? (
+                  /* 2. Per Word Mode */
+                  <div
+                    style={{
+                      fontSize: `${scaledFontSize * 1.05}px`,
+                      fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
+                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 700,
+                      color: subtitleStyle.highlight_color || "#FFE600",
+                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                      transform: isScaleAnim ? `scale(${zoomScale})` : "none",
+                      backgroundColor:
+                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
+                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
+                      borderRadius: "6px",
+                      display: "inline-block",
+                    }}
+                    className="uppercase tracking-wide"
+                  >
+                    {segWords[activeWordIndex].word}
+                  </div>
+                ) : (
+                  /* 3. Full Sentence Mode with Karaoke Word Highlight */
+                  <div
+                    style={{
+                      fontSize: `${Math.round(scaledFontSize * 0.9)}px`,
+                      fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
+                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 600,
+                      color: subtitleStyle.primary_color || "#FFFFFF",
+                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                      backgroundColor:
+                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
+                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
+                      borderRadius: "6px",
+                    }}
+                    className="inline-block uppercase tracking-wide leading-snug max-w-[85%]"
+                  >
+                    {segWords.length > 0
+                      ? segWords.map((w: any, i: number) => {
+                          const isActive = i === activeWordIndex;
+                          return (
+                            <span
+                              key={i}
+                              style={{
+                                color: isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                                transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                                transition: "all 0.08s ease-out",
+                                display: "inline-block",
+                              }}
+                              className="mr-1.5"
+                            >
+                              {w.word}
+                            </span>
+                          );
+                        })
+                      : activeSegment.text}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Interactive Drag Handle for Subtitle Position */}
+            {subtitleStyle.enabled !== false && (
+              <div
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                className="absolute left-6 right-6 z-30 flex justify-center text-center select-none cursor-move group"
+                style={{
+                  top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
+                  bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
+                  transform: `translate(${scaledOffsetX}px, ${
+                    subtitleStyle.position === "center"
+                      ? `calc(-50% + ${scaledOffsetY}px)`
+                      : subtitleStyle.position === "bottom"
+                      ? `${-scaledOffsetY}px`
+                      : `${scaledOffsetY}px`
+                  })`,
+                }}
+              >
+                <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-violet-400/70 transition-all flex items-center justify-center pointer-events-auto">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-violet-300 px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
+                    <Move className="w-3 h-3" />
+                    <span>Tarik untuk geser posisi subtitle</span>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Top Left Badge: Timestamp & Motion */}
-            <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+            {/* Top Left Badge: Timestamp & Scene */}
+            <div className="absolute top-3 left-3 flex items-center gap-2 z-10 pointer-events-none">
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white font-bold border border-white/10">
                 {formatTime(currentTime)} / {formatTime(duration || audio?.duration || 0)}
               </span>
@@ -236,14 +591,37 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 <button
                   type="button"
                   onClick={() => handleSeek(Math.max(0, currentTime - 5))}
-                  className="p-2 rounded-lg bg-surface hover:bg-white/10 text-slate-300"
+                  className="p-2 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition"
                   title="Mundur 5 detik"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newEnabled = subtitleStyle.enabled === false;
+                    const updated = { ...subtitleStyle, enabled: newEnabled };
+                    setSubtitleStyle(updated);
+                    updateStyleMutation.mutate(updated);
+                    showToast(
+                      newEnabled ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih).",
+                      "info"
+                    );
+                  }}
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${
+                    subtitleStyle.enabled !== false
+                      ? "bg-violet-600/20 text-violet-300 border-violet-500/40"
+                      : "bg-[#222222] text-slate-500 border-[#2E2E2E]"
+                  }`}
+                  title={subtitleStyle.enabled !== false ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold">{subtitleStyle.enabled !== false ? "SUBTITLE ON" : "SUBTITLE OFF"}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -252,7 +630,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       setIsMuted(!isMuted);
                     }
                   }}
-                  className="p-2 rounded-lg bg-surface hover:bg-white/10 text-slate-300"
+                  className="p-2 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition"
                 >
                   {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
                 </button>
@@ -276,65 +654,159 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
           </div>
         </div>
 
-        {/* Right Column: Active Scene & Motion Inspector (5 Cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-xl">
-          <div className="flex items-center justify-between pb-3 border-b border-[#2E2E2E]">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-violet-400" />
-              <span>Inspector Adegan Aktif</span>
-            </h3>
-            {activeItem && (
-              <span className="text-[11px] font-mono text-slate-400">
-                Detik {activeItem.start_time}s – {activeItem.end_time}s
-              </span>
-            )}
+        {/* Right Column: Tabbed Inspector (Motion vs Subtitle Studio) (5 Cols) */}
+        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 space-y-5 shadow-xl">
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-2 p-1 bg-[#121212] rounded-xl border border-[#2E2E2E]">
+            <button
+              type="button"
+              onClick={() => setActiveRightTab("subtitles")}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
+                activeRightTab === "subtitles"
+                  ? "bg-violet-600 text-white font-semibold shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Type className="w-3.5 h-3.5" />
+              <span>Studio Subtitle</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveRightTab("motion")}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
+                activeRightTab === "motion"
+                  ? "bg-violet-600 text-white font-semibold shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Adegan & Motion</span>
+            </button>
           </div>
 
-          {activeItem ? (
+          {/* Subtitle Customization Studio Panel */}
+          {activeRightTab === "subtitles" ? (
             <div className="space-y-4">
-              <div>
-                <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
-                  Naskah Narasi Suara:
-                </span>
-                <p className="text-xs text-slate-200 bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
-                  &ldquo;{activeItem.script_text}&rdquo;
-                </p>
+              {/* Checklist Toggle: Enable / Disable Subtitle */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] shadow-sm space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="subtitle-enable-check" className="flex items-center gap-3 cursor-pointer select-none flex-1">
+                    <input
+                      id="subtitle-enable-check"
+                      type="checkbox"
+                      checked={subtitleStyle.enabled !== false}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const updated: SubtitleStyle = {
+                          ...subtitleStyle,
+                          enabled: checked,
+                        };
+                        setSubtitleStyle(updated);
+                        updateStyleMutation.mutate(updated);
+                        showToast(
+                          checked ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
+                          "info"
+                        );
+                      }}
+                      className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-white block">Gunakan Subtitle pada Video</span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        {subtitleStyle.enabled !== false
+                          ? "Subtitle tampil di preview dan akan dibakar ke render video"
+                          : "Video bersih tanpa teks (hanya visual adegan & audio narasi)"}
+                      </span>
+                    </div>
+                  </label>
+
+                  <Badge
+                    variant={subtitleStyle.enabled !== false ? "default" : "secondary"}
+                    className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+                      subtitleStyle.enabled !== false
+                        ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                        : "bg-[#222222] text-slate-500 border border-[#333333]"
+                    }`}
+                  >
+                    {subtitleStyle.enabled !== false ? "AKTIF" : "NONAKTIF"}
+                  </Badge>
+                </div>
               </div>
 
-              <div>
-                <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
-                  Prompt Gambar Ilustrasi:
-                </span>
-                <p className="text-xs text-slate-300 font-mono bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
-                  {activeItem.image_prompt}
-                </p>
-              </div>
+              {subtitleStyle.enabled === false && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2">
+                  <span>⚠️ Subtitle sedang dinonaktifkan. Video akan dirender bersih tanpa subtitle. Beri centang pada checklist di atas jika ingin mengaktifkan subtitle kembali.</span>
+                </div>
+              )}
 
+              {/* Presets 1-Click */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Efek Gerakan Ken Burns pada Adegan Ini:
+                <label className="text-[11px] font-semibold text-slate-300 block mb-2 flex items-center justify-between">
+                  <span>Pilihan Gaya Preset Cepat:</span>
+                  <span className="text-[10px] text-violet-400 font-mono">WYSIWYG 16:9</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
+                  {COLOR_PRESETS.map((p) => {
+                    const isSelected = subtitleStyle.preset_name === p.name.toLowerCase().replace(/\s+/g, "_");
+                    const Icon = p.icon;
+                    return (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() => {
+                          const updated: SubtitleStyle = {
+                            ...subtitleStyle,
+                            preset_name: p.name.toLowerCase().replace(/\s+/g, "_"),
+                            font_family: p.font_family,
+                            primary_color: p.primary_color,
+                            highlight_color: p.highlight_color,
+                            outline_color: p.outline_color,
+                            outline_width: p.outline_width,
+                            box_color: p.box_color,
+                            box_opacity: p.box_opacity,
+                            display_mode: p.display_mode,
+                          };
+                          setSubtitleStyle(updated);
+                          updateStyleMutation.mutate(updated);
+                        }}
+                        className={`p-2 rounded-xl text-xs border text-left flex items-center gap-2 transition ${
+                          isSelected
+                            ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
+                            : "bg-[#141414] border-[#2A2A2A] text-slate-300 hover:border-violet-500/40"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Display Mode */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1.5">
+                  Mode Tampilan Kata:
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { id: "zoom_in", label: "Slow Zoom In" },
-                    { id: "zoom_out", label: "Slow Zoom Out" },
-                    { id: "pan_left", label: "Pan Left" },
-                    { id: "pan_right", label: "Pan Right" },
-                    { id: "static", label: "Statis (Diam)" },
+                    { id: "burst", label: "Burst (2 Kata)" },
+                    { id: "per_word", label: "Per Kata" },
+                    { id: "full_sentence", label: "Kalimat" },
                   ].map((m) => (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() =>
-                        updateItemMutation.mutate({
-                          id: activeItem.id,
-                          data: { motion_effect: m.id as any },
-                        })
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          display_mode: m.id as any,
+                        }))
                       }
-                      className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
-                        activeItem.motion_effect === m.id
-                          ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                          : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                        subtitleStyle.display_mode === m.id
+                          ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
+                          : "bg-[#141414] border-[#2A2A2A] text-slate-400 hover:text-white"
                       }`}
                     >
                       {m.label}
@@ -342,10 +814,235 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Font Family & Size */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                    Jenis Font:
+                  </label>
+                  <select
+                    value={subtitleStyle.font_family}
+                    onChange={(e) =>
+                      setSubtitleStyle((prev) => ({
+                        ...prev,
+                        font_family: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="Poppins">Poppins</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Arial">Arial Black</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1">
+                    <span>Ukuran Font:</span>
+                    <span className="font-mono text-violet-400">{subtitleStyle.font_size}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={20}
+                    max={64}
+                    step={1}
+                    value={subtitleStyle.font_size}
+                    onChange={(e) =>
+                      setSubtitleStyle((prev) => ({
+                        ...prev,
+                        font_size: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full accent-violet-500 cursor-pointer h-2 bg-[#2A2A2A] rounded-lg mt-1.5"
+                  />
+                </div>
+              </div>
+
+              {/* Colors Pickers */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                    Warna Teks Biasa
+                  </label>
+                  <div className="flex items-center gap-2 bg-[#141414] border border-[#2A2A2A] rounded-xl p-1.5">
+                    <input
+                      type="color"
+                      value={subtitleStyle.primary_color || "#FFFFFF"}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          primary_color: e.target.value,
+                        }))
+                      }
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-[11px] font-mono text-slate-300">
+                      {subtitleStyle.primary_color}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                    Warna Highlight Karaoke
+                  </label>
+                  <div className="flex items-center gap-2 bg-[#141414] border border-[#2A2A2A] rounded-xl p-1.5">
+                    <input
+                      type="color"
+                      value={subtitleStyle.highlight_color || "#FFE600"}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          highlight_color: e.target.value,
+                        }))
+                      }
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-[11px] font-mono text-slate-300">
+                      {subtitleStyle.highlight_color}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtitle Position Alignment */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Posisi Layar:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSubtitleStyle((prev) => ({
+                        ...prev,
+                        position: "bottom",
+                        offset_x: 0,
+                        offset_y: -30,
+                      }))
+                    }
+                    className="text-[10px] text-violet-400 hover:underline"
+                  >
+                    Reset Posisi
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: "top", label: "Atas" },
+                    { id: "center", label: "Tengah" },
+                    { id: "bottom", label: "Bawah" },
+                  ].map((pos) => (
+                    <button
+                      key={pos.id}
+                      type="button"
+                      onClick={() =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          position: pos.id as any,
+                          offset_y: pos.id === "bottom" ? -30 : 0,
+                        }))
+                      }
+                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                        subtitleStyle.position === pos.id
+                          ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
+                          : "bg-[#141414] border-[#2A2A2A] text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {pos.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <Button
+                onClick={() => updateStyleMutation.mutate(subtitleStyle)}
+                disabled={updateStyleMutation.isPending}
+                className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 mt-2"
+              >
+                {updateStyleMutation.isPending ? (
+                  <span>Menyimpan...</span>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan Gaya Subtitle</span>
+                  </>
+                )}
+              </Button>
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-500 text-xs">
-              Pilih titik timeline untuk melihat detail adegan.
+            /* Adegan & Motion Effect Inspector */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-[#2A2A2A]">
+                <span className="text-xs font-semibold text-white">Adegan Saat Ini</span>
+                {activeItem && (
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Detik {activeItem.start_time}s – {activeItem.end_time}s
+                  </span>
+                )}
+              </div>
+
+              {activeItem ? (
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                      Naskah Narasi Suara:
+                    </span>
+                    <p className="text-xs text-slate-200 bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
+                      &ldquo;{activeItem.script_text}&rdquo;
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                      Prompt Gambar Ilustrasi:
+                    </span>
+                    <p className="text-xs text-slate-300 font-mono bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
+                      {activeItem.image_prompt}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Efek Gerakan Ken Burns:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "zoom_in", label: "Slow Zoom In" },
+                        { id: "zoom_out", label: "Slow Zoom Out" },
+                        { id: "pan_left", label: "Pan Left" },
+                        { id: "pan_right", label: "Pan Right" },
+                        { id: "static", label: "Statis (Diam)" },
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() =>
+                            updateItemMutation.mutate({
+                              id: activeItem.id,
+                              data: { motion_effect: m.id as any },
+                            })
+                          }
+                          className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
+                            activeItem.motion_effect === m.id
+                              ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
+                              : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  Pilih titik timeline untuk melihat detail adegan.
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -367,7 +1064,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
         <div className="flex items-stretch gap-3 overflow-x-auto pb-4 pt-1">
           {items.map((item, idx) => {
-            const isCurrent = currentTime >= item.start_time && currentTime < item.end_time;
+            const isCurrent = activeItem?.id === item.id;
 
             return (
               <div

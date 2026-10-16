@@ -37,7 +37,7 @@ import { NarrationTemplate, SubtitlePreset } from "@/types";
 import { Button } from "@/components/ui";
 
 const DEFAULT_IMAGE_STYLE_PROMPT =
-  "Minimalist hand-drawn ink and pencil sketch illustration, black and white drawing on clean textured cream paper, expressive loose linework, editorial storyboard cartoon aesthetic, clear single focal point, cinematic 16:9 composition, no text, no letters, no watermark, high contrast vector feel";
+  "A minimal, storybook-style 2D line-art illustration, loose and clean black ink doodle, hand-drawn sketchy feeling with varying pen stroke thickness, on an isolated stark plain pure white background. Minimalist expressive doodle style, simple black dots for eyes, round pale head, charming clean proportions. Extremely sparse environment with only essential loosely-drawn contextual props, ample negative space on plain white background. Highly limited and selective color palette with muted, desaturated watercolor wash fills, subtle transparency and soft brush strokes, maintaining a gentle, calm, everyday slice-of-life storytelling mood. Pure white background, no 3D rendering, no heavy gradients, no borders, no frames, no text, no watermark.";
 
 const FONT_OPTIONS = [
   "Montserrat",
@@ -79,6 +79,7 @@ export default function SettingsPage() {
   // AI Image Generator State
   const [imageBaseUrl, setImageBaseUrl] = useState("");
   const [imageModel, setImageModel] = useState("dall-e-3");
+  const [imageConcurrency, setImageConcurrency] = useState<number>(2);
   const [imageApiKey, setImageApiKey] = useState("");
   const [imageSystemPrompt, setImageSystemPrompt] = useState(DEFAULT_IMAGE_STYLE_PROMPT);
   const [testImageResult, setTestImageResult] = useState<any>(null);
@@ -209,6 +210,7 @@ export default function SettingsPage() {
       }
       setImageBaseUrl(config.image_base_url || "");
       setImageModel(config.image_model || "dall-e-3");
+      setImageConcurrency(config.image_concurrency || 2);
       if (config.image_system_prompt) {
         setImageSystemPrompt(config.image_system_prompt);
       }
@@ -350,6 +352,7 @@ export default function SettingsPage() {
       tts_api_key: ttsApiKey.trim() || undefined,
       image_base_url: imageBaseUrl.trim() || null,
       image_model: imageModel.trim() || "dall-e-3",
+      image_concurrency: imageConcurrency,
       image_api_key: imageApiKey.trim() || undefined,
       image_system_prompt: imageSystemPrompt.trim() || undefined,
     });
@@ -826,13 +829,18 @@ export default function SettingsPage() {
                   <ImageIcon className="w-4 h-4 text-violet-400" />
                   <h3 className="text-sm font-bold text-white">3. Konfigurasi AI Image Generator (Storyboard Explainer)</h3>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 font-mono">
-                  OpenAI / FLUX / DALL-E / SD
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+                    Paralel {imageConcurrency}x Request
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 font-mono">
+                    Runware / Gemini / OpenAI / SD
+                  </span>
+                </div>
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                Digunakan khusus oleh mode <strong>Long Storyboard Explainer</strong> untuk menghasilkan gambar ilustrasi hand-drawn secara otomatis sesuai durasi narasi audio. Kompatibel dengan format endpoint OpenAI <code className="text-violet-300 font-mono">/v1/images/generations</code> (OpenAI, Fal.ai, Together AI, Replicate, atau ComfyUI proxy).
+                Digunakan khusus oleh mode <strong>Long Storyboard Explainer</strong> untuk menghasilkan gambar ilustrasi hand-drawn secara otomatis (rasio widescreen 16:9) sesuai durasi narasi audio. Cukup masukkan endpoint dan model yang ingin digunakan — mendukung <strong>Runware.ai (FLUX.1 Schnell)</strong>, endpoint proxy lokal / InferHub (misal <strong>inferhub/cb/gemini-3.1-flash-image</strong>), maupun endpoint kompatibel OpenAI lainnya.
               </p>
 
               <div className="space-y-4 pt-1">
@@ -842,13 +850,13 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="https://api.openai.com/v1 atau proxy image endpoint..."
+                    placeholder="https://api.runware.ai/v1, http://localhost:port/v1, atau https://api.openai.com/v1..."
                     value={imageBaseUrl}
                     onChange={(e) => setImageBaseUrl(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Default: <code className="text-slate-400">https://api.openai.com/v1</code>. Sistem akan otomatis memanggil <code className="text-slate-400">/images/generations</code>.
+                    Contoh: <code className="text-violet-300">https://api.runware.ai/v1</code> (Runware), endpoint lokal / InferHub (<code className="text-slate-400">http://localhost:port/v1</code>), atau <code className="text-slate-400">https://api.openai.com/v1</code>.
                   </p>
                 </div>
 
@@ -859,14 +867,14 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="dall-e-3 atau flux-schnell"
+                      placeholder="runware:100@1, inferhub/cb/gemini-3.1-flash-image, atau dall-e-3"
                       value={imageModel}
                       onChange={(e) => setImageModel(e.target.value)}
                       className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 mb-2"
                     />
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] text-slate-500">Preset:</span>
-                      {["dall-e-3", "flux-schnell", "flux-dev", "stable-diffusion-3.5"].map((preset) => (
+                      {["runware:100@1", "inferhub/cb/gemini-3.1-flash-image", "dall-e-3", "flux-schnell"].map((preset) => (
                         <button
                           key={preset}
                           type="button"
@@ -905,6 +913,52 @@ export default function SettingsPage() {
                       Disimpan aman dengan enkripsi AES Fernet di database.
                     </p>
                   </div>
+                </div>
+
+                {/* Concurrency Selector 1-4 (default 2) */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Jumlah Paralel Request Generator (1 - 4 Concurrent)
+                    </label>
+                    <span className="text-[10px] text-emerald-400 font-mono">
+                      Aktif: {imageConcurrency} request serentak
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { val: 1, label: "1x (Serial)", desc: "1 request per waktu (hemat resource / low-end GPU)" },
+                      { val: 2, label: "2x (Default)", desc: "2 request serentak (stabil & seimbang)" },
+                      { val: 3, label: "3x (Cepat)", desc: "3 request serentak (performa tinggi)" },
+                      { val: 4, label: "4x (Maksimal)", desc: "4 request serentak (cloud / Runware)" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => setImageConcurrency(opt.val)}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                          imageConcurrency === opt.val
+                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
+                            : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-emerald-300" : "text-slate-200"}`}>
+                            {opt.label}
+                          </span>
+                          {imageConcurrency === opt.val && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 leading-tight">
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5">
+                    Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch. Default adalah <strong>2</strong>.
+                  </p>
                 </div>
 
                 <div>

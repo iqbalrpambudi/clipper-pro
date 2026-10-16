@@ -40,6 +40,7 @@ async def init_db() -> None:
         # Ensure new schema columns exist
         await conn.execute(text("ALTER TABLE scenes ADD COLUMN IF NOT EXISTS transcript TEXT;"))
         await conn.execute(text("ALTER TABLE subtitle_styles ADD COLUMN IF NOT EXISTS description VARCHAR(255);"))
+        await conn.execute(text("ALTER TABLE subtitle_styles ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT TRUE;"))
         await conn.execute(text("ALTER TABLE source_videos ALTER COLUMN selected_resolution TYPE VARCHAR(255);"))
         await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_audio BOOLEAN DEFAULT TRUE;"))
         await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_subtitles BOOLEAN DEFAULT TRUE;"))
@@ -50,4 +51,5 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_model VARCHAR(100) DEFAULT 'dall-e-3';"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_api_key_encrypted TEXT;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_system_prompt TEXT;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_concurrency INTEGER DEFAULT 2;"))
 

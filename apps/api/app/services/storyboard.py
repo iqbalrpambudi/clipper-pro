@@ -43,8 +43,8 @@ def build_storyboard_prompt(
         f"4. Pembagian Segmen & Ilustrasi Visual:\n"
         f"   - Pecah cerita menjadi sekitar {target_segments} segmen berurutan.\n"
         f"   - Setiap segmen WAJIB memiliki narasi teks dan tepat {images_per_segment} prompt visual ilustrasi gambar.\n"
-        "   - Prompt visual harus mendeskripsikan subjek konkret, aksi, dan metafora visual (contoh: 'A lonely human silhouette standing beneath a colossal glowing clock, gears ticking').\n"
-        "   - DILARANG menyertakan teks, huruf, atau watermark dalam prompt visual.\n\n"
+        "   - GAYA PROMPT VISUAL (WAJIB): Tulis prompt dalam Bahasa Inggris ringkas. Gambarkan karakter doodle minimalis yang ekspresif (kepala bulat, mata titik kecil hitam, rambut hitam santai) atau metafora visual yang bersih dengan 1-2 properti esensial, banyak ruang kosong (ample negative space), dan aksen warna cat air lembut di atas latar belakang putih bersih. Contoh: 'A small minimalist doodle character sitting thoughtfully on a wooden stool, holding an old compass, with a single potted plant nearby on plain white background'.\n"
+        "   - DILARANG menyertakan teks, tulisan, huruf, frame, atau watermark dalam prompt visual.\n\n"
         "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
         "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan struktur berikut:\n"
         "{\n"
@@ -79,6 +79,53 @@ def build_storyboard_prompt(
 
     user_prompt += "\nTuliskan naskah narasi lengkap dan prompt ilustrasi sekarang dalam format JSON murni:"
     return system_prompt, user_prompt
+
+
+def _split_text_into_subsegments(text: str, n_parts: int) -> List[str]:
+    """Split segment text into n_parts subsegments aligned with visual cues."""
+    text = (text or "").strip()
+    if n_parts <= 1 or not text:
+        return [text] * max(1, n_parts)
+
+    raw_sentences = re.split(r"(?<=[.!?])\s+", text)
+    sentences = [s.strip() for s in raw_sentences if s.strip()]
+
+    if len(sentences) == n_parts:
+        return sentences
+
+    if len(sentences) > n_parts:
+        parts = []
+        step = len(sentences) / n_parts
+        for i in range(n_parts):
+            start_idx = int(round(i * step))
+            end_idx = int(round((i + 1) * step))
+            parts.append(" ".join(sentences[start_idx:end_idx]))
+        return parts
+
+    # Fewer sentences than parts: Try splitting by clauses
+    clause_delims = r"(?<=[,;:\—\-])\s+|(?<=\s)(?:namun|tetapi|sedangkan|sehingga|sementara|lalu|kemudian)\s+"
+    raw_clauses = re.split(clause_delims, text, flags=re.IGNORECASE)
+    clauses = [c.strip() for c in raw_clauses if c.strip()]
+    if len(clauses) >= n_parts:
+        parts = []
+        step = len(clauses) / n_parts
+        for i in range(n_parts):
+            start_idx = int(round(i * step))
+            end_idx = int(round((i + 1) * step))
+            parts.append(" ".join(clauses[start_idx:end_idx]))
+        return parts
+
+    words = text.split()
+    if len(words) >= n_parts * 2:
+        step = len(words) / n_parts
+        parts = []
+        for i in range(n_parts):
+            start_idx = int(round(i * step))
+            end_idx = int(round((i + 1) * step))
+            parts.append(" ".join(words[start_idx:end_idx]))
+        return parts
+
+    return [text] * n_parts
 
 
 def extract_json_payload(raw_content: str) -> Dict[str, Any]:
@@ -129,11 +176,10 @@ async def generate_storyboard_script(
     )
 
     log.info("Generating long-form storyboard script for project %s (topic=%s, dur=%dm)...", project_id, topic, duration_mins)
-    raw_response = await llm_adapter.generate_text(
+    raw_response = await llm_adapter.generate_chat(
         prompt=user_prompt,
-        system_instruction=system_prompt,
-        temperature=0.7,
-        max_tokens=6000,
+        system_prompt=system_prompt,
+        json_mode=True,
     )
 
     data = extract_json_payload(raw_response)
@@ -153,35 +199,63 @@ async def generate_storyboard_script(
     for chap_idx, chapter in enumerate(chapters):
         chap_title = chapter.get("chapter_title", f"Babak {chap_idx + 1}")
         for seg in chapter.get("segments", []):
-            seg_id = f"seg-{seg_counter}"
             seg_text = (seg.get("narration_text") or "").strip()
             if not seg_text:
                 continue
 
-            full_script_lines.append(seg_text)
             img_prompts = seg.get("image_prompts", [])
             if not isinstance(img_prompts, list) or len(img_prompts) == 0:
                 img_prompts = [f"Illustration representing {seg_text[:80]}"]
 
-            all_segments.append({
-                "id": seg_id,
-                "chapter": chap_title,
-                "text": seg_text,
-                "image_count": len(img_prompts),
-                "start_ms": 0,
-                "end_ms": 0,
-            })
+            # Every segment narration must represent its visual image 1-to-1.
+            # If a segment has multiple images, split the segment into subsegments.
+            if len(img_prompts) > 1:
+                sub_texts = _split_text_into_subsegments(seg_text, len(img_prompts))
+                for sub_idx, (sub_text, prompt) in enumerate(zip(sub_texts, img_prompts)):
+                    sub_seg_id = f"seg-{seg_counter}_{sub_idx + 1}"
+                    all_segments.append({
+                        "id": sub_seg_id,
+                        "chapter": chap_title,
+                        "text": sub_text,
+                        "image_count": 1,
+                        "start_ms": 0,
+                        "end_ms": 0,
+                    })
+                    full_script_lines.append(sub_text)
 
-            # Create StoryboardItem per image prompt
-            for img_idx, prompt in enumerate(img_prompts[:3]):  # max 3 per segment
+                    motion = motion_cycle[global_img_order % len(motion_cycle)]
+                    item = StoryboardItem(
+                        project_id=project_id,
+                        chapter_title=chap_title,
+                        segment_id=sub_seg_id,
+                        order_index=global_img_order,
+                        script_text=sub_text,
+                        image_prompt=str(prompt).strip(),
+                        motion_effect=motion,
+                        status="pending",
+                    )
+                    storyboard_items.append(item)
+                    global_img_order += 1
+            else:
+                single_seg_id = f"seg-{seg_counter}"
+                all_segments.append({
+                    "id": single_seg_id,
+                    "chapter": chap_title,
+                    "text": seg_text,
+                    "image_count": 1,
+                    "start_ms": 0,
+                    "end_ms": 0,
+                })
+                full_script_lines.append(seg_text)
+
                 motion = motion_cycle[global_img_order % len(motion_cycle)]
                 item = StoryboardItem(
                     project_id=project_id,
                     chapter_title=chap_title,
-                    segment_id=seg_id,
+                    segment_id=single_seg_id,
                     order_index=global_img_order,
                     script_text=seg_text,
-                    image_prompt=str(prompt).strip(),
+                    image_prompt=str(img_prompts[0]).strip(),
                     motion_effect=motion,
                     status="pending",
                 )
@@ -233,31 +307,41 @@ async def sync_storyboard_timing_from_alignment(
     if not items or not aligned_segments:
         return
 
+    aligned_map = {seg.get("id"): seg for seg in aligned_segments if seg.get("id")}
+
     # Group items by segment_id
     items_by_seg: Dict[str, List[StoryboardItem]] = {}
     for item in items:
         items_by_seg.setdefault(item.segment_id, []).append(item)
 
     # Distribute timing
-    for seg in aligned_segments:
-        seg_id = seg.get("id")
-        if not seg_id or seg_id not in items_by_seg:
+    for seg_id, seg_items in items_by_seg.items():
+        seg = aligned_map.get(seg_id)
+        if not seg:
             continue
 
         seg_start_sec = float(seg.get("start_ms", 0)) / 1000.0
         seg_end_sec = float(seg.get("end_ms", 0)) / 1000.0
         seg_duration = max(seg_end_sec - seg_start_sec, 1.0)
 
-        seg_items = items_by_seg[seg_id]
         count = len(seg_items)
-        if count == 0:
-            continue
-
-        slot_dur = seg_duration / count
-        for idx, item in enumerate(seg_items):
-            item.start_time = round(seg_start_sec + (idx * slot_dur), 3)
-            item.end_time = round(seg_start_sec + ((idx + 1) * slot_dur), 3)
-            item.duration = round(slot_dur, 3)
+        if count == 1:
+            item = seg_items[0]
+            item.start_time = round(seg_start_sec, 3)
+            item.end_time = round(seg_end_sec, 3)
+            item.duration = round(seg_duration, 3)
+        elif count > 1:
+            # Distribute proportionally by word count
+            word_counts = [max(1, len((it.script_text or "").split())) for it in seg_items]
+            total_words = sum(word_counts)
+            cur_time = seg_start_sec
+            for idx, item in enumerate(seg_items):
+                fraction = word_counts[idx] / total_words
+                it_dur = round(seg_duration * fraction, 3)
+                item.start_time = round(cur_time, 3)
+                item.end_time = round(cur_time + it_dur, 3)
+                item.duration = it_dur
+                cur_time += it_dur
 
     await db.commit()
     log.info("Synchronized timing for %d storyboard items in project %s.", len(items), project_id)

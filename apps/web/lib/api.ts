@@ -316,6 +316,7 @@ export const api = {
     tts_api_key?: string;
     image_base_url?: string | null;
     image_model?: string;
+    image_concurrency?: number;
     image_api_key?: string;
     image_system_prompt?: string | null;
   }) =>
@@ -381,7 +382,7 @@ export const api = {
     request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`, {
       method: "POST",
     }),
-  generateAllStoryboardImages: (projectId: string, data?: { item_ids?: string[] }) =>
+  generateAllStoryboardImages: (projectId: string, data?: { item_ids?: string[]; concurrency?: number }) =>
     request<{
       success: boolean;
       total_processed: number;

@@ -43,6 +43,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
             image_model=settings.IMAGE_MODEL,
             image_api_key_encrypted=encrypt_secret(settings.IMAGE_API_KEY) if settings.IMAGE_API_KEY else None,
             image_system_prompt=settings.IMAGE_SYSTEM_PROMPT,
+            image_concurrency=settings.IMAGE_CONCURRENCY,
         )
         db.add(cfg)
         await db.commit()
@@ -65,6 +66,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         has_tts_api_key=bool(raw_tts_key),
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
+        image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
         image_api_key_masked=mask_secret(raw_image_key),
         has_image_api_key=bool(raw_image_key),
         image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
@@ -100,6 +102,8 @@ async def save_model_configuration(
         cfg.image_base_url = payload.image_base_url
     if payload.image_model is not None:
         cfg.image_model = payload.image_model
+    if payload.image_concurrency is not None:
+        cfg.image_concurrency = max(1, min(4, payload.image_concurrency))
     if payload.image_api_key is not None and payload.image_api_key.strip():
         cfg.image_api_key_encrypted = encrypt_secret(payload.image_api_key.strip())
     if payload.image_system_prompt is not None:
@@ -125,6 +129,7 @@ async def save_model_configuration(
         has_tts_api_key=bool(raw_tts_key),
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
+        image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
         image_api_key_masked=mask_secret(raw_image_key),
         has_image_api_key=bool(raw_image_key),
         image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,

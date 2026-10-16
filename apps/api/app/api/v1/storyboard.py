@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -222,30 +223,51 @@ async def generate_all_storyboard_images(
     success_count = 0
     fail_count = 0
 
-    for it in items:
-        it.status = "generating"
-        await db.commit()
+    raw_concurrency = 2
+    if payload and payload.concurrency:
+        raw_concurrency = payload.concurrency
+    elif cfg and getattr(cfg, "image_concurrency", None):
+        raw_concurrency = cfg.image_concurrency
+
+    concurrency = max(1, min(4, int(raw_concurrency)))
+    log.info("Batch storyboard image generation starting with concurrency=%d for %d items", concurrency, len(items))
+    sem = asyncio.Semaphore(concurrency)
+    db_lock = asyncio.Lock()
+
+    async def _process_item(it: StoryboardItem):
+        nonlocal success_count, fail_count
+        async with db_lock:
+            it.status = "generating"
+            await db.commit()
+
         try:
-            f_path, _ = await generate_single_image(
-                prompt=it.image_prompt,
-                project_id=project_id,
-                item_id=it.id,
-                base_url=base_url,
-                api_key=api_key,
-                model=model,
-                style_prompt=style_prompt,
-                size="1792x1024",
-            )
-            it.file_path = f_path
-            it.status = "ready"
-            it.error_message = None
-            success_count += 1
+            async with sem:
+                f_path, _ = await generate_single_image(
+                    prompt=it.image_prompt,
+                    project_id=project_id,
+                    item_id=it.id,
+                    base_url=base_url,
+                    api_key=api_key,
+                    model=model,
+                    style_prompt=style_prompt,
+                    size="1792x1024",
+                )
+            async with db_lock:
+                it.file_path = f_path
+                it.status = "ready"
+                it.error_message = None
+                success_count += 1
+                await db.commit()
         except Exception as e:
             log.warning("Batch generation failed for item %s: %s", it.id, e)
-            it.status = "failed"
-            it.error_message = str(e)
-            fail_count += 1
-        await db.commit()
+            async with db_lock:
+                it.status = "failed"
+                it.error_message = str(e)
+                fail_count += 1
+                await db.commit()
+
+    if items:
+        await asyncio.gather(*[_process_item(it) for it in items], return_exceptions=True)
 
     return {
         "success": True,

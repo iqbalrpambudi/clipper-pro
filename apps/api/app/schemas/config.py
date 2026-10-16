@@ -13,6 +13,7 @@ class ModelConfigUpdate(BaseModel):
     image_model: Optional[str] = None
     image_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
     image_system_prompt: Optional[str] = None
+    image_concurrency: Optional[int] = None
 
 
 class ModelConfigResponse(BaseModel):
@@ -30,6 +31,7 @@ class ModelConfigResponse(BaseModel):
     has_tts_api_key: bool = False
     image_base_url: Optional[str] = None
     image_model: str = "dall-e-3"
+    image_concurrency: int = 2
     image_api_key_masked: Optional[str] = None
     has_image_api_key: bool = False
     image_system_prompt: Optional[str] = None

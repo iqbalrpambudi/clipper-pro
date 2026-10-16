@@ -48,6 +48,7 @@ class SubtitleStyle(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True)
     preset_name: Mapped[str] = mapped_column(String(50), default="viral_tiktok")  # viral_tiktok | hormozi_punch | minimalist | custom
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False)
     font_family: Mapped[str] = mapped_column(String(100), default="Poppins")

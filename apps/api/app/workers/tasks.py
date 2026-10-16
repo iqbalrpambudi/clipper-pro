@@ -707,10 +707,18 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             "highlight_animation": style.highlight_animation if style else "scale",
             "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.5,
             "emoji_enabled": style.emoji_enabled if style else True,
+            "enabled": style.enabled if (style and hasattr(style, "enabled")) else True,
         }
 
+        subtitles_enabled = style_dict.get("enabled", True)
+        if project.project_type != "long_storyboard":
+            t_check = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
+            tl = t_check.scalar_one_or_none()
+            if tl and tl.has_subtitles is False:
+                subtitles_enabled = False
+
         ass_file_path = None
-        if narration and narration.segments:
+        if subtitles_enabled and narration and narration.segments:
             play_res_x, play_res_y = 1080, 1920
             if project.aspect_ratio == "16:9":
                 play_res_x, play_res_y = 1920, 1080
@@ -751,10 +759,18 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 sb_res = await db.execute(
                     select(StoryboardItem)
                     .where(StoryboardItem.project_id == project.id)
-                    .order_by(StoryboardItem.segment_id.asc(), StoryboardItem.image_index.asc())
+                    .order_by(StoryboardItem.order_index.asc())
                 )
                 sb_items = sb_res.scalars().all()
-                valid_items = [it for it in sb_items if it.file_path and Path(it.file_path).exists()]
+                valid_items = []
+                for it in sb_items:
+                    if not it.file_path:
+                        continue
+                    p = Path(it.file_path)
+                    if not p.exists():
+                        p = storage.to_absolute_path(it.file_path)
+                    if p and p.exists():
+                        valid_items.append((it, str(p)))
 
                 if not valid_items:
                     job.status = "failed"
@@ -775,12 +791,14 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 items_data = [
                     {
                         "id": it.id,
-                        "file_path": it.file_path,
+                        "file_path": resolved_path,
+                        "start_time": it.start_time,
+                        "end_time": it.end_time,
                         "duration": it.duration or 4.0,
                         "motion_effect": it.motion_effect or "zoom_in",
                         "script_text": it.script_text,
                     }
-                    for it in valid_items
+                    for it, resolved_path in valid_items
                 ]
 
                 if await is_cancelled(project.id, job_id=render_job_id):
@@ -1112,45 +1130,78 @@ async def generate_storyboard_images_job(
         )
 
         success_count = 0
-        for idx, it in enumerate(items):
+        completed_count = 0
+        raw_concurrency = 2
+        if cfg and getattr(cfg, "image_concurrency", None):
+            raw_concurrency = cfg.image_concurrency
+        concurrency = max(1, min(4, int(raw_concurrency)))
+        log.info("Storyboard job worker starting with concurrency=%d for project=%s (%d items)", concurrency, project_id, total_items)
+        sem = asyncio.Semaphore(concurrency)
+        db_lock = asyncio.Lock()
+
+        async def _process_item(it: StoryboardItem) -> None:
+            nonlocal success_count, completed_count
             if await is_cancelled(project_id):
-                raise TaskCancelledException("Pembuatan gambar ilustrasi dibatalkan oleh pengguna.")
+                return
 
-            it.status = "generating"
-            await db.commit()
-
-            progress_pct = int(5 + ((idx / total_items) * 90))
-            await publish_project_event(
-                project_id,
-                task_type="storyboard_images",
-                status="progress",
-                progress=progress_pct,
-                stage="generating",
-                message=f"Menghasilkan ilustrasi {idx + 1} dari {total_items}...",
-                data={"item_id": it.id, "current": idx + 1, "total": total_items},
-            )
+            async with db_lock:
+                it.status = "generating"
+                await db.commit()
 
             try:
-                f_path, rel_url = await generate_single_image(
-                    prompt=it.image_prompt,
-                    project_id=project_id,
-                    item_id=it.id,
-                    base_url=base_url,
-                    api_key=api_key,
-                    model=model,
-                    style_prompt=style_prompt,
-                    size="1792x1024",
-                )
-                it.file_path = f_path
-                it.status = "ready"
-                it.error_message = None
-                success_count += 1
+                async with sem:
+                    if await is_cancelled(project_id):
+                        return
+                    f_path, rel_url = await generate_single_image(
+                        prompt=it.image_prompt,
+                        project_id=project_id,
+                        item_id=it.id,
+                        base_url=base_url,
+                        api_key=api_key,
+                        model=model,
+                        style_prompt=style_prompt,
+                        size="1792x1024",
+                    )
+
+                async with db_lock:
+                    it.file_path = f_path
+                    it.status = "ready"
+                    it.error_message = None
+                    success_count += 1
+                    completed_count += 1
+                    await db.commit()
+                    progress_pct = int(5 + ((completed_count / total_items) * 90))
+                    await publish_project_event(
+                        project_id,
+                        task_type="storyboard_images",
+                        status="progress",
+                        progress=progress_pct,
+                        stage="generating",
+                        message=f"Menghasilkan ilustrasi ({completed_count}/{total_items})...",
+                        data={"item_id": it.id, "current": completed_count, "total": total_items},
+                    )
             except Exception as e:
                 log.warning("Image gen failed for storyboard item %s: %s", it.id, e)
-                it.status = "failed"
-                it.error_message = str(e)
+                async with db_lock:
+                    it.status = "failed"
+                    it.error_message = str(e)
+                    completed_count += 1
+                    await db.commit()
+                    progress_pct = int(5 + ((completed_count / total_items) * 90))
+                    await publish_project_event(
+                        project_id,
+                        task_type="storyboard_images",
+                        status="progress",
+                        progress=progress_pct,
+                        stage="generating",
+                        message=f"Menghasilkan ilustrasi ({completed_count}/{total_items})...",
+                        data={"item_id": it.id, "current": completed_count, "total": total_items},
+                    )
 
-            await db.commit()
+        await asyncio.gather(*[_process_item(it) for it in items], return_exceptions=True)
+
+        if await is_cancelled(project_id):
+            raise TaskCancelledException("Pembuatan gambar ilustrasi dibatalkan oleh pengguna.")
 
         await publish_project_event(
             project_id,

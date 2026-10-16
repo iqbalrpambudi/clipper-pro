@@ -265,6 +265,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "highlight_animation": proj.subtitle_style.highlight_animation,
             "scale_factor": proj.subtitle_style.scale_factor if proj.subtitle_style.scale_factor is not None else 1.5,
             "emoji_enabled": proj.subtitle_style.emoji_enabled,
+            "enabled": getattr(proj.subtitle_style, "enabled", True) if getattr(proj.subtitle_style, "enabled", True) is not None else True,
         }
 
     resp.render_jobs = [

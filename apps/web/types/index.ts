@@ -145,6 +145,7 @@ export interface Timeline {
 export interface SubtitleStyle {
   id?: string;
   project_id?: string | null;
+  enabled?: boolean;
   preset_name: string;
   description?: string | null;
   is_preset?: boolean;
@@ -225,6 +226,7 @@ export interface ModelConfig {
   has_tts_api_key: boolean;
   image_base_url?: string | null;
   image_model?: string;
+  image_concurrency?: number;
   image_api_key_masked?: string | null;
   has_image_api_key?: boolean;
   image_system_prompt?: string | null;

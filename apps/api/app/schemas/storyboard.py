@@ -45,6 +45,7 @@ class StoryboardItemUpdateRequest(BaseModel):
 
 class StoryboardBatchGenerateRequest(BaseModel):
     item_ids: Optional[List[str]] = None  # if None, generates all pending/failed items
+    concurrency: Optional[int] = Field(default=None, ge=1, le=4)
 
 
 class StoryboardVoiceoverGenerateRequest(BaseModel):

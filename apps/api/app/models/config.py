@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, Boolean, DateTime
+from sqlalchemy import String, Text, Boolean, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 
@@ -19,6 +19,7 @@ class ModelConfig(Base):
     tts_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     image_model: Mapped[str] = mapped_column(String(100), default="dall-e-3")
+    image_concurrency: Mapped[int] = mapped_column(Integer, default=2)
     image_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_system_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

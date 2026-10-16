@@ -114,6 +114,7 @@ export function SubtitleCustomizePanel({
   const { showToast } = useStudioStore();
 
   const [style, setStyle] = useState<SubtitleStyle>(() => ({
+    enabled: project.subtitle_style?.enabled !== false,
     preset_name: project.subtitle_style?.preset_name || "viral_tiktok",
     font_family: project.subtitle_style?.font_family || "Poppins",
     font_size: project.subtitle_style?.font_size ?? 56,
@@ -339,6 +340,7 @@ export function SubtitleCustomizePanel({
   // Load ALL preset properties when a preset is clicked
   const handleApplyPreset = (preset: SubtitlePreset) => {
     const updated: SubtitleStyle = {
+      enabled: style.enabled !== false,
       preset_name: preset.preset_name || preset.name || preset.id,
       font_family: preset.font_family || "Poppins",
       font_size: preset.font_size ?? 56,
@@ -473,6 +475,46 @@ export function SubtitleCustomizePanel({
           {/* KOLOM 1 (4/12): PRESET SUBTITLE (CUSTOM & BUILTIN PRESETS)          */}
           {/* =================================================================== */}
           <div className="lg:col-span-4 space-y-4">
+            {/* Enable / Disable Subtitle Checklist Card */}
+            <div className="p-3.5 rounded-xl bg-[#161616] border border-[#262626] flex items-center justify-between gap-3 shadow-xs">
+              <label htmlFor="clipper-subtitles-enable" className="flex items-center gap-3 cursor-pointer select-none flex-1">
+                <input
+                  id="clipper-subtitles-enable"
+                  type="checkbox"
+                  checked={style.enabled !== false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const updated = { ...style, enabled: checked };
+                    commitStyle(updated, true);
+                    showToast(
+                      checked ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
+                      "info"
+                    );
+                  }}
+                  className="w-4 h-4 rounded accent-primary cursor-pointer"
+                />
+                <div>
+                  <span className="text-xs font-bold text-foreground block">Gunakan Subtitle pada Video</span>
+                  <span className="text-[10px] text-muted-foreground block">
+                    {style.enabled !== false
+                      ? "Subtitle aktif di player monitor dan render final"
+                      : "Subtitle dinonaktifkan (video bersih tanpa teks)"}
+                  </span>
+                </div>
+              </label>
+
+              <Badge
+                variant={style.enabled !== false ? "default" : "secondary"}
+                className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+                  style.enabled !== false
+                    ? "bg-primary/20 text-primary border border-primary/30"
+                    : "bg-[#222222] text-slate-400 border border-[#333333]"
+                }`}
+              >
+                {style.enabled !== false ? "AKTIF" : "NONAKTIF"}
+              </Badge>
+            </div>
+
             {/* Custom Presets Section */}
             <div className="p-3.5 rounded-xl bg-[#161616] border border-[#262626] space-y-3 shadow-xs">
               <div className="flex items-center justify-between border-b border-[#262626] pb-2">
