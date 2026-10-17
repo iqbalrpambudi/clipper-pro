@@ -1,6 +1,8 @@
 import asyncio
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+from datetime import datetime
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +14,13 @@ from app.core.storage import storage
 from app.models.project import Project, RenderJob
 from app.schemas.project import RenderJobResponse
 from app.workers.tasks import render_video_job
+from app.services.cancellation import clear_cancellation, kill_all_matching_processes
 
 router = APIRouter(prefix="/projects/{project_id}/render", tags=["render"])
+
+
+class FinalRenderRequest(BaseModel):
+    resolution: Optional[str] = None
 
 
 async def enqueue_render_task(job_id: str):
@@ -25,18 +32,22 @@ async def enqueue_render_task(job_id: str):
         asyncio.create_task(render_video_job({}, job_id))
 
 
-from datetime import datetime
-from app.services.cancellation import clear_cancellation, kill_all_matching_processes
-
-
 @router.post("", response_model=RenderJobResponse)
 async def trigger_final_render(
     project_id: str,
+    payload: Optional[FinalRenderRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    if payload and payload.resolution:
+        clean_res = payload.resolution.strip().lower()
+        if clean_res in ("720p", "1080p"):
+            proj.resolution = clean_res
+            await db.commit()
+            await db.refresh(proj)
 
     # 1. Clear any prior project-level cancellation flags so new render starts clean
     await clear_cancellation(project_id=project_id)

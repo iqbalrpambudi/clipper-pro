@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Download,
@@ -42,6 +42,21 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   const [resolution, setResolution] = useState(project.resolution || "1080p");
   const [activePlaybackUrl, setActivePlaybackUrl] = useState<string | null>(null);
 
+  // Sync local resolution state if project.resolution updates
+  useEffect(() => {
+    if (project.resolution) {
+      setResolution(project.resolution);
+    }
+  }, [project.resolution]);
+
+  const updateProjectMutation = useMutation({
+    mutationFn: (data: Partial<Pick<Project, "resolution">>) =>
+      api.updateProject(project.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    },
+  });
+
   const audio = (project as any).audio || (project as any).audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
   const readyItemsCount = items.filter((it) => it.status === "ready" && it.image_url).length;
@@ -58,11 +73,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   });
 
   const renderFinalMutation = useMutation({
-    mutationFn: () => api.renderFinal(project.id),
+    mutationFn: () => api.renderFinal(project.id, { resolution }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Proses render video 16:9 dimulai di background!", "info");
+      showToast(`Proses render video 16:9 (${resolution}) dimulai di background!`, "info");
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal memulai render video", "error");
@@ -215,12 +230,15 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "1080p", label: "1080p (Full HD)", desc: "1920 × 1080 • Kualitas Terbaik" },
-                { id: "720p", label: "720p (HD)", desc: "1280 × 720 • Render Cepat" },
+                { id: "720p", label: "720p (HD)", desc: "1280 × 720 • Render Cepat (2.5x lebih cepat)" },
               ].map((res) => (
                 <button
                   key={res.id}
                   type="button"
-                  onClick={() => setResolution(res.id)}
+                  onClick={() => {
+                    setResolution(res.id);
+                    updateProjectMutation.mutate({ resolution: res.id });
+                  }}
                   className={`p-3 rounded-xl border text-left transition ${
                     resolution === res.id
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
@@ -244,12 +262,12 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               {isRendering || renderFinalMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Sedang Me-render Video Final 16:9...</span>
+                  <span>Sedang Me-render Video Final 16:9 ({resolution})...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Render Video Storyboard 16:9 (MP4)</span>
+                  <span>Render Video Storyboard 16:9 ({resolution.toUpperCase()})</span>
                 </>
               )}
             </Button>

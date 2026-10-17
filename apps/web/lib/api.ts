@@ -286,8 +286,12 @@ export const api = {
     `/api/v1/projects/${projectId}/subtitles/export?format=${format}`,
 
   // Rendering
-  renderFinal: (projectId: string) =>
-    request<RenderJob>(`/api/v1/projects/${projectId}/render`, { method: "POST" }),
+  renderFinal: (projectId: string, options?: { resolution?: string }) =>
+    request<RenderJob>(`/api/v1/projects/${projectId}/render`, {
+      method: "POST",
+      body: options?.resolution ? JSON.stringify({ resolution: options.resolution }) : undefined,
+      headers: options?.resolution ? { "Content-Type": "application/json" } : undefined,
+    }),
   renderPreview: (projectId: string) =>
     request<RenderJob>(`/api/v1/projects/${projectId}/render/preview`, { method: "POST" }),
   getRenderJobs: (projectId: string) =>

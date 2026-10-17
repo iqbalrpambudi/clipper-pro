@@ -89,7 +89,7 @@ export function RenderTab({ project }: RenderTabProps) {
   });
 
   const renderFinalMutation = useMutation({
-    mutationFn: () => api.renderFinal(project.id),
+    mutationFn: () => api.renderFinal(project.id, { resolution }),
     onSuccess: async () => {
       await refetchJobs();
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });

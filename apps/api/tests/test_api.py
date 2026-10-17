@@ -764,3 +764,40 @@ async def test_generate_speech_audio_fallback_enabled_uses_edge(monkeypatch):
     assert fallback_info.get("fell_back") is True
 
 
+@pytest.mark.asyncio
+async def test_trigger_final_render_resolution(monkeypatch):
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.db import engine
+    import app.api.v1.render as render_module
+    async def mock_enqueue(job_id):
+        pass
+    monkeypatch.setattr(render_module, "enqueue_render_task", mock_enqueue)
+
+    await engine.dispose()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post("/api/v1/projects", json={"name": "Resolution Test Project"})
+            assert create_res.status_code == 201
+            proj_id = create_res.json()["id"]
+            assert create_res.json()["resolution"] == "1080p"
+
+            render_res = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "720p"})
+            assert render_res.status_code == 200
+
+            proj_res = await client.get(f"/api/v1/projects/{proj_id}")
+            assert proj_res.status_code == 200
+            assert proj_res.json()["resolution"] == "720p"
+
+            render_res2 = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "1080p"})
+            assert render_res2.status_code == 200
+
+            proj_res2 = await client.get(f"/api/v1/projects/{proj_id}")
+            assert proj_res2.status_code == 200
+            assert proj_res2.json()["resolution"] == "1080p"
+    finally:
+        await engine.dispose()
+
+
+
