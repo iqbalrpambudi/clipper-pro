@@ -132,7 +132,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       const gStart = group[0].start_ms;
       const gEnd = group[group.length - 1].end_ms;
       const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd = nextSlice.length > 0 ? Math.min(gEnd + 200, nextSlice[0].start_ms) : gEnd + 300;
+      const maxGEnd = nextSlice.length > 0 ? Math.min(gEnd + 350, nextSlice[0].start_ms) : gEnd + 350;
 
       if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item, localIdx) => {
@@ -931,8 +931,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     }
   };
 
-  const isScaleAnim = subtitleStyle?.highlight_animation !== "color" && subtitleStyle?.highlight_animation !== "none";
-  const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.5) : 1.0;
+  const isScaleAnim = subtitleStyle?.highlight_animation === "scale";
+  const isColorGlow = subtitleStyle?.highlight_animation === "color" || !subtitleStyle?.highlight_animation;
+  const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.15) : 1.0;
 
   // Aspect ratio responsive frame wrapper styling
   const aspectClass = compact
@@ -1048,62 +1049,75 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             }}
           >
             {/* 1. Burst Mode (Hormozi 2-3 words group) */}
-            {subtitleStyle?.display_mode === "burst" && activeBurstGroup.length > 0 ? (
-              <div
-                style={{
-                  fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
-                  fontSize: `${scaledFontSize}px`,
-                  fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                  color: subtitleStyle?.primary_color || "#FFFFFF",
-                  WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                  paintOrder: "stroke fill",
-                  backgroundColor: boxBgColor,
-                  padding: boxOpacity > 0.05 ? "3px 8px" : "0",
-                  borderRadius: "6px",
-                }}
-                className="uppercase tracking-wide inline-flex items-center justify-center flex-wrap"
-              >
-                {activeBurstGroup.map((w, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
-                      transform: w.isActive ? `scale(${zoomScale})` : "scale(1.0)",
-                      transformOrigin: "center bottom",
-                      transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
-                    }}
-                    className="mx-1 inline-block"
-                  >
-                    {w.word.toUpperCase()}
-                  </span>
-                ))}
-              </div>
-            ) : subtitleStyle?.display_mode === "per_word" && activeWordIndex !== -1 && segWords[activeWordIndex] ? (
+            {subtitleStyle?.display_mode === "burst" ? (
+              activeBurstGroup.length > 0 ? (
+                <div
+                  style={{
+                    fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
+                    fontSize: `${scaledFontSize}px`,
+                    fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
+                    color: subtitleStyle?.primary_color || "#FFFFFF",
+                    WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
+                    paintOrder: "stroke fill",
+                    backgroundColor: boxBgColor,
+                    padding: boxOpacity > 0.05 ? "3px 8px" : "0",
+                    borderRadius: "6px",
+                  }}
+                  className="uppercase tracking-wide inline-flex items-center justify-center flex-wrap"
+                >
+                  {activeBurstGroup.map((w, idx) => {
+                    const isGlowing = w.isActive && isColorGlow;
+                    return (
+                      <span
+                        key={idx}
+                        style={{
+                          color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
+                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
+                          transformOrigin: "center bottom",
+                          textShadow: isGlowing
+                            ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#00FF66", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#00FF66", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                            : "0 2px 8px rgba(0,0,0,0.8)",
+                          transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
+                        }}
+                        className="mx-1 inline-block"
+                      >
+                        {w.word.toUpperCase()}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null
+            ) : subtitleStyle?.display_mode === "per_word" ? (
               /* 2. Per-word Mode */
-              (() => {
-                const currentW = segWords[activeWordIndex];
-                return (
-                  <div
-                    style={{
-                      fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
-                      fontSize: `${scaledFontSize}px`,
-                      fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                      color: subtitleStyle?.highlight_color || "#FFE600",
-                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                      paintOrder: "stroke fill",
-                      backgroundColor: boxBgColor,
-                      padding: boxOpacity > 0.05 ? "3px 8px" : "0",
-                      borderRadius: "6px",
-                      transform: `scale(${zoomScale})`,
-                      transformOrigin: "center bottom",
-                      transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                    }}
-                    className="uppercase tracking-wider inline-block"
-                  >
-                    {currentW.word.toUpperCase()}
-                  </div>
-                );
-              })()
+              activeWordIndex !== -1 && segWords[activeWordIndex] ? (
+                (() => {
+                  const currentW = segWords[activeWordIndex];
+                  return (
+                    <div
+                      style={{
+                        fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
+                        fontSize: `${scaledFontSize}px`,
+                        fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
+                        color: subtitleStyle?.highlight_color || "#FFE600",
+                        WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
+                        paintOrder: "stroke fill",
+                        backgroundColor: boxBgColor,
+                        padding: boxOpacity > 0.05 ? "3px 8px" : "0",
+                        borderRadius: "6px",
+                        transform: isScaleAnim ? `scale(${zoomScale})` : "none",
+                        transformOrigin: "center bottom",
+                        textShadow: isColorGlow
+                          ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                          : "0 2px 8px rgba(0,0,0,0.8)",
+                        transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      }}
+                      className="uppercase tracking-wider inline-block"
+                    >
+                      {currentW.word.toUpperCase()}
+                    </div>
+                  );
+                })()
+              ) : null
             ) : activeSegment ? (
               /* 3. Full Sentence Mode (Classic Karaoke) */
               <div
@@ -1123,13 +1137,17 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                 {segWords.length > 0 ? (
                   segWords.map((w, idx) => {
                     const isActive = idx === activeWordIndex;
+                    const isGlowing = isActive && isColorGlow;
                     return (
                       <span
                         key={idx}
                         style={{
                           color: isActive ? subtitleStyle?.highlight_color || "#38BDF8" : subtitleStyle?.primary_color || "#EEEEEE",
-                          transform: isActive ? `scale(${zoomScale})` : "scale(1.0)",
+                          transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
                           transformOrigin: "center bottom",
+                          textShadow: isGlowing
+                            ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#38BDF8", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#38BDF8", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                            : "0 2px 8px rgba(0,0,0,0.8)",
                           transition: "color 80ms ease-out, transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                         }}
                         className="mx-0.5 inline-block"

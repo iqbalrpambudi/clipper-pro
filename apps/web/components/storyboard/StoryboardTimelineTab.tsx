@@ -62,8 +62,8 @@ const COLOR_PRESETS = [
     box_opacity: 0,
     display_mode: "burst" as const,
     burst_word_count: 2,
-    highlight_animation: "scale" as const,
-    scale_factor: 1.15,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
   {
     name: "Alex Hormozi",
@@ -94,8 +94,8 @@ const COLOR_PRESETS = [
     box_opacity: 0,
     display_mode: "burst" as const,
     burst_word_count: 2,
-    highlight_animation: "scale" as const,
-    scale_factor: 1.15,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
   {
     name: "Neon Lime",
@@ -110,8 +110,8 @@ const COLOR_PRESETS = [
     box_opacity: 0,
     display_mode: "burst" as const,
     burst_word_count: 2,
-    highlight_animation: "scale" as const,
-    scale_factor: 1.15,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
   {
     name: "Hot Sunset",
@@ -126,8 +126,8 @@ const COLOR_PRESETS = [
     box_opacity: 0,
     display_mode: "burst" as const,
     burst_word_count: 2,
-    highlight_animation: "scale" as const,
-    scale_factor: 1.15,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
   {
     name: "Minimal Clean",
@@ -158,8 +158,8 @@ const COLOR_PRESETS = [
     box_opacity: 0.75,
     display_mode: "burst" as const,
     burst_word_count: 2,
-    highlight_animation: "scale" as const,
-    scale_factor: 1.15,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
 ];
 
@@ -201,8 +201,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     offset_x: project.subtitle_style?.offset_x ?? 0,
     display_mode: project.subtitle_style?.display_mode || "burst",
     burst_word_count: project.subtitle_style?.burst_word_count ?? 2,
-    highlight_animation: project.subtitle_style?.highlight_animation || "scale",
-    scale_factor: project.subtitle_style?.scale_factor ?? 1.15,
+    highlight_animation: project.subtitle_style?.highlight_animation || "color",
+    scale_factor: project.subtitle_style?.scale_factor ?? 1.0,
     emoji_enabled: false,
   }));
 
@@ -321,7 +321,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const scaledOutlineWidth = Math.max(0, Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2)));
   const scaledOffsetY = Math.round((subtitleStyle.offset_y || 0) * scaleY);
   const scaledOffsetX = Math.round((subtitleStyle.offset_x || 0) * scale);
-  const isScaleAnim = subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation;
+  const isScaleAnim = subtitleStyle.highlight_animation === "scale";
+  const isColorGlow = subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation;
   const zoomScale = isScaleAnim ? (subtitleStyle.scale_factor ?? 1.15) : 1.0;
   const fw = (subtitleStyle.font_weight || "Bold").toLowerCase();
   const fontWeightValue = fw === "bold" ? 800 : fw === "semibold" ? 700 : fw === "medium" ? 500 : 400;
@@ -332,6 +333,19 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   let activeWordIndex = -1;
   if (segWords.length > 0) {
     activeWordIndex = segWords.findIndex((w: any) => curMs >= w.start_ms && curMs <= (w.end_ms + 180));
+    // Smooth hold across small inter-word pause within segment (up to 300ms pause)
+    if (activeWordIndex === -1 && curMs >= segWords[0].start_ms && curMs <= segWords[segWords.length - 1].end_ms + 300) {
+      for (let i = segWords.length - 1; i >= 0; i--) {
+        if (curMs >= segWords[i].start_ms) {
+          const nextW = segWords[i + 1];
+          const gap = nextW ? nextW.start_ms - segWords[i].end_ms : 999;
+          if (curMs <= segWords[i].end_ms + (gap <= 350 ? gap : 200)) {
+            activeWordIndex = i;
+          }
+          break;
+        }
+      }
+    }
   }
 
   const burstCount = Math.max(2, subtitleStyle.burst_word_count || 2);
@@ -341,7 +355,12 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       const group = segWords.slice(i, i + burstCount);
       const gStart = group[0].start_ms;
       const gEnd = group[group.length - 1].end_ms;
-      if (curMs >= gStart && curMs <= gEnd + 250) {
+      const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
+      const maxGEnd = nextSlice.length > 0
+        ? Math.min(nextSlice[0].start_ms, gEnd + 350)
+        : Math.min((activeSegment?.end_ms ?? gEnd + 350), gEnd + 350);
+
+      if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item: any, localIdx: number) => ({
           ...item,
           isActive: i + localIdx === activeWordIndex,
@@ -498,63 +517,75 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 }}
               >
                 {/* 1. Burst Mode (2-3 kata) */}
-                {subtitleStyle.display_mode === "burst" && activeBurstGroup.length > 0 ? (
-                  <div
-                    style={{
-                      fontSize: `${scaledFontSize}px`,
-                      fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: fontWeightValue,
-                      color: subtitleStyle.primary_color || "#FFFFFF",
-                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
-                      paintOrder: "stroke fill",
-                      textShadow: "0 2px 8px rgba(0,0,0,0.8)",
-                      backgroundColor:
-                        (subtitleStyle.box_opacity ?? 0) > 0.05
-                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
-                          : "transparent",
-                      padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
-                      borderRadius: "8px",
-                    }}
-                    className="flex items-center justify-center gap-2 uppercase tracking-wide"
-                  >
-                    {activeBurstGroup.map((w, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          color: w.isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
-                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                          transition: "all 0.08s ease-out",
-                          display: "inline-block",
-                        }}
-                      >
-                        {w.word}
-                      </span>
-                    ))}
-                  </div>
-                ) : subtitleStyle.display_mode === "per_word" && activeWordIndex !== -1 && segWords[activeWordIndex] ? (
+                {subtitleStyle.display_mode === "burst" ? (
+                  activeBurstGroup.length > 0 ? (
+                    <div
+                      style={{
+                        fontSize: `${scaledFontSize}px`,
+                        fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
+                        fontWeight: fontWeightValue,
+                        color: subtitleStyle.primary_color || "#FFFFFF",
+                        WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                        paintOrder: "stroke fill",
+                        textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                        backgroundColor:
+                          (subtitleStyle.box_opacity ?? 0) > 0.05
+                            ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                            : "transparent",
+                        padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
+                        borderRadius: "8px",
+                      }}
+                      className="flex items-center justify-center gap-2 uppercase tracking-wide"
+                    >
+                      {activeBurstGroup.map((w, idx) => {
+                        const isGlowing = w.isActive && isColorGlow;
+                        return (
+                          <span
+                            key={idx}
+                            style={{
+                              color: w.isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                              transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                              textShadow: isGlowing
+                                ? `0 0 16px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                                : "0 2px 8px rgba(0,0,0,0.8)",
+                              transition: "all 0.08s ease-out",
+                              display: "inline-block",
+                            }}
+                          >
+                            {w.word}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null
+                ) : subtitleStyle.display_mode === "per_word" ? (
                   /* 2. Per Word Mode */
-                  <div
-                    style={{
-                      fontSize: `${scaledFontSize * 1.05}px`,
-                      fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: fontWeightValue,
-                      color: subtitleStyle.highlight_color || "#FFE600",
-                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
-                      paintOrder: "stroke fill",
-                      textShadow: "0 2px 8px rgba(0,0,0,0.8)",
-                      transform: isScaleAnim ? `scale(${zoomScale})` : "none",
-                      backgroundColor:
-                        (subtitleStyle.box_opacity ?? 0) > 0.05
-                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
-                          : "transparent",
-                      padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
-                      borderRadius: "8px",
-                      display: "inline-block",
-                    }}
-                    className="uppercase tracking-wide"
-                  >
-                    {segWords[activeWordIndex].word}
-                  </div>
+                  activeWordIndex !== -1 && segWords[activeWordIndex] ? (
+                    <div
+                      style={{
+                        fontSize: `${scaledFontSize * 1.05}px`,
+                        fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
+                        fontWeight: fontWeightValue,
+                        color: subtitleStyle.highlight_color || "#FFE600",
+                        WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                        paintOrder: "stroke fill",
+                        textShadow: isColorGlow
+                          ? `0 0 16px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                          : "0 2px 8px rgba(0,0,0,0.8)",
+                        transform: isScaleAnim ? `scale(${zoomScale})` : "none",
+                        backgroundColor:
+                          (subtitleStyle.box_opacity ?? 0) > 0.05
+                            ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                            : "transparent",
+                        padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
+                        borderRadius: "8px",
+                        display: "inline-block",
+                      }}
+                      className="uppercase tracking-wide"
+                    >
+                      {segWords[activeWordIndex].word}
+                    </div>
+                  ) : null
                 ) : (
                   /* 3. Full Sentence Mode with Karaoke Word Highlight */
                   <div
@@ -578,12 +609,16 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     {segWords.length > 0
                       ? segWords.map((w: any, i: number) => {
                           const isActive = i === activeWordIndex;
+                          const isGlowing = isActive && isColorGlow;
                           return (
                             <span
                               key={i}
                               style={{
                                 color: isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
                                 transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                                textShadow: isGlowing
+                                  ? `0 0 16px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle.highlight_color || "#FFE600", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
+                                  : "0 2px 8px rgba(0,0,0,0.8)",
                                 transition: "all 0.08s ease-out",
                                 display: "inline-block",
                               }}
@@ -938,39 +973,39 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     <span>Animasi & Efek Gerak Highlight</span>
                   </span>
                   <span className="text-[10px] font-mono text-violet-300 uppercase px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
-                    {subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation
+                    {subtitleStyle.highlight_animation === "scale"
                       ? "Scale Pop"
-                      : subtitleStyle.highlight_animation === "color"
-                      ? "Warna Glow"
-                      : "Statis"}
+                      : subtitleStyle.highlight_animation === "none"
+                      ? "Statis"
+                      : "Warna Glow"}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
+                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation
+                        ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
+                        : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Warna Glow</span>
+                    <span className="text-[9px] text-muted-foreground">Transisi halus glow</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))}
                     className={`p-2 rounded-xl border text-left cursor-pointer transition ${
-                      subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation
+                      subtitleStyle.highlight_animation === "scale"
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
                     }`}
                   >
                     <span className="text-xs font-bold block">Scale Pop</span>
                     <span className="text-[9px] text-muted-foreground">Membesar & loncat</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
-                      subtitleStyle.highlight_animation === "color"
-                        ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
-                        : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-xs font-bold block">Warna Glow</span>
-                    <span className="text-[9px] text-muted-foreground">Transisi halus</span>
                   </button>
 
                   <button
@@ -988,7 +1023,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 </div>
 
                 {/* Tingkat Pembesaran Slider jika Scale Pop */}
-                {(subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation) && (
+                {subtitleStyle.highlight_animation === "scale" && (
                   <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2E2E2E] space-y-1.5 mt-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-300 font-medium">Tingkat Pembesaran (Scale Factor)</span>

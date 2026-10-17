@@ -47,8 +47,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     offset_x: 0,
     display_mode: "per_word",
     burst_word_count: 2,
-    highlight_animation: "scale",
-    scale_factor: 1.15,
+    highlight_animation: "color",
+    scale_factor: 1.0,
     emoji_enabled: true,
   });
 
@@ -118,8 +118,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       offset_x: preset.offset_x ?? 0,
       display_mode: preset.display_mode,
       burst_word_count: preset.burst_word_count ?? 2,
-      highlight_animation: preset.highlight_animation ?? "scale",
-      scale_factor: preset.scale_factor ?? 1.15,
+      highlight_animation: preset.highlight_animation ?? "color",
+      scale_factor: preset.scale_factor ?? 1.0,
       emoji_enabled: preset.emoji_enabled ?? true,
     };
     setStyle(updated);
@@ -517,8 +517,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 }}
                 className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
               >
+                <option value="color">Warna Glow (Halus)</option>
                 <option value="scale">Scale & Zoom Pop (Hormozi)</option>
-                <option value="color">Perubahan Warna Lembut</option>
                 <option value="none">Tanpa Animasi</option>
               </select>
             </div>

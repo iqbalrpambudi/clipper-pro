@@ -171,8 +171,8 @@ export default function SettingsPage() {
     offset_x: 0,
     display_mode: "per_word",
     burst_word_count: 2,
-    highlight_animation: "scale",
-    scale_factor: 1.15,
+    highlight_animation: "color",
+    scale_factor: 1.0,
     emoji_enabled: true,
   });
 
@@ -195,8 +195,8 @@ export default function SettingsPage() {
     offset_x: 0,
     display_mode: "per_word" as "per_word" | "burst" | "full_sentence",
     burst_word_count: 2,
-    highlight_animation: "scale" as "scale" | "color" | "box" | "none",
-    scale_factor: 1.15,
+    highlight_animation: "color" as "scale" | "color" | "box" | "none",
+    scale_factor: 1.0,
     emoji_enabled: true,
   });
 
@@ -645,8 +645,8 @@ export default function SettingsPage() {
       offset_x: 0,
       display_mode: "per_word",
       burst_word_count: 2,
-      highlight_animation: "scale",
-      scale_factor: 1.15,
+      highlight_animation: "color",
+      scale_factor: 1.0,
       emoji_enabled: true,
     });
     setIsCreateSubtitleModalOpen(true);
@@ -1966,6 +1966,7 @@ export default function SettingsPage() {
                           const strokeWidth = Math.max(1, Math.round(subtitlePresetForm.outline_width * 0.5));
                           const color = isHighlighted ? subtitlePresetForm.highlight_color : subtitlePresetForm.primary_color;
                           const isScale = isHighlighted && subtitlePresetForm.highlight_animation === "scale";
+                          const isColorGlow = isHighlighted && (subtitlePresetForm.highlight_animation === "color" || !subtitlePresetForm.highlight_animation);
 
                           return (
                             <span
@@ -1979,7 +1980,9 @@ export default function SettingsPage() {
                                 WebkitTextStroke: `${strokeWidth}px ${subtitlePresetForm.outline_color}`,
                                 paintOrder: "stroke fill",
                                 transform: isScale ? `scale(${subtitlePresetForm.scale_factor || 1.15})` : "scale(1)",
-                                textShadow: `0 2px 8px ${subtitlePresetForm.outline_color}`,
+                                textShadow: isColorGlow
+                                  ? `0 0 14px ${subtitlePresetForm.highlight_color}, 0 2px 8px ${subtitlePresetForm.outline_color}`
+                                  : `0 2px 8px ${subtitlePresetForm.outline_color}`,
                               }}
                             >
                               {word}
@@ -2207,8 +2210,8 @@ export default function SettingsPage() {
                         onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, highlight_animation: e.target.value as any })}
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       >
+                        <option value="color">Warna Glow (Halus)</option>
                         <option value="scale">Scale Up (Efek Punch Pop)</option>
-                        <option value="color">Perubahan Warna Saja</option>
                         <option value="box">Kotak Highlight Latar</option>
                         <option value="none">Tanpa Animasi</option>
                       </select>
@@ -2773,8 +2776,8 @@ export default function SettingsPage() {
                     onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, highlight_animation: e.target.value as any })}
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
+                    <option value="color">Warna Glow (Halus)</option>
                     <option value="scale">Scale Up (Efek Punch Pop)</option>
-                    <option value="color">Perubahan Warna Saja</option>
                     <option value="box">Kotak Highlight Latar</option>
                     <option value="none">Tanpa Animasi</option>
                   </select>

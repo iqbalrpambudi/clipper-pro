@@ -130,8 +130,8 @@ export function SubtitleCustomizePanel({
     offset_x: project.subtitle_style?.offset_x ?? 0,
     display_mode: project.subtitle_style?.display_mode || "per_word",
     burst_word_count: project.subtitle_style?.burst_word_count ?? 2,
-    highlight_animation: project.subtitle_style?.highlight_animation || "scale",
-    scale_factor: project.subtitle_style?.scale_factor ?? 1.15,
+    highlight_animation: project.subtitle_style?.highlight_animation || "color",
+    scale_factor: project.subtitle_style?.scale_factor ?? 1.0,
     emoji_enabled: false,
   }));
 
@@ -163,8 +163,8 @@ export function SubtitleCustomizePanel({
       offset_x: 0,
       display_mode: "per_word",
       burst_word_count: 2,
-      highlight_animation: "scale",
-      scale_factor: 1.15,
+      highlight_animation: "color",
+      scale_factor: 1.0,
       emoji_enabled: false,
     },
     {
@@ -211,8 +211,8 @@ export function SubtitleCustomizePanel({
       offset_x: 0,
       display_mode: "burst",
       burst_word_count: 3,
-      highlight_animation: "scale",
-      scale_factor: 1.15,
+      highlight_animation: "color",
+      scale_factor: 1.0,
       emoji_enabled: false,
     },
     {
@@ -356,8 +356,8 @@ export function SubtitleCustomizePanel({
       offset_x: preset.offset_x ?? 0,
       display_mode: preset.display_mode || "per_word",
       burst_word_count: preset.burst_word_count ?? 2,
-      highlight_animation: preset.highlight_animation || "scale",
-      scale_factor: preset.scale_factor ?? 1.15,
+      highlight_animation: preset.highlight_animation || "color",
+      scale_factor: preset.scale_factor ?? 1.0,
       emoji_enabled: false,
     };
     commitStyle(updated, true);
@@ -888,7 +888,7 @@ export function SubtitleCustomizePanel({
                   type="button"
                   onClick={() => commitStyle({ ...style, highlight_animation: "color" })}
                   className={`p-2 rounded-lg border text-left cursor-pointer transition ${
-                    style.highlight_animation === "color"
+                    style.highlight_animation === "color" || !style.highlight_animation
                       ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 font-semibold"
                       : "border-[#2E2E2E] bg-[#1A1A1A] text-muted-foreground hover:text-foreground"
                   }`}

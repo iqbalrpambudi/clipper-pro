@@ -138,8 +138,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
   const dialogueLines: string[] = [];
   const burstCount = Math.max(Number(styleConfig.burst_word_count || 2), 2);
-  const anim = styleConfig.highlight_animation || "scale";
-  const isScaleAnim = anim !== "color" && anim !== "none";
+  const anim = styleConfig.highlight_animation || "color";
+  const isScaleAnim = anim === "scale";
 
   const rawScale = Number(styleConfig.scale_factor ?? 1.5) || 1.5;
   const scaleFactor = Math.max(1.0, Math.min(rawScale, 2.5));

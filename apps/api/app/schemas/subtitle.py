@@ -57,8 +57,8 @@ class SubtitleStyleBase(StyleFieldsMixin):
     offset_x: int = 0
     display_mode: str = "per_word"  # per_word | full_sentence | burst
     burst_word_count: int = 2
-    highlight_animation: str = "scale"  # scale | color | box | none
-    scale_factor: float = 1.15
+    highlight_animation: str = "color"  # scale | color | box | none
+    scale_factor: float = 1.0
     emoji_enabled: bool = True
 
 

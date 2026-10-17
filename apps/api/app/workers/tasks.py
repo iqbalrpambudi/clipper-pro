@@ -744,8 +744,8 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             "offset_x": style.offset_x if style else 0,
             "display_mode": style.display_mode if style else "per_word",
             "burst_word_count": style.burst_word_count if style else 2,
-            "highlight_animation": style.highlight_animation if style else "scale",
-            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.5,
+            "highlight_animation": style.highlight_animation if style else "color",
+            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.0,
             "emoji_enabled": style.emoji_enabled if style else True,
             "enabled": style.enabled if (style and hasattr(style, "enabled")) else True,
         }

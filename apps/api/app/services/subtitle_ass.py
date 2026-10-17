@@ -73,8 +73,8 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "offset_x": 0,
             "display_mode": "per_word",
             "burst_word_count": 2,
-            "highlight_animation": "scale",
-            "scale_factor": 1.15,
+            "highlight_animation": "color",
+            "scale_factor": 1.0,
             "emoji_enabled": False,
         },
         {
@@ -142,8 +142,8 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "offset_x": 0,
             "display_mode": "burst",
             "burst_word_count": 3,
-            "highlight_animation": "scale",
-            "scale_factor": 1.15,
+            "highlight_animation": "color",
+            "scale_factor": 1.0,
             "emoji_enabled": False,
         },
     ]
@@ -249,7 +249,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     dialogue_lines = []
     burst_count = max(int(style_config.get("burst_word_count", 2)), 2)
-    anim = style_config.get("highlight_animation", "scale")
+    anim = style_config.get("highlight_animation", "color")
     is_scale_anim = anim not in ("color", "none")
     try:
         scale_factor = float(style_config.get("scale_factor") if style_config.get("scale_factor") is not None else 1.15)

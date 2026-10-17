@@ -80,7 +80,8 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         position="bottom",
         display_mode="per_word",
         burst_word_count=2,
-        highlight_animation="scale",
+        highlight_animation="color",
+        scale_factor=1.0,
         emoji_enabled=True,
     )
     db.add(sub_style)
