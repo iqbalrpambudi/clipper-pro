@@ -1956,17 +1956,18 @@ export default function SettingsPage() {
                         }}
                       >
                         {["RAHASIA", "BESAR", "DI BALIK", "DUNIA"].map((word, wIdx) => {
-                          const isHighlighted =
+                          const isHighlightEnabled = subtitlePresetForm.highlight_animation !== "none";
+                          const isHighlighted = isHighlightEnabled && (
                             subtitlePresetForm.display_mode === "full_sentence"
                               ? true
                               : subtitlePresetForm.display_mode === "burst"
                                 ? (subtitlePresetForm.burst_word_count === 3 ? wIdx <= 2 : wIdx <= 1)
-                                : previewWordIndex === wIdx;
+                                : previewWordIndex === wIdx
+                          );
 
                           const strokeWidth = Math.max(1, Math.round(subtitlePresetForm.outline_width * 0.5));
                           const color = isHighlighted ? subtitlePresetForm.highlight_color : subtitlePresetForm.primary_color;
                           const isScale = isHighlighted && subtitlePresetForm.highlight_animation === "scale";
-                          const isColorGlow = isHighlighted && (subtitlePresetForm.highlight_animation === "color" || !subtitlePresetForm.highlight_animation);
 
                           return (
                             <span
@@ -1980,9 +1981,7 @@ export default function SettingsPage() {
                                 WebkitTextStroke: `${strokeWidth}px ${subtitlePresetForm.outline_color}`,
                                 paintOrder: "stroke fill",
                                 transform: isScale ? `scale(${subtitlePresetForm.scale_factor || 1.15})` : "scale(1)",
-                                textShadow: isColorGlow
-                                  ? `0 0 14px ${subtitlePresetForm.highlight_color}, 0 2px 8px ${subtitlePresetForm.outline_color}`
-                                  : `0 2px 8px ${subtitlePresetForm.outline_color}`,
+                                textShadow: `0 2px 8px ${subtitlePresetForm.outline_color}`,
                               }}
                             >
                               {word}

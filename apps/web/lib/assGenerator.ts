@@ -162,7 +162,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         const startT = msToAssTime(w.start_ms);
         const endT = msToAssTime(Math.max(w.end_ms, w.start_ms + 150));
 
-        const coloredText = `${posTag}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`;
+        const col = anim === "none" ? primaryCol : highlightCol;
+        const coloredText = `${posTag}{\\c${col}}${popFx}${wText.toUpperCase()}${scaleReset}`;
         dialogueLines.push(`Dialogue: 0,${startT},${endT},KaraokeDefault,,0,0,0,,${coloredText}`);
       }
     } else if (displayMode === "burst") {

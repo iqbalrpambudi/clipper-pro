@@ -123,6 +123,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   }
 
   // Burst Mode Calculation
+  const isHighlightEnabled = subtitleStyle?.highlight_animation !== "none";
   const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
   let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean; cleanWord: string }[] = [];
 
@@ -141,7 +142,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           return {
             ...item,
             cleanWord: clean,
-            isActive: globalIdx === activeWordIndex,
+            isActive: isHighlightEnabled && globalIdx === activeWordIndex,
           };
         });
         break;
@@ -932,7 +933,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   };
 
   const isScaleAnim = subtitleStyle?.highlight_animation === "scale";
-  const isColorGlow = subtitleStyle?.highlight_animation === "color" || !subtitleStyle?.highlight_animation;
   const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.15) : 1.0;
 
   // Aspect ratio responsive frame wrapper styling
@@ -1065,26 +1065,20 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                   }}
                   className="uppercase tracking-wide inline-flex items-center justify-center flex-wrap"
                 >
-                  {activeBurstGroup.map((w, idx) => {
-                    const isGlowing = w.isActive && isColorGlow;
-                    return (
-                      <span
-                        key={idx}
-                        style={{
-                          color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
-                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
-                          transformOrigin: "center bottom",
-                          textShadow: isGlowing
-                            ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#00FF66", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#00FF66", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
-                            : "0 2px 8px rgba(0,0,0,0.8)",
-                          transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
-                        }}
-                        className="mx-1 inline-block"
-                      >
-                        {w.word.toUpperCase()}
-                      </span>
-                    );
-                  })}
+                  {activeBurstGroup.map((w, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
+                        transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
+                        transformOrigin: "center bottom",
+                        transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
+                      }}
+                      className="mx-1 inline-block"
+                    >
+                      {w.word.toUpperCase()}
+                    </span>
+                  ))}
                 </div>
               ) : null
             ) : subtitleStyle?.display_mode === "per_word" ? (
@@ -1098,17 +1092,14 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                         fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
                         fontSize: `${scaledFontSize}px`,
                         fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                        color: subtitleStyle?.highlight_color || "#FFE600",
+                        color: isHighlightEnabled ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
                         WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
                         paintOrder: "stroke fill",
                         backgroundColor: boxBgColor,
                         padding: boxOpacity > 0.05 ? "3px 8px" : "0",
                         borderRadius: "6px",
-                        transform: isScaleAnim ? `scale(${zoomScale})` : "none",
+                        transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
                         transformOrigin: "center bottom",
-                        textShadow: isColorGlow
-                          ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
-                          : "0 2px 8px rgba(0,0,0,0.8)",
                         transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                       }}
                       className="uppercase tracking-wider inline-block"
@@ -1136,8 +1127,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
               >
                 {segWords.length > 0 ? (
                   segWords.map((w, idx) => {
-                    const isActive = idx === activeWordIndex;
-                    const isGlowing = isActive && isColorGlow;
+                    const isActive = isHighlightEnabled && idx === activeWordIndex;
                     return (
                       <span
                         key={idx}
@@ -1145,9 +1135,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                           color: isActive ? subtitleStyle?.highlight_color || "#38BDF8" : subtitleStyle?.primary_color || "#EEEEEE",
                           transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
                           transformOrigin: "center bottom",
-                          textShadow: isGlowing
-                            ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#38BDF8", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#38BDF8", 0.45)}, 0 2px 8px rgba(0,0,0,0.9)`
-                            : "0 2px 8px rgba(0,0,0,0.8)",
                           transition: "color 80ms ease-out, transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                         }}
                         className="mx-0.5 inline-block"

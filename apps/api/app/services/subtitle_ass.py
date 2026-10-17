@@ -276,7 +276,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 start_t = ms_to_ass_time(w["start_ms"])
                 end_t = ms_to_ass_time(max(w["end_ms"], w["start_ms"] + 150))
 
-                colored_text = f"{pos_tag}{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}"
+                col = primary_col if anim == "none" else highlight_col
+                colored_text = f"{pos_tag}{{\\c{col}}}{pop_fx}{w_text.upper()}{scale_reset}"
                 dialogue_lines.append(
                     f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{colored_text}"
                 )

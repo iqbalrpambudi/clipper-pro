@@ -894,7 +894,7 @@ export function TimelineMonitor({
   const scaledOffsetX = Math.round((subtitleStyle?.offset_x || 0) * scale);
   const boxOpacity = subtitleStyle?.box_opacity ?? 0.0;
   const isScaleAnim = subtitleStyle?.highlight_animation === "scale";
-  const isColorGlow = subtitleStyle?.highlight_animation === "color" || !subtitleStyle?.highlight_animation;
+  const isHighlightEnabled = subtitleStyle?.highlight_animation !== "none";
   const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.15) : 1.0;
 
   const curMs = time * 1000;
@@ -933,7 +933,7 @@ export function TimelineMonitor({
       if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item, localIdx) => ({
           ...item,
-          isActive: i + localIdx === activeWordIndex,
+          isActive: isHighlightEnabled && i + localIdx === activeWordIndex,
         }));
         break;
       }
@@ -1065,25 +1065,19 @@ export function TimelineMonitor({
                     }}
                     className="flex items-center justify-center gap-1.5 uppercase tracking-wide"
                   >
-                    {activeBurstGroup.map((w, idx) => {
-                      const isGlowing = w.isActive && isColorGlow;
-                      return (
-                        <span
-                          key={idx}
-                          style={{
-                            color: w.isActive ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
-                            transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                            textShadow: isGlowing
-                              ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.45)}, 0 2px 4px rgba(0,0,0,0.9)`
-                              : `0 2px 4px rgba(0,0,0,0.8)`,
-                            transition: "all 0.08s ease-out",
-                            display: "inline-block",
-                          }}
-                        >
-                          {w.word}
-                        </span>
-                      );
-                    })}
+                    {activeBurstGroup.map((w, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          color: w.isActive ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
+                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                          transition: "all 0.08s ease-out",
+                          display: "inline-block",
+                        }}
+                      >
+                        {w.word}
+                      </span>
+                    ))}
                   </div>
                 ) : null
               ) : subtitleStyle?.display_mode === "per_word" ? (
@@ -1093,12 +1087,10 @@ export function TimelineMonitor({
                       fontSize: `${scaledFontSize}px`,
                       fontFamily: `"${subtitleStyle?.font_family || "Poppins"}", sans-serif`,
                       fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 600,
-                      color: subtitleStyle?.highlight_color || "#FFE600",
+                      color: isHighlightEnabled ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                      textShadow: isColorGlow
-                        ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.45)}, 0 2px 4px rgba(0,0,0,0.9)`
-                        : `0 2px 4px rgba(0,0,0,0.8)`,
-                      transform: isScaleAnim ? `scale(${zoomScale})` : "none",
+                      textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
+                      transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
                       backgroundColor: boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
                       padding: boxOpacity > 0.05 ? "2px 8px" : "0",
                       borderRadius: "4px",
@@ -1126,17 +1118,13 @@ export function TimelineMonitor({
                 >
                   {segWords.length
                     ? segWords.map((w, i) => {
-                        const isActive = i === activeWordIndex;
-                        const isGlowing = isActive && isColorGlow;
+                        const isActive = isHighlightEnabled && i === activeWordIndex;
                         return (
                           <span
                             key={i}
                             style={{
                               color: isActive ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
                               transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                              textShadow: isGlowing
-                                ? `0 0 16px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.85)}, 0 0 30px ${hexToRgba(subtitleStyle?.highlight_color || "#FFE600", 0.45)}, 0 2px 4px rgba(0,0,0,0.9)`
-                                : `0 2px 4px rgba(0,0,0,0.8)`,
                               transition: "all 0.08s ease-out",
                               display: "inline-block",
                             }}
