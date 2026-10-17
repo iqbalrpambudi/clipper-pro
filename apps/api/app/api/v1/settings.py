@@ -239,25 +239,57 @@ _MODELS_CACHE_TTL: float = 300.0  # 5 minutes
 @router.get("/models")
 async def list_available_models(
     base_url: str = "",
+    category: str = "llm",
     x_api_key: str = Header("", alias="X-Api-Key"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Fetch list of available models from [OI]-compatible endpoint or 9Router.
+    Fetch list of available models from OpenAI-compatible endpoint, InferHub, or OpenRouter.
     The key travels in the X-Api-Key header so it never lands in access logs.
+    If category == "image", prioritizes image models and falls back to image config.
     """
     target_url = base_url.strip()
     target_key = x_api_key.strip()
 
-    if not target_url:
-        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
-        cfg = res.scalar_one_or_none()
-        if cfg and cfg.base_url:
-            target_url = cfg.base_url
+    res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+    cfg = res.scalar_one_or_none()
+
+    if not target_url and cfg:
+        if category == "image":
+            target_url = cfg.image_base_url or ""
+            if not target_key and cfg.image_api_key_encrypted:
+                target_key = decrypt_secret(cfg.image_api_key_encrypted)
+        else:
+            target_url = cfg.base_url or ""
             if not target_key and cfg.api_key_encrypted:
                 target_key = decrypt_secret(cfg.api_key_encrypted)
+    elif target_url and not target_key and cfg:
+        # If user passed base_url matching DB without re-entering encrypted key
+        if category == "image" and cfg.image_api_key_encrypted:
+            target_key = decrypt_secret(cfg.image_api_key_encrypted)
+        elif category != "image" and cfg.api_key_encrypted:
+            target_key = decrypt_secret(cfg.api_key_encrypted)
 
     if not target_url:
+        if category == "image":
+            return {
+                "models": [
+                    "inferhub/cb/gemini-2.5-flash-image",
+                    "inferhub/cb/gemini-3.0-pro-image",
+                    "inferhub/gemini-2.5-flash-image",
+                    "runware:100@1",
+                    "dall-e-3",
+                    "flux-schnell",
+                ],
+                "image_models": [
+                    "inferhub/cb/gemini-2.5-flash-image",
+                    "inferhub/cb/gemini-3.0-pro-image",
+                    "inferhub/gemini-2.5-flash-image",
+                    "runware:100@1",
+                    "dall-e-3",
+                    "flux-schnell",
+                ],
+            }
         return {
             "models": [
                 "gemini-2.0-flash",
@@ -277,14 +309,12 @@ async def list_available_models(
     if target_key:
         headers["Authorization"] = f"Bearer {target_key}"
 
-    cache_key = f"{raw_url}::{target_key}"
+    cache_key = f"{raw_url}::{target_key}::{category}"
     now = time.time()
     if cache_key in _MODELS_CACHE:
-        cached_time, cached_models = _MODELS_CACHE[cache_key]
+        cached_time, cached_result = _MODELS_CACHE[cache_key]
         if now - cached_time < _MODELS_CACHE_TTL:
-            return {"models": cached_models}
-        # ponytail: drop only the expired entry; switch to an LRU when the key
-        # space grows beyond a handful of provider configs.
+            return cached_result
         _MODELS_CACHE.pop(cache_key, None)
 
     try:
@@ -293,11 +323,33 @@ async def list_available_models(
             if resp.status_code == 200:
                 data = resp.json()
                 raw_models = data.get("data", [])
-                models = [m["id"] for m in raw_models if isinstance(m, dict) and "id" in m]
-                _MODELS_CACHE[cache_key] = (now, models)
-                return {"models": models}
-    except Exception as e:
-        pass
+                image_models = []
+                other_models = []
+                for m in raw_models:
+                    if isinstance(m, dict) and "id" in m:
+                        mid = m["id"]
+                        caps = m.get("capabilities") or {}
+                        # If endpoint explicitly specifies imageOutput capability, strictly respect it
+                        if "imageOutput" in caps:
+                            is_img = bool(caps.get("imageOutput"))
+                        else:
+                            is_img = any(k in mid.lower() for k in ("image", "flux", "dall", "recraft", "midjourney", "diffusion", "paint", "draw"))
 
-    return {"models": []}
+                        if is_img:
+                            image_models.append(mid)
+                        else:
+                            other_models.append(mid)
+
+                if category == "image":
+                    sorted_models = image_models + other_models
+                else:
+                    sorted_models = [m["id"] for m in raw_models if isinstance(m, dict) and "id" in m]
+
+                res_data = {"models": sorted_models, "image_models": image_models}
+                _MODELS_CACHE[cache_key] = (now, res_data)
+                return res_data
+    except Exception as e:
+        log.warning("Failed to fetch models from %s: %s", raw_url, e)
+
+    return {"models": [], "image_models": []}
 

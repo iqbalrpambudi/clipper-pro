@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,6 +30,8 @@ import {
   Move,
   Layers,
   Image as ImageIcon,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -85,11 +87,33 @@ export default function SettingsPage() {
   const [imageSystemPrompt, setImageSystemPrompt] = useState(DEFAULT_IMAGE_STYLE_PROMPT);
   const [testImageResult, setTestImageResult] = useState<any>(null);
   const [isTestingImage, setIsTestingImage] = useState(false);
+  const [availableImageModels, setAvailableImageModels] = useState<string[]>([]);
+  const [featuredImageModels, setFeaturedImageModels] = useState<string[]>([]);
+  const [isFetchingImageModels, setIsFetchingImageModels] = useState(false);
+  const [isImageDropdownOpen, setIsImageDropdownOpen] = useState(false);
+  const [imageModelSearch, setImageModelSearch] = useState("");
+  const [imageTabFilter, setImageTabFilter] = useState<"image_only" | "all">("image_only");
+  const imageDropdownRef = useRef<HTMLDivElement>(null);
 
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        imageDropdownRef.current &&
+        !imageDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsImageDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // ==========================================
   // TAB 2: TEMPLATE PROMPT STATE
@@ -274,6 +298,48 @@ export default function SettingsPage() {
     } finally {
       setIsFetchingModels(false);
     }
+  };
+
+  const handleFetchImageModels = async () => {
+    setIsFetchingImageModels(true);
+    try {
+      const res = await api.getAvailableModels(imageBaseUrl.trim(), imageApiKey.trim(), "image");
+      const models = res.models || [];
+      const imageModels = res.image_models || [];
+      setAvailableImageModels(models);
+      setFeaturedImageModels(imageModels);
+      setIsImageDropdownOpen(true);
+      if (models.length > 0) {
+        showToast(
+          `Ditemukan ${models.length} model dari endpoint (${imageModels.length} model gambar)!`,
+          "success"
+        );
+      } else {
+        showToast("Tidak ada model yang ditemukan dari endpoint image", "info");
+      }
+    } catch (e: any) {
+      showToast(e.message || "Gagal mengambil daftar model image", "error");
+    } finally {
+      setIsFetchingImageModels(false);
+    }
+  };
+
+  const isImageModelName = (name: string) => {
+    if (featuredImageModels.length > 0) {
+      return featuredImageModels.includes(name);
+    }
+    const lower = name.toLowerCase();
+    return (
+      lower.includes("image") ||
+      lower.includes("flux") ||
+      lower.includes("dall") ||
+      lower.includes("runware") ||
+      lower.includes("recraft") ||
+      lower.includes("diffusion") ||
+      lower.includes("sdxl") ||
+      lower.includes("midjourney") ||
+      lower.includes("imagen")
+    );
   };
 
   const saveMutation = useMutation({
@@ -862,7 +928,7 @@ export default function SettingsPage() {
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                Digunakan khusus oleh mode <strong>Long Storyboard Explainer</strong> untuk menghasilkan gambar ilustrasi hand-drawn secara otomatis (rasio widescreen 16:9) sesuai durasi narasi audio. Cukup masukkan endpoint dan model yang ingin digunakan — mendukung <strong>Runware.ai (FLUX.1 Schnell)</strong>, endpoint proxy lokal / InferHub (misal <strong>inferhub/cb/gemini-3.1-flash-image</strong>), maupun endpoint kompatibel OpenAI lainnya.
+                Digunakan khusus oleh mode <strong>Long Storyboard Explainer</strong> untuk menghasilkan gambar ilustrasi hand-drawn secara otomatis (rasio widescreen 16:9) sesuai durasi narasi audio. Cukup masukkan endpoint dan model yang ingin digunakan — mendukung <strong>Runware.ai (FLUX.1 Schnell)</strong>, endpoint proxy lokal / InferHub (misal <strong>inferhub/cb/gemini-2.5-flash-image</strong>), maupun endpoint kompatibel OpenAI lainnya.
               </p>
 
               <div className="space-y-4 pt-1">
@@ -883,20 +949,195 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Image Model Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="runware:100@1, inferhub/cb/gemini-3.1-flash-image, atau dall-e-3"
-                      value={imageModel}
-                      onChange={(e) => setImageModel(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 mb-2"
-                    />
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="relative" ref={imageDropdownRef}>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Image Model Name
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleFetchImageModels}
+                        disabled={isFetchingImageModels}
+                        className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono disabled:opacity-50"
+                        title="Ambil model dari endpoint Image Base URL"
+                      >
+                        {isFetchingImageModels ? (
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-2.5 h-2.5" />
+                        )}
+                        <span>
+                          {availableImageModels.length > 0
+                            ? `${availableImageModels.length} Model`
+                            : "Tarik Model dari Endpoint"}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="available-image-models-list"
+                        placeholder="Ketik atau cari model, misal: inferhub/cb/gemini-2.5-flash-image"
+                        value={imageModel}
+                        onChange={(e) => {
+                          setImageModel(e.target.value);
+                          setImageModelSearch(e.target.value);
+                          setIsImageDropdownOpen(true);
+                        }}
+                        onFocus={() => {
+                          if (availableImageModels.length === 0) {
+                            handleFetchImageModels();
+                          } else {
+                            setIsImageDropdownOpen(true);
+                          }
+                        }}
+                        className="w-full pl-3.5 pr-9 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsImageDropdownOpen((prev) => !prev)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white rounded-lg transition"
+                        title="Tampilkan daftar model"
+                      >
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Datalist native fallback */}
+                    <datalist id="available-image-models-list">
+                      {availableImageModels.length > 0 ? (
+                        availableImageModels.map((m) => <option key={m} value={m} />)
+                      ) : (
+                        <>
+                          <option value="runware:100@1" />
+                          <option value="inferhub/cb/gemini-2.5-flash-image" />
+                          <option value="dall-e-3" />
+                          <option value="flux-schnell" />
+                        </>
+                      )}
+                    </datalist>
+
+                    {/* Custom Searchable Autocomplete Dropdown */}
+                    {isImageDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[#141416] border border-violet-500/30 rounded-2xl shadow-2xl p-2.5 backdrop-blur-xl animate-scale-pop">
+                        <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0B0B0C] rounded-xl border border-[#27272A] mb-2">
+                          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Cari model dari endpoint..."
+                            value={imageModelSearch}
+                            onChange={(e) => setImageModelSearch(e.target.value)}
+                            className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                          />
+                          {imageModelSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setImageModelSearch("")}
+                              className="text-slate-500 hover:text-white"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Filter tabs */}
+                        {featuredImageModels.length > 0 && (
+                          <div className="flex items-center gap-1.5 mb-2 px-1">
+                            <button
+                              type="button"
+                              onClick={() => setImageTabFilter("image_only")}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
+                                imageTabFilter === "image_only"
+                                  ? "bg-violet-600 text-white font-semibold"
+                                  : "bg-[#222226] text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              Khusus Gambar ({featuredImageModels.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setImageTabFilter("all")}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
+                                imageTabFilter === "all"
+                                  ? "bg-violet-600 text-white font-semibold"
+                                  : "bg-[#222226] text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              Semua Model ({availableImageModels.length})
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Models list */}
+                        <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                          {isFetchingImageModels ? (
+                            <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400">
+                              <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                              <span className="text-[11px] font-mono">Mengambil model dari endpoint...</span>
+                            </div>
+                          ) : (() => {
+                            const pool =
+                              imageTabFilter === "image_only" && featuredImageModels.length > 0
+                                ? featuredImageModels
+                                : availableImageModels.length > 0
+                                ? availableImageModels
+                                : ["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"];
+                            const filtered = pool.filter((m) =>
+                              imageModelSearch.trim() === ""
+                                ? true
+                                : m.toLowerCase().includes(imageModelSearch.toLowerCase())
+                            );
+
+                            if (filtered.length === 0) {
+                              return (
+                                <div className="py-5 text-center text-slate-500 text-xs px-2">
+                                  Tidak ada model yang cocok dengan pencarian. Anda tetap dapat mengetik nama model sendiri.
+                                </div>
+                              );
+                            }
+
+                            return filtered.map((m) => {
+                              const isSelected = imageModel === m;
+                              const isImage = isImageModelName(m);
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => {
+                                    setImageModel(m);
+                                    setIsImageDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
+                                    isSelected
+                                      ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
+                                      : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
+                                  }`}
+                                >
+                                  <span className="truncate">{m}</span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {isImage && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-950/80 text-violet-300 border border-violet-800/40 font-sans">
+                                        Gambar
+                                      </span>
+                                    )}
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-violet-400" />}
+                                  </div>
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       <span className="text-[10px] text-slate-500">Preset:</span>
-                      {["runware:100@1", "inferhub/cb/gemini-3.1-flash-image", "dall-e-3", "flux-schnell"].map((preset) => (
+                      {["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"].map((preset) => (
                         <button
                           key={preset}
                           type="button"

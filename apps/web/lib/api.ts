@@ -342,12 +342,13 @@ export const api = {
         body: JSON.stringify(data),
       }
     ),
-  getAvailableModels: (baseUrl?: string, apiKey?: string) => {
+  getAvailableModels: (baseUrl?: string, apiKey?: string, category: "llm" | "image" = "llm") => {
     const params = new URLSearchParams();
     if (baseUrl) params.set("base_url", baseUrl);
+    if (category) params.set("category", category);
     const query = params.toString() ? `?${params.toString()}` : "";
     // Key travels in a header, not the query string, so it stays out of logs.
-    return request<{ models: string[] }>(`/api/v1/settings/models${query}`, {
+    return request<{ models: string[]; image_models?: string[] }>(`/api/v1/settings/models${query}`, {
       headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
     });
   },

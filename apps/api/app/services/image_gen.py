@@ -36,6 +36,41 @@ def normalize_endpoint_url(url: Optional[str]) -> str:
 
 
 
+def format_image_error(status_code: int, raw_text: str, model_name: str) -> str:
+    """Format and clean upstream API error messages for clear, actionable user display."""
+    msg = raw_text.strip()
+    try:
+        data = json.loads(raw_text)
+        if isinstance(data, dict):
+            err = data.get("error", {})
+            if isinstance(err, dict):
+                inner = err.get("message", "")
+                if inner:
+                    msg = inner
+            elif isinstance(err, str):
+                msg = err
+    except Exception:
+        pass
+
+    # Extract nested error message if proxy wrapped another JSON error (e.g. InferHub/One-API)
+    m = re.search(r'\[\d+\]:\s*(\{.*\})', msg) or re.search(r'(\{"error":.*\})', msg)
+    if m:
+        try:
+            nested = json.loads(m.group(1))
+            if isinstance(nested, dict):
+                nested_err = nested.get("error", {})
+                if isinstance(nested_err, dict) and nested_err.get("message"):
+                    msg = nested_err["message"]
+                elif isinstance(nested_err, str):
+                    msg = nested_err
+        except Exception:
+            pass
+
+    if "unknown model" in msg.lower() or "model_not_found" in msg.lower():
+        return f"Model '{model_name}' tidak ditemukan di provider endpoint ({msg}). Silakan pilih atau ubah model yang tersedia di Model Settings."
+    return f"HTTP {status_code}: {msg}"
+
+
 def ensure_16_9_image(img_bytes: bytes) -> bytes:
     """
     Ensure the image is in 16:9 widescreen landscape format.
@@ -415,7 +450,7 @@ async def generate_single_image(
                         return str(out_file), storage.to_relative_url(out_file) or ""
 
                 err_body = resp.text
-                last_error = f"HTTP {resp.status_code}: {err_body}"
+                last_error = format_image_error(resp.status_code, err_body, chosen_model)
                 log.warning("Image gen attempt with size %s returned HTTP %s: %s", attempt_size, resp.status_code, err_body[:200])
 
                 # If proxy explicitly says provider does not support image generation endpoint,
@@ -495,7 +530,7 @@ async def generate_single_image(
                     log.info("Successfully saved 16:9 image via chat/completions to %s (%d bytes)", out_file, len(img_bytes))
                     return str(out_file), storage.to_relative_url(out_file) or ""
 
-            last_error = f"Chat completions returned HTTP {chat_resp.status_code}: {chat_resp.text[:200]}"
+            last_error = format_image_error(chat_resp.status_code, chat_resp.text, chosen_model)
         except Exception as ce:
             log.warning("Error during chat/completions image fallback: %s", ce)
             last_error = str(ce)
