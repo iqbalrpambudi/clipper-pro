@@ -225,6 +225,12 @@ export interface ModelConfig {
   tts_api_key_masked?: string | null;
   has_tts_api_key: boolean;
   tts_fallback_enabled?: boolean;
+  elevenlabs_api_key_masked?: string | null;
+  has_elevenlabs_api_key?: boolean;
+  elevenlabs_model?: string;
+  runware_api_key_masked?: string | null;
+  has_runware_api_key?: boolean;
+  runware_tts_model?: string;
   image_base_url?: string | null;
   image_model?: string;
   image_concurrency?: number;

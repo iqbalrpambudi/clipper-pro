@@ -391,7 +391,8 @@ async def generate_tts_and_align_job(
         narration.status = "tts_generating"
         await db.commit()
 
-        display_target = f"{model or voice}" if provider == "gemini" else voice
+        clean_prov = provider.lower().strip()
+        display_target = f"{model or voice}" if clean_prov in ("gemini", "elevenlabs", "runware") else voice
         await publish_project_event(
             project_id,
             task_type="tts_align",
@@ -413,14 +414,28 @@ async def generate_tts_and_align_job(
             res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
-            tts_model = model or "gemini-2.5-flash-preview-tts"
-            if cfg:
-                if cfg.tts_api_key_encrypted:
-                    api_key = decrypt_secret(cfg.tts_api_key_encrypted)
-                elif cfg.api_key_encrypted:
-                    api_key = decrypt_secret(cfg.api_key_encrypted)
-                if not model and cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
-                    tts_model = cfg.tts_provider
+            if clean_prov == "elevenlabs":
+                tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
+                if cfg and cfg.elevenlabs_api_key_encrypted:
+                    api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
+            elif clean_prov == "runware":
+                tts_model = model or (getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") if cfg else "fishaudio:s2.1@pro")
+                if cfg:
+                    if getattr(cfg, "runware_api_key_encrypted", None):
+                        api_key = decrypt_secret(cfg.runware_api_key_encrypted)
+                    elif cfg.image_api_key_encrypted:
+                        api_key = decrypt_secret(cfg.image_api_key_encrypted)
+            elif clean_prov == "gemini":
+                tts_model = model or "gemini-2.5-flash-preview-tts"
+                if cfg:
+                    if cfg.tts_api_key_encrypted:
+                        api_key = decrypt_secret(cfg.tts_api_key_encrypted)
+                    elif cfg.api_key_encrypted:
+                        api_key = decrypt_secret(cfg.api_key_encrypted)
+                    if not model and cfg.tts_provider and cfg.tts_provider.startswith("gemini-"):
+                        tts_model = cfg.tts_provider
+            else:
+                tts_model = model or "edge"
 
             # Step 1: TTS generation with per-segment chunking to prevent silent segment 2
             use_fallback = fallback_enabled

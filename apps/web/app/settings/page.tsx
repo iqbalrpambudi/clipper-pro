@@ -78,6 +78,12 @@ export default function SettingsPage() {
   const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
   const [ttsApiKey, setTtsApiKey] = useState("");
   const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(true);
+  const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
+  const [elevenlabsModel, setElevenlabsModel] = useState("eleven_multilingual_v2");
+  const [runwareApiKey, setRunwareApiKey] = useState("");
+  const [runwareTtsModel, setRunwareTtsModel] = useState("fishaudio:s2.1@pro");
+  const [testTtsResult, setTestTtsResult] = useState<any>(null);
+  const [isTestingTts, setIsTestingTts] = useState(false);
 
   // AI Image Generator State
   const [imageBaseUrl, setImageBaseUrl] = useState("");
@@ -227,13 +233,19 @@ export default function SettingsPage() {
       setBaseUrl(config.base_url || "");
       setChatModel(config.chat_model || "gemini-2.5-flash");
       setVisionModel(config.vision_model || "gemini-2.5-flash");
-      setTtsProvider(config.tts_provider || "gemini");
+      if (config.tts_provider === "elevenlabs" || config.tts_provider === "runware" || config.tts_provider === "edge") {
+        setTtsProvider(config.tts_provider);
+      } else {
+        setTtsProvider("gemini");
+      }
       if (config.tts_provider && config.tts_provider.startsWith("gemini-")) {
         setTtsModel(config.tts_provider);
       } else {
         setTtsModel("gemini-2.5-flash-preview-tts");
       }
       setTtsFallbackEnabled(config.tts_fallback_enabled !== false);
+      if (config.elevenlabs_model) setElevenlabsModel(config.elevenlabs_model);
+      if (config.runware_tts_model) setRunwareTtsModel(config.runware_tts_model);
       setImageBaseUrl(config.image_base_url || "");
       setImageModel(config.image_model || "dall-e-3");
       setImageConcurrency(config.image_concurrency || 2);
@@ -349,6 +361,8 @@ export default function SettingsPage() {
       showToast("Konfigurasi model & AI image berhasil disimpan terenkripsi!", "success");
       setApiKey("");
       setTtsApiKey("");
+      setElevenlabsApiKey("");
+      setRunwareApiKey("");
       setImageApiKey("");
     },
     onError: (err: any) => {
@@ -380,6 +394,46 @@ export default function SettingsPage() {
       showToast("Test koneksi gagal", "error");
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleTestTts = async () => {
+    setIsTestingTts(true);
+    setTestTtsResult(null);
+    try {
+      let key = "";
+      let model = "";
+      if (ttsProvider === "gemini") {
+        key = ttsApiKey;
+        model = ttsModel;
+      } else if (ttsProvider === "elevenlabs") {
+        key = elevenlabsApiKey;
+        model = elevenlabsModel;
+      } else if (ttsProvider === "runware") {
+        key = runwareApiKey || imageApiKey;
+        model = runwareTtsModel;
+      }
+      const res = await api.testTtsConnection({
+        provider: ttsProvider,
+        api_key: key.trim() || undefined,
+        model: model.trim() || undefined,
+      });
+      setTestTtsResult(res);
+      if (res.success) {
+        showToast(res.message, "success");
+      } else {
+        showToast(res.message, "error");
+      }
+    } catch (err: any) {
+      const failed = {
+        success: false,
+        message: err.message || "Gagal tes koneksi TTS",
+        latency_ms: 0,
+      };
+      setTestTtsResult(failed);
+      showToast(failed.message, "error");
+    } finally {
+      setIsTestingTts(false);
     }
   };
 
@@ -419,6 +473,10 @@ export default function SettingsPage() {
       tts_provider: ttsProvider === "gemini" ? ttsModel : ttsProvider,
       tts_api_key: ttsApiKey.trim() || undefined,
       tts_fallback_enabled: ttsFallbackEnabled,
+      elevenlabs_api_key: elevenlabsApiKey.trim() || undefined,
+      elevenlabs_model: elevenlabsModel,
+      runware_api_key: runwareApiKey.trim() || undefined,
+      runware_tts_model: runwareTtsModel,
       image_base_url: imageBaseUrl.trim() || null,
       image_model: imageModel.trim() || "dall-e-3",
       image_concurrency: imageConcurrency,
@@ -647,11 +705,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveSettingsTab("models")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeSettingsTab === "models"
-                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-                : "text-muted-foreground hover:text-white hover:bg-white/5"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "models"
+              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+              : "text-muted-foreground hover:text-white hover:bg-white/5"
+              }`}
           >
             <Cpu className={`w-3.5 h-3.5 ${activeSettingsTab === "models" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
             <span>Model AI & API Keys</span>
@@ -659,11 +716,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveSettingsTab("prompts")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeSettingsTab === "prompts"
-                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-                : "text-muted-foreground hover:text-white hover:bg-white/5"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "prompts"
+              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+              : "text-muted-foreground hover:text-white hover:bg-white/5"
+              }`}
           >
             <FileText className={`w-3.5 h-3.5 ${activeSettingsTab === "prompts" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
             <span>Prompt AI & Preset Naskah</span>
@@ -671,11 +727,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveSettingsTab("subtitles")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
-              activeSettingsTab === "subtitles"
-                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-                : "text-muted-foreground hover:text-white hover:bg-white/5"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "subtitles"
+              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+              : "text-muted-foreground hover:text-white hover:bg-white/5"
+              }`}
           >
             <Palette className={`w-3.5 h-3.5 ${activeSettingsTab === "subtitles" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
             <span>Preset Gaya Subtitle</span>
@@ -699,14 +754,10 @@ export default function SettingsPage() {
                 </span>
               </div>
 
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Konfigurasi endpoint dan model untuk narrative generation serta vision tagging. Anda dapat menggunakan <strong>9Router</strong>, Google Gemini API, OpenAI, DeepSeek, atau self-hosted endpoint.
-              </p>
-
               <div className="space-y-4 pt-1">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    API Base URL (Contoh: http://localhost:20128/v1 untuk 9Router)
+                    API Base URL
                   </label>
                   <input
                     type="text"
@@ -785,7 +836,7 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-slate-300">
-                      API Key (Disimpan Terenkripsi Fernet — Kosongkan jika 9Router tidak memerlukan auth)
+                      API Key
                     </label>
                     {config?.has_api_key && (
                       <span className="text-[10px] text-emerald-400 font-mono">
@@ -826,9 +877,16 @@ export default function SettingsPage() {
 
             {/* Section 2: TTS Configuration */}
             <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+                    Gemini / ElevenLabs / Runware
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -839,56 +897,156 @@ export default function SettingsPage() {
                   <select
                     value={ttsProvider}
                     onChange={(e) => setTtsProvider(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="gemini">Gemini TTS</option>
-                    <option value="edge">Edge-TTS (Natural Indonesian, Free)</option>
+                    <option value="gemini">Gemini TTS (Google AI High-Fidelity)</option>
+                    <option value="elevenlabs">ElevenLabs TTS (Gold Standard — Zero Intonation Drift)</option>
+                    <option value="runware">Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)</option>
+                    <option value="edge">Edge-TTS (Natural Indonesian Neural, Gratis)</option>
                   </select>
                 </div>
 
+                {/* Gemini Model & Key */}
                 {ttsProvider === "gemini" && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Gemini TTS Model
-                    </label>
-                    <select
-                      value={ttsModel}
-                      onChange={(e) => setTtsModel(e.target.value)}
-                      className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
-                    >
-                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)</option>
-                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (cepat & hemat)</option>
-                      <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
-                      <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
-                      <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
-                      <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
-                    </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Pilih model Gemini TTS aktif. Gemini 2.5 Flash TTS direkomendasikan untuk stabilitas intonasi & persona vokal antar segmen narasi panjang.
-                    </p>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Gemini TTS Model
+                      </label>
+                      <select
+                        value={ttsModel}
+                        onChange={(e) => setTtsModel(e.target.value)}
+                        className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)</option>
+                        <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (cepat & hemat)</option>
+                        <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
+                        <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
+                        <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
+                        <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5 menit) untuk intonasi vokal seragam.
+                      </p>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Gemini TTS API Key (Tersimpan Terenkripsi)
+                        </label>
+                        {config?.has_tts_api_key && (
+                          <span className="text-[10px] text-emerald-400 font-mono">
+                            Tersimpan: {config.tts_api_key_masked}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="password"
+                        placeholder={config?.has_tts_api_key ? "Ketik untuk mengganti Gemini TTS key..." : "Gemini API Key khusus TTS (opsional jika sama dengan LLM)..."}
+                        value={ttsApiKey}
+                        onChange={(e) => setTtsApiKey(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </>
                 )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      Gemini TTS API Key (Tersimpan Terenkripsi)
-                    </label>
-                    {config?.has_tts_api_key && (
-                      <span className="text-[10px] text-emerald-400 font-mono">
-                        Tersimpan: {config.tts_api_key_masked}
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    type="password"
-                    placeholder={config?.has_tts_api_key ? "Ketik untuk mengganti TTS key..." : "Gemini API Key khusus TTS (opsional jika sama)..."}
-                    value={ttsApiKey}
-                    onChange={(e) => setTtsApiKey(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
-                  />
-                </div>
+                {/* ElevenLabs Model & Key */}
+                {ttsProvider === "elevenlabs" && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        ElevenLabs Model
+                      </label>
+                      <select
+                        value={elevenlabsModel}
+                        onChange={(e) => setElevenlabsModel(e.target.value)}
+                        className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="eleven_multilingual_v2">Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)</option>
+                        <option value="eleven_turbo_v2_5">Eleven Flash / Turbo 2.5 (Latensi super cepat & hemat kuota)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal 100% konsisten dari awal hingga akhir.
+                      </p>
+                    </div>
 
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          ElevenLabs API Key (Tersimpan Terenkripsi)
+                        </label>
+                        {config?.has_elevenlabs_api_key && (
+                          <span className="text-[10px] text-emerald-400 font-mono">
+                            Tersimpan: {config.elevenlabs_api_key_masked}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="password"
+                        placeholder={config?.has_elevenlabs_api_key ? "Ketik untuk mengganti ElevenLabs API key..." : "xi-api-key (dari elevenlabs.io)..."}
+                        value={elevenlabsApiKey}
+                        onChange={(e) => setElevenlabsApiKey(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Runware Model & Key */}
+                {ttsProvider === "runware" && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Runware TTS Model
+                      </label>
+                      <select
+                        value={runwareTtsModel}
+                        onChange={(e) => setRunwareTtsModel(e.target.value)}
+                        className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="fishaudio:s2.1@pro">Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)</option>
+                        <option value="alibaba:qwen3-tts-1.7b-customvoice">Alibaba Qwen3-TTS 1.7B (Aksen Asia & Indonesia natural)</option>
+                        <option value="inworld:tts@2">Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)</option>
+                        <option value="xai:tts@0">xAI TTS Grok (Vokal ekspresif & speech tags)</option>
+                        <option value="minimax:speech@2.8">MiniMax Speech 2.8 (High-realism prosody & emosional)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik) dan latensi tinggi.
+                      </p>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Runware API Key (Tersimpan Terenkripsi)
+                        </label>
+                        {(config?.has_runware_api_key || config?.has_image_api_key) && (
+                          <span className="text-[10px] text-emerald-400 font-mono">
+                            Tersimpan: {config.runware_api_key_masked || config.image_api_key_masked}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="password"
+                        placeholder={
+                          config?.has_runware_api_key || config?.has_image_api_key
+                            ? "Ketik untuk mengganti Runware API key (atau kosongkan untuk pakai key Image)..."
+                            : "Runware API Key (dari runware.ai)..."
+                        }
+                        value={runwareApiKey}
+                        onChange={(e) => setRunwareApiKey(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware pada Section 3 di bawah.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Fallback Checkbox */}
                 <div className="sm:col-span-2 pt-2 border-t border-surface-border/50">
                   <label className="flex items-start gap-3 cursor-pointer select-none group">
                     <input
@@ -907,6 +1065,26 @@ export default function SettingsPage() {
                     </div>
                   </label>
                 </div>
+              </div>
+
+              {/* TTS Test Connection Button & Result */}
+              <div className="pt-3 border-t border-surface-border/50 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleTestTts}
+                  disabled={isTestingTts}
+                  className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+                >
+                  {isTestingTts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-emerald-400" />}
+                  <span>Test Koneksi TTS ({ttsProvider.toUpperCase()})</span>
+                </button>
+
+                {testTtsResult && (
+                  <div className={`text-xs font-mono flex items-center gap-1.5 ${testTtsResult.success ? "text-emerald-400" : "text-rose-400"}`}>
+                    {testTtsResult.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    <span>{testTtsResult.message} ({testTtsResult.latency_ms}ms)</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -927,10 +1105,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Digunakan khusus oleh mode <strong>Long Storyboard Explainer</strong> untuk menghasilkan gambar ilustrasi hand-drawn secara otomatis (rasio widescreen 16:9) sesuai durasi narasi audio. Cukup masukkan endpoint dan model yang ingin digunakan — mendukung <strong>Runware.ai (FLUX.1 Schnell)</strong>, endpoint proxy lokal / InferHub (misal <strong>inferhub/cb/gemini-2.5-flash-image</strong>), maupun endpoint kompatibel OpenAI lainnya.
-              </p>
-
               <div className="space-y-4 pt-1">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -943,9 +1117,6 @@ export default function SettingsPage() {
                     onChange={(e) => setImageBaseUrl(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Contoh: <code className="text-violet-300">https://api.runware.ai/v1</code> (Runware), endpoint lokal / InferHub (<code className="text-slate-400">http://localhost:port/v1</code>), atau <code className="text-slate-400">https://api.openai.com/v1</code>.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1001,9 +1172,8 @@ export default function SettingsPage() {
                         title="Tampilkan daftar model"
                       >
                         <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                            isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
-                          }`}
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
+                            }`}
                         />
                       </button>
                     </div>
@@ -1051,22 +1221,20 @@ export default function SettingsPage() {
                             <button
                               type="button"
                               onClick={() => setImageTabFilter("image_only")}
-                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
-                                imageTabFilter === "image_only"
-                                  ? "bg-violet-600 text-white font-semibold"
-                                  : "bg-[#222226] text-slate-400 hover:text-white"
-                              }`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${imageTabFilter === "image_only"
+                                ? "bg-violet-600 text-white font-semibold"
+                                : "bg-[#222226] text-slate-400 hover:text-white"
+                                }`}
                             >
                               Khusus Gambar ({featuredImageModels.length})
                             </button>
                             <button
                               type="button"
                               onClick={() => setImageTabFilter("all")}
-                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
-                                imageTabFilter === "all"
-                                  ? "bg-violet-600 text-white font-semibold"
-                                  : "bg-[#222226] text-slate-400 hover:text-white"
-                              }`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${imageTabFilter === "all"
+                                ? "bg-violet-600 text-white font-semibold"
+                                : "bg-[#222226] text-slate-400 hover:text-white"
+                                }`}
                             >
                               Semua Model ({availableImageModels.length})
                             </button>
@@ -1085,8 +1253,8 @@ export default function SettingsPage() {
                               imageTabFilter === "image_only" && featuredImageModels.length > 0
                                 ? featuredImageModels
                                 : availableImageModels.length > 0
-                                ? availableImageModels
-                                : ["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"];
+                                  ? availableImageModels
+                                  : ["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"];
                             const filtered = pool.filter((m) =>
                               imageModelSearch.trim() === ""
                                 ? true
@@ -1112,11 +1280,10 @@ export default function SettingsPage() {
                                     setImageModel(m);
                                     setIsImageDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
-                                    isSelected
-                                      ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
-                                      : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
-                                  }`}
+                                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${isSelected
+                                    ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
+                                    : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
+                                    }`}
                                 >
                                   <span className="truncate">{m}</span>
                                   <div className="flex items-center gap-1.5 shrink-0">
@@ -1142,11 +1309,10 @@ export default function SettingsPage() {
                           key={preset}
                           type="button"
                           onClick={() => setImageModel(preset)}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono border transition ${
-                            imageModel === preset
-                              ? "bg-violet-500/20 border-violet-500/40 text-violet-300 font-semibold"
-                              : "bg-surface border-surface-border text-slate-400 hover:text-white"
-                          }`}
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono border transition ${imageModel === preset
+                            ? "bg-violet-500/20 border-violet-500/40 text-violet-300 font-semibold"
+                            : "bg-surface border-surface-border text-slate-400 hover:text-white"
+                            }`}
                         >
                           {preset}
                         </button>
@@ -1172,9 +1338,6 @@ export default function SettingsPage() {
                       onChange={(e) => setImageApiKey(e.target.value)}
                       className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Disimpan aman dengan enkripsi AES Fernet di database.
-                    </p>
                   </div>
                 </div>
 
@@ -1199,11 +1362,10 @@ export default function SettingsPage() {
                         key={opt.val}
                         type="button"
                         onClick={() => setImageConcurrency(opt.val)}
-                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
-                          imageConcurrency === opt.val
-                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
-                            : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
-                        }`}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${imageConcurrency === opt.val
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
+                          : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
+                          }`}
                       >
                         <div className="flex items-center justify-between w-full mb-1">
                           <span className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-emerald-300" : "text-slate-200"}`}>
@@ -1317,11 +1479,10 @@ export default function SettingsPage() {
                     <div
                       key={tpl.id}
                       onClick={() => setSelectedTemplateId(tpl.id)}
-                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
-                      }`}
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${isSelected
+                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                        : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                        }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
@@ -1352,9 +1513,8 @@ export default function SettingsPage() {
                             {tpl.sub_category}
                           </span>
                         )}
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
-                          tpl.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                        }`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${tpl.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
+                          }`}>
                           {tpl.is_builtin ? "Bawaan" : "Kustom"}
                         </span>
                       </div>
@@ -1378,9 +1538,8 @@ export default function SettingsPage() {
                       <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                         {currentSelectedTemplate.id}
                       </code>
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
-                        currentSelectedTemplate.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                      }`}>
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${currentSelectedTemplate.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
+                        }`}>
                         {currentSelectedTemplate.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
                       </span>
                     </p>
@@ -1629,11 +1788,10 @@ export default function SettingsPage() {
                     <div
                       key={preset.id}
                       onClick={() => setSelectedSubtitlePresetId(preset.id)}
-                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
-                      }`}
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${isSelected
+                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                        : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                        }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
@@ -1668,9 +1826,8 @@ export default function SettingsPage() {
 
                         <div className="flex justify-between items-center text-[10px] text-slate-500">
                           <span className="font-mono text-slate-400 truncate max-w-[120px]">{preset.id}</span>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
-                            preset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${preset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
+                            }`}>
                             {preset.is_builtin ? "Bawaan" : "Kustom"}
                           </span>
                         </div>
@@ -1702,9 +1859,8 @@ export default function SettingsPage() {
                       <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                         {currentSelectedSubtitlePreset.id}
                       </code>
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
-                        currentSelectedSubtitlePreset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                      }`}>
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${currentSelectedSubtitlePreset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
+                        }`}>
                         {currentSelectedSubtitlePreset.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
                       </span>
                     </p>
@@ -1768,16 +1924,15 @@ export default function SettingsPage() {
                   <div className="relative w-full h-36 bg-gradient-to-b from-[#161922] to-[#0A0C10] rounded-2xl border border-surface-border overflow-hidden flex items-center justify-center p-4 shadow-inner">
                     {/* Background subtle video grid effect */}
                     <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:16px_16px]" />
-                    
+
                     {/* Subtitle Positioning Container */}
                     <div
-                      className={`relative z-10 text-center transition-all duration-300 ${
-                        subtitlePresetForm.position === "top"
-                          ? "self-start pt-2"
-                          : subtitlePresetForm.position === "center"
+                      className={`relative z-10 text-center transition-all duration-300 ${subtitlePresetForm.position === "top"
+                        ? "self-start pt-2"
+                        : subtitlePresetForm.position === "center"
                           ? "self-center"
                           : "self-end pb-2"
-                      }`}
+                        }`}
                       style={{
                         transform: `translate(${subtitlePresetForm.offset_x * 0.25}px, ${subtitlePresetForm.offset_y * 0.25}px)`,
                       }}
@@ -1796,8 +1951,8 @@ export default function SettingsPage() {
                             subtitlePresetForm.display_mode === "full_sentence"
                               ? true
                               : subtitlePresetForm.display_mode === "burst"
-                              ? (subtitlePresetForm.burst_word_count === 3 ? wIdx <= 2 : wIdx <= 1)
-                              : previewWordIndex === wIdx;
+                                ? (subtitlePresetForm.burst_word_count === 3 ? wIdx <= 2 : wIdx <= 1)
+                                : previewWordIndex === wIdx;
 
                           const strokeWidth = Math.max(1, Math.round(subtitlePresetForm.outline_width * 0.5));
                           const color = isHighlighted ? subtitlePresetForm.highlight_color : subtitlePresetForm.primary_color;

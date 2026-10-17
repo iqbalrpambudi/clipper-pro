@@ -21,6 +21,8 @@ from app.schemas.tts import (
     RealignWordsRequest,
 )
 from app.schemas.narration import NarrationResponse
+import httpx
+from app.core.config import get_settings
 from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.services.alignment import align_audio_with_text
 from app.core.events import publish_project_event
@@ -32,6 +34,67 @@ router = APIRouter(tags=["tts"])
 @router.get("/tts/voices", response_model=List[VoiceInfo])
 async def list_voices():
     return AVAILABLE_VOICES
+
+
+@router.get("/tts/elevenlabs/voices")
+async def get_elevenlabs_voices(
+    api_key: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch all voices available in the user's ElevenLabs account (premade, cloned, added from library)."""
+    key = api_key
+    if not key:
+        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+        cfg = res.scalar_one_or_none()
+        if cfg and cfg.elevenlabs_api_key_encrypted:
+            key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
+    if not key:
+        settings = get_settings()
+        key = settings.ELEVENLABS_API_KEY
+
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail="ElevenLabs API Key belum dikonfigurasi. Masukkan API Key di menu Pengaturan terlebih dahulu.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key})
+            if resp.status_code != 200:
+                err_text = resp.text
+                if "missing_permissions" in err_text or "voices_read" in err_text:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(
+                            "API Key ElevenLabs Anda tidak memiliki izin 'voices_read'. "
+                            "Gunakan Full Access API Key atau salin langsung Voice ID suara dari web ElevenLabs "
+                            "dan tempel ke kolom 'Custom Voice ID' di bawah!"
+                        ),
+                    )
+                raise HTTPException(status_code=resp.status_code, detail=f"ElevenLabs API Error: {err_text}")
+            data = resp.json()
+            raw_voices = data.get("voices", [])
+            result = []
+            for v in raw_voices:
+                labels = v.get("labels") or {}
+                desc_parts = [labels.get("description", ""), labels.get("accent", ""), labels.get("use case", "")]
+                desc = ", ".join(p for p in desc_parts if p) or v.get("category", "ElevenLabs Voice")
+                result.append({
+                    "id": v["voice_id"],
+                    "name": f"{v['name']} (ElevenLabs)",
+                    "provider": "elevenlabs",
+                    "gender": labels.get("gender", "Neutral").capitalize(),
+                    "category": v.get("category", "premade"),
+                    "preview_url": v.get("preview_url"),
+                    "description": desc,
+                    "sample_text": "Halo, ini adalah contoh sampel suara dari akun ElevenLabs Anda.",
+                })
+            return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mengambil daftar suara ElevenLabs: {str(e)}")
 
 
 @router.get("/tts/sample")
@@ -46,14 +109,36 @@ async def get_voice_sample(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     api_key = ""
-    tts_model = model or "gemini-2.5-flash-preview-tts"
-    if cfg:
-        if cfg.tts_api_key_encrypted:
-            api_key = decrypt_secret(cfg.tts_api_key_encrypted)
-        elif cfg.api_key_encrypted:
-            api_key = decrypt_secret(cfg.api_key_encrypted)
-        if not model and cfg.tts_provider and cfg.tts_provider != "gemini" and cfg.tts_provider != "edge":
-            tts_model = cfg.tts_provider
+    settings = get_settings()
+    clean_prov = provider.lower().strip()
+    if clean_prov == "elevenlabs":
+        tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
+        if cfg and cfg.elevenlabs_api_key_encrypted:
+            api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
+        if not api_key:
+            api_key = getattr(settings, "ELEVENLABS_API_KEY", "") or ""
+    elif clean_prov == "runware":
+        tts_model = model or (getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") if cfg else "fishaudio:s2.1@pro")
+        if cfg:
+            if getattr(cfg, "runware_api_key_encrypted", None):
+                api_key = decrypt_secret(cfg.runware_api_key_encrypted)
+            elif cfg.image_api_key_encrypted:
+                api_key = decrypt_secret(cfg.image_api_key_encrypted)
+        if not api_key:
+            api_key = getattr(settings, "IMAGE_API_KEY", "") or ""
+    elif clean_prov == "gemini":
+        tts_model = model or "gemini-2.5-flash-preview-tts"
+        if cfg:
+            if cfg.tts_api_key_encrypted:
+                api_key = decrypt_secret(cfg.tts_api_key_encrypted)
+            elif cfg.api_key_encrypted:
+                api_key = decrypt_secret(cfg.api_key_encrypted)
+            if not model and cfg.tts_provider and cfg.tts_provider.startswith("gemini-"):
+                tts_model = cfg.tts_provider
+        if not api_key:
+            api_key = getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
+    else:
+        tts_model = model or "edge"
 
     try:
         sample_path = await get_or_generate_voice_sample(
@@ -98,7 +183,16 @@ async def trigger_tts_generation(
         raise HTTPException(status_code=400, detail="Naskah narasi belum dibuat")
 
     provider = payload.provider or "gemini"
-    voice = payload.voice or ("Puck" if provider == "gemini" else "id-ID-GadisNeural")
+    if payload.voice:
+        voice = payload.voice
+    elif provider == "gemini":
+        voice = "Puck"
+    elif provider == "elevenlabs":
+        voice = "Adam"
+    elif provider == "runware":
+        voice = "fishaudio:s2.1@pro"
+    else:
+        voice = "id-ID-GadisNeural"
 
     # Estimate cost
     cost_est = estimate_tts_cost(narration.raw_text, provider)

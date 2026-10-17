@@ -15,10 +15,13 @@ from app.schemas.config import (
     TestConnectionResponse,
     TestImageConnectionRequest,
     TestImageConnectionResponse,
+    TestTtsConnectionRequest,
+    TestTtsConnectionResponse,
 )
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
 from app.services.image_gen import test_image_connection
+from app.services.tts import test_tts_connection
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -51,6 +54,10 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
+    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
+    if not raw_runware_key and cfg.image_api_key_encrypted:
+        raw_runware_key = decrypt_secret(cfg.image_api_key_encrypted)
     raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
     return ModelConfigResponse(
@@ -65,6 +72,12 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
         tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
+        elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
+        has_elevenlabs_api_key=bool(raw_elevenlabs_key),
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        runware_api_key_masked=mask_secret(raw_runware_key),
+        has_runware_api_key=bool(raw_runware_key),
+        runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
@@ -101,6 +114,14 @@ async def save_model_configuration(
         cfg.tts_api_key_encrypted = encrypt_secret(payload.tts_api_key.strip())
     if payload.tts_fallback_enabled is not None:
         cfg.tts_fallback_enabled = payload.tts_fallback_enabled
+    if payload.elevenlabs_api_key is not None and payload.elevenlabs_api_key.strip():
+        cfg.elevenlabs_api_key_encrypted = encrypt_secret(payload.elevenlabs_api_key.strip())
+    if payload.elevenlabs_model is not None:
+        cfg.elevenlabs_model = payload.elevenlabs_model
+    if payload.runware_api_key is not None and payload.runware_api_key.strip():
+        cfg.runware_api_key_encrypted = encrypt_secret(payload.runware_api_key.strip())
+    if payload.runware_tts_model is not None:
+        cfg.runware_tts_model = payload.runware_tts_model
     if payload.image_base_url is not None:
         cfg.image_base_url = payload.image_base_url
     if payload.image_model is not None:
@@ -117,6 +138,10 @@ async def save_model_configuration(
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
+    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
+    if not raw_runware_key and cfg.image_api_key_encrypted:
+        raw_runware_key = decrypt_secret(cfg.image_api_key_encrypted)
     raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
     return ModelConfigResponse(
@@ -131,6 +156,12 @@ async def save_model_configuration(
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
         tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
+        elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
+        has_elevenlabs_api_key=bool(raw_elevenlabs_key),
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        runware_api_key_masked=mask_secret(raw_runware_key),
+        has_runware_api_key=bool(raw_runware_key),
+        runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
@@ -230,6 +261,55 @@ async def test_image_model_connection(
         image_model_status=result["image_model_status"],
         latency_ms=result["latency_ms"],
         message=result["message"],
+    )
+
+
+@router.post("/test-tts-connection", response_model=TestTtsConnectionResponse)
+async def test_tts_model_connection(
+    payload: TestTtsConnectionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    provider = payload.provider or "gemini"
+    api_key = payload.api_key
+    model = payload.model
+    voice = payload.voice
+
+    if not api_key:
+        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+        cfg = res.scalar_one_or_none()
+        if cfg:
+            if provider == "elevenlabs" and cfg.elevenlabs_api_key_encrypted:
+                api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
+            elif provider == "runware":
+                if getattr(cfg, "runware_api_key_encrypted", None):
+                    api_key = decrypt_secret(cfg.runware_api_key_encrypted)
+                elif cfg.image_api_key_encrypted:
+                    api_key = decrypt_secret(cfg.image_api_key_encrypted)
+            elif provider == "gemini":
+                if cfg.tts_api_key_encrypted:
+                    api_key = decrypt_secret(cfg.tts_api_key_encrypted)
+                elif cfg.api_key_encrypted:
+                    api_key = decrypt_secret(cfg.api_key_encrypted)
+
+            if not model:
+                if provider == "elevenlabs":
+                    model = getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+                elif provider == "runware":
+                    model = getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro")
+                elif provider == "gemini":
+                    model = cfg.tts_provider
+
+    res = await test_tts_connection(
+        provider=provider,
+        api_key=api_key,
+        model=model,
+        voice=voice,
+    )
+    return TestTtsConnectionResponse(
+        success=res["success"],
+        provider_status=res["provider_status"],
+        latency_ms=res["latency_ms"],
+        message=res["message"],
     )
 
 

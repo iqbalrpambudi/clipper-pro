@@ -53,4 +53,8 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_system_prompt TEXT;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_concurrency INTEGER DEFAULT 2;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS tts_fallback_enabled BOOLEAN DEFAULT TRUE;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS elevenlabs_api_key_encrypted TEXT;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS elevenlabs_model VARCHAR(100) DEFAULT 'eleven_multilingual_v2';"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_api_key_encrypted TEXT;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_tts_model VARCHAR(100) DEFAULT 'fishaudio:s2.1@pro';"))
 

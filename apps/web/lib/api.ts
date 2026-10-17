@@ -185,6 +185,10 @@ export const api = {
 
   // Voice & TTS
   getVoices: () => request<VoiceInfo[]>("/api/v1/tts/voices"),
+  getElevenLabsVoices: (apiKey?: string) =>
+    request<VoiceInfo[]>(
+      `/api/v1/tts/elevenlabs/voices${apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : ""}`
+    ),
   estimateCost: (text: string, provider: string = "gemini") =>
     request<any>("/api/v1/tts/estimate-cost", {
       method: "POST",
@@ -319,6 +323,10 @@ export const api = {
     tts_provider?: string;
     tts_api_key?: string;
     tts_fallback_enabled?: boolean;
+    elevenlabs_api_key?: string;
+    elevenlabs_model?: string;
+    runware_api_key?: string;
+    runware_tts_model?: string;
     image_base_url?: string | null;
     image_model?: string;
     image_concurrency?: number;
@@ -337,6 +345,14 @@ export const api = {
   testImageConnection: (data: { base_url?: string; image_model?: string; api_key?: string }) =>
     request<{ success: boolean; message: string; latency_ms?: number; image_model_status?: string }>(
       "/api/v1/settings/test-image-connection",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
+  testTtsConnection: (data: { provider?: string; api_key?: string; model?: string; voice?: string }) =>
+    request<{ success: boolean; message: string; latency_ms?: number; provider_status?: string }>(
+      "/api/v1/settings/test-tts-connection",
       {
         method: "POST",
         body: JSON.stringify(data),

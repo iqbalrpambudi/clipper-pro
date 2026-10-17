@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     TTS_PROVIDER: str = "gemini-2.5-flash-preview-tts"
     GEMINI_API_KEY: str = ""
     GEMINI_TTS_VOICE: str = "Puck"
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_MODEL: str = "eleven_multilingual_v2"
+    RUNWARE_TTS_MODEL: str = "fishaudio:s2.1@pro"
 
     IMAGE_BASE_URL: str = "https://api.openai.com/v1"
     IMAGE_API_KEY: str = ""

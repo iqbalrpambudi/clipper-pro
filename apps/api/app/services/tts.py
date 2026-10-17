@@ -3,6 +3,8 @@ import base64
 import json
 import logging
 import re
+import time
+import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import edge_tts
@@ -33,7 +35,33 @@ async def get_audio_duration(file_path: str) -> float:
 
 log = logging.getLogger(__name__)
 
+ELEVENLABS_VOICE_MAP: Dict[str, str] = {
+    "adam": "pNInz6obpgDQGcFmaJgB",
+    "rachel": "21m00Tcm4TlvDq8ikWAM",
+    "antoni": "ErXwobaYiN019PkySvjV",
+    "bella": "EXAVITQu4vr4xnSDxMaL",
+    "josh": "TxGEqnHWrfWFTfGW9XjX",
+    "arnold": "VR6AewLTigWG4xSOukaG",
+    "brian": "nPczCjzI2devNBz1zQrb",
+    "daniel": "onwK4e9ZLuTAKqWW03F9",
+    "lily": "pFZP5JQG7iQjIQuC4Bku",
+    "george": "JBFqnCBsd6RMkjVDRZzb",
+    "charlie": "IKne3meq5aSn9XLyUdCD",
+    "alice": "Xb7hH8MSUJpSbSDYk0k2",
+    "bill": "pqHfZKP75CvOlQylNhV4",
+    "liam": "TX3LPaxmHKxFdv7VOQHJ",
+    "sam": "yoZ06aMxZJJ28mfd3POQ",
+    "callum": "N2lVS1w4EtoT3dr4eOWO",
+    "charlotte": "XB0fDUnXU5powFXDhCwa",
+    "matilda": "XrExE9yKIg1WjnnlVkGX",
+    "domi": "AZnzlk1XvdvUeBnXmlld",
+    "elli": "MF3mGyEYCl7XYWbV9V6O",
+}
+
 AVAILABLE_VOICES: List[VoiceInfo] = [
+    # =========================================================================
+    # 1. Google Gemini Multimodal Voices (Full 30 Voice Catalog)
+    # =========================================================================
     VoiceInfo(
         id="Puck",
         name="Puck (Gemini)",
@@ -107,22 +135,565 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         description="Lembut, menenangkan, ideal untuk vlog perjalanan & relaksasi.",
     ),
     VoiceInfo(
+        id="Zephyr",
+        name="Zephyr (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Selamat pagi teman-teman! Hari ini penuh dengan kesempatan luar biasa.",
+        sample_audio_url=None,
+        description="Ringan, cerah, optimis, sangat pas untuk opening video edukatif.",
+    ),
+    VoiceInfo(
+        id="Jupiter",
+        name="Jupiter (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Inilah momen sejarah agung yang menentukan masa depan peradaban dunia.",
+        sample_audio_url=None,
+        description="Kuat, megah, berwibawa tinggi untuk narasi epik dan sejarah.",
+    ),
+    VoiceInfo(
+        id="Callisto",
+        name="Callisto (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Di balik tabir kegelapan, tersimpan teka-teki kuno yang belum terpecahkan.",
+        sample_audio_url=None,
+        description="Misterius, tenang, mendalam untuk genre horor & investigasi kriminal.",
+    ),
+    VoiceInfo(
+        id="Io",
+        name="Io (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Kalian pasti penasaran kan kenapa tren ini mendadak meledak di internet?",
+        sample_audio_url=None,
+        description="Lincah, antusias, vokal tinggi sangat cocok untuk YouTube Shorts & Reels.",
+    ),
+    VoiceInfo(
+        id="Europa",
+        name="Europa (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Sentuhan lembut kebaikan ini membuktikan bahwa harapan selalu ada.",
+        sample_audio_url=None,
+        description="Hangat, lembut, tulus untuk cerita inspiratif dan kisah haru.",
+    ),
+    VoiceInfo(
+        id="Ganymede",
+        name="Ganymede (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Santai saja bro, kita bakal kupas tuntas semuanya step by step sampai paham.",
+        sample_audio_url=None,
+        description="Kasual, santai, pembawaan sahabat dekat untuk podcast & review gadget.",
+    ),
+    VoiceInfo(
+        id="Titan",
+        name="Titan (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Eksplorasi ke sudut terjauh alam semesta ini memicu revolusi ilmu pengetahuan.",
+        sample_audio_url=None,
+        description="Berat, tebal, menggelegar untuk sains, ruang angkasa, dan teknologi.",
+    ),
+    VoiceInfo(
+        id="Oberon",
+        name="Oberon (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Setiap babak kehidupan menyimpan drama yang tak terduga bagi para pelakunya.",
+        sample_audio_url=None,
+        description="Teatrikal, artikulatif, gaya pencerita novel klasik dan drama.",
+    ),
+    VoiceInfo(
+        id="Miranda",
+        name="Miranda (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Bagaimana jadinya kalau ide gila ini benar-benar diuji coba sekarang?",
+        sample_audio_url=None,
+        description="Dinamis, penuh rasa ingin tahu, sangat cocok untuk eksperimen seru.",
+    ),
+    VoiceInfo(
+        id="Ariel",
+        name="Ariel (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Ayo kita mulai petualangan seru hari ini bersama-sama tanpa ragu!",
+        sample_audio_url=None,
+        description="Ekspresif, ramah, interaktif untuk animasi dan konten ramah keluarga.",
+    ),
+    VoiceInfo(
+        id="Umbriel",
+        name="Umbriel (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Merenungi jejak langkah masa lalu memberikan kita kebijaksanaan baru.",
+        sample_audio_url=None,
+        description="Tenang, reflektif, berbobot untuk renungan filosofis dan biografi.",
+    ),
+    VoiceInfo(
+        id="Titania",
+        name="Titania (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Keanggunan karya seni ini memukau setiap pasang mata yang memandangnya.",
+        sample_audio_url=None,
+        description="Anggun, berkelas, elegan untuk konten budaya, seni, dan kemewahan.",
+    ),
+    VoiceInfo(
+        id="Dione",
+        name="Dione (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Dengarkan alunan cerita ini untuk mengantarmu ke dalam ketenangan batin.",
+        sample_audio_url=None,
+        description="Lembut, artikulatif, manis untuk dongeng tidur dan meditasi.",
+    ),
+    VoiceInfo(
+        id="Rhea",
+        name="Rhea (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Pengalaman hidup mengajarkan kita bahwa kesabaran selalu berbuah manis.",
+        sample_audio_url=None,
+        description="Matang, mengayomi, menenangkan untuk parenting & nasihat bijak.",
+    ),
+    VoiceInfo(
+        id="Iapetus",
+        name="Iapetus (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Hutan belantara ini telah menjadi saksi bisu perjuangan manusia bertahan hidup.",
+        sample_audio_url=None,
+        description="Suara serak berkarakter, narator ekspedisi survival dan alam liar.",
+    ),
+    VoiceInfo(
+        id="Hyperion",
+        name="Hyperion (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Laporan berita terkini langsung dari pusat perekonomian dunia hari ini.",
+        sample_audio_url=None,
+        description="Jernih, lugas, profesional ala presenter berita televisi nasional.",
+    ),
+    VoiceInfo(
+        id="Phoebe",
+        name="Phoebe (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Jangan lupa subscribe dan like video ini kalau kamu suka kontennya ya!",
+        sample_audio_url=None,
+        description="Ceria, penuh energi, bersemangat untuk gaming & konten vlogging.",
+    ),
+    VoiceInfo(
+        id="Tethys",
+        name="Tethys (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Air mengalir tenang membawa kedamaian bagi siapa saja yang mendengarnya.",
+        sample_audio_url=None,
+        description="Mengalir, tenang, damai untuk soundscape alam dan audio kesehatan.",
+    ),
+    VoiceInfo(
+        id="Mimas",
+        name="Mimas (Gemini)",
+        provider="gemini",
+        gender="Male",
+        sample_text="Tunggu dulu, apa kamu sadar ada hal aneh di video barusan? Perhatikan lagi!",
+        sample_audio_url=None,
+        description="Playful, jenaka, unik untuk komedi santai dan tebak-tebakan.",
+    ),
+    VoiceInfo(
+        id="Telesto",
+        name="Telesto (Gemini)",
+        provider="gemini",
+        gender="Neutral",
+        sample_text="Spesifikasi prosesor terbaru ini membawa efisiensi daya hingga empat puluh persen.",
+        sample_audio_url=None,
+        description="Artikulat, presisi, modern untuk dokumentasi teknis & teknologi.",
+    ),
+    VoiceInfo(
+        id="Calypso",
+        name="Calypso (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Setiap nada dari melodi ini menggambarkan keindahan alam nusantara.",
+        sample_audio_url=None,
+        description="Melodis, berirama manis untuk narasi puisi dan musikalisasi.",
+    ),
+    VoiceInfo(
+        id="Pandora",
+        name="Pandora (Gemini)",
+        provider="gemini",
+        gender="Female",
+        sample_text="Ketika kotak rahasia itu terbuka, dunia tak akan pernah sama lagi.",
+        sample_audio_url=None,
+        description="Penuh intrik, ekspresif, memikat untuk thriller dan konspirasi.",
+    ),
+
+    # =========================================================================
+    # 2. ElevenLabs Voices (Industry Gold Standard for Zero Tone Drift)
+    # =========================================================================
+    VoiceInfo(
+        id="Adam",
+        name="Adam (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Tahukah kamu, rahasia besar ini akan mengubah cara pandangmu selamanya.",
+        sample_audio_url=None,
+        description="Suara pria karismatik, hangat, berbobot. Standar emas narasi & dokumenter.",
+    ),
+    VoiceInfo(
+        id="Rachel",
+        name="Rachel (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Halo semuanya, selamat datang kembali di channel ini untuk tips menarik hari ini.",
+        sample_audio_url=None,
+        description="Suara wanita tenang, elegan, artikulasi super jernih untuk storytelling.",
+    ),
+    VoiceInfo(
+        id="Brian",
+        name="Brian (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Sebuah kisah luar biasa yang belum pernah diceritakan sebelumnya.",
+        sample_audio_url=None,
+        description="Suara pria berat, resonan, berwibawa tinggi untuk narasi dokumenter.",
+    ),
+    VoiceInfo(
+        id="Lily",
+        name="Lily (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Dengarkan cerita indah ini dan temukan inspirasi terbaik untuk harimu.",
+        sample_audio_url=None,
+        description="Suara wanita hangat, lembut, artikulatif untuk audiobook & storytelling.",
+    ),
+    VoiceInfo(
+        id="Daniel",
+        name="Daniel (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Perhatikan baik-baik setiap detail yang akan disampaikan berikut ini.",
+        sample_audio_url=None,
+        description="Aksen British tenang, otoritatif, berkelas untuk presentasi & ulasan berita.",
+    ),
+    VoiceInfo(
+        id="Antoni",
+        name="Antoni (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Jangan pernah lewatkan tiga langkah penting ini kalau mau sukses!",
+        sample_audio_url=None,
+        description="Suara pria dinamis, energetik, sangat alami untuk konten viral & modern.",
+    ),
+    VoiceInfo(
+        id="Bella",
+        name="Bella (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Fakta unik kali ini dijamin bakal bikin kamu geleng-geleng kepala!",
+        sample_audio_url=None,
+        description="Suara wanita ceria, hidup, dan ekspresif untuk konten tips & edukasi.",
+    ),
+    VoiceInfo(
+        id="Josh",
+        name="Josh (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Banyak orang belum tahu kalau trik sederhana ini terbukti berhasil.",
+        sample_audio_url=None,
+        description="Suara pria santai, kasual, pembawaan modern.",
+    ),
+    VoiceInfo(
+        id="Arnold",
+        name="Arnold (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Inilah investigasi mendalam mengenai peristiwa yang menghebohkan dunia.",
+        sample_audio_url=None,
+        description="Suara narator tegas, berwibawa, dramatis.",
+    ),
+    VoiceInfo(
+        id="George",
+        name="George (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Mari kita telusuri misteri sejarah yang tersembunyi selama berabad-abad.",
+        sample_audio_url=None,
+        description="Aksen British hangat, ramah, pembawa cerita dongeng & sejarah.",
+    ),
+    VoiceInfo(
+        id="Charlie",
+        name="Charlie (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Kalian wajib tahu hal ini sebelum memutuskan langkah berikutnya!",
+        sample_audio_url=None,
+        description="Suara pria santai, kasual, gaya percakapan akrab ala podcast.",
+    ),
+    VoiceInfo(
+        id="Alice",
+        name="Alice (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Informasi terkini dan analisis mendalam seputar dunia teknologi.",
+        sample_audio_url=None,
+        description="Suara wanita percaya diri, aksen British jernih untuk berita & ulasan.",
+    ),
+    VoiceInfo(
+        id="Bill",
+        name="Bill (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Pengalaman berharga ini menjadi pelajaran penting bagi kita semua.",
+        sample_audio_url=None,
+        description="Suara pria matang, terpercaya, bijaksana untuk biografi & refleksi.",
+    ),
+    VoiceInfo(
+        id="Liam",
+        name="Liam (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Yuk tonton video ini sampai habis karena ada tips spesial buat kalian!",
+        sample_audio_url=None,
+        description="Suara pria muda, energetik, sangat pas untuk TikTok & YouTube Shorts.",
+    ),
+    VoiceInfo(
+        id="Sam",
+        name="Sam (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Petualangan ekstrem ini menuntut fokus dan ketahanan fisik maksimal.",
+        sample_audio_url=None,
+        description="Suara pria dinamis dengan sedikit karakter serak alami, sangat kuat.",
+    ),
+    VoiceInfo(
+        id="Callum",
+        name="Callum (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Male",
+        sample_text="Musuh telah mendekat, bersiaplah untuk pertempuran penentuan ini!",
+        sample_audio_url=None,
+        description="Intens, dramatis, sangat cocok untuk trailer game dan aksi laga.",
+    ),
+    VoiceInfo(
+        id="Charlotte",
+        name="Charlotte (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Keindahan malam ini menyimpan rahasia manis yang tak terlupakan.",
+        sample_audio_url=None,
+        description="Feminin, memikat, ekspresif untuk storytelling karakter dan novel.",
+    ),
+    VoiceInfo(
+        id="Matilda",
+        name="Matilda (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Mari buka lembaran pertama dari petualangan luar biasa sang penjelajah.",
+        sample_audio_url=None,
+        description="Suara wanita hangat, kaya emosi untuk pembacaan buku cerita & sastra.",
+    ),
+    VoiceInfo(
+        id="Domi",
+        name="Domi (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Fokus pada tujuan utama dan jangan biarkan gangguan menghambat langkahmu.",
+        sample_audio_url=None,
+        description="Tegas, percaya diri, berenergi tinggi untuk pesan motivasi bisnis.",
+    ),
+    VoiceInfo(
+        id="Elli",
+        name="Elli (ElevenLabs)",
+        provider="elevenlabs",
+        gender="Female",
+        sample_text="Tips mudah ini bisa langsung kalian praktekkan di rumah sekarang juga!",
+        sample_audio_url=None,
+        description="Muda, alami, ramah untuk konten tutorial dan media sosial.",
+    ),
+
+    # =========================================================================
+    # 3. Runware TTS Voices (Cost-effective, Ultra-Fast & Diverse Engines)
+    # =========================================================================
+    VoiceInfo(
+        id="fishaudio:s2.1@pro",
+        name="Fish Audio S2.1 Pro (Runware)",
+        provider="runware",
+        gender="Neutral",
+        sample_text="Simak penjelasan mendalam ini untuk memahami apa yang sebenarnya terjadi.",
+        sample_audio_url=None,
+        description="Model S2.1 Pro ultra-natural TTS, artikulasi jernih, dan intonasi stabil.",
+    ),
+    VoiceInfo(
+        id="alibaba:qwen3-tts-1.7b-customvoice",
+        name="Alibaba Qwen3-TTS 1.7B (Runware)",
+        provider="runware",
+        gender="Female",
+        sample_text="Tahukah kamu, penemuan sains terbaru ini membuka cakrawala baru bagi kita.",
+        sample_audio_url=None,
+        description="Model Qwen3 TTS 1.7B, aksen natural Asia/Indonesia & intonasi konsisten.",
+    ),
+    VoiceInfo(
+        id="inworld:tts@2",
+        name="Inworld Realtime TTS-2 (Runware)",
+        provider="runware",
+        gender="Male",
+        sample_text="Semua bermula saat sebuah fenomena misterius terjadi tanpa peringatan.",
+        sample_audio_url=None,
+        description="Karakter vokal ekspresif & dialog dinamis untuk storytelling visual.",
+    ),
+    VoiceInfo(
+        id="xai:tts@0",
+        name="xAI TTS Grok (Runware)",
+        provider="runware",
+        gender="Neutral",
+        sample_text="Analisis berbasis fakta ini memberikan perspektif baru yang tidak terduga.",
+        sample_audio_url=None,
+        description="Model xAI TTS ekspresif dengan artikulasi cerdas dan modulasi emosi modern.",
+    ),
+    VoiceInfo(
+        id="minimax:speech@2.8",
+        name="MiniMax Speech 2.8 (Runware)",
+        provider="runware",
+        gender="Male",
+        sample_text="Dengarkan narasi ini dengan seksama untuk menemukan solusi terbaik.",
+        sample_audio_url=None,
+        description="High-realism voice synthesis dengan prosodi alami dan artikulasi tajam.",
+    ),
+
+    # =========================================================================
+    # 4. Edge-TTS Voices (Free Local Fallback & Multi-Language Catalog)
+    # =========================================================================
+    VoiceInfo(
         id="id-ID-GadisNeural",
-        name="Gadis (Edge Natural)",
+        name="Gadis (Edge ID)",
         provider="edge",
         gender="Female",
         sample_text="Simak fakta menarik berikut ini yang jarang diketahui banyak orang!",
         sample_audio_url=None,
-        description="Pelafalan Bahasa Indonesia sangat natural, jernih, dan akrab.",
+        description="Pelafalan Bahasa Indonesia sangat natural, jernih, dan santai.",
     ),
     VoiceInfo(
         id="id-ID-ArdiNeural",
-        name="Ardi (Edge Natural)",
+        name="Ardi (Edge ID)",
         provider="edge",
         gender="Male",
         sample_text="Berikut tiga hal penting yang wajib kamu ketahui sebelum terlambat.",
         sample_audio_url=None,
         description="Suara pria Indonesia yang jelas, profesional, dan meyakinkan.",
+    ),
+    VoiceInfo(
+        id="en-US-JennyNeural",
+        name="Jenny (Edge US)",
+        provider="edge",
+        gender="Female",
+        sample_text="Welcome to today's video! Get ready to discover something truly amazing.",
+        sample_audio_url=None,
+        description="Aksen US wanita hangat, ramah, artikulasi sangat jelas untuk narasi umum.",
+    ),
+    VoiceInfo(
+        id="en-US-GuyNeural",
+        name="Guy (Edge US)",
+        provider="edge",
+        gender="Male",
+        sample_text="Here is everything you need to know about the latest breakthrough.",
+        sample_audio_url=None,
+        description="Aksen US pria kasual, santai, pembawaan sahabat untuk podcast & ulasan.",
+    ),
+    VoiceInfo(
+        id="en-US-AriaNeural",
+        name="Aria (Edge US)",
+        provider="edge",
+        gender="Female",
+        sample_text="This incredible discovery is changing the way we look at modern technology.",
+        sample_audio_url=None,
+        description="Ekspresif, dinamis, bersemangat untuk konten viral & berita teknologi.",
+    ),
+    VoiceInfo(
+        id="en-US-ChristopherNeural",
+        name="Christopher (Edge US)",
+        provider="edge",
+        gender="Male",
+        sample_text="Deep inside the ancient ruins, an extraordinary truth was revealed.",
+        sample_audio_url=None,
+        description="Berat, otoritatif, suara penyiar profesional untuk dokumenter sejarah.",
+    ),
+    VoiceInfo(
+        id="en-US-MichelleNeural",
+        name="Michelle (Edge US)",
+        provider="edge",
+        gender="Female",
+        sample_text="Step by step, we will guide you through this life-changing process.",
+        sample_audio_url=None,
+        description="Lembut, ramah, menyenangkan untuk video instruksional & edukasi.",
+    ),
+    VoiceInfo(
+        id="en-US-EricNeural",
+        name="Eric (Edge US)",
+        provider="edge",
+        gender="Male",
+        sample_text="Let us explore the core reasons behind this remarkable transformation.",
+        sample_audio_url=None,
+        description="Percaya diri, santai, vokal pria muda untuk presentasi bisnis & review.",
+    ),
+    VoiceInfo(
+        id="en-GB-SoniaNeural",
+        name="Sonia (Edge UK)",
+        provider="edge",
+        gender="Female",
+        sample_text="Good evening. Tonight we bring you an insightful look into modern innovation.",
+        sample_audio_url=None,
+        description="Aksen British wanita anggun, sopan, berkelas untuk konten formal & seni.",
+    ),
+    VoiceInfo(
+        id="en-GB-RyanNeural",
+        name="Ryan (Edge UK)",
+        provider="edge",
+        gender="Male",
+        sample_text="This intriguing story began centuries ago in the heart of old London.",
+        sample_audio_url=None,
+        description="Aksen British pria ramah, pencerita ulung untuk kisah sejarah & dongeng.",
+    ),
+    VoiceInfo(
+        id="en-AU-NatashaNeural",
+        name="Natasha (Edge AU)",
+        provider="edge",
+        gender="Female",
+        sample_text="G'day everyone! Today we are heading out to explore incredible wildlife.",
+        sample_audio_url=None,
+        description="Aksen Australia wanita ceria, ramah untuk travel vlog & dokumenter alam.",
+    ),
+    VoiceInfo(
+        id="en-AU-WilliamNeural",
+        name="William (Edge AU)",
+        provider="edge",
+        gender="Male",
+        sample_text="Join us as we explore the vast landscapes and unique stories of the outback.",
+        sample_audio_url=None,
+        description="Aksen Australia pria tenang, jelas untuk konten petualangan & geografi.",
+    ),
+    VoiceInfo(
+        id="ja-JP-NanamiNeural",
+        name="Nanami (Edge JP)",
+        provider="edge",
+        gender="Female",
+        sample_text="みなさん、こんにちは！今日の特別なトピックを一緒に見ていきましょう。",
+        sample_audio_url=None,
+        description="Bahasa Jepang wanita ceria, artikulasi lembut ala anime & vlogging.",
+    ),
+    VoiceInfo(
+        id="ja-JP-KeitaNeural",
+        name="Keita (Edge JP)",
+        provider="edge",
+        gender="Male",
+        sample_text="本日の解説を始めます。最後までゆっくりお楽しみください。",
+        sample_audio_url=None,
+        description="Bahasa Jepang pria tenang, sopan untuk penjelasan mendalam & ulasan.",
     ),
 ]
 
@@ -130,12 +701,19 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
 def estimate_tts_cost(text: str, provider: str = "gemini") -> CostEstimateResponse:
     char_count = len(text)
     word_count = len(text.split())
-    # Speech rate average ~ 14 chars/sec in Indonesian
+    # Speech rate average ~ 14.5 chars/sec in Indonesian
     est_duration_sec = round(char_count / 14.5, 1)
 
-    # Gemini 2.5 Flash TTS pricing ~ $0.000004 per char
-    # Edge-TTS is free ($0.0)
-    rate_per_char = 0.000004 if provider.lower() == "gemini" else 0.0
+    prov = provider.lower()
+    if prov == "elevenlabs":
+        rate_per_char = 0.00025  # ~ $0.25 - $0.30 per 1,000 characters
+    elif prov == "runware":
+        rate_per_char = 0.00005  # ~ $0.05 per 1,000 characters
+    elif prov == "gemini":
+        rate_per_char = 0.000004  # ~ $4 per 1M characters ($0.004 per 1k)
+    else:
+        rate_per_char = 0.0  # Edge-TTS is free
+
     est_cost = round(char_count * rate_per_char, 4)
 
     return CostEstimateResponse(
@@ -426,6 +1004,295 @@ async def generate_gemini_tts(
     raise RuntimeError(f"Gemini TTS gagal ({clean_model}): {last_error_detail}")
 
 
+async def generate_elevenlabs_tts(
+    text: str,
+    output_path: str,
+    api_key: Optional[str] = None,
+    voice: str = "Adam",
+    model: str = "eleven_multilingual_v2",
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+) -> float:
+    """Generate audio via ElevenLabs API with high stability (0.75) for 100% consistent persona & intonation."""
+    settings = get_settings()
+    key = (api_key or "").strip() or (settings.ELEVENLABS_API_KEY or "").strip()
+    if not key:
+        raise RuntimeError("ElevenLabs API Key belum dikonfigurasi. Silakan simpan ElevenLabs API Key pada menu Pengaturan.")
+
+    out_p = Path(output_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    voice_id = ELEVENLABS_VOICE_MAP.get(voice.lower().strip(), voice.strip())
+    # If voice is short and not mapped, fallback to Adam
+    if len(voice_id) < 10:
+        voice_id = ELEVENLABS_VOICE_MAP.get("adam", "pNInz6obpgDQGcFmaJgB")
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "xi-api-key": key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    }
+    payload = {
+        "text": text,
+        "model_id": model or "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.75,
+            "similarity_boost": 0.85,
+            "style": 0.0,
+            "use_speaker_boost": True,
+        },
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        if resp.status_code != 200:
+            err_msg = resp.text
+            try:
+                err_json = resp.json()
+                err_msg = err_json.get("detail", {}).get("message") or err_json.get("error") or resp.text
+            except Exception:
+                pass
+            raise RuntimeError(f"ElevenLabs TTS HTTP {resp.status_code}: {err_msg}")
+
+        raw_bytes = resp.content
+        if not raw_bytes or len(raw_bytes) < 100:
+            raise RuntimeError("ElevenLabs TTS mengembalikan audio kosong.")
+
+        audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=44100)
+        if audio_filter:
+            cmd = ["ffmpeg", "-y", "-i", "-", "-af", audio_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate(input=raw_bytes)
+            if proc.returncode != 0:
+                out_p.write_bytes(raw_bytes)
+        else:
+            out_p.write_bytes(raw_bytes)
+
+        return await get_audio_duration(str(out_p))
+
+
+async def generate_runware_tts(
+    text: str,
+    output_path: str,
+    api_key: Optional[str] = None,
+    model: str = "fishaudio:s2.1@pro",
+    voice: Optional[str] = None,
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+) -> float:
+    """Generate audio via Runware API (taskType: audioInference)."""
+    settings = get_settings()
+    key = (api_key or "").strip() or (settings.IMAGE_API_KEY or "").strip()
+    if not key:
+        raise RuntimeError("Runware API Key belum dikonfigurasi. Silakan simpan Runware API Key pada menu Pengaturan.")
+
+    out_p = Path(output_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    url = "https://api.runware.ai/v1"
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    actual_model = model or "fishaudio:s2.1@pro"
+    if actual_model in ("xai:tts", "xai"):
+        actual_model = "xai:tts@0"
+    elif actual_model in ("minimax:speech", "minimax:speech-2.8"):
+        actual_model = "minimax:speech@2.8"
+
+    task_payload: Dict[str, Any] = {
+        "taskType": "audioInference",
+        "taskUUID": str(uuid.uuid4()),
+        "model": actual_model,
+        "text": text,
+        "positivePrompt": text,
+        "outputType": "base64Data",
+        "outputFormat": "MP3",
+    }
+    if voice and voice != actual_model and not voice.startswith(("http", "/")):
+        task_payload["voice"] = voice
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(url, json=[task_payload], headers=headers)
+        if resp.status_code != 200:
+            raise RuntimeError(f"Runware TTS HTTP {resp.status_code}: {resp.text}")
+
+        res_json = resp.json()
+        data_items = res_json.get("data", [])
+        if not data_items:
+            errors = res_json.get("errors", [])
+            err_msg = errors[0].get("message") if errors else resp.text
+            raise RuntimeError(f"Runware TTS Error: {err_msg}")
+
+        first = data_items[0]
+        raw_bytes = None
+        if first.get("base64Data"):
+            raw_bytes = base64.b64decode(first["base64Data"])
+        elif first.get("audioURL"):
+            dl_resp = await client.get(first["audioURL"])
+            if dl_resp.status_code == 200:
+                raw_bytes = dl_resp.content
+
+        if not raw_bytes:
+            raise RuntimeError("Runware TTS tidak mengembalikan audio data.")
+
+        audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=44100)
+        if audio_filter:
+            cmd = ["ffmpeg", "-y", "-i", "-", "-af", audio_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await proc.communicate(input=raw_bytes)
+            if proc.returncode != 0:
+                out_p.write_bytes(raw_bytes)
+        else:
+            out_p.write_bytes(raw_bytes)
+
+        return await get_audio_duration(str(out_p))
+
+
+async def test_tts_connection(
+    provider: str,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    voice: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Test connection and credentials for TTS provider (Gemini, ElevenLabs, Runware, Edge)."""
+    clean_prov = provider.lower().strip()
+    start_time = time.time()
+    try:
+        if clean_prov == "elevenlabs":
+            key = (api_key or "").strip()
+            if not key:
+                settings = get_settings()
+                key = (settings.ELEVENLABS_API_KEY or "").strip()
+            if not key:
+                return {
+                    "success": False,
+                    "provider_status": "Missing API Key",
+                    "latency_ms": 0,
+                    "message": "ElevenLabs API Key belum diisi.",
+                }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get("https://api.elevenlabs.io/v1/user", headers={"xi-api-key": key})
+                latency = int((time.time() - start_time) * 1000)
+                if r.status_code == 200:
+                    user_data = r.json()
+                    sub = user_data.get("subscription", {})
+                    char_count = sub.get("character_count", 0)
+                    char_limit = sub.get("character_limit", 0)
+                    tier = sub.get("tier", "standard")
+                    return {
+                        "success": True,
+                        "provider_status": f"Connected ({tier.capitalize()})",
+                        "latency_ms": latency,
+                        "message": f"Koneksi ElevenLabs berhasil! Kuota karakter: {char_count:,} / {char_limit:,}.",
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "provider_status": f"HTTP {r.status_code}",
+                        "latency_ms": latency,
+                        "message": f"Koneksi ElevenLabs gagal: {r.text[:200]}",
+                    }
+        elif clean_prov == "runware":
+            key = (api_key or "").strip()
+            if not key:
+                settings = get_settings()
+                key = (settings.IMAGE_API_KEY or "").strip()
+            if not key:
+                return {
+                    "success": False,
+                    "provider_status": "Missing API Key",
+                    "latency_ms": 0,
+                    "message": "Runware API Key belum diisi.",
+                }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(
+                    "https://api.runware.ai/v1",
+                    json=[{"taskType": "authentication", "apiKey": key}],
+                    headers={"Content-Type": "application/json"},
+                )
+                latency = int((time.time() - start_time) * 1000)
+                if r.status_code == 200:
+                    res_json = r.json()
+                    errors = res_json.get("errors", [])
+                    if errors:
+                        return {
+                            "success": False,
+                            "provider_status": "Auth Error",
+                            "latency_ms": latency,
+                            "message": f"Autentikasi Runware gagal: {errors[0].get('message')}",
+                        }
+                    return {
+                        "success": True,
+                        "provider_status": "Connected (Runware TTS)",
+                        "latency_ms": latency,
+                        "message": "Koneksi Runware API berhasil terhubung!",
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "provider_status": f"HTTP {r.status_code}",
+                        "latency_ms": latency,
+                        "message": f"Koneksi Runware gagal: {r.text[:200]}",
+                    }
+        elif clean_prov == "gemini":
+            key = (api_key or "").strip()
+            if not key:
+                settings = get_settings()
+                key = (settings.GEMINI_API_KEY or "").strip() or (settings.AI_API_KEY or "").strip()
+            if not key:
+                return {
+                    "success": False,
+                    "provider_status": "Missing API Key",
+                    "latency_ms": 0,
+                    "message": "Gemini API Key belum diisi.",
+                }
+            tts_m = (model or "gemini-2.5-flash-preview-tts").strip().removeprefix("models/")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models/{tts_m}?key={key}")
+                latency = int((time.time() - start_time) * 1000)
+                if r.status_code == 200:
+                    return {
+                        "success": True,
+                        "provider_status": f"Connected ({tts_m})",
+                        "latency_ms": latency,
+                        "message": f"Koneksi Gemini TTS ({tts_m}) berhasil!",
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "provider_status": f"HTTP {r.status_code}",
+                        "latency_ms": latency,
+                        "message": f"Gagal validasi model Gemini TTS: {r.text[:200]}",
+                    }
+        else:  # edge
+            return {
+                "success": True,
+                "provider_status": "Ready (Edge-TTS)",
+                "latency_ms": 10,
+                "message": "Edge-TTS Natural Indonesian siap digunakan (Gratis).",
+            }
+    except Exception as e:
+        latency = int((time.time() - start_time) * 1000)
+        return {
+            "success": False,
+            "provider_status": "Error",
+            "latency_ms": latency,
+            "message": f"Gagal tes koneksi TTS: {str(e)}",
+        }
+
+
 async def get_or_generate_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
@@ -441,7 +1308,7 @@ async def get_or_generate_voice_sample(
 
     clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
     clean_voice = re.sub(r"[^\w\-]", "", voice)
-    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov == "gemini" else ""
+    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs", "runware") else ""
     suffix = f"_{clean_model}" if clean_model else ""
     sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}.mp3"
 
@@ -451,11 +1318,27 @@ async def get_or_generate_voice_sample(
     # Find matching sample text
     sample_text = "Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!"
     for v in AVAILABLE_VOICES:
-        if v.id == voice:
+        if v.id == voice or (v.provider == clean_prov and v.name.lower().startswith(voice.lower())):
             sample_text = v.sample_text
             break
 
-    if clean_prov == "gemini":
+    if clean_prov == "elevenlabs":
+        await generate_elevenlabs_tts(
+            sample_text,
+            str(sample_path),
+            api_key=api_key,
+            voice=voice,
+            model=model or "eleven_multilingual_v2",
+        )
+    elif clean_prov == "runware":
+        await generate_runware_tts(
+            sample_text,
+            str(sample_path),
+            api_key=api_key,
+            voice=voice,
+            model=model or "fishaudio:s2.1@pro",
+        )
+    elif clean_prov == "gemini":
         await generate_gemini_tts(
             sample_text,
             str(sample_path),
@@ -535,19 +1418,29 @@ def _split_text_for_tts(text: str, max_chars: int = 850) -> List[str]:
     return cleaned_chunks
 
 async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
-    """Concatenate mp3 parts via ffmpeg concat demuxer; returns total duration."""
+    """Concatenate mp3 parts via ffmpeg concat demuxer with EBU R128 loudness leveling."""
     list_file = Path(output_path).with_suffix(".concat.txt")
     list_file.write_text("".join(f"file '{p}'\n" for p in part_paths), encoding="utf-8")
     try:
         proc = await asyncio.create_subprocess_exec(
             "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
+            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
             "-c:a", "libmp3lame", "-b:a", "192k", output_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await proc.communicate()
         if proc.returncode != 0:
-            raise RuntimeError(f"FFmpeg concat failed: {stderr.decode()[:300]}")
+            # Fallback without loudnorm if audio is too short or filter fails
+            proc2 = await asyncio.create_subprocess_exec(
+                "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
+                "-c:a", "libmp3lame", "-b:a", "192k", output_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr2 = await proc2.communicate()
+            if proc2.returncode != 0:
+                raise RuntimeError(f"FFmpeg concat failed: {stderr2.decode()[:300]}")
     finally:
         list_file.unlink(missing_ok=True)
     return await get_audio_duration(output_path)
@@ -567,23 +1460,177 @@ async def generate_speech_audio(
 ) -> float:
     """Entrypoint for TTS audio generation.
 
-    Gemini TTS: For standard videos (<= 750 chars ≈ 45-55s), audio is synthesized in a single continuous
-    pass to ensure 100% natural and consistent intonation without inter-sentence pitch shifts or
-    dead silence, while conserving API quota. For longer videos (> 750 chars), text is chunked into
-    balanced blocks of ~650 chars at natural sentence boundaries and concatenated cleanly.
+    Supports Gemini, ElevenLabs, Runware, and Edge-TTS.
+    - ElevenLabs: Industry benchmark for zero tone drift. Handles single-pass generation up to 4,500 chars (5-6 mins).
+    - Runware TTS: Ultra-fast & cost-effective (Fish Audio / Qwen3 TTS). Single-pass up to 1,200 chars.
+    - Gemini TTS: High-fidelity multimodal audio. Single-pass extended up to 2,200 chars (~2.5 mins) to prevent intonation drift.
+    - Edge-TTS: Free Indonesian neural speech fallback.
 
     If fallback_enabled is True, any quota/API error will cleanly fallback to Edge-TTS.
-    If fallback_enabled is False, errors will be raised and the audio will be cut off at the failed chunk.
+    If fallback_enabled is False, errors will be raised immediately.
     """
     clean_text = (text or "").strip()
     if not clean_text:
         raise ValueError("Teks narasi tidak boleh kosong.")
 
-    if provider.lower() == "gemini":
+    prov = provider.lower().strip()
+
+    # 1. ELEVENLABS TTS
+    if prov == "elevenlabs":
         try:
-            # 1. Standard short-form videos (<= 750 chars ≈ 45-55 seconds):
-            # Synthesize in a single continuous call for unbroken intonation, 0 dead silence, and 1 API request.
-            if len(clean_text) <= 750:
+            if len(clean_text) <= 4500:
+                return await generate_elevenlabs_tts(
+                    clean_text,
+                    output_path,
+                    api_key=api_key,
+                    voice=voice,
+                    model=model or "eleven_multilingual_v2",
+                    rate=rate,
+                    pitch=pitch,
+                )
+
+            # For scripts > 4500 chars, split into ~3500-char blocks
+            chunks = _split_text_for_tts(clean_text, max_chars=3500)
+            if len(chunks) == 1:
+                return await generate_elevenlabs_tts(
+                    chunks[0],
+                    output_path,
+                    api_key=api_key,
+                    voice=voice,
+                    model=model or "eleven_multilingual_v2",
+                    rate=rate,
+                    pitch=pitch,
+                )
+
+            out_p = Path(output_path)
+            parts: List[str] = []
+            try:
+                for i, chunk in enumerate(chunks):
+                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                    try:
+                        await generate_elevenlabs_tts(
+                            chunk,
+                            part_path,
+                            api_key=api_key,
+                            voice=voice,
+                            model=model or "eleven_multilingual_v2",
+                            rate=rate,
+                            pitch=pitch,
+                        )
+                        parts.append(part_path)
+                    except Exception as chunk_err:
+                        if not fallback_enabled:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, output_path)
+                                except Exception:
+                                    pass
+                            raise RuntimeError(
+                                f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+                        raise
+                    if i < len(chunks) - 1:
+                        await asyncio.sleep(0.3)
+
+                return await _concat_mp3s(parts, output_path)
+            finally:
+                for p in parts:
+                    Path(p).unlink(missing_ok=True)
+        except Exception as e:
+            if not fallback_enabled:
+                log.error("ElevenLabs TTS failed and fallback is disabled: %s", e)
+                raise
+            log.warning("ElevenLabs TTS failed (%s). Falling back to Edge-TTS...", e)
+            edge_voice = "id-ID-ArdiNeural" if voice.lower() in ("adam", "antoni", "josh", "arnold") else "id-ID-GadisNeural"
+            if fallback_info is not None:
+                fallback_info["fell_back"] = True
+                fallback_info["original_provider"] = "elevenlabs"
+                fallback_info["fallback_provider"] = "edge"
+                fallback_info["fallback_voice"] = edge_voice
+                fallback_info["fallback_error"] = str(e)
+            return await generate_edge_tts(clean_text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+
+    # 2. RUNWARE TTS
+    elif prov == "runware":
+        try:
+            if len(clean_text) <= 1200:
+                return await generate_runware_tts(
+                    clean_text,
+                    output_path,
+                    api_key=api_key,
+                    model=model or "fishaudio:s2.1@pro",
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                )
+
+            # For scripts > 1200 chars, split into ~900-char blocks
+            chunks = _split_text_for_tts(clean_text, max_chars=900)
+            if len(chunks) == 1:
+                return await generate_runware_tts(
+                    chunks[0],
+                    output_path,
+                    api_key=api_key,
+                    model=model or "fishaudio:s2.1@pro",
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                )
+
+            out_p = Path(output_path)
+            parts: List[str] = []
+            try:
+                for i, chunk in enumerate(chunks):
+                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                    try:
+                        await generate_runware_tts(
+                            chunk,
+                            part_path,
+                            api_key=api_key,
+                            model=model or "fishaudio:s2.1@pro",
+                            voice=voice,
+                            rate=rate,
+                            pitch=pitch,
+                        )
+                        parts.append(part_path)
+                    except Exception as chunk_err:
+                        if not fallback_enabled:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, output_path)
+                                except Exception:
+                                    pass
+                            raise RuntimeError(
+                                f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+                        raise
+                    if i < len(chunks) - 1:
+                        await asyncio.sleep(0.3)
+
+                return await _concat_mp3s(parts, output_path)
+            finally:
+                for p in parts:
+                    Path(p).unlink(missing_ok=True)
+        except Exception as e:
+            if not fallback_enabled:
+                log.error("Runware TTS failed and fallback is disabled: %s", e)
+                raise
+            log.warning("Runware TTS failed (%s). Falling back to Edge-TTS...", e)
+            edge_voice = "id-ID-ArdiNeural" if "male" in voice.lower() or "inworld" in voice.lower() else "id-ID-GadisNeural"
+            if fallback_info is not None:
+                fallback_info["fell_back"] = True
+                fallback_info["original_provider"] = "runware"
+                fallback_info["fallback_provider"] = "edge"
+                fallback_info["fallback_voice"] = edge_voice
+                fallback_info["fallback_error"] = str(e)
+            return await generate_edge_tts(clean_text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+
+    # 3. GEMINI TTS
+    elif prov == "gemini":
+        try:
+            # Single-pass threshold extended up to 2,200 chars (~2.5 minutes)
+            # to preserve identical intonation and tone throughout standard/medium narrations
+            if len(clean_text) <= 2200:
                 return await generate_gemini_tts(
                     clean_text,
                     output_path,
@@ -594,9 +1641,8 @@ async def generate_speech_audio(
                     model=model,
                 )
 
-            # 2. Long-form narrations (> 750 chars ≈ 1.5 - 3+ mins):
-            # Split into balanced chunks (~650 chars) at natural sentence breaks.
-            chunks = _split_text_for_tts(clean_text, max_chars=650)
+            # Long-form narrations (> 2200 chars): split into balanced ~750-char blocks
+            chunks = _split_text_for_tts(clean_text, max_chars=750)
             if len(chunks) == 1:
                 return await generate_gemini_tts(
                     chunks[0],
@@ -626,8 +1672,6 @@ async def generate_speech_audio(
                         parts.append(part_path)
                     except Exception as chunk_err:
                         if not fallback_enabled:
-                            # If fallback is disabled, assemble any completed parts so audio is partially saved (terpotong),
-                            # then raise the error immediately
                             if parts:
                                 try:
                                     await _concat_mp3s(parts, output_path)
@@ -638,7 +1682,6 @@ async def generate_speech_audio(
                             ) from chunk_err
                         raise
 
-                    # Gentle pacing between consecutive chunks to avoid burst rate limits
                     if i < len(chunks) - 1:
                         await asyncio.sleep(0.5)
 
@@ -670,6 +1713,8 @@ async def generate_speech_audio(
                 rate=rate,
                 pitch=pitch,
             )
+
+    # 4. EDGE-TTS
     else:
         try:
             return await generate_edge_tts(

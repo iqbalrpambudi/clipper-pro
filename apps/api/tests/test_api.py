@@ -800,4 +800,90 @@ async def test_trigger_final_render_resolution(monkeypatch):
         await engine.dispose()
 
 
+def test_elevenlabs_and_runware_voices_exist():
+    from app.services.tts import AVAILABLE_VOICES, ELEVENLABS_VOICE_MAP
+
+    providers = {v.provider for v in AVAILABLE_VOICES}
+    assert "gemini" in providers
+    assert "elevenlabs" in providers
+    assert "runware" in providers
+    assert "edge" in providers
+
+    eleven_voices = [v for v in AVAILABLE_VOICES if v.provider == "elevenlabs"]
+    assert len(eleven_voices) >= 6
+    assert any(v.id == "Adam" for v in eleven_voices)
+    assert any(v.id == "Rachel" for v in eleven_voices)
+
+    assert "adam" in ELEVENLABS_VOICE_MAP
+    assert "rachel" in ELEVENLABS_VOICE_MAP
+
+    runware_voices = [v for v in AVAILABLE_VOICES if v.provider == "runware"]
+    assert len(runware_voices) >= 3
+    assert any(v.id == "fishaudio:s2.1@pro" for v in runware_voices)
+
+
+def test_tts_cost_estimates_all_providers():
+    from app.services.tts import estimate_tts_cost
+
+    text = "Halo, selamat datang di channel ini!"
+    gemini_est = estimate_tts_cost(text, "gemini")
+    eleven_est = estimate_tts_cost(text, "elevenlabs")
+    runware_est = estimate_tts_cost(text, "runware")
+    edge_est = estimate_tts_cost(text, "edge")
+
+    assert gemini_est.estimated_cost_usd > 0
+    assert eleven_est.estimated_cost_usd > gemini_est.estimated_cost_usd
+    assert runware_est.estimated_cost_usd > gemini_est.estimated_cost_usd
+    assert edge_est.estimated_cost_usd == 0.0
+
+
+@pytest.mark.asyncio
+async def test_elevenlabs_tts_missing_key_throws_error():
+    from app.services.tts import generate_elevenlabs_tts
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await generate_elevenlabs_tts(
+            "Test narasi",
+            "/tmp/test_eleven.mp3",
+            api_key="",
+            voice="Adam",
+        )
+    assert "ElevenLabs API Key belum dikonfigurasi" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_runware_tts_missing_key_throws_error():
+    from app.services.tts import generate_runware_tts
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await generate_runware_tts(
+            "Test narasi",
+            "/tmp/test_runware.mp3",
+            api_key="",
+            model="fishaudio:s2.1@pro",
+        )
+    assert "Runware API Key belum dikonfigurasi" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_test_tts_connection_edge_and_missing_keys():
+    from app.services.tts import test_tts_connection
+
+    # Edge test
+    edge_res = await test_tts_connection("edge")
+    assert edge_res["success"] is True
+    assert "Edge-TTS" in edge_res["provider_status"]
+
+    # ElevenLabs missing key
+    eleven_res = await test_tts_connection("elevenlabs", api_key="")
+    assert eleven_res["success"] is False
+    assert "Missing API Key" in eleven_res["provider_status"]
+
+    # Runware missing key
+    runware_res = await test_tts_connection("runware", api_key="")
+    assert runware_res["success"] is False
+    assert "Missing API Key" in runware_res["provider_status"]
+
+
+
 

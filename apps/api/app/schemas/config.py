@@ -10,6 +10,10 @@ class ModelConfigUpdate(BaseModel):
     tts_provider: Optional[str] = None
     tts_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
     tts_fallback_enabled: Optional[bool] = None
+    elevenlabs_api_key: Optional[str] = None
+    elevenlabs_model: Optional[str] = None
+    runware_api_key: Optional[str] = None
+    runware_tts_model: Optional[str] = None
     image_base_url: Optional[str] = None
     image_model: Optional[str] = None
     image_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
@@ -31,6 +35,12 @@ class ModelConfigResponse(BaseModel):
     tts_api_key_masked: Optional[str] = None
     has_tts_api_key: bool = False
     tts_fallback_enabled: bool = True
+    elevenlabs_api_key_masked: Optional[str] = None
+    has_elevenlabs_api_key: bool = False
+    elevenlabs_model: str = "eleven_multilingual_v2"
+    runware_api_key_masked: Optional[str] = None
+    has_runware_api_key: bool = False
+    runware_tts_model: str = "fishaudio:s2.1@pro"
     image_base_url: Optional[str] = None
     image_model: str = "dall-e-3"
     image_concurrency: int = 2
@@ -66,4 +76,19 @@ class TestImageConnectionResponse(BaseModel):
     image_model_status: str
     latency_ms: int
     message: str
+
+
+class TestTtsConnectionRequest(BaseModel):
+    provider: str = "gemini"
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+    voice: Optional[str] = None
+
+
+class TestTtsConnectionResponse(BaseModel):
+    success: bool
+    provider_status: str
+    latency_ms: int
+    message: str
+
 

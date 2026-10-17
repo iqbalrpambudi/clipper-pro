@@ -11,11 +11,17 @@ import {
   CheckCircle2,
   RefreshCw,
   Mic,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, StoryboardItem } from "@/types";
 import { Button, Badge } from "@/components/ui";
+import {
+  GEMINI_TTS_MODELS,
+  ELEVENLABS_TTS_MODELS,
+  RUNWARE_TTS_MODELS,
+} from "@/components/tts/TTSTab";
 
 interface StoryboardVoiceTabProps {
   project: Project & {
@@ -36,9 +42,63 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
 
   const [provider, setProvider] = useState<string>("gemini");
   const [voice, setVoice] = useState<string>("Puck");
+  const [geminiModel, setGeminiModel] = useState<string>("gemini-2.5-flash-preview-tts");
+  const [elevenlabsModel, setElevenlabsModel] = useState<string>("eleven_multilingual_v2");
+  const [runwareModel, setRunwareModel] = useState<string>("fishaudio:s2.1@pro");
   const [rate, setRate] = useState<number>(0);
   const [pitch, setPitch] = useState<number>(0);
   const [fallbackEnabled, setFallbackEnabled] = useState<boolean>(true);
+  const [customVoiceInput, setCustomVoiceInput] = useState<string>("");
+  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>("");
+
+  // Sample Audio Player State
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
+  const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
+
+  const { data: voices = [] } = useQuery({
+    queryKey: ["voices"],
+    queryFn: api.getVoices,
+  });
+
+  const filteredVoices = voices.filter((v) => v.provider === provider);
+
+  const playVoiceSample = (voiceId: string) => {
+    if (sampleAudioPlaying === voiceId) {
+      if (sampleAudioRef.current) sampleAudioRef.current.pause();
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+      return;
+    }
+
+    if (!sampleAudioRef.current) {
+      sampleAudioRef.current = new Audio();
+    }
+
+    const a = sampleAudioRef.current;
+    a.pause();
+    setSampleAudioPlaying(voiceId);
+    setLoadingSampleVoiceId(voiceId);
+
+    let modelParam = "";
+    if (provider === "gemini") modelParam = `&model=${encodeURIComponent(geminiModel)}`;
+    else if (provider === "elevenlabs") modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
+    else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
+
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&t=${Date.now()}`;
+    a.src = sampleUrl;
+    a.oncanplay = () => setLoadingSampleVoiceId(null);
+    a.onended = () => {
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+    };
+    a.onerror = () => {
+      setSampleAudioPlaying(null);
+      setLoadingSampleVoiceId(null);
+      showToast("Gagal memuat sampel audio untuk " + voiceId, "error");
+    };
+    a.play().catch(() => {});
+  };
 
   // Fetch active config to sync fallback setting
   const { data: appConfig } = useQuery({
@@ -50,6 +110,23 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
     if (appConfig?.tts_fallback_enabled !== undefined) {
       setFallbackEnabled(appConfig.tts_fallback_enabled);
     }
+    if (appConfig?.tts_provider) {
+      if (appConfig.tts_provider === "elevenlabs") {
+        setProvider("elevenlabs");
+        setVoice("Adam");
+      } else if (appConfig.tts_provider === "runware") {
+        setProvider("runware");
+        setVoice("fishaudio:s2.1@pro");
+      } else if (appConfig.tts_provider === "edge") {
+        setProvider("edge");
+        setVoice("id-ID-ArdiNeural");
+      } else {
+        setProvider("gemini");
+        setVoice("Puck");
+      }
+    }
+    if (appConfig?.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
+    if (appConfig?.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
   }, [appConfig]);
 
   // Audio Playback State
@@ -59,14 +136,21 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const [duration, setDuration] = useState<number>(0);
 
   const ttsMutation = useMutation({
-    mutationFn: () =>
-      api.generateTTS(project.id, {
+    mutationFn: () => {
+      let activeModel: string | undefined = undefined;
+      if (provider === "gemini") activeModel = geminiModel;
+      else if (provider === "elevenlabs") activeModel = elevenlabsModel;
+      else if (provider === "runware") activeModel = runwareModel;
+
+      return api.generateTTS(project.id, {
         provider,
         voice,
         rate: rate >= 0 ? `+${rate}%` : `${rate}%`,
         pitch: pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`,
+        model: activeModel,
         fallback_enabled: fallbackEnabled,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Suara narasi berhasil dibuat dan disinkronkan!", "success");
@@ -209,6 +293,38 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                 <button
                   type="button"
                   onClick={() => {
+                    setProvider("elevenlabs");
+                    setVoice("Adam");
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition ${
+                    provider === "elevenlabs"
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs font-bold">ElevenLabs</div>
+                  <div className="text-[10px] text-muted-foreground">Zero Tone Drift (Gold)</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProvider("runware");
+                    setVoice("fishaudio:s2.1@pro");
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition ${
+                    provider === "runware"
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs font-bold">Runware TTS</div>
+                  <div className="text-[10px] text-muted-foreground">Fish / Qwen3 / xAI / MiniMax</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
                     setProvider("edge");
                     setVoice("id-ID-ArdiNeural");
                   }}
@@ -219,61 +335,248 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   }`}
                 >
                   <div className="text-xs font-bold">Edge-TTS</div>
-                  <div className="text-[10px] text-muted-foreground">Indonesian Neural (Free)</div>
+                  <div className="text-[10px] text-muted-foreground">Multi-Language Neural (Free)</div>
                 </button>
               </div>
             </div>
 
-            {/* Voice Characters */}
+            {/* Model Selection Dropdown */}
+            {provider === "gemini" && (
+              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Model Gemini TTS</span>
+                  <Badge variant="outline" className="text-[9px] py-0 text-violet-300 border-violet-500/40">
+                    2.5 Flash Utama
+                  </Badge>
+                </div>
+                <select
+                  value={geminiModel}
+                  onChange={(e) => setGeminiModel(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                >
+                  {GEMINI_TTS_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.badge}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {provider === "elevenlabs" && (
+              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Model ElevenLabs</span>
+                  <Badge variant="outline" className="text-[9px] py-0 text-violet-300 border-violet-500/40">
+                    Multilingual v2
+                  </Badge>
+                </div>
+                <select
+                  value={elevenlabsModel}
+                  onChange={(e) => setElevenlabsModel(e.target.value)}
+                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                >
+                  {ELEVENLABS_TTS_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.badge}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Custom Voice ID Input */}
+                <div className="pt-2 border-t border-[#2E2E2E] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Atau masukkan Voice ID dari elevenlabs.io:</span>
+                    <a
+                      href="https://elevenlabs.io/voice-library"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-violet-400 hover:underline flex items-center gap-0.5"
+                    >
+                      Voice Library <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={customVoiceInput}
+                      onChange={(e) => setCustomVoiceInput(e.target.value)}
+                      placeholder="Contoh: pNInz6obpgDQGcFmaJgB"
+                      className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      disabled={!customVoiceInput.trim()}
+                      onClick={() => {
+                        const clean = customVoiceInput.trim();
+                        setVoice(clean);
+                        showToast(`Voice ID '${clean}' dipilih!`, "success");
+                      }}
+                      className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded text-xs font-medium"
+                    >
+                      Gunakan
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!customVoiceInput.trim()}
+                      onClick={() => playVoiceSample(customVoiceInput.trim())}
+                      className="p-1.5 bg-[#222] hover:bg-[#333] text-slate-300 rounded border border-[#333]"
+                      title="Tes sampel suara"
+                    >
+                      {sampleAudioPlaying === customVoiceInput.trim() ? (
+                        <Pause className="w-3.5 h-3.5 text-violet-400" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  {voice && !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
+                    <div className="text-[10px] text-violet-300 font-mono">
+                      Voice ID Aktif: {voice}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {provider === "runware" && (
+              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Model Runware TTS</span>
+                  <Badge variant="outline" className="text-[9px] py-0 text-violet-300 border-violet-500/40">
+                    Audio Engine
+                  </Badge>
+                </div>
+                <select
+                  value={runwareModel}
+                  onChange={(e) => {
+                    const newM = e.target.value;
+                    setRunwareModel(newM);
+                    setVoice(newM);
+                  }}
+                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                >
+                  {RUNWARE_TTS_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.badge}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Custom Voice ID / Speaker Input */}
+                <div className="pt-2 border-t border-[#2E2E2E] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Custom Voice ID / Speaker Name:</span>
+                    <span className="text-violet-400 text-[10px]">Opsional</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={runwareCustomVoiceInput}
+                      onChange={(e) => setRunwareCustomVoiceInput(e.target.value)}
+                      placeholder="Contoh: Ashley, Eve, Leo, presenter_male"
+                      className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      disabled={!runwareCustomVoiceInput.trim()}
+                      onClick={() => {
+                        const clean = runwareCustomVoiceInput.trim();
+                        setVoice(clean);
+                        showToast(`Voice '${clean}' dipilih untuk Runware!`, "success");
+                      }}
+                      className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded text-xs font-medium"
+                    >
+                      Gunakan
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!runwareCustomVoiceInput.trim()}
+                      onClick={() => playVoiceSample(runwareCustomVoiceInput.trim())}
+                      className="p-1.5 bg-[#222] hover:bg-[#333] text-slate-300 rounded border border-[#333]"
+                      title="Tes sampel audio"
+                    >
+                      {sampleAudioPlaying === runwareCustomVoiceInput.trim() ? (
+                        <Pause className="w-3.5 h-3.5 text-violet-400" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  {voice && !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
+                    <div className="text-[10px] text-violet-300 font-mono">
+                      Voice Aktif: {voice}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Voice Characters Selection (with Audio Sample Tester) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Karakter Vokal
-              </label>
-              {provider === "gemini" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: "Puck", name: "Puck", gender: "Pria (Santai/Bercerita)" },
-                    { id: "Charon", name: "Charon", gender: "Pria (Dalam/Misteri)" },
-                    { id: "Aoede", name: "Aoede", gender: "Wanita (Lembut/Edukasi)" },
-                    { id: "Kore", name: "Kore", gender: "Wanita (Hangat/Ceria)" },
-                  ].map((v) => (
-                    <button
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300">
+                  Pustaka Suara ({filteredVoices.length} Karakter)
+                </label>
+                <span className="text-[10px] text-muted-foreground">Klik play untuk tes sampel</span>
+              </div>
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {filteredVoices.map((v) => {
+                  const isSelected = voice === v.id;
+                  const isPlayingSample = sampleAudioPlaying === v.id;
+                  return (
+                    <div
                       key={v.id}
-                      type="button"
                       onClick={() => setVoice(v.id)}
-                      className={`p-2 rounded-lg border text-left transition ${
-                        voice === v.id
-                          ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                          : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-violet-500/20 border-violet-500 text-violet-200 ring-1 ring-violet-500/40"
+                          : "bg-[#141414] border-[#2E2E2E] text-slate-300 hover:bg-[#1A1A1A] hover:border-[#3E3E3E]"
                       }`}
                     >
-                      <div className="text-xs font-bold">{v.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{v.gender}</div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: "id-ID-ArdiNeural", name: "Ardi (Pria)", desc: "Formal & Dokumenter" },
-                    { id: "id-ID-GadisNeural", name: "Gadis (Wanita)", desc: "Jernih & Ramah" },
-                  ].map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setVoice(v.id)}
-                      className={`p-2 rounded-lg border text-left transition ${
-                        voice === v.id
-                          ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                          : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      <div className="text-xs font-bold">{v.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{v.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-bold truncate">{v.name}</span>
+                          <Badge variant="outline" className="text-[9px] py-0 px-1 text-muted-foreground">
+                            {v.gender}
+                          </Badge>
+                        </div>
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />}
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2">
+                        {v.description}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1.5 border-t border-[#2E2E2E]/60 text-xs">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playVoiceSample(v.id);
+                          }}
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] transition ${
+                            isPlayingSample
+                              ? "bg-violet-600 text-white font-medium"
+                              : "bg-[#222] hover:bg-[#333] text-slate-300 border border-[#333]"
+                          }`}
+                        >
+                          {loadingSampleVoiceId === v.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : isPlayingSample ? (
+                            <Pause className="w-3 h-3 fill-current" />
+                          ) : (
+                            <Play className="w-3 h-3 fill-current" />
+                          )}
+                          <span>{isPlayingSample ? "Jeda" : "Dengar Sampel"}</span>
+                        </button>
+                        <span className="text-[9px] text-muted-foreground font-mono">{v.id}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Speed & Pitch Slider */}
