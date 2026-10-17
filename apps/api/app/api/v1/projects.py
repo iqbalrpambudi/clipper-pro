@@ -295,7 +295,11 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "order_index": it.order_index,
             "script_text": it.script_text,
             "image_prompt": it.image_prompt,
-            "image_url": storage.to_relative_url(it.file_path),
+            "image_url": (
+                f"{storage.to_relative_url(it.file_path)}?v={int(it.updated_at.timestamp())}"
+                if (storage.to_relative_url(it.file_path) and it.updated_at)
+                else storage.to_relative_url(it.file_path)
+            ),
             "motion_effect": it.motion_effect,
             "start_time": it.start_time,
             "end_time": it.end_time,

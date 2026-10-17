@@ -1391,14 +1391,23 @@ export default function SettingsPage() {
                     <label className="block text-xs font-semibold text-slate-300">
                       Master Style Prompt Preset (Doodle Explainer / Parchment Stickman)
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setImageSystemPrompt(DEFAULT_IMAGE_STYLE_PROMPT)}
-                      className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
-                    >
-                      <RotateCcw className="w-2.5 h-2.5" />
-                      <span>Reset ke Preset Referensi</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href="/image-studio"
+                        className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-semibold hover:underline"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Buka AI Visual Image Studio ➔</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setImageSystemPrompt(DEFAULT_IMAGE_STYLE_PROMPT)}
+                        className="text-[10px] text-slate-400 hover:text-slate-300 flex items-center gap-1 font-mono"
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        <span>Reset ke Default</span>
+                      </button>
+                    </div>
                   </div>
                   <textarea
                     rows={4}
@@ -1408,7 +1417,7 @@ export default function SettingsPage() {
                     className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam, parchment tea-stained watercolor) dari awal sampai akhir.
+                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam, parchment tea-stained watercolor) dari awal sampai akhir. Gunakan <strong>AI Visual Image Studio</strong> untuk membuat preset baru dari gambar referensi.
                   </p>
                 </div>
               </div>

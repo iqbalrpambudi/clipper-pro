@@ -598,37 +598,40 @@ async def test_project_watermark_update():
         assert create_res.status_code == 201
         proj_id = create_res.json()["id"]
 
-        # Patch project with watermark
-        wm_data = {
-            "enabled": True,
-            "text": "@brand_video",
-            "font_family": "Bebas Neue",
-            "font_size": 48,
-            "font_color": "#FFFFFF",
-            "opacity": 0.9,
-            "position": "top-right",
-            "offset_x": 30,
-            "offset_y": 40,
-            "has_background": False,
-            "has_shadow": True,
-        }
-        patch_res = await client.patch(
-            f"/api/v1/projects/{proj_id}",
-            json={"watermark": wm_data},
-        )
-        assert patch_res.status_code == 200
-        patched = patch_res.json()
-        assert patched["watermark"]["enabled"] is True
-        assert patched["watermark"]["text"] == "@brand_video"
-        assert patched["watermark"]["font_family"] == "Bebas Neue"
+        try:
+            # Patch project with watermark
+            wm_data = {
+                "enabled": True,
+                "text": "@brand_video",
+                "font_family": "Bebas Neue",
+                "font_size": 48,
+                "font_color": "#FFFFFF",
+                "opacity": 0.9,
+                "position": "top-right",
+                "offset_x": 30,
+                "offset_y": 40,
+                "has_background": False,
+                "has_shadow": True,
+            }
+            patch_res = await client.patch(
+                f"/api/v1/projects/{proj_id}",
+                json={"watermark": wm_data},
+            )
+            assert patch_res.status_code == 200
+            patched = patch_res.json()
+            assert patched["watermark"]["enabled"] is True
+            assert patched["watermark"]["text"] == "@brand_video"
+            assert patched["watermark"]["font_family"] == "Bebas Neue"
 
-        # Fetch project detail
-        get_res = await client.get(f"/api/v1/projects/{proj_id}")
-        assert get_res.status_code == 200
-        detail = get_res.json()
-        assert detail["watermark"]["enabled"] is True
-        assert detail["watermark"]["text"] == "@brand_video"
-        assert detail["watermark"]["position"] == "top-right"
+            # Fetch project detail
+            get_res = await client.get(f"/api/v1/projects/{proj_id}")
+            assert get_res.status_code == 200
+            detail = get_res.json()
+            assert detail["watermark"]["enabled"] is True
+            assert detail["watermark"]["text"] == "@brand_video"
+            assert detail["watermark"]["position"] == "top-right"
+        finally:
+            await client.delete(f"/api/v1/projects/{proj_id}")
 
 
 @pytest.mark.asyncio
@@ -783,19 +786,22 @@ async def test_trigger_final_render_resolution(monkeypatch):
             proj_id = create_res.json()["id"]
             assert create_res.json()["resolution"] == "1080p"
 
-            render_res = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "720p"})
-            assert render_res.status_code == 200
+            try:
+                render_res = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "720p"})
+                assert render_res.status_code == 200
 
-            proj_res = await client.get(f"/api/v1/projects/{proj_id}")
-            assert proj_res.status_code == 200
-            assert proj_res.json()["resolution"] == "720p"
+                proj_res = await client.get(f"/api/v1/projects/{proj_id}")
+                assert proj_res.status_code == 200
+                assert proj_res.json()["resolution"] == "720p"
 
-            render_res2 = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "1080p"})
-            assert render_res2.status_code == 200
+                render_res2 = await client.post(f"/api/v1/projects/{proj_id}/render", json={"resolution": "1080p"})
+                assert render_res2.status_code == 200
 
-            proj_res2 = await client.get(f"/api/v1/projects/{proj_id}")
-            assert proj_res2.status_code == 200
-            assert proj_res2.json()["resolution"] == "1080p"
+                proj_res2 = await client.get(f"/api/v1/projects/{proj_id}")
+                assert proj_res2.status_code == 200
+                assert proj_res2.json()["resolution"] == "1080p"
+            finally:
+                await client.delete(f"/api/v1/projects/{proj_id}")
     finally:
         await engine.dispose()
 
@@ -883,6 +889,87 @@ async def test_test_tts_connection_edge_and_missing_keys():
     runware_res = await test_tts_connection("runware", api_key="")
     assert runware_res["success"] is False
     assert "Missing API Key" in runware_res["provider_status"]
+
+
+def test_build_storyboard_prompt_scales_with_duration():
+    from app.services.storyboard import build_storyboard_prompt
+
+    # Test 5-minute prompt
+    sys_5, user_5 = build_storyboard_prompt(topic="Sejarah Komputer", duration_mins=5)
+    assert "675 kata" in sys_5
+    assert "5 Menit" in sys_5
+    assert "5 menit" in user_5
+
+    # Test 8-minute prompt
+    sys_8, user_8 = build_storyboard_prompt(topic="Sejarah Komputer", duration_mins=8)
+    assert "1080 kata" in sys_8
+    assert "8 Menit" in sys_8
+    assert "8 menit" in user_8
+    assert "60 scenes" in user_8 or "scenes" in user_8
+
+
+def test_build_storyboard_outline_prompt_scales_correctly():
+    from app.services.storyboard import build_storyboard_outline_prompt
+
+    sys_p, usr_p = build_storyboard_outline_prompt(
+        topic="Misteri Segitiga Bermuda",
+        duration_mins=8,
+        tone="misterius",
+        num_chapters=6,
+    )
+    assert "8 Menit" in sys_p
+    assert "1080 kata" in sys_p
+    assert "Tepat 6 babak" in sys_p or "6 babak" in sys_p
+    assert "180 kata" in usr_p
+    assert "Misteri Segitiga Bermuda" in usr_p
+
+
+def test_build_chapter_expansion_prompt_targets():
+    from app.services.storyboard import build_chapter_expansion_prompt
+
+    sys_p, usr_p = build_chapter_expansion_prompt(
+        video_title="Misteri Segitiga Bermuda",
+        video_overview="Penjelasan sains di balik hilangnya kapal dan pesawat.",
+        chapter_index=2,
+        total_chapters=6,
+        chapter_title="Babak 2: Medan Magnet Anomali",
+        chapter_synopsis="Kompas berputar tanpa kendali.",
+        chapter_key_points=["Navigasi terganggu", "Catatan penerbangan 19"],
+        target_chapter_words=180,
+        target_segments=5,
+        images_per_segment=2,
+        tone="misterius",
+    )
+    assert "Babak 2 dari 6" in sys_p
+    assert "180 kata" in sys_p
+    assert "162 kata" in sys_p  # 90% min
+    assert "10 scenes" in sys_p or "5 segmen" in sys_p
+    assert "Misteri Segitiga Bermuda" in usr_p
+    assert "Catatan penerbangan 19" in usr_p
+
+
+def test_storyboard_item_response_cache_busting():
+    from datetime import datetime
+    from app.models.storyboard import StoryboardItem
+    from app.api.v1.storyboard import _item_to_response
+
+    now = datetime(2026, 10, 17, 15, 0, 0)
+    item = StoryboardItem(
+        id="item-test-123",
+        project_id="proj-123",
+        segment_id="seg-1",
+        order_index=0,
+        script_text="Testing script",
+        image_prompt="A test prompt",
+        file_path="/app/storage/projects/proj-123/storyboard/img_item-test-123.png",
+        status="ready",
+        created_at=now,
+        updated_at=now,
+    )
+    resp = _item_to_response(item)
+    assert resp.image_url is not None
+    assert "?v=" in resp.image_url
+    assert str(int(now.timestamp())) in resp.image_url
 
 
 

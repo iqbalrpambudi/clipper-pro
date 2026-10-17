@@ -308,10 +308,9 @@ def _extract_image_bytes_from_response(data: Dict[str, Any], client: Optional[ht
     return None
 
 
-async def generate_single_image(
+async def generate_image_to_path(
     prompt: str,
-    project_id: str,
-    item_id: str,
+    out_file: Path,
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
@@ -347,9 +346,7 @@ async def generate_single_image(
         "Content-Type": "application/json",
     }
 
-    # Prepare storage output file
-    storyboard_dir = storage.get_storyboard_dir(project_id)
-    out_file = storyboard_dir / f"img_{item_id}.png"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
 
     # STRATEGY 0: Runware.ai Native API
     is_runware = (
@@ -391,7 +388,7 @@ async def generate_single_image(
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
-            log.info("Requesting Runware.ai image generation (model=%s, task=%s) for item=%s...", model_id, task_uuid, item_id)
+            log.info("Requesting Runware.ai image generation (model=%s, task=%s) for item=%s...", model_id, task_uuid, out_file.stem)
             resp = await client.post(runware_url, headers=runware_headers, json=runware_payload)
             if resp.status_code == 200:
                 res_json = resp.json()
@@ -431,7 +428,7 @@ async def generate_single_image(
                     "Requesting AI image generation via /images/generations (model=%s, size=%s) for item=%s...",
                     chosen_model,
                     attempt_size,
-                    item_id,
+                    out_file.stem,
                 )
                 resp = await client.post(img_gen_url, headers=headers, json=payload)
                 
@@ -469,7 +466,7 @@ async def generate_single_image(
             log.info(
                 "Attempting multimodal chat/completions fallback for image model %s (item=%s)...",
                 chosen_model,
-                item_id,
+                out_file.stem,
             )
             chat_payload = {
                 "model": chosen_model,
@@ -536,6 +533,38 @@ async def generate_single_image(
             last_error = str(ce)
 
     raise RuntimeError(f"Gagal menghasilkan gambar AI: {last_error}")
+
+
+async def generate_single_image(
+    prompt: str,
+    project_id: str,
+    item_id: str,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    style_prompt: Optional[str] = None,
+    size: str = "1792x1024",
+) -> Tuple[str, str]:
+    """Generate a single storyboard image and save to project storyboard directory."""
+    storyboard_dir = storage.get_storyboard_dir(project_id)
+    # Clean up older images for this item to prevent storage bloat and stale cache
+    for old_file in storyboard_dir.glob(f"img_{item_id}*"):
+        try:
+            old_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    timestamp = int(time.time())
+    out_file = storyboard_dir / f"img_{item_id}_{timestamp}.png"
+    return await generate_image_to_path(
+        prompt=prompt,
+        out_file=out_file,
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        style_prompt=style_prompt,
+        size=size,
+    )
 
 
 async def test_image_connection(

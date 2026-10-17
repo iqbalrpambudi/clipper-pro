@@ -260,3 +260,45 @@ export interface StoryboardItem {
   updated_at: string;
 }
 
+export interface ImagePreset {
+  id: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  master_prompt: string;
+  negative_prompt?: string | null;
+  reference_image_url?: string | null;
+  preview_image_url?: string | null;
+  user_text_input?: string | null;
+  style_attributes?: {
+    medium?: string;
+    linework?: string;
+    palette?: string[];
+    lighting?: string;
+    character_style?: string;
+    composition?: string;
+    [key: string]: any;
+  } | null;
+  is_builtin: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StudioAnalysisResult {
+  name: string;
+  category: string;
+  description: string;
+  master_prompt: string;
+  negative_prompt: string;
+  style_attributes: {
+    medium?: string;
+    linework?: string;
+    palette?: string[];
+    lighting?: string;
+    character_style?: string;
+    composition?: string;
+    [key: string]: any;
+  };
+}
+

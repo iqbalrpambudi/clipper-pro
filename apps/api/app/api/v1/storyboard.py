@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ from app.schemas.storyboard import (
     StoryboardScriptGenerateRequest,
     StoryboardItemResponse,
     StoryboardItemUpdateRequest,
+    StoryboardSingleGenerateRequest,
     StoryboardBatchGenerateRequest,
 )
 from app.services.storyboard import (
@@ -23,6 +25,7 @@ from app.services.storyboard import (
     sync_storyboard_timing_from_alignment,
 )
 from app.services.image_gen import generate_single_image
+from app.services.image_studio import get_active_image_preset
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +33,10 @@ router = APIRouter(prefix="/projects/{project_id}/storyboard", tags=["storyboard
 
 
 def _item_to_response(item: StoryboardItem) -> StoryboardItemResponse:
+    url = storage.to_relative_url(item.file_path)
+    if url and item.updated_at:
+        v = int(item.updated_at.timestamp())
+        url = f"{url}?v={v}"
     return StoryboardItemResponse(
         id=item.id,
         project_id=item.project_id,
@@ -39,11 +46,11 @@ def _item_to_response(item: StoryboardItem) -> StoryboardItemResponse:
         order_index=item.order_index,
         script_text=item.script_text,
         image_prompt=item.image_prompt,
-        image_url=storage.to_relative_url(item.file_path),
-        motion_effect=item.motion_effect,
-        start_time=item.start_time,
-        end_time=item.end_time,
-        duration=item.duration,
+        image_url=url,
+        motion_effect=item.motion_effect or "zoom_in",
+        start_time=float(item.start_time) if item.start_time is not None else 0.0,
+        end_time=float(item.end_time) if item.end_time is not None else 0.0,
+        duration=float(item.duration) if item.duration is not None else 0.0,
         status=item.status,
         error_message=item.error_message,
         created_at=item.created_at,
@@ -70,6 +77,7 @@ async def generate_script(
             duration_mins=payload.target_duration_mins,
             tone=payload.tone,
             images_per_segment=payload.images_per_segment,
+            preset_id=payload.preset_id,
             custom_instructions=payload.custom_instructions,
         )
         return {
@@ -142,12 +150,17 @@ async def update_storyboard_item(
 async def generate_single_storyboard_image(
     project_id: str,
     item_id: str,
+    payload: Optional[StoryboardSingleGenerateRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Generate or regenerate a single storyboard illustration via AI image provider."""
     item = await db.get(StoryboardItem, item_id)
     if not item or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="Storyboard item tidak ditemukan")
+
+    # If an updated prompt is provided in payload, save and use it
+    if payload and payload.prompt and payload.prompt.strip():
+        item.image_prompt = payload.prompt.strip()
 
     # Fetch active model configuration for image credentials
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
@@ -156,10 +169,20 @@ async def generate_single_storyboard_image(
     base_url = cfg.image_base_url if cfg else None
     model = cfg.image_model if cfg else "dall-e-3"
     api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
-    style_prompt = cfg.image_system_prompt if cfg else None
+
+    # Fetch style prompt from specified preset or active preset
+    from app.models.image_preset import ImagePreset
+    preset = None
+    if payload and payload.preset_id:
+        preset = await db.get(ImagePreset, payload.preset_id)
+    if not preset:
+        preset = await get_active_image_preset(db)
+
+    style_prompt = preset.master_prompt if preset else (cfg.image_system_prompt if cfg else None)
 
     item.status = "generating"
     item.error_message = None
+    item.updated_at = datetime.utcnow()
     await db.commit()
 
     try:
@@ -176,6 +199,7 @@ async def generate_single_storyboard_image(
         item.file_path = file_path
         item.status = "ready"
         item.error_message = None
+        item.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(item)
         return _item_to_response(item)
@@ -183,6 +207,7 @@ async def generate_single_storyboard_image(
         log.exception("Failed to generate image for storyboard item %s: %s", item_id, e)
         item.status = "failed"
         item.error_message = str(e)
+        item.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(item)
         raise HTTPException(status_code=500, detail=f"Gagal generate gambar: {str(e)}")
@@ -206,7 +231,8 @@ async def generate_all_storyboard_images(
     base_url = cfg.image_base_url if cfg else None
     model = cfg.image_model if cfg else "dall-e-3"
     api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
-    style_prompt = cfg.image_system_prompt if cfg else None
+    active_preset = await get_active_image_preset(db)
+    style_prompt = active_preset.master_prompt if active_preset else (cfg.image_system_prompt if cfg else None)
 
     # Determine items to process
     stmt = select(StoryboardItem).where(StoryboardItem.project_id == project_id)

@@ -8,6 +8,7 @@ class StoryboardScriptGenerateRequest(BaseModel):
     target_duration_mins: int = Field(default=5, ge=3, le=10)  # 4-8 mins, allow 3-10
     tone: str = "santai"  # santai, formal, dramatis, misterius, edukasi
     images_per_segment: int = Field(default=2, ge=1, le=3)
+    preset_id: Optional[str] = None
     custom_instructions: Optional[str] = None
 
 
@@ -41,6 +42,11 @@ class StoryboardItemUpdateRequest(BaseModel):
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     duration: Optional[float] = None
+
+
+class StoryboardSingleGenerateRequest(BaseModel):
+    prompt: Optional[str] = None
+    preset_id: Optional[str] = None
 
 
 class StoryboardBatchGenerateRequest(BaseModel):

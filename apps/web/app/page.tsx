@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Edit3,
   Image as ImageIcon,
+  Palette,
 } from "lucide-react";
 import {
   useProjects,
@@ -134,6 +135,12 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link href="/image-studio">
+              <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E] text-violet-300 hover:text-white hover:border-violet-500/50">
+                <Palette className="w-4 h-4 text-violet-400" />
+                <span>Visual Image Studio</span>
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E]">
                 <SettingsIcon className="w-4 h-4 text-muted-foreground" />

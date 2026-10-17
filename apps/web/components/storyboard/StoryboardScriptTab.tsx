@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
   Loader2,
@@ -9,6 +10,8 @@ import {
   ArrowRight,
   BookOpen,
   Layers,
+  Palette,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -25,6 +28,20 @@ interface StoryboardScriptTabProps {
 export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const queryClient = useQueryClient();
   const { setActiveTab, showToast } = useStudioStore();
+
+  const { data: presets = [] } = useQuery({
+    queryKey: ["image-presets"],
+    queryFn: api.getImagePresets,
+  });
+
+  const activePreset = presets.find((p) => p.is_active) || presets[0];
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+
+  useEffect(() => {
+    if (activePreset && !selectedPresetId) {
+      setSelectedPresetId(activePreset.id);
+    }
+  }, [activePreset, selectedPresetId]);
 
   const [topic, setTopic] = useState(project.narration?.topic || project.name || "");
   const [durationMins, setDurationMins] = useState<number>(
@@ -44,9 +61,20 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       target_duration_mins: number;
       tone: string;
       images_per_segment: number;
+      preset_id?: string;
       custom_instructions?: string;
     }) => api.generateStoryboardScript(project.id, data),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.narration) {
+        queryClient.setQueryData(["project", project.id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            narration: data.narration,
+            storyboard_items: data.storyboard_items || [],
+          };
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Naskah storyboard & adegan gambar berhasil di-generate!", "success");
     },
@@ -67,11 +95,22 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       target_duration_mins: durationMins,
       tone,
       images_per_segment: imagesPerSegment,
+      preset_id: selectedPresetId || undefined,
       custom_instructions: customInstructions.trim() || undefined,
     });
   };
 
+  // Calculate speech duration directly from generated narration text (standard speech rate: 135 wpm)
   const wordCount = narration?.raw_text ? narration.raw_text.trim().split(/\s+/).length : 0;
+  const estimatedSeconds = wordCount > 0 ? Math.round((wordCount / 135) * 60) : 0;
+  const resultMinutes = Math.floor(estimatedSeconds / 60);
+  const resultSeconds = estimatedSeconds % 60;
+  const resultDurationFormatted =
+    wordCount === 0
+      ? "0 Menit"
+      : resultSeconds === 0
+      ? `~${resultMinutes} Menit`
+      : `~${resultMinutes}m ${resultSeconds}s`;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
@@ -189,6 +228,44 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               </div>
             </div>
 
+            {/* AI Visual Preset Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-violet-400" />
+                  Preset Gaya Visual Ilustrasi AI
+                </label>
+                <Link
+                  href="/image-studio"
+                  className="text-[11px] text-violet-400 hover:text-violet-300 hover:underline flex items-center gap-1"
+                >
+                  <span>Buka Studio</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+              <select
+                value={selectedPresetId || activePreset?.id || ""}
+                onChange={(e) => setSelectedPresetId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-[#141414] border border-[#2E2E2E] text-white text-xs font-medium focus:border-violet-500 focus:outline-none"
+              >
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.is_active ? "(Aktif)" : ""}
+                  </option>
+                ))}
+              </select>
+              {presets.find((p) => p.id === (selectedPresetId || activePreset?.id)) && (
+                <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                  <span className="truncate max-w-[260px]">
+                    {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} • 16:9 Landscape
+                  </span>
+                  <span className="text-violet-400 font-mono text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
+                    Prompt Visual Selaras
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Images Per Segment */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -239,12 +316,12 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               {generateScriptMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Merancang Naskah & Visual AI (5-15s)...</span>
+                  <span>Merancang Naskah ({durationMins} Mnt) & Visual AI...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>{segments.length > 0 ? "Generate Ulang Naskah" : "Generate Naskah Storyboard"}</span>
+                  <span>{segments.length > 0 ? `Generate Ulang Naskah (${durationMins} Menit)` : `Generate Naskah Storyboard (${durationMins} Menit)`}</span>
                 </>
               )}
             </Button>
@@ -263,19 +340,28 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Summary Stats Pill */}
+              {/* Summary Stats Pill: Menghitung Durasi Narasi dari Hasil Naskah Riil */}
               <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-[#181818] border border-[#2E2E2E]">
                 <div className="text-center">
-                  <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Durasi Narasi</span>
-                  <div className="text-sm font-bold text-violet-400 mt-0.5">~{durationMins} Menit</div>
+                  <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Durasi Narasi (Hasil)</span>
+                  <div className="text-sm font-bold text-violet-400 mt-0.5">{resultDurationFormatted}</div>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {wordCount > 0 ? `~${(wordCount / 135).toFixed(1)} mnt (135 kpm)` : "0 mnt"}
+                  </span>
                 </div>
                 <div className="text-center border-x border-[#2E2E2E]">
                   <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Panjang Kata</span>
-                  <div className="text-sm font-bold text-white mt-0.5">{wordCount} Kata</div>
+                  <div className="text-sm font-bold text-white mt-0.5">{wordCount.toLocaleString()} Kata</div>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {segments.length} Segmen
+                  </span>
                 </div>
                 <div className="text-center">
                   <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Ilustrasi Siap</span>
                   <div className="text-sm font-bold text-emerald-400 mt-0.5">{items.length} Slot Gambar</div>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    16:9 Hand-drawn
+                  </span>
                 </div>
               </div>
 

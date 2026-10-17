@@ -1207,8 +1207,9 @@ async def generate_storyboard_images_job(
 
         base_url = cfg.image_base_url if cfg else None
         model = cfg.image_model if cfg else "dall-e-3"
-        api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
-        style_prompt = cfg.image_system_prompt if cfg else None
+        from app.services.image_studio import get_active_image_preset
+        active_preset = await get_active_image_preset(db)
+        style_prompt = active_preset.master_prompt if active_preset else (cfg.image_system_prompt if cfg else None)
 
         stmt = select(StoryboardItem).where(StoryboardItem.project_id == project_id)
         if item_ids:

@@ -12,6 +12,8 @@ import {
   VoiceInfo,
   ModelConfig,
   StoryboardItem,
+  ImagePreset,
+  StudioAnalysisResult,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -377,6 +379,7 @@ export const api = {
       target_duration_mins: number;
       tone: string;
       images_per_segment: number;
+      preset_id?: string;
       custom_instructions?: string;
     }
   ) =>
@@ -400,9 +403,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  generateSingleStoryboardImage: (projectId: string, itemId: string) =>
+  generateSingleStoryboardImage: (
+    projectId: string,
+    itemId: string,
+    data?: { prompt?: string; preset_id?: string }
+  ) =>
     request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`, {
       method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
     }),
   generateAllStoryboardImages: (projectId: string, data?: { item_ids?: string[]; concurrency?: number }) =>
     request<{
@@ -417,5 +425,50 @@ export const api = {
   syncStoryboardTiming: (projectId: string) =>
     request<{ success: boolean; message: string }>(`/api/v1/projects/${projectId}/storyboard/sync-timing`, {
       method: "POST",
+    }),
+
+  // AI Visual Image Studio & Presets
+  getImagePresets: () => request<ImagePreset[]>("/api/v1/image-presets"),
+  getImagePreset: (id: string) => request<ImagePreset>(`/api/v1/image-presets/${id}`),
+  createImagePreset: (data: Partial<ImagePreset>) =>
+    request<ImagePreset>("/api/v1/image-presets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateImagePreset: (id: string, data: Partial<ImagePreset>) =>
+    request<ImagePreset>(`/api/v1/image-presets/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteImagePreset: (id: string) =>
+    request<void>(`/api/v1/image-presets/${id}`, {
+      method: "DELETE",
+    }),
+  activateImagePreset: (id: string) =>
+    request<ImagePreset>(`/api/v1/image-presets/${id}/activate`, {
+      method: "POST",
+    }),
+  uploadReferenceImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${BASE_URL}/api/v1/image-studio/upload-reference`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal mengunggah gambar referensi");
+    }
+    return res.json() as Promise<{ success: boolean; filename: string; file_path: string; url: string }>;
+  },
+  analyzeStylePreset: (data: { user_text: string; reference_image_url?: string; reference_image_path?: string }) =>
+    request<StudioAnalysisResult>("/api/v1/image-studio/analyze", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  testGeneratePresetImage: (data: { master_prompt: string; scene_prompt?: string; aspect_ratio?: string }) =>
+    request<{ image_url: string; file_path: string; prompt_used: string }>("/api/v1/image-studio/test-generate", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };

@@ -268,6 +268,51 @@ class GeminiAdapter(OpenAICompatibleAdapter):
 
         return await super().analyze_vision(image_paths, prompt)
 
+    async def analyze_multimodal(
+        self,
+        prompt: str,
+        image_paths: List[str],
+        system_prompt: Optional[str] = None,
+        json_mode: bool = True,
+    ) -> str:
+        """Analyze multimodal input (images + text prompt) using Google Gemini."""
+        parts: List[Dict[str, Any]] = []
+        full_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        parts.append({"text": full_text})
+
+        for img_path in image_paths:
+            p = Path(img_path)
+            if not p.exists() or not p.is_file():
+                continue
+            with open(p, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            ext = p.suffix.lower().replace(".", "")
+            mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+            parts.append({"inlineData": {"mimeType": mime, "data": b64}})
+
+        payload: Dict[str, Any] = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "temperature": 0.4,
+            },
+        }
+        if json_mode:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+
+        target_model = self.vision_model or "gemini-2.5-flash-lite"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={self.api_key}"
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            resp = await client.post(url, json=payload)
+            if resp.status_code >= 400:
+                raise RuntimeError(f"Gemini multimodal HTTP {resp.status_code}: {resp.text[:200]}")
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                c_parts = candidates[0].get("content", {}).get("parts", [])
+                text_vals = [p.get("text", "") for p in c_parts if "text" in p]
+                return "".join(text_vals).strip()
+            return ""
+
     async def generate_embedding(self, text: str) -> List[float]:
         """Real embedding via Gemini embedContent endpoint (gemini-embedding-001 with 768 dims).
 

@@ -30,7 +30,9 @@ async def lifespan(app: FastAPI):
         await init_db()
         async with SessionLocal() as db:
             await seed_templates(db)
-        log.info("Database initialized and templates seeded.")
+            from app.services.image_studio import seed_default_image_presets
+            await seed_default_image_presets(db)
+        log.info("Database initialized, templates and image presets seeded.")
         from app.services.cancellation import start_cancellation_listener
         await start_cancellation_listener()
         from app.workers.tasks import cleanup_stuck_render_jobs

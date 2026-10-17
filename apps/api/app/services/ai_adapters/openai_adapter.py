@@ -53,7 +53,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             raise ValueError("Model endpoint returned an empty response")
 
         # Strip trailing data: [DONE] if proxy appended it to response
-        cleaned_text = re.sub(r"data:\s*\[DONE\]\s*$", "", text).strip()
+        cleaned_text = re.sub(r"data:\s*\[DONE\].*$", "", text.strip(), flags=re.DOTALL).strip()
 
         # Priority 1: Try regular JSON format first
         try:
@@ -102,7 +102,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             if choices:
                 message = choices[0].get("message", {})
                 content = message.get("content") or choices[0].get("text") or ""
-                return str(content).strip()
+                if content:
+                    return str(content).strip()
         except Exception:
             pass
 
@@ -113,6 +114,9 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         prompt: str,
         system_prompt: Optional[str] = None,
         json_mode: bool = False,
+        timeout: float = 240.0,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
     ) -> str:
         messages = []
         if system_prompt:
@@ -124,11 +128,16 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             "messages": messages,
             "temperature": 0.7,
             "stream": False,
+            "max_tokens": max_tokens or 16384,
+            "thinking": {"type": "disabled"},
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+        if kwargs:
+            payload.update(kwargs)
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        timeout_cfg = httpx.Timeout(timeout, connect=10.0)
+        async with httpx.AsyncClient(timeout=timeout_cfg) as client:
             resp = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers=self._get_headers(),
@@ -337,6 +346,74 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         tasks = [_analyze_single(sc_id, t_path) for sc_id, t_path in batch_items]
         results = await asyncio.gather(*tasks)
         return list(results)
+
+    async def analyze_multimodal(
+        self,
+        prompt: str,
+        image_paths: List[str],
+        system_prompt: Optional[str] = None,
+        json_mode: bool = True,
+    ) -> str:
+        """Analyze multimodal input (images + text prompt) using OpenAI-compatible vision model."""
+        content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
+
+        for img_path in image_paths:
+            p = Path(img_path)
+            if not p.exists() or not p.is_file():
+                continue
+            try:
+                import cv2
+                img = cv2.imread(str(p))
+                if img is not None:
+                    h, w = img.shape[:2]
+                    max_dim = 1024
+                    if max(h, w) > max_dim:
+                        scale = max_dim / max(h, w)
+                        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                    _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+                    b64 = base64.b64encode(buffer).decode('utf-8')
+                    mime = "image/jpeg"
+                else:
+                    with open(p, "rb") as f:
+                        b64 = base64.b64encode(f.read()).decode("utf-8")
+                    ext = p.suffix.lower().replace(".", "")
+                    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+            except Exception:
+                with open(p, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                ext = p.suffix.lower().replace(".", "")
+                mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime};base64,{b64}"},
+            })
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": content_parts})
+
+        payload: Dict[str, Any] = {
+            "model": self.vision_model or self.chat_model,
+            "messages": messages,
+            "temperature": 0.4,
+            "stream": False,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers=self._get_headers(),
+                json=payload,
+            )
+            if resp.status_code >= 400:
+                raise RuntimeError(f"Multimodal vision HTTP {resp.status_code}: {resp.text[:250]}")
+            raw = self._extract_content_from_response(resp.text)
+            raw = re.sub(r"<think>[\s\S]*?</think>", "", raw).strip()
+            return raw
 
     async def generate_embedding(self, text: str) -> List[float]:
         if self.api_key:

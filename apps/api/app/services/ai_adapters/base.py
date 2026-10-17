@@ -33,6 +33,9 @@ class BaseLLMAdapter(ABC):
         prompt: str,
         system_prompt: Optional[str] = None,
         json_mode: bool = False,
+        timeout: float = 180.0,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
     ) -> str:
         """Generate text from chat model."""
         pass
@@ -52,6 +55,16 @@ class BaseLLMAdapter(ABC):
     ) -> List[Dict[str, Any]]:
         """Analyze a batch of scene thumbnails."""
         return []
+
+    async def analyze_multimodal(
+        self,
+        prompt: str,
+        image_paths: List[str],
+        system_prompt: Optional[str] = None,
+        json_mode: bool = True,
+    ) -> str:
+        """Analyze multimodal input (images + text prompt)."""
+        return ""
 
     @abstractmethod
     async def generate_embedding(self, text: str) -> List[float]:

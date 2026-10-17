@@ -49,6 +49,11 @@ class StorageManager:
         p.mkdir(parents=True, exist_ok=True)
         return p
 
+    def get_presets_dir(self) -> Path:
+        p = self.base_dir / "presets"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     def to_relative_url(self, abs_path: Optional[str | Path]) -> Optional[str]:
         if not abs_path:
             return None

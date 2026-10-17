@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Image as ImageIcon,
   Sparkles,
@@ -12,6 +13,7 @@ import {
   Maximize2,
   X,
   Edit3,
+  Palette,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -43,6 +45,25 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
   // Generating single item tracker
   const [generatingItemId, setGeneratingItemId] = useState<string | null>(null);
 
+  // Image Presets query
+  const { data: presets = [] } = useQuery({
+    queryKey: ["image-presets"],
+    queryFn: api.getImagePresets,
+  });
+
+  const activePreset = presets.find((p) => p.is_active) || presets[0];
+
+  const activatePresetMutation = useMutation({
+    mutationFn: (id: string) => api.activateImagePreset(id),
+    onSuccess: (p) => {
+      queryClient.invalidateQueries({ queryKey: ["image-presets"] });
+      showToast(`Preset visual diubah ke: ${p.name}`, "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal mengubah preset", "error");
+    },
+  });
+
   const batchGenerateMutation = useMutation({
     mutationFn: () => api.generateAllStoryboardImages(project.id),
     onSuccess: (res) => {
@@ -73,9 +94,23 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
   const handleGenerateSingle = async (item: StoryboardItem) => {
     setGeneratingItemId(item.id);
     try {
-      await api.generateSingleStoryboardImage(project.id, item.id);
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Gambar ilustrasi berhasil dibuat!", "success");
+      // If currently editing this item, use and save the edited prompt immediately
+      const promptToUse =
+        editingItemId === item.id && editPromptText.trim()
+          ? editPromptText.trim()
+          : undefined;
+
+      await api.generateSingleStoryboardImage(project.id, item.id, {
+        prompt: promptToUse,
+        preset_id: activePreset?.id,
+      });
+
+      if (editingItemId === item.id) {
+        setEditingItemId(null);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Gambar ilustrasi berhasil diperbarui!", "success");
     } catch (err: any) {
       showToast(err.message || "Gagal membuat gambar", "error");
     } finally {
@@ -142,6 +177,37 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>
+      </div>
+
+      {/* Preset Indicator Ribbon */}
+      <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-[#181818] to-[#181818] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <Palette className="w-4 h-4 text-violet-400" />
+          <span className="text-slate-400">Preset Gaya Visual:</span>
+          <select
+            value={activePreset?.id || ""}
+            onChange={(e) => activatePresetMutation.mutate(e.target.value)}
+            disabled={activatePresetMutation.isPending}
+            className="px-2.5 py-1 rounded-lg bg-[#141414] border border-[#2E2E2E] text-white font-semibold text-xs focus:border-violet-500"
+          >
+            {presets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} {p.is_active ? "(Aktif)" : ""}
+              </option>
+            ))}
+          </select>
+          <span className="text-slate-500 font-mono text-[10px] hidden md:inline">
+            • 16:9 Landscape Storyboard
+          </span>
+        </div>
+
+        <Link
+          href="/image-studio"
+          className="text-violet-400 hover:text-violet-300 flex items-center gap-1 font-medium text-xs hover:underline"
+        >
+          <span>Sesuaikan Gaya di AI Visual Studio</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* Top Banner Action Bar */}
@@ -267,6 +333,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                           ) : item.status === "ready" && item.image_url ? (
                             <>
                               <img
+                                key={item.image_url}
                                 src={item.image_url}
                                 alt={item.image_prompt}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -455,6 +522,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
 
             <div className="relative aspect-video bg-black flex items-center justify-center">
               <img
+                key={previewImage.image_url}
                 src={previewImage.image_url!}
                 alt={previewImage.image_prompt}
                 className="w-full h-full object-contain"

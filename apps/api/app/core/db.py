@@ -57,4 +57,22 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS elevenlabs_model VARCHAR(100) DEFAULT 'eleven_multilingual_v2';"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_api_key_encrypted TEXT;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_tts_model VARCHAR(100) DEFAULT 'fishaudio:s2.1@pro';"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS image_presets (
+                id VARCHAR(50) PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                description TEXT,
+                category VARCHAR(50) DEFAULT 'custom',
+                master_prompt TEXT NOT NULL,
+                negative_prompt TEXT,
+                reference_image_url VARCHAR(500),
+                preview_image_url VARCHAR(500),
+                user_text_input TEXT,
+                style_attributes JSON DEFAULT '{}'::json,
+                is_builtin BOOLEAN DEFAULT FALSE,
+                is_active BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc'),
+                updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc')
+            );
+        """))
 
