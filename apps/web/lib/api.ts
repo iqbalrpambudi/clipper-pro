@@ -192,7 +192,7 @@ export const api = {
     }),
   generateTTS: (
     projectId: string,
-    data: { provider?: string; voice?: string; rate?: string; pitch?: string; model?: string }
+    data: { provider?: string; voice?: string; rate?: string; pitch?: string; model?: string; fallback_enabled?: boolean }
   ) =>
     request<AudioTrack>(`/api/v1/projects/${projectId}/tts/generate`, {
       method: "POST",
@@ -314,6 +314,7 @@ export const api = {
     api_key?: string;
     tts_provider?: string;
     tts_api_key?: string;
+    tts_fallback_enabled?: boolean;
     image_base_url?: string | null;
     image_model?: string;
     image_concurrency?: number;

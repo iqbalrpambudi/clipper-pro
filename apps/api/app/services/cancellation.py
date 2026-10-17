@@ -49,11 +49,11 @@ def kill_all_matching_processes(project_id: str, video_id: Optional[str] = None,
     killed = 0
     keys_to_kill = []
     for k in list(_active_processes.keys()):
-        if video_id and f"video:{video_id}" in k:
+        if job_id and f"render:{job_id}" in k:
             keys_to_kill.append(k)
-        elif job_id and f"render:{job_id}" in k:
+        elif video_id and f"video:{video_id}" in k:
             keys_to_kill.append(k)
-        elif project_id and project_id in k:
+        elif not job_id and not video_id and project_id and project_id in k:
             keys_to_kill.append(k)
 
     for k in keys_to_kill:
@@ -70,13 +70,14 @@ async def request_cancellation(
     """Set cancellation flags in Redis and broadcast an immediate cancellation signal to all workers."""
     redis = get_redis_client()
     try:
-        # Set keys with 5 minute expiration
-        if project_id:
-            await redis.set(f"cancel:project:{project_id}", "1", ex=300)
-        if video_id:
-            await redis.set(f"cancel:video:{video_id}", "1", ex=300)
+        # If job_id or video_id is targeted, only cancel that specific resource.
+        # Only set project-wide cancellation if neither is specified (i.e. universal cancel).
         if job_id:
             await redis.set(f"cancel:render:{job_id}", "1", ex=300)
+        elif video_id:
+            await redis.set(f"cancel:video:{video_id}", "1", ex=300)
+        elif project_id:
+            await redis.set(f"cancel:project:{project_id}", "1", ex=300)
 
         # Broadcast via Redis pubsub channel so all worker processes kill subprocesses immediately
         payload = json.dumps({

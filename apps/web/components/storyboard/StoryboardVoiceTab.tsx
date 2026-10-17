@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Volume2,
   Play,
@@ -38,6 +38,19 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const [voice, setVoice] = useState<string>("Puck");
   const [rate, setRate] = useState<number>(0);
   const [pitch, setPitch] = useState<number>(0);
+  const [fallbackEnabled, setFallbackEnabled] = useState<boolean>(true);
+
+  // Fetch active config to sync fallback setting
+  const { data: appConfig } = useQuery({
+    queryKey: ["model-config"],
+    queryFn: api.getModelConfig,
+  });
+
+  useEffect(() => {
+    if (appConfig?.tts_fallback_enabled !== undefined) {
+      setFallbackEnabled(appConfig.tts_fallback_enabled);
+    }
+  }, [appConfig]);
 
   // Audio Playback State
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -52,6 +65,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
         voice,
         rate: rate >= 0 ? `+${rate}%` : `${rate}%`,
         pitch: pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`,
+        fallback_enabled: fallbackEnabled,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
@@ -295,6 +309,26 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg"
                 />
               </div>
+            </div>
+
+            {/* Fallback Checkbox */}
+            <div className="pt-2 border-t border-[#2E2E2E]">
+              <label className="flex items-start gap-2 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={fallbackEnabled}
+                  onChange={(e) => setFallbackEnabled(e.target.checked)}
+                  className="mt-0.5 w-3.5 h-3.5 rounded border-[#2E2E2E] bg-[#141414] text-violet-500 focus:ring-violet-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <div>
+                  <span className="text-[11px] font-medium text-slate-300 group-hover:text-white transition-colors">
+                    Fallback otomatis ke Edge-TTS saat error/kuota habis
+                  </span>
+                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
+                    Jika tidak dicentang, proses berhenti dengan error dan audio terpotong pada bagian yang gagal.
+                  </p>
+                </div>
+              </label>
             </div>
 
             <Button

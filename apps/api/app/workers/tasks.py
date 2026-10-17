@@ -31,6 +31,7 @@ from app.services.cancellation import (
     is_cancelled,
     TaskCancelledException,
     clear_cancellation,
+    kill_all_matching_processes,
 )
 
 log = logging.getLogger(__name__)
@@ -379,6 +380,7 @@ async def generate_tts_and_align_job(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     model: Optional[str] = None,
+    fallback_enabled: Optional[bool] = None,
 ) -> None:
     """Async task to generate TTS audio and run forced word alignment."""
     async with SessionLocal() as db:
@@ -411,7 +413,7 @@ async def generate_tts_and_align_job(
             res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
-            tts_model = model or "gemini-3.8-flash-lite-tts"
+            tts_model = model or "gemini-2.5-flash-preview-tts"
             if cfg:
                 if cfg.tts_api_key_encrypted:
                     api_key = decrypt_secret(cfg.tts_api_key_encrypted)
@@ -421,6 +423,12 @@ async def generate_tts_and_align_job(
                     tts_model = cfg.tts_provider
 
             # Step 1: TTS generation with per-segment chunking to prevent silent segment 2
+            use_fallback = fallback_enabled
+            if use_fallback is None:
+                use_fallback = getattr(cfg, "tts_fallback_enabled", True) if cfg else True
+            if use_fallback is None:
+                use_fallback = True
+
             fallback_info: Dict[str, Any] = {}
             duration = await generate_speech_audio(
                 text=narration.raw_text,
@@ -433,6 +441,7 @@ async def generate_tts_and_align_job(
                 model=tts_model,
                 segments=narration.segments,
                 fallback_info=fallback_info,
+                fallback_enabled=use_fallback,
             )
 
             actual_provider = fallback_info.get("fallback_provider", provider)
@@ -621,9 +630,22 @@ async def generate_tts_and_align_job(
                 .order_by(AudioTrack.created_at.desc())
             )
             failed_track = t_res.scalars().first()
+            partial_dur = 0.0
             if failed_track:
                 failed_track.status = "failed"
+                # If partial audio was written and preserved, record its file_path and partial duration
+                if audio_file.exists() and audio_file.stat().st_size > 1000:
+                    try:
+                        partial_dur = await get_audio_duration(str(audio_file))
+                        failed_track.duration = partial_dur
+                        failed_track.file_path = str(audio_file)
+                    except Exception:
+                        pass
             await db.commit()
+
+            err_msg = str(e)
+            if partial_dur > 0:
+                err_msg += f" (Audio terpotong: {partial_dur:.1f} detik tersimpan)"
 
             await publish_project_event(
                 project_id,
@@ -631,9 +653,9 @@ async def generate_tts_and_align_job(
                 status="error",
                 progress=0,
                 stage="failed",
-                message=f"Gagal memproses suara/alignment: {str(e)}",
-                error=str(e),
-                data={"narration_id": narration_id},
+                message=f"Gagal memproses suara: {err_msg}",
+                error=err_msg,
+                data={"narration_id": narration_id, "partial_duration": partial_dur},
             )
 
 
@@ -648,6 +670,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         project = await db.get(Project, job.project_id)
         if not project:
             return
+
+        # Clear any prior cancellation flags for this job and project so new render is clean
+        await clear_cancellation(project_id=project.id, job_id=render_job_id)
 
         job.status = "rendering"
         job.progress = 5
@@ -736,7 +761,15 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 f.write(ass_content)
             ass_file_path = str(ass_file)
 
+        loop = asyncio.get_event_loop()
+        last_progress_time = loop.time()
+        start_time = loop.time()
+        INACTIVITY_TIMEOUT = 180.0  # 3 minutes without any progress update
+        OVERALL_TIMEOUT = 900.0     # 15 minutes max duration for entire render
+
         async def _progress(pct: int, msg: str):
+            nonlocal last_progress_time
+            last_progress_time = loop.time()
             async with SessionLocal() as inner_db:
                 j = await inner_db.get(RenderJob, render_job_id)
                 if j:
@@ -753,7 +786,30 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 data={"job_id": render_job_id, "render_type": job.render_type},
             )
 
-        try:
+        async def _watchdog():
+            while True:
+                await asyncio.sleep(3.0)
+                now = loop.time()
+                # 1. Check if user or system cancelled
+                if await is_cancelled(project.id, job_id=render_job_id):
+                    kill_all_matching_processes(project.id, job_id=render_job_id)
+                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+
+                # 2. Check overall job timeout
+                if now - start_time > OVERALL_TIMEOUT:
+                    kill_all_matching_processes(project.id, job_id=render_job_id)
+                    raise TimeoutError(
+                        f"Rendering melebihi batas waktu total ({int(OVERALL_TIMEOUT / 60)} menit). Proses dihentikan otomatis."
+                    )
+
+                # 3. Check progress inactivity timeout (stuck render)
+                if now - last_progress_time > INACTIVITY_TIMEOUT:
+                    kill_all_matching_processes(project.id, job_id=render_job_id)
+                    raise TimeoutError(
+                        f"Rendering macet: tidak ada progres selama {int(INACTIVITY_TIMEOUT)} detik. Proses dihentikan otomatis."
+                    )
+
+        async def _do_render() -> str:
             if project.project_type == "long_storyboard":
                 # Fetch storyboard items
                 sb_res = await db.execute(
@@ -773,20 +829,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                         valid_items.append((it, str(p)))
 
                 if not valid_items:
-                    job.status = "failed"
-                    job.error_message = "Belum ada gambar adegan storyboard yang siap dirender. Silakan generate gambar terlebih dahulu."
-                    await db.commit()
-                    await publish_project_event(
-                        project.id,
-                        task_type="render",
-                        status="error",
-                        progress=0,
-                        stage="failed",
-                        message="Belum ada gambar adegan storyboard yang siap dirender.",
-                        error="Gambar storyboard belum digenerate",
-                        data={"job_id": render_job_id},
-                    )
-                    return
+                    raise RuntimeError("Belum ada gambar adegan storyboard yang siap dirender. Silakan generate gambar terlebih dahulu.")
 
                 items_data = [
                     {
@@ -804,7 +847,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 if await is_cancelled(project.id, job_id=render_job_id):
                     raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
 
-                final_mp4 = await render_storyboard_video(
+                return await render_storyboard_video(
                     items=items_data,
                     audio_path=audio_path,
                     ass_subtitle_path=ass_file_path,
@@ -822,20 +865,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
                 timeline = t_res.scalar_one_or_none()
                 if not timeline or not timeline.clips:
-                    job.status = "failed"
-                    job.error_message = "Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu."
-                    await db.commit()
-                    await publish_project_event(
-                        project.id,
-                        task_type="render",
-                        status="error",
-                        progress=0,
-                        stage="failed",
-                        message="Timeline klip kosong. Lakukan pencocokan scene terlebih dahulu.",
-                        error="Timeline klip kosong",
-                        data={"job_id": render_job_id},
-                    )
-                    return
+                    raise RuntimeError("Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu.")
 
                 # Fetch source videos map
                 v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
@@ -844,7 +874,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 if await is_cancelled(project.id, job_id=render_job_id):
                     raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
 
-                final_mp4 = await render_timeline_video(
+                return await render_timeline_video(
                     clips=timeline.clips,
                     source_videos_map=source_videos_map,
                     audio_path=audio_path,
@@ -859,6 +889,32 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     project_id=project.id,
                     job_id=render_job_id,
                 )
+
+        try:
+            render_task = asyncio.create_task(_do_render())
+            watchdog_task = asyncio.create_task(_watchdog())
+
+            try:
+                done, pending = await asyncio.wait(
+                    [render_task, watchdog_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for t in pending:
+                    t.cancel()
+                    try:
+                        await t
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+                if watchdog_task in done and not watchdog_task.cancelled():
+                    exc = watchdog_task.exception()
+                    if exc:
+                        raise exc
+
+                final_mp4 = render_task.result()
+            finally:
+                if not watchdog_task.done():
+                    watchdog_task.cancel()
 
             if await is_cancelled(project.id, job_id=render_job_id):
                 Path(final_mp4).unlink(missing_ok=True)
@@ -881,7 +937,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                await proc.communicate()
+                await asyncio.wait_for(proc.communicate(), timeout=30.0)
                 if not thumb_file.exists() or thumb_file.stat().st_size == 0:
                     fallback_cmd = [
                         "ffmpeg", "-y",
@@ -896,7 +952,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                     )
-                    await proc_fb.communicate()
+                    await asyncio.wait_for(proc_fb.communicate(), timeout=30.0)
 
                 if thumb_file.exists() and thumb_file.stat().st_size > 0:
                     thumb_path_str = str(thumb_file)
@@ -926,11 +982,12 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 },
             )
 
-        except TaskCancelledException as ce:
-            log.info("Render job %s was cancelled by user: %s", render_job_id, ce)
+        except (TaskCancelledException, asyncio.CancelledError) as ce:
+            log.info("Render job %s was cancelled or interrupted: %s", render_job_id, ce)
             job.status = "failed"
-            job.error_message = "Rendering dibatalkan oleh pengguna"
-            job.log_output = "Rendering video dibatalkan oleh pengguna."
+            job.error_message = "Rendering dibatalkan atau diinterupsi oleh sistem/pengguna"
+            job.log_output = "Rendering video diinterupsi atau dibatalkan."
+            job.completed_at = datetime.utcnow()
             await db.commit()
 
             await publish_project_event(
@@ -939,17 +996,38 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 status="error",
                 progress=0,
                 stage="cancelled",
-                message="Rendering video dibatalkan oleh pengguna.",
+                message="Rendering video dibatalkan atau diinterupsi.",
                 error="Dibatalkan",
                 data={"job_id": render_job_id},
             )
             return
 
-        except Exception as e:
-            log.exception("Render job %s failed", render_job_id)
+        except TimeoutError as te:
+            log.warning("Render job %s timed out / stuck: %s", render_job_id, te)
+            job.status = "failed"
+            job.error_message = str(te)
+            job.log_output = f"Render timeout: {te}"
+            job.completed_at = datetime.utcnow()
+            await db.commit()
+
+            await publish_project_event(
+                project.id,
+                task_type="render",
+                status="error",
+                progress=0,
+                stage="timeout",
+                message=f"Rendering video terhenti (Timeout): {str(te)}",
+                error=str(te),
+                data={"job_id": render_job_id},
+            )
+            return
+
+        except BaseException as e:
+            log.exception("Render job %s failed: %s", render_job_id, e)
             job.status = "failed"
             job.error_message = str(e)
             job.log_output = f"Error saat rendering: {e}"
+            job.completed_at = datetime.utcnow()
             await db.commit()
 
             await publish_project_event(
@@ -962,6 +1040,27 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 error=str(e),
                 data={"job_id": render_job_id},
             )
+            if not isinstance(e, Exception):
+                raise
+
+
+async def cleanup_stuck_render_jobs() -> None:
+    """Mark any orphaned queued/rendering jobs from a previous crash/restart as failed."""
+    try:
+        async with SessionLocal() as db:
+            res = await db.execute(
+                select(RenderJob).where(RenderJob.status.in_(["rendering", "queued"]))
+            )
+            stuck_jobs = res.scalars().all()
+            for job in stuck_jobs:
+                job.status = "failed"
+                job.error_message = "Proses rendering sebelumnya terputus akibat restart sistem. Silakan klik render ulang."
+                job.log_output = "Rendering video terhenti karena sistem/worker dimulai ulang."
+            if stuck_jobs:
+                await db.commit()
+                log.info("Cleaned up %d stuck render job(s) from previous run.", len(stuck_jobs))
+    except Exception as e:
+        log.warning("Could not cleanup stuck render jobs on startup: %s", e)
 
 
 async def transcribe_scenes_job(

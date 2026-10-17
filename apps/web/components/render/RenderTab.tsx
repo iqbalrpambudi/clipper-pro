@@ -49,7 +49,7 @@ function formatBytes(bytes?: number | null): string {
 
 export function RenderTab({ project }: RenderTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, activeTask } = useStudioStore();
+  const { showToast, activeTask, setActiveTask } = useStudioStore();
 
   const [resolution, setResolution] = useState(project.resolution || "1080p");
   const [antiCopyright, setAntiCopyright] = useState(project.background_fill?.anti_copyright ?? true);
@@ -143,6 +143,7 @@ export function RenderTab({ project }: RenderTabProps) {
   const cancelJobMutation = useMutation({
     mutationFn: (jobId: string) => api.cancelRenderJob(project.id, jobId),
     onSuccess: async (data) => {
+      setActiveTask(null, project.id);
       await refetchJobs();
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast(data.message || "Rendering video berhasil dibatalkan", "info");

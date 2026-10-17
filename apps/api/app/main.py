@@ -33,6 +33,8 @@ async def lifespan(app: FastAPI):
         log.info("Database initialized and templates seeded.")
         from app.services.cancellation import start_cancellation_listener
         await start_cancellation_listener()
+        from app.workers.tasks import cleanup_stuck_render_jobs
+        await cleanup_stuck_render_jobs()
     except Exception as e:
         # Fail fast: serving traffic with no DB only produces confusing 500s.
         log.error("Database initialization failed: %s", e)

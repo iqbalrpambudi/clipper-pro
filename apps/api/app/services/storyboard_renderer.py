@@ -32,9 +32,9 @@ def _build_zoompan_filter(
     Generate an FFmpeg zoompan filter expression tailored for storyboard illustrations.
     total_frames: total number of output frames for this slide.
     """
-    # High-resolution input scale before zoompan to ensure crisp hand-drawn details
-    scale_w = int(w * 1.5)
-    scale_h = int(h * 1.5)
+    # Ensure scale_w and scale_h are even integers to prevent pad filter failure on odd dimensions
+    scale_w = int(round(w * 1.25 / 2)) * 2
+    scale_h = int(round(h * 1.25 / 2)) * 2
 
     motion = (motion_effect or "zoom_in").lower().strip()
 
@@ -151,80 +151,109 @@ async def render_storyboard_video(
         if audio_dur > 0 and sum_item_dur > 0:
             scale_ratio = audio_dur / sum_item_dur
 
-        current_elapsed = 0.0
+        total_audio_frames = sec_to_frame(audio_dur, COMPOSITION_FPS) if audio_dur > 0 else 0
+        current_frame = 0
+        slide_specs = []
 
         for idx, item in enumerate(valid_items):
-            if await is_cancelled(project_id, job_id=job_id):
-                log.info("Storyboard rendering cancelled by user at item %d/%d (job=%s)", idx, total_items, job_id)
-                raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
-
-            img_path = str(item["file_path"])
             base_duration = float(item.get("duration") or 4.0)
 
-            # Precise timing: use start_time to next start_time to bridge pauses seamlessly
+            # Precise timing: calculate exact frame boundaries matching preview player and audio alignment
             if has_start_times and item.get("start_time") is not None:
-                cur_start = float(item["start_time"])
+                # First slide always starts at 0.0s (frame 0) to seamlessly cover any initial silence
+                start_sec = 0.0 if idx == 0 else float(item["start_time"])
                 if idx < total_items - 1 and valid_items[idx + 1].get("start_time") is not None:
                     next_start = float(valid_items[idx + 1]["start_time"])
-                    duration = max(1.0, next_start - cur_start)
+                    end_sec = max(start_sec + 0.5, next_start)
                 else:
-                    if audio_dur > cur_start:
-                        duration = max(1.0, audio_dur - cur_start)
-                    else:
-                        duration = max(1.0, base_duration)
+                    end_sec = max(start_sec + 1.0, audio_dur if audio_dur > 0 else start_sec + base_duration)
             else:
                 if audio_dur > 0 and 0.5 < scale_ratio < 2.0:
-                    duration = base_duration * scale_ratio
+                    dur = base_duration * scale_ratio
                 else:
-                    duration = base_duration
-                duration = max(1.0, duration)
-                if idx == total_items - 1 and audio_dur > (current_elapsed + duration):
-                    duration = audio_dur - current_elapsed + 0.5
+                    dur = base_duration
+                start_sec = frame_to_sec(current_frame, COMPOSITION_FPS)
+                end_sec = start_sec + max(1.0, dur)
 
-            current_elapsed += duration
-            total_frames = max(15, sec_to_frame(duration))
-            actual_dur = frame_to_sec(total_frames)
+            start_f = sec_to_frame(start_sec, COMPOSITION_FPS)
+            end_f = sec_to_frame(end_sec, COMPOSITION_FPS)
 
+            # Monotonic frame boundary: slide begins exactly where previous slide ended
+            start_f = max(current_frame, start_f)
+            slide_frames = max(15, end_f - start_f)
+
+            # Extend or align last slide to match exact audio length
+            if idx == total_items - 1 and total_audio_frames > start_f:
+                slide_frames = max(15, total_audio_frames - start_f)
+
+            actual_dur = frame_to_sec(slide_frames, COMPOSITION_FPS)
+            current_frame = start_f + slide_frames
             motion = item.get("motion_effect", "zoom_in")
             chunk_out = temp_dir / f"sb_chunk_{idx:04d}.ts"
 
-            # Build motion filter
-            vf_filter = _build_zoompan_filter(motion, total_frames, w, h, fps=COMPOSITION_FPS)
-            # Add subtle color vibrancy for consistent hand-drawn look
-            vf_filter += ",eq=contrast=1.03:saturation=1.05:brightness=0.01,fps=30"
+            slide_specs.append({
+                "idx": idx,
+                "item": item,
+                "img_path": str(item["file_path"]),
+                "motion": motion,
+                "total_frames": slide_frames,
+                "actual_dur": actual_dur,
+                "chunk_out": chunk_out,
+            })
 
-            render_clip_cmd = [
-                "ffmpeg",
-                "-y",
-                "-loop", "1",
-                "-t", f"{actual_dur:.4f}",
-                "-i", img_path,
-                "-filter_complex", vf_filter,
-                "-t", f"{actual_dur:.4f}",
-                "-r", "30",
-                "-fps_mode", "cfr",
-                "-c:v", "libx264",
-                "-preset", "ultrafast",
-                "-crf", "22",
-                "-g", "30",
-                "-keyint_min", "30",
-                "-sc_threshold", "0",
-                "-pix_fmt", "yuv420p",
-                "-an",
-                str(chunk_out),
-            ]
+        # Process slides with bounded concurrency (3 parallel FFmpeg renders) for 3-4x faster rendering
+        sem = asyncio.Semaphore(3)
+        completed_count = 0
 
-            ret, stderr = await _run_ffmpeg(render_clip_cmd, proc_key=proc_key)
-            if ret != 0:
-                err = stderr.decode()[-300:]
-                log.error("Storyboard slide %d failed: %s", idx, err)
-                raise RuntimeError(f"Gagal memproses gambar adegan {idx+1}: {err}")
+        async def _render_single_slide(spec: Dict[str, Any]):
+            nonlocal completed_count
+            async with sem:
+                if await is_cancelled(project_id, job_id=job_id):
+                    log.info("Storyboard rendering cancelled by user at slide %d/%d (job=%s)", spec["idx"], total_items, job_id)
+                    raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
 
-            clip_files.append(chunk_out)
+                # Build motion filter
+                vf_filter = _build_zoompan_filter(spec["motion"], spec["total_frames"], w, h, fps=COMPOSITION_FPS)
+                # Add subtle color vibrancy for consistent hand-drawn look
+                vf_filter += f",eq=contrast=1.03:saturation=1.05:brightness=0.01,fps={COMPOSITION_FPS}"
 
-            if progress_callback:
-                pct = 10 + int((idx + 1) / total_items * 50)
-                await progress_callback(pct, f"Merender adegan visual {idx + 1}/{total_items} (efek: {motion})...")
+                render_clip_cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-framerate", str(COMPOSITION_FPS),
+                    "-loop", "1",
+                    "-i", spec["img_path"],
+                    "-filter_complex", vf_filter,
+                    "-frames:v", str(spec["total_frames"]),
+                    "-r", str(COMPOSITION_FPS),
+                    "-fps_mode", "cfr",
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-crf", "22",
+                    "-g", str(COMPOSITION_FPS),
+                    "-keyint_min", str(COMPOSITION_FPS),
+                    "-sc_threshold", "0",
+                    "-pix_fmt", "yuv420p",
+                    "-an",
+                    str(spec["chunk_out"]),
+                ]
+
+                slide_proc_key = f"{proc_key}:slide_{spec['idx']}" if proc_key else None
+                ret, stderr = await _run_ffmpeg(render_clip_cmd, proc_key=slide_proc_key, timeout=120.0)
+                if ret != 0:
+                    if await is_cancelled(project_id, job_id=job_id):
+                        raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+                    err = stderr.decode(errors="replace")[-300:]
+                    log.error("Storyboard slide %d failed: %s", spec["idx"], err)
+                    raise RuntimeError(f"Gagal memproses gambar adegan {spec['idx']+1}: {err}")
+
+                completed_count += 1
+                if progress_callback:
+                    pct = 10 + int(completed_count / total_items * 50)
+                    await progress_callback(pct, f"Merender adegan visual {completed_count}/{total_items} (efek: {spec['motion']})...")
+
+        await asyncio.gather(*[_render_single_slide(s) for s in slide_specs])
+        clip_files = [s["chunk_out"] for s in slide_specs]
 
         # Step 2: Concatenate all storyboard slides
         if progress_callback:
@@ -246,9 +275,11 @@ async def render_storyboard_video(
             str(concatenated_video),
         ]
 
-        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key)
+        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key, timeout=180.0)
         if ret_concat != 0:
-            err_msg = stderr_concat.decode()[-400:]
+            if await is_cancelled(project_id, job_id=job_id):
+                raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+            err_msg = stderr_concat.decode(errors="replace")[-400:]
             log.error("Storyboard concat failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg concat error: {err_msg}")
 
@@ -303,9 +334,11 @@ async def render_storyboard_video(
         if progress_callback:
             await progress_callback(85, "Menyelesaikan kompilasi video final 16:9...")
 
-        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key)
+        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key, timeout=600.0)
         if ret_final != 0:
-            err_msg = stderr_final.decode()[-400:]
+            if await is_cancelled(project_id, job_id=job_id):
+                raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+            err_msg = stderr_final.decode(errors="replace")[-400:]
             log.error("Final storyboard render failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg render error: {err_msg}")
 

@@ -39,22 +39,22 @@ interface TTSTabProps {
 
 export const GEMINI_TTS_MODELS = [
   {
+    id: "gemini-2.5-flash-preview-tts",
+    name: "Gemini 2.5 Flash TTS",
+    badge: "Direkomendasikan (Paling Stabil)",
+    desc: "Tone & intonasi persona paling konsisten tanpa drift antar segmen narasi panjang.",
+  },
+  {
     id: "gemini-3.8-flash-lite-tts",
     name: "Gemini 3.8 Flash-Lite TTS",
-    badge: "Direkomendasikan (Cepat & Hemat)",
-    desc: "Latensi super cepat, bebas kuota hemat, artikulasi jernih tanpa jeda.",
+    badge: "Cepat & Hemat",
+    desc: "Latensi super cepat, artikulasi jernih, dan hemat kuota.",
   },
   {
     id: "gemini-3.8-flash-tts",
     name: "Gemini 3.8 Flash TTS",
     badge: "Kualitas Studio",
     desc: "Vokal kualitas studio, dinamika emosi & intonasi acting lebih ekspresif.",
-  },
-  {
-    id: "gemini-2.5-flash-preview-tts",
-    name: "Gemini 2.5 Flash TTS",
-    badge: "Stabil",
-    desc: "Artikulasi jernih & latensi seimbang.",
   },
   {
     id: "gemini-3.1-flash-tts-preview",
@@ -89,11 +89,12 @@ export function TTSTab({ project }: TTSTabProps) {
 
   const [selectedVoice, setSelectedVoice] = useState("Puck");
   const [provider, setProvider] = useState("gemini");
-  const [geminiModel, setGeminiModel] = useState("gemini-3.8-flash-lite-tts");
+  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash-preview-tts");
   const [rate, setRate] = useState("+0%");
   const [pitch, setPitch] = useState("+0Hz");
+  const [fallbackEnabled, setFallbackEnabled] = useState(true);
 
-  // Fetch active config to sync saved tts_provider
+  // Fetch active config to sync saved tts_provider & fallback setting
   const { data: appConfig } = useQuery({
     queryKey: ["model-config"],
     queryFn: api.getModelConfig,
@@ -102,6 +103,9 @@ export function TTSTab({ project }: TTSTabProps) {
   useEffect(() => {
     if (appConfig?.tts_provider && appConfig.tts_provider.startsWith("gemini-")) {
       setGeminiModel(appConfig.tts_provider);
+    }
+    if (appConfig?.tts_fallback_enabled !== undefined) {
+      setFallbackEnabled(appConfig.tts_fallback_enabled);
     }
   }, [appConfig]);
 
@@ -253,6 +257,7 @@ export function TTSTab({ project }: TTSTabProps) {
         rate,
         pitch,
         model: provider === "gemini" ? geminiModel : undefined,
+        fallback_enabled: fallbackEnabled,
       });
     },
     onSuccess: async () => {
@@ -632,6 +637,26 @@ export function TTSTab({ project }: TTSTabProps) {
                   <option value="+5Hz">Lebih Cerah (+5Hz)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Fallback to Edge-TTS Checkbox */}
+            <div className="pt-1">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={fallbackEnabled}
+                  onChange={(e) => setFallbackEnabled(e.target.checked)}
+                  className="mt-0.5 w-3.5 h-3.5 rounded border-[#2E2E2E] bg-[#141414] text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                />
+                <div>
+                  <span className="text-[11px] font-medium text-slate-300 group-hover:text-white transition-colors">
+                    Fallback otomatis ke Edge-TTS jika API error / kuota habis
+                  </span>
+                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
+                    Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada bagian yang gagal.
+                  </p>
+                </div>
+              </label>
             </div>
 
             {/* Live Progress Card for TTS */}

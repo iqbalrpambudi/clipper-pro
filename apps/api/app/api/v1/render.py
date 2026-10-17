@@ -25,6 +25,10 @@ async def enqueue_render_task(job_id: str):
         asyncio.create_task(render_video_job({}, job_id))
 
 
+from datetime import datetime
+from app.services.cancellation import clear_cancellation, kill_all_matching_processes
+
+
 @router.post("", response_model=RenderJobResponse)
 async def trigger_final_render(
     project_id: str,
@@ -33,6 +37,22 @@ async def trigger_final_render(
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    # 1. Clear any prior project-level cancellation flags so new render starts clean
+    await clear_cancellation(project_id=project_id)
+
+    # 2. Clean up any active/queued jobs from previous runs to prevent competing renders
+    res = await db.execute(
+        select(RenderJob).where(
+            RenderJob.project_id == project_id,
+            RenderJob.status.in_(["rendering", "queued"]),
+        )
+    )
+    for old_job in res.scalars().all():
+        kill_all_matching_processes(project_id, job_id=old_job.id)
+        old_job.status = "failed"
+        old_job.error_message = "Dibatalkan karena proses render baru telah dimulai."
+        old_job.completed_at = datetime.utcnow()
 
     job = RenderJob(
         project_id=project_id,
@@ -44,6 +64,9 @@ async def trigger_final_render(
     db.add(job)
     await db.commit()
     await db.refresh(job)
+
+    # Clear specific job cancellation flag
+    await clear_cancellation(job_id=job.id)
 
     await enqueue_render_task(job.id)
 
@@ -71,6 +94,22 @@ async def trigger_preview_render(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
+    # 1. Clear any prior project-level cancellation flags so new render starts clean
+    await clear_cancellation(project_id=project_id)
+
+    # 2. Clean up any active/queued jobs from previous runs
+    res = await db.execute(
+        select(RenderJob).where(
+            RenderJob.project_id == project_id,
+            RenderJob.status.in_(["rendering", "queued"]),
+        )
+    )
+    for old_job in res.scalars().all():
+        kill_all_matching_processes(project_id, job_id=old_job.id)
+        old_job.status = "failed"
+        old_job.error_message = "Dibatalkan karena proses preview render baru telah dimulai."
+        old_job.completed_at = datetime.utcnow()
+
     job = RenderJob(
         project_id=project_id,
         render_type="preview",
@@ -81,6 +120,9 @@ async def trigger_preview_render(
     db.add(job)
     await db.commit()
     await db.refresh(job)
+
+    # Clear specific job cancellation flag
+    await clear_cancellation(job_id=job.id)
 
     await enqueue_render_task(job.id)
 
@@ -107,6 +149,20 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
         .order_by(RenderJob.created_at.desc())
     )
     jobs = res.scalars().all()
+
+    # Auto-heal any stuck jobs older than 15 minutes that were left in rendering/queued
+    now = datetime.utcnow()
+    has_updated = False
+    for j in jobs:
+        if j.status in ("rendering", "queued") and j.created_at:
+            created_at_dt = j.created_at.replace(tzinfo=None) if getattr(j.created_at, "tzinfo", None) else j.created_at
+            if (now - created_at_dt).total_seconds() > 900:
+                j.status = "failed"
+                j.error_message = "Rendering terhenti otomatis karena melebihi batas waktu (timeout)."
+                j.completed_at = now
+                has_updated = True
+    if has_updated:
+        await db.commit()
     return [
         RenderJobResponse(
             id=j.id,
@@ -221,6 +277,7 @@ async def cancel_render_job(
 
     job.status = "failed"
     job.error_message = "Rendering dibatalkan oleh pengguna"
+    job.completed_at = datetime.utcnow()
     await db.commit()
 
     await publish_project_event(

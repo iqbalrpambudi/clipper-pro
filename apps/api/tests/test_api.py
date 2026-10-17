@@ -391,7 +391,7 @@ def test_split_text_for_tts():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tts_payload_structure_and_temperature(tmp_path, monkeypatch):
+async def test_gemini_tts_payload_structure_omits_temperature(tmp_path, monkeypatch):
     from app.services.tts import generate_gemini_tts
     import httpx
 
@@ -424,7 +424,8 @@ async def test_gemini_tts_payload_structure_and_temperature(tmp_path, monkeypatc
         )
 
     assert "systemInstruction" not in captured_payload
-    assert captured_payload["generationConfig"]["temperature"] == 0.1
+    # Temperature must NOT be present in TTS payload as Google API hangs/times out if supplied
+    assert "temperature" not in captured_payload["generationConfig"]
     assert captured_payload["generationConfig"]["responseModalities"] == ["AUDIO"]
 
 
@@ -713,5 +714,53 @@ async def test_generate_speech_audio_empty_text():
 
     with pytest.raises(ValueError, match="Teks narasi tidak boleh kosong"):
         await generate_speech_audio("   ", "/tmp/out.mp3")
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_audio_fallback_disabled_raises_error(monkeypatch):
+    from app.services import tts
+
+    async def mock_fail(*args, **kwargs):
+        raise RuntimeError("Google API Quota Limit Exceeded")
+
+    monkeypatch.setattr(tts, "generate_gemini_tts", mock_fail)
+
+    with pytest.raises(RuntimeError, match="Google API Quota Limit Exceeded"):
+        await tts.generate_speech_audio(
+            text="Halo dunia untuk pengujian",
+            output_path="/tmp/test_fallback_disabled.mp3",
+            provider="gemini",
+            fallback_enabled=False,
+        )
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_audio_fallback_enabled_uses_edge(monkeypatch):
+    from app.services import tts
+
+    async def mock_gemini_fail(*args, **kwargs):
+        raise RuntimeError("Google API Quota Limit Exceeded")
+
+    edge_called = False
+    async def mock_edge_success(*args, **kwargs):
+        nonlocal edge_called
+        edge_called = True
+        return 5.0
+
+    monkeypatch.setattr(tts, "generate_gemini_tts", mock_gemini_fail)
+    monkeypatch.setattr(tts, "generate_edge_tts", mock_edge_success)
+
+    fallback_info = {}
+    dur = await tts.generate_speech_audio(
+        text="Halo dunia untuk pengujian",
+        output_path="/tmp/test_fallback_enabled.mp3",
+        provider="gemini",
+        fallback_enabled=True,
+        fallback_info=fallback_info,
+    )
+
+    assert edge_called is True
+    assert dur == 5.0
+    assert fallback_info.get("fell_back") is True
 
 

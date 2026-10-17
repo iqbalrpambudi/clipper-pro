@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     AI_CHAT_MODEL: str = "gemini-2.0-flash"
     AI_VISION_MODEL: str = "gemini-2.0-flash"
 
-    TTS_PROVIDER: str = "gemini"
+    TTS_PROVIDER: str = "gemini-2.5-flash-preview-tts"
     GEMINI_API_KEY: str = ""
     GEMINI_TTS_VOICE: str = "Puck"
 

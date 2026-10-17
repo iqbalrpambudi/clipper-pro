@@ -32,6 +32,7 @@ class TTSGenerateRequest(BaseModel):
     rate: str = "+0%"
     pitch: str = "+0Hz"
     model: Optional[str] = None
+    fallback_enabled: Optional[bool] = None
 
 
 class AudioTrackResponse(BaseModel):

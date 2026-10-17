@@ -224,6 +224,7 @@ export interface ModelConfig {
   tts_provider: string;
   tts_api_key_masked?: string | null;
   has_tts_api_key: boolean;
+  tts_fallback_enabled?: boolean;
   image_base_url?: string | null;
   image_model?: string;
   image_concurrency?: number;

@@ -64,6 +64,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
+        tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
@@ -98,6 +99,8 @@ async def save_model_configuration(
         cfg.tts_provider = payload.tts_provider
     if payload.tts_api_key is not None and payload.tts_api_key.strip():
         cfg.tts_api_key_encrypted = encrypt_secret(payload.tts_api_key.strip())
+    if payload.tts_fallback_enabled is not None:
+        cfg.tts_fallback_enabled = payload.tts_fallback_enabled
     if payload.image_base_url is not None:
         cfg.image_base_url = payload.image_base_url
     if payload.image_model is not None:
@@ -127,6 +130,7 @@ async def save_model_configuration(
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
+        tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
         image_base_url=cfg.image_base_url,
         image_model=cfg.image_model or "dall-e-3",
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,

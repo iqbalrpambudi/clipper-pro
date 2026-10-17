@@ -37,7 +37,7 @@ function formatBytes(bytes?: number | null): string {
 
 export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, activeTask, setActiveTab } = useStudioStore();
+  const { showToast, activeTask, setActiveTask, setActiveTab } = useStudioStore();
 
   const [resolution, setResolution] = useState(project.resolution || "1080p");
   const [activePlaybackUrl, setActivePlaybackUrl] = useState<string | null>(null);
@@ -83,17 +83,20 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   const cancelJobMutation = useMutation({
     mutationFn: (jobId: string) => api.cancelRenderJob(project.id, jobId),
     onSuccess: () => {
+      setActiveTask(null, project.id);
       queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
-      showToast("Rendering video dibatalkan.", "info");
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast("Rendering video berhasil dibatalkan.", "info");
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal membatalkan render", "error");
     },
   });
 
+  const activeRenderJob = renderJobs.find((j) => j.status === "rendering" || j.status === "queued");
   const isRendering =
-    renderJobs.some((j) => j.status === "rendering" || j.status === "queued") ||
-    activeTask?.task_type === "render";
+    Boolean(activeRenderJob) ||
+    (activeTask?.task_type === "render" && (activeTask.status === "progress" || activeTask.status === "queued"));
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16">
@@ -268,18 +271,27 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   <h4 className="text-xs font-bold text-white font-mono">
-                    Sedang Me-render Video Final ({activeTask?.progress || 25}%)
+                    Sedang Me-render Video Final ({
+                      (activeTask?.task_type === "render" && activeTask.progress !== undefined)
+                        ? activeTask.progress
+                        : (activeRenderJob?.progress || 10)
+                    }%)
                   </h4>
                 </div>
-                {renderJobs[0] && (
+                {activeRenderJob && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => cancelJobMutation.mutate(renderJobs[0].id)}
+                    onClick={() => cancelJobMutation.mutate(activeRenderJob.id)}
+                    disabled={cancelJobMutation.isPending}
                     className="text-rose-400 hover:text-rose-300 text-xs h-7 gap-1"
                   >
-                    <StopCircle className="w-3.5 h-3.5" />
-                    <span>Batalkan</span>
+                    {cancelJobMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <StopCircle className="w-3.5 h-3.5" />
+                    )}
+                    <span>Batalkan Render</span>
                   </Button>
                 )}
               </div>
@@ -288,12 +300,21 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden">
                 <div
                   className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-300"
-                  style={{ width: `${Math.max(5, activeTask?.progress || 25)}%` }}
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      (activeTask?.task_type === "render" && activeTask.progress !== undefined)
+                        ? activeTask.progress
+                        : (activeRenderJob?.progress || 10)
+                    )}%`
+                  }}
                 />
               </div>
 
               <p className="text-xs text-muted-foreground font-mono">
-                {activeTask?.message || "FFmpeg sedang menggabungkan ilustrasi hand-drawn, audio, dan subtitle..."}
+                {(activeTask?.task_type === "render" && activeTask.message) ||
+                  activeRenderJob?.log_output ||
+                  "FFmpeg sedang menggabungkan ilustrasi hand-drawn, audio, dan subtitle..."}
               </p>
             </div>
           )}
@@ -379,40 +400,65 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                         <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                           Ukuran: {formatBytes(job.file_size_bytes)} • {new Date(job.created_at).toLocaleString("id-ID")}
                         </p>
+                        {job.status === "failed" && job.error_message && (
+                          <p className="text-[11px] text-rose-400/90 mt-1 max-w-md">
+                            {job.error_message}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {job.status === "completed" && job.output_url && (
-                      <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(job.status === "rendering" || job.status === "queued") && (
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          onClick={() => setActivePlaybackUrl(job.output_url!)}
-                          className="border-[#2E2E2E] text-xs h-8 gap-1.5"
+                          onClick={() => cancelJobMutation.mutate(job.id)}
+                          disabled={cancelJobMutation.isPending && cancelJobMutation.variables === job.id}
+                          className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5 px-3 font-semibold shadow-sm"
+                          title="Batalkan proses render ini"
                         >
-                          <Play className="w-3.5 h-3.5 text-violet-400" />
-                          <span>Putar</span>
+                          {cancelJobMutation.isPending && cancelJobMutation.variables === job.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <StopCircle className="w-3.5 h-3.5" />
+                          )}
+                          <span>Batalkan</span>
                         </Button>
+                      )}
 
-                        <a
-                          href={job.output_url}
-                          download={`storyboard_${project.id}.mp4`}
-                          className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-violet-500/20"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Unduh MP4</span>
-                        </a>
+                      {job.status === "completed" && job.output_url && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActivePlaybackUrl(job.output_url!)}
+                            className="border-[#2E2E2E] text-xs h-8 gap-1.5"
+                          >
+                            <Play className="w-3.5 h-3.5 text-violet-400" />
+                            <span>Putar</span>
+                          </Button>
 
-                        <button
-                          type="button"
-                          onClick={() => deleteJobMutation.mutate(job.id)}
-                          className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
-                          title="Hapus file"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                          <a
+                            href={job.output_url}
+                            download={`storyboard_${project.id}.mp4`}
+                            className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-violet-500/20"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Unduh MP4</span>
+                          </a>
+                        </>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => deleteJobMutation.mutate(job.id)}
+                        className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                        title="Hapus riwayat render"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -17,6 +17,7 @@ class ModelConfig(Base):
     api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tts_provider: Mapped[str] = mapped_column(String(50), default="gemini-2.5-flash-preview-tts")
     tts_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tts_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     image_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     image_model: Mapped[str] = mapped_column(String(100), default="dall-e-3")
     image_concurrency: Mapped[int] = mapped_column(Integer, default=2)

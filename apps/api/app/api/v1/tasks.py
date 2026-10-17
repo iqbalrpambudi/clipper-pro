@@ -41,16 +41,18 @@ async def cancel_project_task(
         v.error_message = "Proses dibatalkan oleh pengguna"
 
     # Cancel any active render jobs
+    from datetime import datetime
     r_res = await db.execute(
         select(RenderJob).where(
             RenderJob.project_id == project_id,
-            RenderJob.status == "rendering"
+            RenderJob.status.in_(["rendering", "queued"])
         )
     )
     active_renders = r_res.scalars().all()
     for r in active_renders:
         r.status = "failed"
         r.error_message = "Rendering dibatalkan oleh pengguna"
+        r.completed_at = datetime.utcnow()
 
     # Cancel any active audio generation
     a_res = await db.execute(

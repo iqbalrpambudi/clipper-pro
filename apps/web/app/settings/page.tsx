@@ -73,8 +73,9 @@ export default function SettingsPage() {
   const [visionModel, setVisionModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [ttsProvider, setTtsProvider] = useState("gemini");
-  const [ttsModel, setTtsModel] = useState("gemini-3.8-flash-lite-tts");
+  const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
   const [ttsApiKey, setTtsApiKey] = useState("");
+  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(true);
 
   // AI Image Generator State
   const [imageBaseUrl, setImageBaseUrl] = useState("");
@@ -206,8 +207,9 @@ export default function SettingsPage() {
       if (config.tts_provider && config.tts_provider.startsWith("gemini-")) {
         setTtsModel(config.tts_provider);
       } else {
-        setTtsModel("gemini-3.8-flash-lite-tts");
+        setTtsModel("gemini-2.5-flash-preview-tts");
       }
+      setTtsFallbackEnabled(config.tts_fallback_enabled !== false);
       setImageBaseUrl(config.image_base_url || "");
       setImageModel(config.image_model || "dall-e-3");
       setImageConcurrency(config.image_concurrency || 2);
@@ -350,6 +352,7 @@ export default function SettingsPage() {
       api_key: apiKey.trim() || undefined,
       tts_provider: ttsProvider === "gemini" ? ttsModel : ttsProvider,
       tts_api_key: ttsApiKey.trim() || undefined,
+      tts_fallback_enabled: ttsFallbackEnabled,
       image_base_url: imageBaseUrl.trim() || null,
       image_model: imageModel.trim() || "dall-e-3",
       image_concurrency: imageConcurrency,
@@ -787,15 +790,15 @@ export default function SettingsPage() {
                       onChange={(e) => setTtsModel(e.target.value)}
                       className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
-                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (direkomendasikan, cepat & hemat)</option>
+                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)</option>
+                      <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (cepat & hemat)</option>
                       <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
-                      <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (stabil)</option>
                       <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
                       <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
                       <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
                     </select>
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Pilih model Gemini TTS aktif. Gemini 3.8 Flash-Lite direkomendasikan karena performa cepat, tanpa jeda senyap, dan hemat kuota.
+                      Pilih model Gemini TTS aktif. Gemini 2.5 Flash TTS direkomendasikan untuk stabilitas intonasi & persona vokal antar segmen narasi panjang.
                     </p>
                   </div>
                 )}
@@ -818,6 +821,25 @@ export default function SettingsPage() {
                     onChange={(e) => setTtsApiKey(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
                   />
+                </div>
+
+                <div className="sm:col-span-2 pt-2 border-t border-surface-border/50">
+                  <label className="flex items-start gap-3 cursor-pointer select-none group">
+                    <input
+                      type="checkbox"
+                      checked={ttsFallbackEnabled}
+                      onChange={(e) => setTtsFallbackEnabled(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-surface-border bg-surface text-brand-500 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        Aktifkan Fallback Otomatis ke Edge-TTS saat Error / Limit Kuota
+                      </span>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                        Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server timeout) pada model TTS utama akan otomatis dialihkan ke suara natural Edge-TTS sehingga audio tetap lengkap dan video tidak gagal. Jika dinonaktifkan, proses akan langsung berhenti dengan pesan error dan audio hanya tersimpan hingga bagian yang berhasil (terpotong).
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>

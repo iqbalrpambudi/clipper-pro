@@ -19,6 +19,9 @@ import {
   Zap,
   Eye,
   Save,
+  Palette,
+  Sliders,
+  CheckCircle2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -34,79 +37,129 @@ interface StoryboardTimelineTabProps {
   };
 }
 
+function hexToRgba(hex: string, opacity: number = 1): string {
+  if (!hex) return `rgba(0, 0, 0, ${opacity})`;
+  const clean = hex.replace("#", "");
+  const fullHex = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const r = parseInt(fullHex.substring(0, 2), 16) || 0;
+  const g = parseInt(fullHex.substring(2, 4), 16) || 0;
+  const b = parseInt(fullHex.substring(4, 6), 16) || 0;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 // Popular 1-Click Color Schemes matching Short Clipper
 const COLOR_PRESETS = [
   {
     name: "TikTok Viral",
     icon: Flame,
     font_family: "Poppins",
+    font_weight: "Bold",
     primary_color: "#FFFFFF",
     highlight_color: "#FFE600",
     outline_color: "#000000",
-    outline_width: 4,
+    outline_width: 5,
     box_color: "#000000",
     box_opacity: 0,
     display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.15,
+  },
+  {
+    name: "Alex Hormozi",
+    icon: Zap,
+    font_family: "Bebas Neue",
+    font_weight: "Bold",
+    primary_color: "#FFFFFF",
+    highlight_color: "#00FF66",
+    outline_color: "#000000",
+    outline_width: 6,
+    box_color: "#000000",
+    box_opacity: 0,
+    display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.25,
   },
   {
     name: "Cyber Aqua",
     icon: Zap,
     font_family: "Poppins",
+    font_weight: "Bold",
     primary_color: "#FFFFFF",
     highlight_color: "#00E5FF",
     outline_color: "#000000",
-    outline_width: 4,
+    outline_width: 5,
     box_color: "#000000",
     box_opacity: 0,
     display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.15,
   },
   {
     name: "Neon Lime",
     icon: Sparkles,
     font_family: "Montserrat",
+    font_weight: "Bold",
     primary_color: "#FFFFFF",
     highlight_color: "#39FF14",
     outline_color: "#000000",
-    outline_width: 4,
+    outline_width: 5,
     box_color: "#000000",
     box_opacity: 0,
     display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.15,
   },
   {
     name: "Hot Sunset",
     icon: Flame,
     font_family: "Poppins",
+    font_weight: "Bold",
     primary_color: "#FFFFFF",
     highlight_color: "#FF453A",
     outline_color: "#000000",
-    outline_width: 4,
+    outline_width: 5,
     box_color: "#000000",
     box_opacity: 0,
     display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.15,
   },
   {
     name: "Minimal Clean",
     icon: Eye,
     font_family: "Inter",
+    font_weight: "Regular",
     primary_color: "#F8FAFC",
     highlight_color: "#38BDF8",
     outline_color: "#0F172A",
-    outline_width: 2,
+    outline_width: 3,
     box_color: "#000000",
     box_opacity: 0,
     display_mode: "full_sentence" as const,
+    burst_word_count: 2,
+    highlight_animation: "color" as const,
+    scale_factor: 1.0,
   },
   {
     name: "Caption Box",
     icon: Layers,
     font_family: "Poppins",
+    font_weight: "Bold",
     primary_color: "#FFFFFF",
     highlight_color: "#FFE600",
     outline_color: "#000000",
-    outline_width: 0,
+    outline_width: 2,
     box_color: "#000000",
     box_opacity: 0.75,
     display_mode: "burst" as const,
+    burst_word_count: 2,
+    highlight_animation: "scale" as const,
+    scale_factor: 1.15,
   },
 ];
 
@@ -265,11 +318,13 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const scale = frameDimensions.width / 1920;
   const scaleY = frameDimensions.height / 1080;
   const scaledFontSize = Math.max(9, Math.round((subtitleStyle.font_size || 38) * scale));
-  const scaledOutlineWidth = Math.max(0.5, Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2)));
+  const scaledOutlineWidth = Math.max(0, Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2)));
   const scaledOffsetY = Math.round((subtitleStyle.offset_y || 0) * scaleY);
   const scaledOffsetX = Math.round((subtitleStyle.offset_x || 0) * scale);
-  const isScaleAnim = subtitleStyle.highlight_animation !== "color" && subtitleStyle.highlight_animation !== "none";
+  const isScaleAnim = subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation;
   const zoomScale = isScaleAnim ? (subtitleStyle.scale_factor ?? 1.15) : 1.0;
+  const fw = (subtitleStyle.font_weight || "Bold").toLowerCase();
+  const fontWeightValue = fw === "bold" ? 800 : fw === "semibold" ? 700 : fw === "medium" ? 500 : 400;
 
   // Active words & burst calculations
   const curMs = currentTime * 1000;
@@ -448,14 +503,17 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     style={{
                       fontSize: `${scaledFontSize}px`,
                       fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 700,
+                      fontWeight: fontWeightValue,
                       color: subtitleStyle.primary_color || "#FFFFFF",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      paintOrder: "stroke fill",
                       textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                       backgroundColor:
-                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
-                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
-                      borderRadius: "6px",
+                        (subtitleStyle.box_opacity ?? 0) > 0.05
+                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                          : "transparent",
+                      padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
+                      borderRadius: "8px",
                     }}
                     className="flex items-center justify-center gap-2 uppercase tracking-wide"
                   >
@@ -479,15 +537,18 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     style={{
                       fontSize: `${scaledFontSize * 1.05}px`,
                       fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 700,
+                      fontWeight: fontWeightValue,
                       color: subtitleStyle.highlight_color || "#FFE600",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      paintOrder: "stroke fill",
                       textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                       transform: isScaleAnim ? `scale(${zoomScale})` : "none",
                       backgroundColor:
-                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
-                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
-                      borderRadius: "6px",
+                        (subtitleStyle.box_opacity ?? 0) > 0.05
+                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                          : "transparent",
+                      padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
+                      borderRadius: "8px",
                       display: "inline-block",
                     }}
                     className="uppercase tracking-wide"
@@ -500,14 +561,17 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     style={{
                       fontSize: `${Math.round(scaledFontSize * 0.9)}px`,
                       fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: subtitleStyle.font_weight?.toLowerCase() === "bold" ? 800 : 600,
+                      fontWeight: fontWeightValue,
                       color: subtitleStyle.primary_color || "#FFFFFF",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                      paintOrder: "stroke fill",
                       textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                       backgroundColor:
-                        subtitleStyle.box_opacity > 0.05 ? subtitleStyle.box_color || "#000000" : "transparent",
-                      padding: subtitleStyle.box_opacity > 0.05 ? "4px 12px" : "0",
-                      borderRadius: "6px",
+                        (subtitleStyle.box_opacity ?? 0) > 0.05
+                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                          : "transparent",
+                      padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
+                      borderRadius: "8px",
                     }}
                     className="inline-block uppercase tracking-wide leading-snug max-w-[85%]"
                   >
@@ -743,7 +807,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               <div>
                 <label className="text-[11px] font-semibold text-slate-300 block mb-2 flex items-center justify-between">
                   <span>Pilihan Gaya Preset Cepat:</span>
-                  <span className="text-[10px] text-violet-400 font-mono">WYSIWYG 16:9</span>
+                  <span className="text-[10px] text-violet-400 font-mono">1-Click Theme</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {COLOR_PRESETS.map((p) => {
@@ -758,6 +822,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                             ...subtitleStyle,
                             preset_name: p.name.toLowerCase().replace(/\s+/g, "_"),
                             font_family: p.font_family,
+                            font_weight: p.font_weight,
                             primary_color: p.primary_color,
                             highlight_color: p.highlight_color,
                             outline_color: p.outline_color,
@@ -765,34 +830,55 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                             box_color: p.box_color,
                             box_opacity: p.box_opacity,
                             display_mode: p.display_mode,
+                            burst_word_count: p.burst_word_count,
+                            highlight_animation: p.highlight_animation,
+                            scale_factor: p.scale_factor,
                           };
                           setSubtitleStyle(updated);
                           updateStyleMutation.mutate(updated);
                         }}
-                        className={`p-2 rounded-xl text-xs border text-left flex items-center gap-2 transition ${
+                        className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
                           isSelected
                             ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
                             : "bg-[#141414] border-[#2A2A2A] text-slate-300 hover:border-violet-500/40"
                         }`}
                       >
-                        <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                        <span className="truncate">{p.name}</span>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          <span className="truncate">{p.name}</span>
+                          {isSelected && <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-black/40"
+                            style={{ backgroundColor: p.primary_color }}
+                          />
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-black/40"
+                            style={{ backgroundColor: p.highlight_color }}
+                          />
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-black/40"
+                            style={{ backgroundColor: p.outline_color }}
+                          />
+                        </div>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Display Mode */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1.5">
-                  Mode Tampilan Kata:
-                </label>
+              {/* Mode Tampilan Kata */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-2.5">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Mode Tampilan Kata</span>
+                </span>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { id: "burst", label: "Burst (2 Kata)" },
-                    { id: "per_word", label: "Per Kata" },
-                    { id: "full_sentence", label: "Kalimat" },
+                    { id: "burst", label: "Burst", desc: "Kelompok kata" },
+                    { id: "per_word", label: "Per-Kata", desc: "1 kata bergantian" },
+                    { id: "full_sentence", label: "Kalimat", desc: "Baris penuh" },
                   ].map((m) => (
                     <button
                       key={m.id}
@@ -803,117 +889,375 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           display_mode: m.id as any,
                         }))
                       }
-                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                      className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${
                         subtitleStyle.display_mode === m.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
-                          : "bg-[#141414] border-[#2A2A2A] text-slate-400 hover:text-white"
+                          : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
                       }`}
                     >
-                      {m.label}
+                      <span className="text-xs font-bold">{m.label}</span>
+                      <span className="text-[9px] text-muted-foreground">{m.desc}</span>
                     </button>
                   ))}
                 </div>
+
+                {/* Kata per Kelompok untuk Mode Burst */}
+                {subtitleStyle.display_mode === "burst" && (
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#181818] border border-[#2E2E2E] mt-1">
+                    <span className="text-xs font-semibold text-slate-300">Kata per Kelompok Burst</span>
+                    <div className="flex gap-1.5">
+                      {[2, 3].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() =>
+                            setSubtitleStyle((prev) => ({
+                              ...prev,
+                              burst_word_count: count,
+                            }))
+                          }
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                            (subtitleStyle.burst_word_count || 2) === count
+                              ? "bg-violet-600 text-white shadow-sm"
+                              : "bg-[#242424] text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {count} Kata
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Font Family & Size */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                    Jenis Font:
-                  </label>
-                  <select
-                    value={subtitleStyle.font_family}
-                    onChange={(e) =>
-                      setSubtitleStyle((prev) => ({
-                        ...prev,
-                        font_family: e.target.value,
-                      }))
-                    }
-                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+              {/* Animasi & Efek Gerak Highlight */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-violet-400" />
+                    <span>Animasi & Efek Gerak Highlight</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-violet-300 uppercase px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
+                    {subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation
+                      ? "Scale Pop"
+                      : subtitleStyle.highlight_animation === "color"
+                      ? "Warna Glow"
+                      : "Statis"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))}
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation
+                        ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
+                        : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                    }`}
                   >
-                    <option value="Poppins">Poppins</option>
-                    <option value="Montserrat">Montserrat</option>
-                    <option value="Inter">Inter</option>
-                    <option value="Roboto">Roboto</option>
-                    <option value="Arial">Arial Black</option>
-                  </select>
+                    <span className="text-xs font-bold block">Scale Pop</span>
+                    <span className="text-[9px] text-muted-foreground">Membesar & loncat</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "color"
+                        ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
+                        : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Warna Glow</span>
+                    <span className="text-[9px] text-muted-foreground">Transisi halus</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "none" }))}
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "none"
+                        ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
+                        : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Statis</span>
+                    <span className="text-[9px] text-muted-foreground">Tanpa animasi</span>
+                  </button>
+                </div>
+
+                {/* Tingkat Pembesaran Slider jika Scale Pop */}
+                {(subtitleStyle.highlight_animation === "scale" || !subtitleStyle.highlight_animation) && (
+                  <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2E2E2E] space-y-1.5 mt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-300 font-medium">Tingkat Pembesaran (Scale Factor)</span>
+                      <span className="font-mono text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+                        {(subtitleStyle.scale_factor || 1.15).toFixed(2)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.05}
+                      max={1.65}
+                      step={0.05}
+                      value={subtitleStyle.scale_factor || 1.15}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          scale_factor: parseFloat(e.target.value),
+                        }))
+                      }
+                      className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg mt-1"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>Halus (1.05x)</span>
+                      <span>Standar (1.20x)</span>
+                      <span>Ekstrem (1.60x)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tipografi: Jenis Font & Ketebalan */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Tipografi & Ukuran Teks</span>
+                </span>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                      Jenis Font:
+                    </label>
+                    <select
+                      value={subtitleStyle.font_family || "Poppins"}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          font_family: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                    >
+                      <option value="Poppins">Poppins (Modern Sans)</option>
+                      <option value="Montserrat">Montserrat (Geometric)</option>
+                      <option value="Bebas Neue">Bebas Neue (Punch)</option>
+                      <option value="Anton">Anton (Bold Heavy)</option>
+                      <option value="Oswald">Oswald (Condensed)</option>
+                      <option value="Inter">Inter (Clean)</option>
+                      <option value="Roboto">Roboto (Neutral)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                      Ketebalan Font:
+                    </label>
+                    <select
+                      value={subtitleStyle.font_weight || "Bold"}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          font_weight: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                    >
+                      <option value="Bold">Bold (Tebal)</option>
+                      <option value="SemiBold">SemiBold (Sedang Tebal)</option>
+                      <option value="Medium">Medium (Sedang)</option>
+                      <option value="Regular">Regular (Normal)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1">
                     <span>Ukuran Font:</span>
-                    <span className="font-mono text-violet-400">{subtitleStyle.font_size}px</span>
+                    <span className="font-mono text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+                      {subtitleStyle.font_size || 38}px
+                    </span>
                   </div>
                   <input
                     type="range"
                     min={20}
-                    max={64}
+                    max={72}
                     step={1}
-                    value={subtitleStyle.font_size}
+                    value={subtitleStyle.font_size || 38}
                     onChange={(e) =>
                       setSubtitleStyle((prev) => ({
                         ...prev,
                         font_size: Number(e.target.value),
                       }))
                     }
-                    className="w-full accent-violet-500 cursor-pointer h-2 bg-[#2A2A2A] rounded-lg mt-1.5"
+                    className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg mt-1"
                   />
-                </div>
-              </div>
-
-              {/* Colors Pickers */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                    Warna Teks Biasa
-                  </label>
-                  <div className="flex items-center gap-2 bg-[#141414] border border-[#2A2A2A] rounded-xl p-1.5">
-                    <input
-                      type="color"
-                      value={subtitleStyle.primary_color || "#FFFFFF"}
-                      onChange={(e) =>
-                        setSubtitleStyle((prev) => ({
-                          ...prev,
-                          primary_color: e.target.value,
-                        }))
-                      }
-                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
-                    />
-                    <span className="text-[11px] font-mono text-slate-300">
-                      {subtitleStyle.primary_color}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                    Warna Highlight Karaoke
-                  </label>
-                  <div className="flex items-center gap-2 bg-[#141414] border border-[#2A2A2A] rounded-xl p-1.5">
-                    <input
-                      type="color"
-                      value={subtitleStyle.highlight_color || "#FFE600"}
-                      onChange={(e) =>
-                        setSubtitleStyle((prev) => ({
-                          ...prev,
-                          highlight_color: e.target.value,
-                        }))
-                      }
-                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
-                    />
-                    <span className="text-[11px] font-mono text-slate-300">
-                      {subtitleStyle.highlight_color}
-                    </span>
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>Kecil (24px)</span>
+                    <span>Sedang (38px)</span>
+                    <span>Besar (64px)</span>
                   </div>
                 </div>
               </div>
 
-              {/* Subtitle Position Alignment */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-semibold text-slate-300">
-                    Posisi Layar:
-                  </label>
+              {/* Palet Warna, Garis Luar (Outer Text), & Kotak Latar */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3.5">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Warna Teks & Garis Luar (Outer Text)</span>
+                </span>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* Warna Teks Normal */}
+                  <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+                    <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+                      Teks Normal
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={subtitleStyle.primary_color || "#FFFFFF"}
+                        onChange={(e) =>
+                          setSubtitleStyle((prev) => ({
+                            ...prev,
+                            primary_color: e.target.value,
+                          }))
+                        }
+                        className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
+                      />
+                      <span className="font-mono text-slate-200 text-xs font-semibold">
+                        {subtitleStyle.primary_color || "#FFFFFF"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Warna Highlight Kata */}
+                  <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+                    <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+                      Highlight Kata
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={subtitleStyle.highlight_color || "#FFE600"}
+                        onChange={(e) =>
+                          setSubtitleStyle((prev) => ({
+                            ...prev,
+                            highlight_color: e.target.value,
+                          }))
+                        }
+                        className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
+                      />
+                      <span className="font-mono text-violet-400 text-xs font-semibold">
+                        {subtitleStyle.highlight_color || "#FFE600"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Garis Luar (Outer Text / Outline Color) */}
+                  <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+                    <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+                      Garis Luar (Outer)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={subtitleStyle.outline_color || "#000000"}
+                        onChange={(e) =>
+                          setSubtitleStyle((prev) => ({
+                            ...prev,
+                            outline_color: e.target.value,
+                          }))
+                        }
+                        className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
+                      />
+                      <span className="font-mono text-slate-200 text-xs font-semibold">
+                        {subtitleStyle.outline_color || "#000000"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Kotak Latar (Box Color) */}
+                  <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+                    <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+                      Kotak Latar (Box)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={subtitleStyle.box_color || "#000000"}
+                        onChange={(e) =>
+                          setSubtitleStyle((prev) => ({
+                            ...prev,
+                            box_color: e.target.value,
+                          }))
+                        }
+                        className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
+                      />
+                      <span className="font-mono text-slate-200 text-xs font-semibold">
+                        {subtitleStyle.box_color || "#000000"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sliders: Tebal Outline & Opasitas Kotak */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
+                      <span>Tebal Outline</span>
+                      <span className="font-mono text-violet-400 font-bold">{subtitleStyle.outline_width ?? 4}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={10}
+                      step={1}
+                      value={subtitleStyle.outline_width ?? 4}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          outline_width: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
+                      <span>Opasitas Kotak</span>
+                      <span className="font-mono text-violet-400 font-bold">
+                        {Math.round((subtitleStyle.box_opacity || 0) * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={subtitleStyle.box_opacity || 0}
+                      onChange={(e) =>
+                        setSubtitleStyle((prev) => ({
+                          ...prev,
+                          box_opacity: parseFloat(e.target.value),
+                        }))
+                      }
+                      className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Posisi Layar & Offset */}
+              <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Move className="w-3.5 h-3.5 text-violet-400" />
+                    <span>Posisi Layar Subtitle</span>
+                  </span>
                   <button
                     type="button"
                     onClick={() =>
@@ -929,6 +1273,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     Reset Posisi
                   </button>
                 </div>
+
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
                     { id: "top", label: "Atas" },
@@ -948,12 +1293,39 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
                         subtitleStyle.position === pos.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
-                          : "bg-[#141414] border-[#2A2A2A] text-slate-400 hover:text-white"
+                          : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
                       }`}
                     >
                       {pos.label}
                     </button>
                   ))}
+                </div>
+
+                {/* Offset Y Slider */}
+                <div className="pt-1">
+                  <div className="flex justify-between items-center mb-1 text-[11px] text-slate-300">
+                    <span>Offset Posisi Vertikal (Y):</span>
+                    <span className="font-mono text-violet-400 font-bold">{subtitleStyle.offset_y || 0}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-120}
+                    max={120}
+                    step={2}
+                    value={subtitleStyle.offset_y || 0}
+                    onChange={(e) =>
+                      setSubtitleStyle((prev) => ({
+                        ...prev,
+                        offset_y: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>Lebih Rendah</span>
+                    <span>Bisa digeser langsung di preview</span>
+                    <span>Lebih Tinggi</span>
+                  </div>
                 </div>
               </div>
 
@@ -961,7 +1333,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               <Button
                 onClick={() => updateStyleMutation.mutate(subtitleStyle)}
                 disabled={updateStyleMutation.isPending}
-                className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 mt-2"
+                className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 mt-2 py-2.5"
               >
                 {updateStyleMutation.isPending ? (
                   <span>Menyimpan...</span>

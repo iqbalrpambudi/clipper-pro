@@ -52,4 +52,5 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_api_key_encrypted TEXT;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_system_prompt TEXT;"))
         await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_concurrency INTEGER DEFAULT 2;"))
+        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS tts_fallback_enabled BOOLEAN DEFAULT TRUE;"))
 

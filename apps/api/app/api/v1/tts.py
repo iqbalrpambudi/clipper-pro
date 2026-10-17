@@ -46,7 +46,7 @@ async def get_voice_sample(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     api_key = ""
-    tts_model = model or "gemini-3.8-flash-lite-tts"
+    tts_model = model or "gemini-2.5-flash-preview-tts"
     if cfg:
         if cfg.tts_api_key_encrypted:
             api_key = decrypt_secret(cfg.tts_api_key_encrypted)
@@ -129,6 +129,7 @@ async def trigger_tts_generation(
             payload.rate,
             payload.pitch,
             payload.model,
+            payload.fallback_enabled,
         )
         await pool.close()
     except Exception:
@@ -142,6 +143,7 @@ async def trigger_tts_generation(
                 payload.rate,
                 payload.pitch,
                 payload.model,
+                payload.fallback_enabled,
             )
         )
 

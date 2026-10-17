@@ -5,12 +5,14 @@ from app.workers.tasks import (
     generate_tts_and_align_job,
     render_video_job,
     generate_storyboard_images_job,
+    cleanup_stuck_render_jobs,
 )
 from app.services.cancellation import start_cancellation_listener
 
 
 async def startup(ctx):
     await start_cancellation_listener()
+    await cleanup_stuck_render_jobs()
 
 
 class WorkerSettings:

@@ -26,8 +26,12 @@ from app.services.cancellation import (
 )
 
 
-async def _run_ffmpeg(cmd: List[str], proc_key: Optional[str] = None) -> tuple[int, bytes]:
-    """Run an ffmpeg command, killing the child if the task is cancelled."""
+async def _run_ffmpeg(
+    cmd: List[str],
+    proc_key: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> tuple[int, bytes]:
+    """Run an ffmpeg command, killing the child if the task is cancelled or timed out."""
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -36,7 +40,18 @@ async def _run_ffmpeg(cmd: List[str], proc_key: Optional[str] = None) -> tuple[i
     if proc_key:
         register_process(proc_key, proc)
     try:
-        _, stderr = await proc.communicate()
+        if timeout and timeout > 0:
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        else:
+            _, stderr = await proc.communicate()
+    except asyncio.TimeoutError:
+        log.error("FFmpeg process timed out after %s seconds: %s", timeout, " ".join(cmd[:10]))
+        try:
+            proc.kill()
+            await proc.wait()
+        except ProcessLookupError:
+            pass
+        raise TimeoutError(f"Proses rendering FFmpeg macet/timeout setelah {int(timeout)} detik tanpa respon.")
     except (asyncio.CancelledError, TaskCancelledException):
         try:
             proc.kill()
@@ -337,11 +352,13 @@ async def render_timeline_video(
                 str(chunk_out),
             ]
 
-            ret, stderr = await _run_ffmpeg(cut_cmd, proc_key=proc_key)
+            ret, stderr = await _run_ffmpeg(cut_cmd, proc_key=proc_key, timeout=120.0)
             if ret != 0:
-                log.error("Clip chunk %d failed: %s", idx, stderr.decode()[-300:])
+                if await is_cancelled(project_id, job_id=job_id):
+                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+                log.error("Clip chunk %d failed: %s", idx, stderr.decode(errors="replace")[-300:])
                 failed_clips.append(
-                    {"index": idx, "id": clip.get("id"), "reason": stderr.decode()[-200:]}
+                    {"index": idx, "id": clip.get("id"), "reason": stderr.decode(errors="replace")[-200:]}
                 )
                 continue
 
@@ -384,9 +401,11 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(55, "Menggabungkan urutan klip video...")
 
-        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key)
+        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key, timeout=180.0)
         if ret_concat != 0:
-            err_msg = stderr_concat.decode()[-400:]
+            if await is_cancelled(project_id, job_id=job_id):
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+            err_msg = stderr_concat.decode(errors="replace")[-400:]
             log.error("Concat failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg concat error: {err_msg}")
 
@@ -454,10 +473,12 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(85, "Merender hasil akhir video...")
 
-        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key)
+        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key, timeout=600.0)
 
         if ret_final != 0:
-            err_msg = stderr_final.decode()[-400:]
+            if await is_cancelled(project_id, job_id=job_id):
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
+            err_msg = stderr_final.decode(errors="replace")[-400:]
             log.error("Final render failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg render error: {err_msg}")
 
