@@ -13,13 +13,61 @@ def build_master_scriptwriting_directive(
     word_count: int = 132,
 ) -> str:
     """Master instruction injected into EVERY preset's system prompt (builtin + custom) at
-    generation time. Enforces elite short-form video retention standards with strict duration,
+    generation time. Enforces elite video retention standards with strict duration,
     word-count budget, and tone adherence at the system level so the LLM never loses context.
+    Automatically adapts its framework between short-form (vertical video) and YouTube long-form.
     """
     clean_topic = (topic or "").strip() or "Sesuai materi visual video"
     clean_tone = (tone or "").strip() or "santai"
     min_words = int(word_count * 0.85)
     max_words = int(word_count * 1.15)
+
+    if target_duration >= 180:
+        duration_desc = f"{target_duration // 60} menit" if target_duration % 60 == 0 else f"{target_duration // 60}m {target_duration % 60}s"
+        return (
+            "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PANJANG YOUTUBE (WAJIB DIIKUTI) ===\n"
+            "Anda adalah master storyteller dan script writer profesional kelas dunia untuk video panjang YouTube (format landscape 16:9, explainer/dokumenter/recap mendalam).\n"
+            "Tuliskan naskah narasi yang MEMIKAT RETENSI TINGGI, KAYA INFORMASI, MEMILIKI KEDALAMAN ALUR, dan SANGAT NYAMAN DIBACAKAN oleh voiceover (TTS).\n"
+            "\n"
+            "🎯 PARAMETER UTAMA PROYEK INI (PRIORITAS TERTINGGI, WAJIB PATUH KETAT):\n"
+            f"• Topik Narasi: {clean_topic}\n"
+            f"• Nada Bicara & Intonasi: {clean_tone}\n"
+            f"• Target Durasi Suara: {target_duration} detik (~{duration_desc})\n"
+            f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
+            "\n"
+            "1. KEPATUHAN KETAT TARGET DURASI & ANGGARAN KATA (CRITICAL CONSTRAINT):\n"
+            f"   - Target durasi video adalah {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
+            f"   - Kembangkan alur cerita yang komprehensif, kaya konteks, dan berbobot sesuai koridor kata ({min_words} - {max_words} kata).\n"
+            "\n"
+            "2. STRUKTUR DRAMATURGI STORYTELLING PANJANG YOUTUBE:\n"
+            "   - Cold Open & Atmospheric Hook: Langsung buka cerita dengan situasi mencekam, misteri anomali, atau fakta pemantik rasa penasaran tanpa basa-basi klise.\n"
+            "   - Eksplorasi Berlapis (World-building & Kronologi): Paparkan latar geografis, riwayat masa lalu, kesaksian, dan detail atmosferik yang membangun ketegangan secara bertahap.\n"
+            "   - Sudut Pandang Logis & Analisis Rasional: Selipkan penjelasan ilmiah, hukum alam, geologis, atau sains di balik misteri agar video berbobot dan edukatif, bukan horor murahan.\n"
+            "   - Climax & Refleksi Akhir: Tutup dengan konklusi yang membekas, paradoks etis, atau pertanyaan reflektif yang memicu penonton berdiskusi secara organik di kolom komentar.\n"
+            "\n"
+            "3. RITME KALIMAT SEGMEN ALAMI (SWEETSPOT 3–6 DETIK PER SEGMEN VISUAL):\n"
+            "   - Rata-rata panjang ideal setiap kalimat adalah 8 hingga 14 kata (~3.5 hingga 6 detik durasi bicara TTS).\n"
+            "   - HINDARI kalimat mikroskopis (1-3 kata) yang membuat transisi visual terputus-putus atau gambar berpindah terlalu cepat.\n"
+            "   - HINDARI kalimat majemuk beranak yang terlalu panjang (>20 kata) tanpa tanda baca yang membuat napas narator tersengal.\n"
+            "   - Setiap kalimat harus menjadi unit pikiran yang tuntas, utuh, dan mudah dibayangkan visualnya.\n"
+            "\n"
+            "4. ALUR MENGALIR, JEMBATAN TRANSISI & ANTI-STACCATO (CRITICAL FLOW):\n"
+            "   - HINDARI GAYA CATATAN LOG: DILARANG membuat rentetan kalimat pendek datar tanpa subjek atau jembatan jelas.\n"
+            "   - WAJIB gunakan frasa jembatan transisi alami antar kalimat dan antar babak.\n"
+            "   - JAGA KRONOLOGI & KAUSALITAS LOGIS: Pastikan alur peristiwa runtut dan saling terhubung sebab-akibat.\n"
+            "   - DILARANG menyebut istilah teknis editor: 'scene', 'shot', 'klip', 'timestamp', 'di layar terlihat', 'kamera menunjukkan'.\n"
+            "\n"
+            "5. BAHASA LISAN NATURAL & ANTI-ROBOTIK AI:\n"
+            "   - Gunakan Bahasa Indonesia percakapan modern yang lugas, percaya diri, dan berjiwa (bukan bahasa buku kaku atau terjemahan mesin).\n"
+            "   - HINDARI pengulangan kata klise AI: 'ternyata', 'siapa sangka', 'namun tak disangka', 'yang paling menarik adalah'.\n"
+            f"   - Pertahankan warna vokal dan intonasi '{clean_tone}' secara konsisten dari awal hingga akhir.\n"
+            "\n"
+            "6. OUTPUT STERIL & SIAP TTS:\n"
+            "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
+            "   - DILARANG menyertakan salam pembuka/penutup AI seperti 'Tentu, ini naskahnya:'.\n"
+            "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Misterius] atau (Tertawa).\n"
+            "   - DILARANG menyertakan label babak atau heading seperti 'BABAK 1:', 'HOOK:', 'PENUTUP:'."
+        )
 
     return (
         "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PENDEK (WAJIB DIIKUTI) ===\n"
@@ -51,6 +99,7 @@ def build_master_scriptwriting_directive(
         "(contoh buruk: 'Lalu api menyala. Besi dipotong. Hasilnya jalan.'). Ini membuat narasi terasa kaku dan patah-patah saat dibacakan TTS.\n"
         "   - WAJIB gunakan frasa jembatan transisi alami antar kalimat dan antar tahapan "
         "(contoh baik: 'Setelah rangka beres, barulah sasis dirakit...', 'Tantangan terberatnya justru di sistem kelistrikan...', 'Semua kerja keras terbayar saat kendaraan ini melaju...').\n"
+        "   - RITME KALIMAT SEGMEN: Usahakan tiap kalimat bernyawa dan berbobot 8-14 kata (~3.5-5 detik) agar sinkron dengan pergantian scene visual.\n"
         "   - JAGA KRONOLOGI & KAUSALITAS LOGIS: Pastikan urutan aksi runtut secara fisik (bahan disiapkan dan diukur dulu, dipotong, baru dilas; bukan membalik urutan sebab-akibat).\n"
         "   - THE REVEAL & CLIMAX: Tampilkan momen pembuktian/hasil akhir dengan kalimat deskriptif yang memuaskan dan bernyawa, bukan sekadar kalimat singkat datar.\n"
         "   - Jadikan materi video sebagai tulang punggung cerita yang mengalir utuh dan berkesinambungan.\n"
@@ -408,14 +457,67 @@ DEFAULT_TEMPLATES = [
 ]
 
 
-def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
-    """Split script into clean sentence segments."""
+def split_into_sentence_segments(text: str, balance: bool = True) -> List[Dict[str, Any]]:
+    """Split script into clean, balanced sentence segments (~3-6s per segment sweetspot).
+    Prevents hyper-fragmented 1-second cuts (< 3 words) and overly long 10-second visual freezes (> 22 words).
+    """
     cleaned = re.sub(r"\[.*?\]", "", text).strip()
     # Split by Indonesian sentence terminators (. ! ? or newline)
-    raw_sentences = re.split(r"(?<=[.!?\n])\s+", cleaned)
-    segments = []
-    idx = 1
+    raw_sentences = [s.strip() for s in re.split(r"(?<=[.!?\n])\s+", cleaned) if s.strip()]
+
+    if not balance:
+        return [
+            {"id": f"seg-{i+1}", "text": s, "start_ms": 0, "end_ms": 0, "words": []}
+            for i, s in enumerate(raw_sentences)
+            if len(s) >= 3
+        ]
+
+    # Pass 1: split excessively long sentences (> 22 words) by natural clauses / conjunctions
+    clause_delims = r"(?<=[,;:\—\-])\s+|(?<=\s)(?:namun|tetapi|sedangkan|sehingga|sementara|padahal|karena|saat)\s+"
+    balanced = []
     for s in raw_sentences:
+        words = s.split()
+        if len(words) > 22:
+            clauses = [c.strip() for c in re.split(clause_delims, s, flags=re.IGNORECASE) if c.strip()]
+            if len(clauses) >= 2:
+                cur_chunk = []
+                for c in clauses:
+                    c_words = c.split()
+                    if cur_chunk and (len(" ".join(cur_chunk).split()) + len(c_words) > 16):
+                        balanced.append(" ".join(cur_chunk))
+                        cur_chunk = [c]
+                    else:
+                        cur_chunk.append(c)
+                if cur_chunk:
+                    balanced.append(" ".join(cur_chunk))
+            else:
+                balanced.append(s)
+        else:
+            balanced.append(s)
+
+    # Pass 2: merge ultra-short fragments (<= 3 words) into neighbor if combined <= 16 words
+    merged = []
+    idx = 0
+    while idx < len(balanced):
+        cur = balanced[idx]
+        cur_w = len(cur.split())
+        if cur_w <= 3 and idx + 1 < len(balanced):
+            nxt = balanced[idx + 1]
+            nxt_w = len(nxt.split())
+            if cur_w + nxt_w <= 16:
+                merged.append(f"{cur} {nxt}")
+                idx += 2
+                continue
+        if cur_w <= 3 and merged and len(merged[-1].split()) + cur_w <= 16:
+            merged[-1] = f"{merged[-1]} {cur}"
+            idx += 1
+            continue
+
+        merged.append(cur)
+        idx += 1
+
+    segments = []
+    for idx, s in enumerate(merged, start=1):
         clean_s = s.strip()
         if len(clean_s) >= 3:
             segments.append({
@@ -425,7 +527,6 @@ def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
                 "end_ms": 0,
                 "words": [],
             })
-            idx += 1
     return segments
 
 
