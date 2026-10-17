@@ -7,6 +7,9 @@ import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 
+import cv2
+import numpy as np
+
 from app.core.frame_math import sec_to_frame, frame_to_sec, snap_to_frame, COMPOSITION_FPS
 from app.services.tts import get_audio_duration
 from app.services.cancellation import (
@@ -29,50 +32,41 @@ def _build_zoompan_filter(
     fps: int = 30,
 ) -> str:
     """
-    Generate an FFmpeg zoompan filter expression tailored for storyboard illustrations.
-    total_frames: total number of output frames for this slide.
+    (Legacy) Generate an FFmpeg zoompan filter expression.
+    Kept for backward compatibility. Note that FFmpeg's zoompan filter exhibits
+    frame-to-frame pixel judder due to internal even-integer chroma coordinate bitmasking.
+    Use render_slide_subpixel_motion for butter-smooth camera movement.
     """
-    # Ensure scale_w and scale_h are even integers to prevent pad filter failure on odd dimensions
     scale_w = int(round(w * 1.25 / 2)) * 2
     scale_h = int(round(h * 1.25 / 2)) * 2
 
     motion = (motion_effect or "zoom_in").lower().strip()
+    tf = max(total_frames, 1)
 
     if motion == "zoom_in":
-        # Smooth zoom in from 1.00 to 1.12
-        step = round(0.12 / max(total_frames, 1), 6)
-        zoom_expr = f"min(1.00+on*{step},1.15)"
-        x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = "ih/2-(ih/zoom/2)"
+        zoom_expr = f"min(1.15,max(1.00,1.00+0.075*(1-cos(3.14159265*on/{tf}))))"
+        x_expr = "max(0,iw/2-(iw/zoom/2))"
+        y_expr = "max(0,ih/2-(ih/zoom/2))"
     elif motion == "zoom_out":
-        # Smooth zoom out from 1.15 to 1.00
-        step = round(0.15 / max(total_frames, 1), 6)
-        zoom_expr = f"max(1.15-on*{step},1.00)"
-        x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = "ih/2-(ih/zoom/2)"
+        zoom_expr = f"min(1.15,max(1.00,1.15-0.075*(1-cos(3.14159265*on/{tf}))))"
+        x_expr = "max(0,iw/2-(iw/zoom/2))"
+        y_expr = "max(0,ih/2-(ih/zoom/2))"
     elif motion == "pan_left":
-        # Slight 1.10 zoom, panning from right to left
         zoom_expr = "1.10"
-        x_step = round((scale_w * 0.08) / max(total_frames, 1), 4)
-        x_expr = f"max(0,iw*0.08-on*{x_step})"
-        y_expr = "ih/2-(ih/zoom/2)"
+        x_expr = f"max(0,(iw*0.08)*(1+cos(3.14159265*on/{tf}))/2)"
+        y_expr = "max(0,ih/2-(ih/zoom/2))"
     elif motion == "pan_right":
-        # Slight 1.10 zoom, panning from left to right
         zoom_expr = "1.10"
-        x_step = round((scale_w * 0.08) / max(total_frames, 1), 4)
-        x_expr = f"min(iw*0.08,on*{x_step})"
-        y_expr = "ih/2-(ih/zoom/2)"
+        x_expr = f"min(iw*0.08,(iw*0.08)*(1-cos(3.14159265*on/{tf}))/2)"
+        y_expr = "max(0,ih/2-(ih/zoom/2))"
     elif motion == "pan_up":
-        # Slight 1.10 zoom, panning upward
         zoom_expr = "1.10"
-        x_expr = "iw/2-(iw/zoom/2)"
-        y_step = round((scale_h * 0.08) / max(total_frames, 1), 4)
-        y_expr = f"max(0,ih*0.08-on*{y_step})"
-    else:  # static or default gentle breathing zoom
-        step = round(0.04 / max(total_frames, 1), 6)
-        zoom_expr = f"min(1.00+on*{step},1.05)"
-        x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = "ih/2-(ih/zoom/2)"
+        x_expr = "max(0,iw/2-(iw/zoom/2))"
+        y_expr = f"max(0,(ih*0.08)*(1+cos(3.14159265*on/{tf}))/2)"
+    else:
+        zoom_expr = f"min(1.05,max(1.00,1.00+0.025*(1-cos(3.14159265*on/{tf}))))"
+        x_expr = "max(0,iw/2-(iw/zoom/2))"
+        y_expr = "max(0,ih/2-(ih/zoom/2))"
 
     vf = (
         f"scale={scale_w}:{scale_h}:force_original_aspect_ratio=decrease,"
@@ -80,6 +74,175 @@ def _build_zoompan_filter(
         f"zoompan=z='{zoom_expr}':x='{x_expr}':y='{y_expr}':d=1:s={w}x{h}:fps={fps}"
     )
     return vf
+
+
+async def render_slide_subpixel_motion(
+    img_path: str,
+    output_path: Path,
+    motion_effect: str,
+    total_frames: int,
+    w: int,
+    h: int,
+    fps: int = 30,
+    proc_key: Optional[str] = None,
+    project_id: Optional[str] = None,
+    job_id: Optional[str] = None,
+    timeout: float = 120.0,
+) -> None:
+    """
+    Render a single storyboard slide image into an MPEG-TS chunk with 100% butter-smooth subpixel
+    Ken Burns motion using OpenCV affine transformation and rawvideo streaming into FFmpeg.
+
+    This completely eliminates the discrete 1-2 pixel coordinate jitter caused by FFmpeg's
+    built-in vf_zoompan (which forcibly bitmasks x and y to even integers for chroma subsampling).
+    """
+    img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError(f"Tidak dapat membaca file gambar adegan: {img_path}")
+
+    # Aspect ratio cover (object-cover origin-center) to target canvas (w, h)
+    ih, iw = img.shape[:2]
+    scale = max(w / iw, h / ih)
+    new_w = int(round(iw * scale))
+    new_h = int(round(ih * scale))
+    interp = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LANCZOS4
+    resized = cv2.resize(img, (new_w, new_h), interpolation=interp)
+
+    x_off = max(0, (new_w - w) // 2)
+    y_off = max(0, (new_h - h) // 2)
+    base_img = resized[y_off:y_off + h, x_off:x_off + w]
+    if base_img.shape[0] != h or base_img.shape[1] != w:
+        base_img = cv2.resize(base_img, (w, h), interpolation=cv2.INTER_LINEAR)
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-f", "rawvideo",
+        "-vcodec", "rawvideo",
+        "-s", f"{w}x{h}",
+        "-pix_fmt", "bgr24",
+        "-r", str(fps),
+        "-i", "-",
+        "-vf", f"eq=contrast=1.03:saturation=1.05:brightness=0.01,fps={fps}",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "22",
+        "-g", str(fps),
+        "-keyint_min", str(fps),
+        "-sc_threshold", "0",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        str(output_path),
+    ]
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    if proc_key:
+        register_process(proc_key, proc)
+
+    cx, cy = w / 2.0, h / 2.0
+    motion = (motion_effect or "zoom_in").lower().strip()
+    tf_denom = max(1, total_frames - 1)
+
+    try:
+        async def _feed_frames():
+            for i in range(total_frames):
+                if (i % 15 == 0) and (project_id or job_id):
+                    if await is_cancelled(project_id, job_id=job_id):
+                        raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+
+                # Smooth cosine ease-in-out progress [0.0 -> 1.0]
+                t = i / tf_denom
+                p = 0.5 * (1.0 - math.cos(math.pi * t))
+
+                if motion == "zoom_in":
+                    zoom = 1.00 + 0.12 * p
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                elif motion == "zoom_out":
+                    zoom = 1.15 - 0.15 * p
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                elif motion == "pan_left":
+                    zoom = 1.10
+                    shift_x = (1.0 - 2.0 * p) * (0.04 * w)
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M[0, 2] += shift_x
+                elif motion == "pan_right":
+                    zoom = 1.10
+                    shift_x = (-1.0 + 2.0 * p) * (0.04 * w)
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M[0, 2] += shift_x
+                elif motion == "pan_up":
+                    zoom = 1.10
+                    shift_y = (1.0 - 2.0 * p) * (0.04 * h)
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M[1, 2] += shift_y
+                elif motion == "pan_down":
+                    zoom = 1.10
+                    shift_y = (-1.0 + 2.0 * p) * (0.04 * h)
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M[1, 2] += shift_y
+                else:  # static or gentle breathing zoom
+                    zoom = 1.00 + 0.03 * p
+                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+
+                frame = cv2.warpAffine(
+                    base_img,
+                    M,
+                    (w, h),
+                    flags=cv2.INTER_LINEAR,
+                    borderMode=cv2.BORDER_REFLECT,
+                )
+
+                try:
+                    proc.stdin.write(frame.tobytes())
+                    await proc.stdin.drain()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+
+            if proc.stdin and not proc.stdin.is_closing():
+                proc.stdin.close()
+
+        if timeout and timeout > 0:
+            await asyncio.wait_for(_feed_frames(), timeout=timeout)
+        else:
+            await _feed_frames()
+
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            if await is_cancelled(project_id, job_id=job_id):
+                raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+            err = stderr.decode(errors="replace")[-300:] if stderr else "unknown error"
+            raise RuntimeError(f"FFmpeg slide encoding failed (code {proc.returncode}): {err}")
+
+    except (asyncio.CancelledError, TaskCancelledException):
+        try:
+            proc.kill()
+            await proc.wait()
+        except ProcessLookupError:
+            pass
+        raise
+    except asyncio.TimeoutError:
+        try:
+            proc.kill()
+            await proc.wait()
+        except ProcessLookupError:
+            pass
+        raise TimeoutError(f"Proses rendering slide timeout setelah {int(timeout)} detik.")
+    except Exception:
+        try:
+            proc.kill()
+            await proc.wait()
+        except ProcessLookupError:
+            pass
+        raise
+    finally:
+        if proc_key:
+            unregister_process(proc_key)
 
 
 async def render_storyboard_video(
@@ -201,7 +364,7 @@ async def render_storyboard_video(
                 "chunk_out": chunk_out,
             })
 
-        # Process slides with bounded concurrency (3 parallel FFmpeg renders) for 3-4x faster rendering
+        # Process slides with bounded concurrency (3 parallel renders) for fast rendering
         sem = asyncio.Semaphore(3)
         completed_count = 0
 
@@ -212,40 +375,20 @@ async def render_storyboard_video(
                     log.info("Storyboard rendering cancelled by user at slide %d/%d (job=%s)", spec["idx"], total_items, job_id)
                     raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
 
-                # Build motion filter
-                vf_filter = _build_zoompan_filter(spec["motion"], spec["total_frames"], w, h, fps=COMPOSITION_FPS)
-                # Add subtle color vibrancy for consistent hand-drawn look
-                vf_filter += f",eq=contrast=1.03:saturation=1.05:brightness=0.01,fps={COMPOSITION_FPS}"
-
-                render_clip_cmd = [
-                    "ffmpeg",
-                    "-y",
-                    "-framerate", str(COMPOSITION_FPS),
-                    "-loop", "1",
-                    "-i", spec["img_path"],
-                    "-filter_complex", vf_filter,
-                    "-frames:v", str(spec["total_frames"]),
-                    "-r", str(COMPOSITION_FPS),
-                    "-fps_mode", "cfr",
-                    "-c:v", "libx264",
-                    "-preset", "ultrafast",
-                    "-crf", "22",
-                    "-g", str(COMPOSITION_FPS),
-                    "-keyint_min", str(COMPOSITION_FPS),
-                    "-sc_threshold", "0",
-                    "-pix_fmt", "yuv420p",
-                    "-an",
-                    str(spec["chunk_out"]),
-                ]
-
                 slide_proc_key = f"{proc_key}:slide_{spec['idx']}" if proc_key else None
-                ret, stderr = await _run_ffmpeg(render_clip_cmd, proc_key=slide_proc_key, timeout=120.0)
-                if ret != 0:
-                    if await is_cancelled(project_id, job_id=job_id):
-                        raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
-                    err = stderr.decode(errors="replace")[-300:]
-                    log.error("Storyboard slide %d failed: %s", spec["idx"], err)
-                    raise RuntimeError(f"Gagal memproses gambar adegan {spec['idx']+1}: {err}")
+                await render_slide_subpixel_motion(
+                    img_path=spec["img_path"],
+                    output_path=spec["chunk_out"],
+                    motion_effect=spec["motion"],
+                    total_frames=spec["total_frames"],
+                    w=w,
+                    h=h,
+                    fps=COMPOSITION_FPS,
+                    proc_key=slide_proc_key,
+                    project_id=project_id,
+                    job_id=job_id,
+                    timeout=120.0,
+                )
 
                 completed_count += 1
                 if progress_callback:

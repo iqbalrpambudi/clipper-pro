@@ -74,7 +74,12 @@ export function generateAssSubtitles(
     fontComp = 1.5;
   }
 
-  const assFontSize = Math.max(16, Math.round(baseFontSize * fontComp));
+  const displayMode = styleConfig.display_mode || "per_word";
+  let assFontSize = Math.max(16, Math.round(baseFontSize * fontComp));
+  if (displayMode === "full_sentence") {
+    // Calibrate with React preview's scaledFontSize * 0.9
+    assFontSize = Math.max(16, Math.round(assFontSize * 0.9));
+  }
   const bold = (styleConfig.font_weight || "Bold").toLowerCase() === "bold" ? -1 : 0;
 
   const primaryCol = hexToAssColor(styleConfig.primary_color || "#FFFFFF", 1.0);
@@ -84,7 +89,11 @@ export function generateAssSubtitles(
   const boxOpacity = Number(styleConfig.box_opacity ?? 0.0);
   const boxCol = hexToAssColor(styleConfig.box_color || "#000000", boxOpacity);
 
-  const outlineW = styleConfig.outline_width ?? 4;
+  // In CSS, -webkit-text-stroke with paint-order: stroke fill conceals half the stroke inside glyph.
+  // To match preview thickness, libass outer stroke width is set to half the CSS stroke width:
+  const rawOutline = Number(styleConfig.outline_width ?? 4);
+  const outlineW = rawOutline > 0 ? Math.max(0.5, Math.round(rawOutline * 0.5 * 10) / 10) : 0;
+
   const position = styleConfig.position || "bottom";
   const offsetY = Number(styleConfig.offset_y || 0);
   const offsetX = Number(styleConfig.offset_x || 0);
@@ -128,7 +137,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   const dialogueLines: string[] = [];
-  const displayMode = styleConfig.display_mode || "per_word";
   const burstCount = Math.max(Number(styleConfig.burst_word_count || 2), 2);
   const anim = styleConfig.highlight_animation || "scale";
   const isScaleAnim = anim !== "color" && anim !== "none";
@@ -210,6 +218,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const segEnd = seg.end_ms ?? words[words.length - 1].end_ms;
       const nWords = words.length;
 
+      // Compute wrapping breaks to match preview layout (max ~85% width)
+      const maxChars = Math.max(24, Math.floor((playResX * 0.85) / (assFontSize * 0.40)));
+      const wrapBreaks = new Set<number>();
+      let curLen = 0;
+      for (let iW = 0; iW < words.length; iW++) {
+        const wStr = (words[iW].word || "").trim();
+        if (iW === 0) {
+          curLen = wStr.length;
+        } else {
+          if (curLen + 1 + wStr.length > maxChars) {
+            wrapBreaks.add(iW);
+            curLen = wStr.length;
+          } else {
+            curLen += 1 + wStr.length;
+          }
+        }
+      }
+
       for (let j = 0; j < nWords; j++) {
         const targetWord = words[j];
         const tStart = j === 0 ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms) : targetWord.start_ms;
@@ -235,20 +261,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         for (let m = 0; m < words.length; m++) {
           const w = words[m];
           const wText = (w.word || "").trim();
+          const prefix = wrapBreaks.has(m) ? "\\N" : (m === 0 ? "" : " ");
 
           if (m === j) {
             if (anim === "none") {
-              lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}`);
+              lineParts.push(`${prefix}{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);
             } else {
-              lineParts.push(`{\\c${highlightCol}}${popFx}${wText}${scaleReset}`);
+              lineParts.push(`${prefix}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`);
             }
           } else {
-            lineParts.push(`{\\c${primaryCol}}${scaleReset}${wText}`);
+            lineParts.push(`${prefix}{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);
           }
         }
 
         dialogueLines.push(
-          `Dialogue: 0,${startT},${endT},KaraokeDefault,,0,0,0,,${posTag}${lineParts.join(" ")}`
+          `Dialogue: 0,${startT},${endT},KaraokeDefault,,0,0,0,,${posTag}${lineParts.join("")}`
         );
       }
     }

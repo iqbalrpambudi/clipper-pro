@@ -1118,7 +1118,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                   padding: boxOpacity > 0.05 ? "3px 8px" : "0",
                   borderRadius: "6px",
                 }}
-                className="leading-snug flex flex-wrap justify-center"
+                className="uppercase tracking-wide leading-snug flex flex-wrap justify-center"
               >
                 {segWords.length > 0 ? (
                   segWords.map((w, idx) => {
@@ -1134,12 +1134,12 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                         }}
                         className="mx-0.5 inline-block"
                       >
-                        {w.word}
+                        {w.word.toUpperCase()}
                       </span>
                     );
                   })
                 ) : (
-                  <span>{activeSegment.text}</span>
+                  <span>{activeSegment.text.toUpperCase()}</span>
                 )}
               </div>
             ) : null}

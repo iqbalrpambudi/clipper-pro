@@ -188,7 +188,12 @@ def generate_ass_subtitles(
     if font_comp is None:
         font_comp = 1.50
 
+    display_mode = style_config.get("display_mode", "per_word")
     ass_font_size = max(16, int(round(base_font_size * font_comp)))
+    if display_mode == "full_sentence":
+        # Calibrate with React preview's scaledFontSize * 0.9
+        ass_font_size = max(16, int(round(ass_font_size * 0.9)))
+
     bold = -1 if style_config.get("font_weight", "Bold").lower() == "bold" else 0
 
     primary_col = hex_to_ass_color(style_config.get("primary_color", "#FFFFFF"), opacity=1.0)
@@ -198,7 +203,11 @@ def generate_ass_subtitles(
     box_opacity = float(style_config.get("box_opacity", 0.0))
     box_col = hex_to_ass_color(style_config.get("box_color", "#000000"), opacity=box_opacity)
 
-    outline_w = style_config.get("outline_width", 4)
+    # In CSS, -webkit-text-stroke with paint-order: stroke fill conceals half the stroke inside glyph.
+    # To match preview thickness, libass outer stroke width is set to half the CSS stroke width:
+    raw_outline = float(style_config.get("outline_width", 4) if style_config.get("outline_width") is not None else 4)
+    outline_w = max(0.5, round(raw_outline * 0.5, 1)) if raw_outline > 0 else 0
+
     position = style_config.get("position", "bottom")
     offset_y = int(style_config.get("offset_y", 0))
     offset_x = int(style_config.get("offset_x", 0))
@@ -239,7 +248,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
     dialogue_lines = []
-    display_mode = style_config.get("display_mode", "per_word")
     burst_count = max(int(style_config.get("burst_word_count", 2)), 2)
     anim = style_config.get("highlight_animation", "scale")
     is_scale_anim = anim not in ("color", "none")
@@ -322,6 +330,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             seg_end = seg.get("end_ms", words[-1]["end_ms"])
             n_words = len(words)
 
+            # Compute wrapping breaks to match preview layout (max ~85% width)
+            max_chars = max(24, int((play_res_x * 0.85) / (ass_font_size * 0.40)))
+            wrap_breaks = set()
+            cur_len = 0
+            for i_w, w_item in enumerate(words):
+                w_str = w_item.get("word", "").strip()
+                if i_w == 0:
+                    cur_len = len(w_str)
+                else:
+                    if cur_len + 1 + len(w_str) > max_chars:
+                        wrap_breaks.add(i_w)
+                        cur_len = len(w_str)
+                    else:
+                        cur_len += 1 + len(w_str)
+
             for j, target_word in enumerate(words):
                 t_start = min(seg_start, target_word["start_ms"]) if j == 0 else target_word["start_ms"]
                 if j < n_words - 1:
@@ -340,17 +363,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 line_parts = []
                 for m, w in enumerate(words):
                     w_text = w["word"].strip()
+                    prefix = "\\N" if m in wrap_breaks else ("" if m == 0 else " ")
 
                     if m == j:
                         if anim == "none":
-                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
+                            line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
                         else:
-                            line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text}{scale_reset}")
+                            line_parts.append(f"{prefix}{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}")
                     else:
-                        line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
+                        line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
 
                 dialogue_lines.append(
-                    f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{' '.join(line_parts)}"
+                    f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{''.join(line_parts)}"
                 )
 
     return header + "\n".join(dialogue_lines) + "\n"
