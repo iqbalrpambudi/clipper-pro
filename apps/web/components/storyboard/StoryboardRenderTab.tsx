@@ -116,7 +116,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
     (activeTask?.task_type === "render" && (activeTask.status === "progress" || activeTask.status === "queued"));
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+    <div className="space-y-8 max-w-8xl mx-auto pb-16">
       {/* Step Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
         <div>
@@ -226,11 +226,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             </label>
             <Badge
               variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
-              className={`text-[10px] font-mono ${
-                project.subtitle_style?.enabled !== false
+              className={`text-[10px] font-mono ${project.subtitle_style?.enabled !== false
                   ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
                   : "bg-[#222222] text-slate-400 border border-[#333333]"
-              }`}
+                }`}
             >
               {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
             </Badge>
@@ -253,11 +252,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                     setResolution(res.id);
                     updateProjectMutation.mutate({ resolution: res.id });
                   }}
-                  className={`p-3 rounded-xl border text-left transition ${
-                    resolution === res.id
+                  className={`p-3 rounded-xl border text-left transition ${resolution === res.id
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold">{res.label}</div>
                   <div className="text-[10px] text-muted-foreground">{res.desc}</div>
@@ -418,13 +416,12 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             Video Storyboard 16:9
                           </span>
                           <span
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                              job.status === "completed"
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${job.status === "completed"
                                 ? "bg-emerald-500/10 text-emerald-400"
                                 : job.status === "rendering"
-                                ? "bg-violet-500/10 text-violet-300"
-                                : "bg-rose-500/10 text-rose-400"
-                            }`}
+                                  ? "bg-violet-500/10 text-violet-300"
+                                  : "bg-rose-500/10 text-rose-400"
+                              }`}
                           >
                             {job.status}
                           </span>

@@ -23,6 +23,7 @@ from app.schemas.storyboard import (
     YouTubeThumbnailGenerateRequest,
     YouTubeMetadataUpdateRequest,
     StoryboardCharactersUpdateRequest,
+    StoryboardSegmentUpdateRequest,
 )
 from app.services.storyboard import (
     generate_storyboard_script,
@@ -123,6 +124,109 @@ async def update_storyboard_characters(
     await db.commit()
     await db.refresh(proj)
     return {"success": True, "characters": proj.characters or []}
+
+
+@router.put("/segments/{segment_id}")
+async def update_storyboard_segment(
+    project_id: str,
+    segment_id: str,
+    payload: StoryboardSegmentUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update narration text, chapter title, and image prompts for a specific storyboard segment."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    # 1. Fetch active narration
+    res_nar = await db.execute(
+        select(Narration)
+        .where(Narration.project_id == project_id)
+        .order_by(Narration.created_at.desc())
+        .limit(1)
+    )
+    narration = res_nar.scalar_one_or_none()
+    if not narration:
+        raise HTTPException(status_code=404, detail="Narasi storyboard belum dibuat")
+
+    # 2. Update the segment inside narration.segments
+    updated_segments = list(narration.segments or [])
+    target_idx = -1
+    for idx, seg in enumerate(updated_segments):
+        s_id = str(seg.get("id", ""))
+        if s_id == str(segment_id) or str(seg.get("segment_id", "")) == str(segment_id) or f"seg-{idx+1}" == str(segment_id):
+            target_idx = idx
+            break
+
+    if target_idx != -1:
+        current_seg = dict(updated_segments[target_idx])
+        if payload.chapter is not None:
+            current_seg["chapter"] = payload.chapter
+        if payload.text is not None:
+            current_seg["text"] = payload.text
+        updated_segments[target_idx] = current_seg
+        narration.segments = updated_segments
+        # Rebuild narration.raw_text from all segments
+        narration.raw_text = "\n\n".join(
+            s.get("text", "").strip() for s in updated_segments if s.get("text")
+        )
+        narration.updated_at = datetime.utcnow()
+
+    # 3. Update associated StoryboardItems
+    res_items = await db.execute(
+        select(StoryboardItem)
+        .where(StoryboardItem.project_id == project_id)
+        .order_by(StoryboardItem.order_index.asc())
+    )
+    items = res_items.scalars().all()
+
+    # If payload.items is provided, update image_prompt of each item
+    if payload.items:
+        items_map = {it.id: it for it in items}
+        for upd_item in payload.items:
+            if upd_item.id in items_map:
+                target_it = items_map[upd_item.id]
+                target_it.image_prompt = upd_item.image_prompt
+                if payload.chapter:
+                    target_it.chapter_title = payload.chapter
+                if payload.text:
+                    target_it.script_text = payload.text
+                target_it.updated_at = datetime.utcnow()
+
+    # Also update script_text & chapter_title on items belonging to this segment
+    for it in items:
+        if str(it.segment_id) == str(segment_id) or (target_idx != -1 and str(it.segment_id) == f"seg-{target_idx+1}"):
+            if payload.chapter:
+                it.chapter_title = payload.chapter
+            if payload.text:
+                it.script_text = payload.text
+            it.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(narration)
+
+    # Re-fetch items
+    res_items_after = await db.execute(
+        select(StoryboardItem)
+        .where(StoryboardItem.project_id == project_id)
+        .order_by(StoryboardItem.order_index.asc())
+    )
+    all_items = res_items_after.scalars().all()
+
+    return {
+        "success": True,
+        "segment_id": segment_id,
+        "narration": {
+            "id": narration.id,
+            "topic": narration.topic,
+            "tone": narration.tone,
+            "target_duration": narration.target_duration,
+            "raw_text": narration.raw_text,
+            "segments": narration.segments,
+            "status": narration.status,
+        },
+        "storyboard_items": [_item_to_response(it) for it in all_items],
+    }
 
 
 @router.get("/items", response_model=List[StoryboardItemResponse])

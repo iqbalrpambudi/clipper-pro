@@ -116,7 +116,7 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col bg-[#121212]">
       {/* Top Navbar */}
       <header className="border-b border-[#2E2E2E] bg-[#171717]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-8xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3ECF8E] to-[#2DA670] flex items-center justify-center shadow-lg shadow-[#3ECF8E]/20 text-[#032817]">
               <Sparkles className="w-5 h-5 fill-current" />
@@ -161,7 +161,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Hero Banner with Dual Mode Visual */}
-      <main className="max-w-7xl mx-auto flex-1 w-full px-6 py-8">
+      <main className="max-w-8xl mx-auto flex-1 w-full px-6 py-8">
         <div className="relative p-8 mb-10 overflow-hidden border border-[#2E2E2E] bg-gradient-to-br from-[#1C1C1C] via-[#181818] to-[#141414] shadow-2xl rounded-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-[#3ECF8E]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -176,7 +176,7 @@ export default function DashboardPage() {
                 {projects.length} Total Projects
               </span>
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
               Studio Produksi{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3ECF8E] via-[#34D399] to-[#6EE7B7]">
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                 Long Storyboard Explainer
               </span>.
             </h1>
-            
+
             <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-6">
               Pilih mode produksi Anda: <strong>Short Video Clipper</strong> untuk auto-cut video YouTube menjadi klip 9:16 vertikal dengan subtitle karaoke viral, atau <strong>Long Storyboard Explainer</strong> untuk generate naskah 4–8 menit, suara TTS, dan ilustrasi sketsa hand-drawn AI 16:9.
             </p>
@@ -227,32 +227,29 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181818] border border-[#2E2E2E]">
             <button
               onClick={() => setModeFilter("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                modeFilter === "all"
-                  ? "bg-[#2A2A2A] text-white shadow-xs"
-                  : "text-muted-foreground hover:text-white"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${modeFilter === "all"
+                ? "bg-[#2A2A2A] text-white shadow-xs"
+                : "text-muted-foreground hover:text-white"
+                }`}
             >
               Semua ({projects.length})
             </button>
             <button
               onClick={() => setModeFilter("short_video")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
-                modeFilter === "short_video"
-                  ? "bg-[#3ECF8E]/20 text-[#3ECF8E] font-semibold border border-[#3ECF8E]/30"
-                  : "text-muted-foreground hover:text-white"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${modeFilter === "short_video"
+                ? "bg-[#3ECF8E]/20 text-[#3ECF8E] font-semibold border border-[#3ECF8E]/30"
+                : "text-muted-foreground hover:text-white"
+                }`}
             >
               <Film className="w-3.5 h-3.5" />
               <span>Short Video (9:16) ({shortCount})</span>
             </button>
             <button
               onClick={() => setModeFilter("long_storyboard")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
-                modeFilter === "long_storyboard"
-                  ? "bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30"
-                  : "text-muted-foreground hover:text-white"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${modeFilter === "long_storyboard"
+                ? "bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30"
+                : "text-muted-foreground hover:text-white"
+                }`}
             >
               <ImageIcon className="w-3.5 h-3.5" />
               <span>Storyboard (16:9) ({storyboardCount})</span>
@@ -278,8 +275,8 @@ export default function DashboardPage() {
               {modeFilter === "all"
                 ? "Belum Ada Project"
                 : modeFilter === "long_storyboard"
-                ? "Belum Ada Project Long Storyboard"
-                : "Belum Ada Project Short Video"}
+                  ? "Belum Ada Project Long Storyboard"
+                  : "Belum Ada Project Short Video"}
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
               {modeFilter === "long_storyboard"
@@ -303,11 +300,10 @@ export default function DashboardPage() {
               return (
                 <Card
                   key={proj.id}
-                  className={`group relative border-[#2E2E2E] bg-[#181818] transition-all duration-200 flex flex-col justify-between hover:bg-[#1C1C1C] hover:shadow-xl ${
-                    isStoryboard
-                      ? "hover:border-violet-500/50 hover:shadow-violet-500/5"
-                      : "hover:border-[#3ECF8E]/50 hover:shadow-[#3ECF8E]/5"
-                  }`}
+                  className={`group relative border-[#2E2E2E] bg-[#181818] transition-all duration-200 flex flex-col justify-between hover:bg-[#1C1C1C] hover:shadow-xl ${isStoryboard
+                    ? "hover:border-violet-500/50 hover:shadow-violet-500/5"
+                    : "hover:border-[#3ECF8E]/50 hover:shadow-[#3ECF8E]/5"
+                    }`}
                 >
                   <CardHeader className="p-5 pb-3">
                     <div className="flex items-start justify-between gap-3 mb-2">
@@ -321,7 +317,7 @@ export default function DashboardPage() {
                           {proj.aspect_ratio} • {proj.resolution}
                         </Badge>
                       )}
-                      
+
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -356,9 +352,8 @@ export default function DashboardPage() {
 
                     <Link href={`/projects/${proj.id}`}>
                       <CardTitle
-                        className={`text-base font-bold text-white transition ${
-                          isStoryboard ? "group-hover:text-violet-400" : "group-hover:text-[#3ECF8E]"
-                        }`}
+                        className={`text-base font-bold text-white transition ${isStoryboard ? "group-hover:text-violet-400" : "group-hover:text-[#3ECF8E]"
+                          }`}
                       >
                         {proj.name}
                       </CardTitle>
@@ -399,9 +394,8 @@ export default function DashboardPage() {
 
                     <Link
                       href={`/projects/${proj.id}`}
-                      className={`flex items-center gap-1 font-medium group-hover:translate-x-0.5 transition ${
-                        isStoryboard ? "text-violet-400" : "text-[#3ECF8E]"
-                      }`}
+                      className={`flex items-center gap-1 font-medium group-hover:translate-x-0.5 transition ${isStoryboard ? "text-violet-400" : "text-[#3ECF8E]"
+                        }`}
                     >
                       <span>{isStoryboard ? "Storyboard Studio" : "Clip Studio"}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -437,11 +431,10 @@ export default function DashboardPage() {
                     setCreateMode("short_video");
                     setAspectRatio("9:16");
                   }}
-                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${
-                    createMode === "short_video"
-                      ? "border-[#3ECF8E] bg-[#3ECF8E]/5 ring-1 ring-[#3ECF8E]/30"
-                      : "border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/40"
-                  }`}
+                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${createMode === "short_video"
+                    ? "border-[#3ECF8E] bg-[#3ECF8E]/5 ring-1 ring-[#3ECF8E]/30"
+                    : "border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/40"
+                    }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -465,11 +458,10 @@ export default function DashboardPage() {
                     setCreateMode("long_storyboard");
                     setAspectRatio("16:9");
                   }}
-                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${
-                    createMode === "long_storyboard"
-                      ? "border-violet-500 bg-violet-500/5 ring-1 ring-violet-500/30"
-                      : "border-[#2E2E2E] bg-[#181818] hover:border-violet-500/40"
-                  }`}
+                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${createMode === "long_storyboard"
+                    ? "border-violet-500 bg-violet-500/5 ring-1 ring-violet-500/30"
+                    : "border-[#2E2E2E] bg-[#181818] hover:border-violet-500/40"
+                    }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">

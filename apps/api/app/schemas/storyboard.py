@@ -88,3 +88,14 @@ class YouTubeMetadataUpdateRequest(BaseModel):
 class StoryboardCharactersUpdateRequest(BaseModel):
     characters: List[dict]
 
+
+class StoryboardSegmentItemUpdate(BaseModel):
+    id: str
+    image_prompt: str
+
+
+class StoryboardSegmentUpdateRequest(BaseModel):
+    chapter: Optional[str] = None
+    text: Optional[str] = None
+    items: Optional[List[StoryboardSegmentItemUpdate]] = None
+

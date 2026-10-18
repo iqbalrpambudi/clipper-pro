@@ -35,6 +35,11 @@ async def get_audio_duration(file_path: str) -> float:
 
 log = logging.getLogger(__name__)
 
+
+class ElevenLabsCharacterLimitError(RuntimeError):
+    """Raised when an ElevenLabs request exceeds the model or tier character limit."""
+    pass
+
 ELEVENLABS_VOICE_MAP: Dict[str, str] = {
     "adam": "pNInz6obpgDQGcFmaJgB",
     "rachel": "21m00Tcm4TlvDq8ikWAM",
@@ -1034,8 +1039,9 @@ async def generate_elevenlabs_tts(
         "Accept": "audio/mpeg",
     }
     model_id = (model or "eleven_multilingual_v2").strip()
+    is_turbo_or_flash = "turbo" in model_id.lower() or "flash" in model_id.lower()
     voice_settings: Dict[str, Any] = {
-        "stability": 0.75,
+        "stability": 0.85 if is_turbo_or_flash else 0.75,
         "similarity_boost": 0.85,
     }
     # ElevenLabs v4 architecture strictly accepts stability and similarity_boost.
@@ -1050,15 +1056,37 @@ async def generate_elevenlabs_tts(
         "voice_settings": voice_settings,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    # Extended timeout for long single-pass generations (up to 10k or 40k chars)
+    timeout_sec = 240.0 if len(text) > 5000 else 90.0
+    async with httpx.AsyncClient(timeout=timeout_sec) as client:
         resp = await client.post(url, json=payload, headers=headers)
         if resp.status_code != 200:
             err_msg = resp.text
+            detail_status = ""
             try:
                 err_json = resp.json()
-                err_msg = err_json.get("detail", {}).get("message") or err_json.get("error") or resp.text
+                detail = err_json.get("detail", {})
+                if isinstance(detail, dict):
+                    err_msg = detail.get("message") or err_json.get("error") or resp.text
+                    detail_status = str(detail.get("status") or "")
+                else:
+                    err_msg = str(detail) or err_json.get("error") or resp.text
             except Exception:
                 pass
+
+            # Deteksi khusus jika response adalah error limit karakter / request size
+            combined_err = f"{err_msg} {detail_status}".lower()
+            char_limit_keywords = [
+                "character limit", "too_large", "request_too_large",
+                "max_characters", "maximum text length", "quota_exceeded",
+                "exceeds the maximum", "characters allowed"
+            ]
+            if resp.status_code in (400, 413, 422) and any(k in combined_err for k in char_limit_keywords):
+                raise ElevenLabsCharacterLimitError(
+                    f"ElevenLabs Character Limit Terlampaui ({resp.status_code}): {err_msg}. "
+                    f"Teks naskah melebihi kapasitas karakter per request model {model_id}."
+                )
+
             raise RuntimeError(f"ElevenLabs TTS HTTP {resp.status_code}: {err_msg}")
 
         raw_bytes = resp.content
@@ -1481,10 +1509,22 @@ async def generate_speech_audio(
 
     prov = provider.lower().strip()
 
-    # 1. ELEVENLABS TTS
+    # 1. ELEVENLABS TTS (KHUSUS ELEVENLABS: Gunakan limit kapasitas maksimal per arsitektur model)
     if prov == "elevenlabs":
         try:
-            if len(clean_text) <= 4500:
+            m_id = (model or "eleven_multilingual_v2").lower().strip()
+            # Batas kapasitas resmi per model ElevenLabs API (maximum_text_length_per_request):
+            # - Model v2.5 Flash / Turbo (eleven_flash_v2_5, eleven_turbo_v2_5): limit 40.000 karakter (~35-40 mnt audio)
+            # - Model v4 / v4 Turbo / Multilingual v2 / Standard: limit 10.000 karakter (~10-12 mnt audio)
+            # Naskah 8 menit (~7.500 karakter) akan tetap dikirim utuh 1x di SEMUA model ini tanpa chunking.
+            if ("flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id) and "v4" not in m_id:
+                eleven_max_chars = 40000
+                chunk_size = 38000
+            else:
+                eleven_max_chars = 10000
+                chunk_size = 9500
+
+            if len(clean_text) <= eleven_max_chars:
                 return await generate_elevenlabs_tts(
                     clean_text,
                     output_path,
@@ -1495,8 +1535,8 @@ async def generate_speech_audio(
                     pitch=pitch,
                 )
 
-            # For scripts > 4500 chars, split into ~3500-char blocks
-            chunks = _split_text_for_tts(clean_text, max_chars=3500)
+            # For extraordinarily long texts exceeding model capacity (>10,000 or >40,000 chars)
+            chunks = _split_text_for_tts(clean_text, max_chars=chunk_size)
             if len(chunks) == 1:
                 return await generate_elevenlabs_tts(
                     chunks[0],
@@ -1543,6 +1583,23 @@ async def generate_speech_audio(
                 for p in parts:
                     Path(p).unlink(missing_ok=True)
         except Exception as e:
+            # JIKA TERKENA LIMIT KARAKTER ELEVENLABS: JANGAN PERNAH FALLBACK KE TTS LAIN!
+            # Langsung kembalikan error eksplisit agar pengguna mengetahui naskah melebihi kapasitas model ElevenLabs.
+            err_str = str(e).lower()
+            is_char_limit = (
+                isinstance(e, ElevenLabsCharacterLimitError)
+                or any(k in err_str for k in [
+                    "character limit", "too_large", "request_too_large",
+                    "max_characters", "maximum text length", "quota_exceeded",
+                    "exceeds the maximum", "characters allowed"
+                ])
+            )
+            if is_char_limit:
+                log.error("ElevenLabs TTS melebihi batas karakter (fallback dicegah): %s", e)
+                raise RuntimeError(
+                    f"ElevenLabs Character Limit Exceeded: {e}"
+                ) from e
+
             if not fallback_enabled:
                 log.error("ElevenLabs TTS failed and fallback is disabled: %s", e)
                 raise

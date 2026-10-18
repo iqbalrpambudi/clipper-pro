@@ -22,11 +22,16 @@ import {
   Palette,
   Sliders,
   CheckCircle2,
+  Bookmark,
+  BookmarkPlus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, StoryboardItem, SubtitleStyle } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import { Button, Badge, Input } from "@/components/ui";
+import { presetStorage, SubtitleCustomPreset } from "@/lib/presetStorage";
 
 interface StoryboardTimelineTabProps {
   project: Project & {
@@ -206,6 +211,47 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     emoji_enabled: false,
   }));
 
+  // Custom Subtitle Presets state
+  const [customSubtitlePresets, setCustomSubtitlePresets] = useState<SubtitleCustomPreset[]>([]);
+  const [selectedSubtitlePresetId, setSelectedSubtitlePresetId] = useState<string>("");
+  const [showSaveSubtitleModal, setShowSaveSubtitleModal] = useState<boolean>(false);
+  const [newSubtitlePresetName, setNewSubtitlePresetName] = useState<string>("");
+
+  useEffect(() => {
+    setCustomSubtitlePresets(presetStorage.getSubtitlePresets());
+  }, []);
+
+  const handleLoadSubtitlePreset = (presetId: string) => {
+    setSelectedSubtitlePresetId(presetId);
+    const found = customSubtitlePresets.find((p) => p.id === presetId);
+    if (!found) return;
+    setSubtitleStyle(found.style);
+    updateStyleMutation.mutate(found.style);
+    showToast(`Preset subtitle "${found.name}" berhasil dimuat!`, "success");
+  };
+
+  const handleSaveSubtitlePreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubtitlePresetName.trim()) {
+      showToast("Nama preset subtitle tidak boleh kosong", "error");
+      return;
+    }
+    const saved = presetStorage.saveSubtitlePreset(newSubtitlePresetName.trim(), subtitleStyle);
+    setCustomSubtitlePresets(presetStorage.getSubtitlePresets());
+    setSelectedSubtitlePresetId(saved.id);
+    setNewSubtitlePresetName("");
+    setShowSaveSubtitleModal(false);
+    showToast(`Preset subtitle "${saved.name}" berhasil disimpan!`, "success");
+  };
+
+  const handleDeleteSubtitlePreset = (id: string, name: string) => {
+    presetStorage.deleteSubtitlePreset(id);
+    const remaining = presetStorage.getSubtitlePresets();
+    setCustomSubtitlePresets(remaining);
+    if (selectedSubtitlePresetId === id) setSelectedSubtitlePresetId("");
+    showToast(`Preset subtitle "${name}" dihapus`, "info");
+  };
+
   // Frame dimension measurement for pixel-perfect responsive scaling
   const [frameDimensions, setFrameDimensions] = useState({ width: 640, height: 360 });
   const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
@@ -258,7 +304,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
       setIsPlaying(true);
     }
   };
@@ -400,7 +446,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     setIsDraggingSubtitle(false);
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch { }
     updateStyleMutation.mutate(subtitleStyle);
   };
 
@@ -421,7 +467,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+    <div className="space-y-8 max-w-8xl mx-auto pb-16">
       {/* Step Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
         <div>
@@ -486,9 +532,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   key={activeItem.id}
                   src={activeItem.image_url}
                   alt={activeItem.image_prompt}
-                  className={`w-full h-full object-cover origin-center ${
-                    isPlaying ? getMotionAnimationClass(activeItem.motion_effect) : "scale-100"
-                  }`}
+                  className={`w-full h-full object-cover origin-center ${isPlaying ? getMotionAnimationClass(activeItem.motion_effect) : "scale-100"
+                    }`}
                 />
               </div>
             ) : (
@@ -507,13 +552,12 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 style={{
                   top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
                   bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-                  transform: `translate(${scaledOffsetX}px, ${
-                    subtitleStyle.position === "center"
+                  transform: `translate(${scaledOffsetX}px, ${subtitleStyle.position === "center"
                       ? `calc(-50% + ${scaledOffsetY}px)`
                       : subtitleStyle.position === "bottom"
-                      ? `${-scaledOffsetY}px`
-                      : `${scaledOffsetY}px`
-                  })`,
+                        ? `${-scaledOffsetY}px`
+                        : `${scaledOffsetY}px`
+                    })`,
                 }}
               >
                 {/* 1. Burst Mode (2-3 kata) */}
@@ -600,22 +644,22 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   >
                     {segWords.length > 0
                       ? segWords.map((w: any, i: number) => {
-                          const isActive = isHighlightEnabled && i === activeWordIndex;
-                          return (
-                            <span
-                              key={i}
-                              style={{
-                                color: isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
-                                transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                                transition: "all 0.08s ease-out",
-                                display: "inline-block",
-                              }}
-                              className="mr-1.5"
-                            >
-                              {w.word}
-                            </span>
-                          );
-                        })
+                        const isActive = isHighlightEnabled && i === activeWordIndex;
+                        return (
+                          <span
+                            key={i}
+                            style={{
+                              color: isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                              transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                              transition: "all 0.08s ease-out",
+                              display: "inline-block",
+                            }}
+                            className="mr-1.5"
+                          >
+                            {w.word}
+                          </span>
+                        );
+                      })
                       : activeSegment.text}
                   </div>
                 )}
@@ -632,13 +676,12 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 style={{
                   top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
                   bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-                  transform: `translate(${scaledOffsetX}px, ${
-                    subtitleStyle.position === "center"
+                  transform: `translate(${scaledOffsetX}px, ${subtitleStyle.position === "center"
                       ? `calc(-50% + ${scaledOffsetY}px)`
                       : subtitleStyle.position === "bottom"
-                      ? `${-scaledOffsetY}px`
-                      : `${scaledOffsetY}px`
-                  })`,
+                        ? `${-scaledOffsetY}px`
+                        : `${scaledOffsetY}px`
+                    })`,
                 }}
               >
                 <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-violet-400/70 transition-all flex items-center justify-center pointer-events-auto">
@@ -698,11 +741,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       "info"
                     );
                   }}
-                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${
-                    subtitleStyle.enabled !== false
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${subtitleStyle.enabled !== false
                       ? "bg-violet-600/20 text-violet-300 border-violet-500/40"
                       : "bg-[#222222] text-slate-500 border-[#2E2E2E]"
-                  }`}
+                    }`}
                   title={subtitleStyle.enabled !== false ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
                 >
                   <Type className="w-3.5 h-3.5" />
@@ -748,11 +790,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
             <button
               type="button"
               onClick={() => setActiveRightTab("subtitles")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
-                activeRightTab === "subtitles"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${activeRightTab === "subtitles"
                   ? "bg-violet-600 text-white font-semibold shadow-sm"
                   : "text-slate-400 hover:text-white"
-              }`}
+                }`}
             >
               <Type className="w-3.5 h-3.5" />
               <span>Studio Subtitle</span>
@@ -760,11 +801,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
             <button
               type="button"
               onClick={() => setActiveRightTab("motion")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
-                activeRightTab === "motion"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${activeRightTab === "motion"
                   ? "bg-violet-600 text-white font-semibold shadow-sm"
                   : "text-slate-400 hover:text-white"
-              }`}
+                }`}
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Adegan & Motion</span>
@@ -809,11 +849,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
                   <Badge
                     variant={subtitleStyle.enabled !== false ? "default" : "secondary"}
-                    className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
-                      subtitleStyle.enabled !== false
+                    className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${subtitleStyle.enabled !== false
                         ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
                         : "bg-[#222222] text-slate-500 border border-[#333333]"
-                    }`}
+                      }`}
                   >
                     {subtitleStyle.enabled !== false ? "AKTIF" : "NONAKTIF"}
                   </Badge>
@@ -825,6 +864,83 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <span>⚠️ Subtitle sedang dinonaktifkan. Video akan dirender bersih tanpa subtitle. Beri centang pada checklist di atas jika ingin mengaktifkan subtitle kembali.</span>
                 </div>
               )}
+
+              {/* Preset Subtitle Kustom Tersimpan */}
+              <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Bookmark className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                    <span className="text-xs font-semibold text-slate-300 shrink-0">Preset Kustom:</span>
+                    <select
+                      value={selectedSubtitlePresetId}
+                      onChange={(e) => handleLoadSubtitlePreset(e.target.value)}
+                      className="bg-[#1C1C1C] border border-[#333] hover:border-violet-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-violet-500 font-medium truncate max-w-[200px]"
+                    >
+                      <option value="" disabled>-- Muat Preset Subtitle --</option>
+                      {customSubtitlePresets.length === 0 ? (
+                        <option value="" disabled>Belum ada preset kustom tersimpan</option>
+                      ) : (
+                        customSubtitlePresets.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {selectedSubtitlePresetId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = customSubtitlePresets.find((p) => p.id === selectedSubtitlePresetId);
+                          if (cur) handleDeleteSubtitlePreset(cur.id, cur.name);
+                        }}
+                        title="Hapus Preset Ini"
+                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveSubtitleModal(!showSaveSubtitleModal)}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium shrink-0"
+                  >
+                    <BookmarkPlus className="w-3.5 h-3.5" />
+                    <span>Simpan Preset</span>
+                  </button>
+                </div>
+
+                {/* Save Subtitle Preset Inline Form */}
+                {showSaveSubtitleModal && (
+                  <form onSubmit={handleSaveSubtitlePreset} className="flex items-center gap-2 pt-2 border-t border-[#222]">
+                    <Input
+                      type="text"
+                      placeholder="Nama preset subtitle (mis. Style Kuning Bold)..."
+                      value={newSubtitlePresetName}
+                      onChange={(e) => setNewSubtitlePresetName(e.target.value)}
+                      autoFocus
+                      className="h-8 text-xs bg-[#1A1A1A] border-[#333] flex-1 text-white"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="h-8 bg-violet-600 hover:bg-violet-500 text-white text-xs px-3 gap-1 shrink-0"
+                    >
+                      <Save className="w-3 h-3" />
+                      <span>Simpan</span>
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSaveSubtitleModal(false)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+                )}
+              </div>
 
               {/* Presets 1-Click */}
               <div>
@@ -860,11 +976,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           setSubtitleStyle(updated);
                           updateStyleMutation.mutate(updated);
                         }}
-                        className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
-                          isSelected
+                        className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${isSelected
                             ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
                             : "bg-[#141414] border-[#2A2A2A] text-slate-300 hover:border-violet-500/40"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-1.5 truncate">
                           <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
@@ -912,11 +1027,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           display_mode: m.id as any,
                         }))
                       }
-                      className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${
-                        subtitleStyle.display_mode === m.id
+                      className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${subtitleStyle.display_mode === m.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
                           : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
-                      }`}
+                        }`}
                     >
                       <span className="text-xs font-bold">{m.label}</span>
                       <span className="text-[9px] text-muted-foreground">{m.desc}</span>
@@ -939,11 +1053,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                               burst_word_count: count,
                             }))
                           }
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                            (subtitleStyle.burst_word_count || 2) === count
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition ${(subtitleStyle.burst_word_count || 2) === count
                               ? "bg-violet-600 text-white shadow-sm"
                               : "bg-[#242424] text-slate-400 hover:text-white"
-                          }`}
+                            }`}
                         >
                           {count} Kata
                         </button>
@@ -964,8 +1077,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     {subtitleStyle.highlight_animation === "scale"
                       ? "Scale Pop"
                       : subtitleStyle.highlight_animation === "none"
-                      ? "Statis"
-                      : "Warna Glow"}
+                        ? "Statis"
+                        : "Warna Glow"}
                   </span>
                 </div>
 
@@ -973,11 +1086,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
-                      subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                    }`}
+                      }`}
                   >
                     <span className="text-xs font-bold block">Warna Glow</span>
                     <span className="text-[9px] text-muted-foreground">Transisi halus glow</span>
@@ -986,11 +1098,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
-                      subtitleStyle.highlight_animation === "scale"
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "scale"
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                    }`}
+                      }`}
                   >
                     <span className="text-xs font-bold block">Scale Pop</span>
                     <span className="text-[9px] text-muted-foreground">Membesar & loncat</span>
@@ -999,11 +1110,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "none" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
-                      subtitleStyle.highlight_animation === "none"
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "none"
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                    }`}
+                      }`}
                   >
                     <span className="text-xs font-bold block">Statis</span>
                     <span className="text-[9px] text-muted-foreground">Tanpa animasi</span>
@@ -1313,11 +1423,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           offset_y: pos.id === "bottom" ? -30 : 0,
                         }))
                       }
-                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
-                        subtitleStyle.position === pos.id
+                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${subtitleStyle.position === pos.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
                           : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
-                      }`}
+                        }`}
                     >
                       {pos.label}
                     </button>
@@ -1421,11 +1530,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                               data: { motion_effect: m.id as any },
                             })
                           }
-                          className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
-                            activeItem.motion_effect === m.id
+                          className={`p-2 rounded-xl text-xs font-medium border text-center transition ${activeItem.motion_effect === m.id
                               ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
                               : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                          }`}
+                            }`}
                         >
                           {m.label}
                         </button>
@@ -1465,11 +1573,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               <div
                 key={item.id}
                 onClick={() => handleSeek(item.start_time)}
-                className={`min-w-[200px] max-w-[220px] rounded-xl border p-2.5 cursor-pointer transition flex flex-col justify-between shrink-0 ${
-                  isCurrent
+                className={`min-w-[200px] max-w-[220px] rounded-xl border p-2.5 cursor-pointer transition flex flex-col justify-between shrink-0 ${isCurrent
                     ? "border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500/30"
                     : "border-[#2E2E2E] bg-[#141414] hover:border-violet-500/40"
-                }`}
+                  }`}
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-video rounded-lg bg-black overflow-hidden mb-2 border border-[#262626]">

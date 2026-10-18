@@ -177,8 +177,8 @@ export default function ImageStudioPage() {
         saveTarget === "doodle-ilustrasi"
           ? "doodle-ilustrasi"
           : selectedPresetForEdit && saveTarget === "active_id"
-          ? selectedPresetForEdit.id
-          : `preset-${Date.now()}`;
+            ? selectedPresetForEdit.id
+            : `preset-${Date.now()}`;
 
       return api.createImagePreset({
         id: presetId,
@@ -367,14 +367,14 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Main Studio Content: Two-Column Split */}
-      <main className="max-w-7xl mx-auto px-6 py-8 w-full flex-1">
+      <main className="max-w-8xl mx-auto px-6 py-8 w-full flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* ======================================================== */}
           {/* LEFT COLUMN: Input & AI Synthesizer (5 cols) */}
           {/* ======================================================== */}
           <div className="lg:col-span-5 space-y-6">
-            
+
             {/* Step 1: Input Deskripsi Teks */}
             <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] shadow-lg space-y-3.5">
               <div className="flex items-center justify-between">
@@ -787,9 +787,8 @@ export default function ImageStudioPage() {
                       <div
                         key={i}
                         onClick={() => setPreviewImageUrl(imgUrl)}
-                        className={`w-16 h-10 rounded-lg overflow-hidden border cursor-pointer shrink-0 transition ${
-                          previewImageUrl === imgUrl ? "border-violet-500 ring-2 ring-violet-500/40" : "border-[#2E2E2E] opacity-70 hover:opacity-100"
-                        }`}
+                        className={`w-16 h-10 rounded-lg overflow-hidden border cursor-pointer shrink-0 transition ${previewImageUrl === imgUrl ? "border-violet-500 ring-2 ring-violet-500/40" : "border-[#2E2E2E] opacity-70 hover:opacity-100"
+                          }`}
                       >
                         <img src={imgUrl} alt={`Test ${i}`} className="w-full h-full object-cover" />
                       </div>
@@ -882,11 +881,10 @@ export default function ImageStudioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div
                   onClick={() => setSaveTarget("doodle-ilustrasi")}
-                  className={`p-3 rounded-xl border cursor-pointer transition ${
-                    saveTarget === "doodle-ilustrasi"
+                  className={`p-3 rounded-xl border cursor-pointer transition ${saveTarget === "doodle-ilustrasi"
                       ? "border-emerald-500 bg-emerald-500/10 text-white"
                       : "border-[#2E2E2E] bg-[#141414] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold">Preset Doodle Ilustrasi</span>
@@ -901,11 +899,10 @@ export default function ImageStudioPage() {
 
                 <div
                   onClick={() => setSaveTarget("new")}
-                  className={`p-3 rounded-xl border cursor-pointer transition ${
-                    saveTarget === "new"
+                  className={`p-3 rounded-xl border cursor-pointer transition ${saveTarget === "new"
                       ? "border-emerald-500 bg-emerald-500/10 text-white"
                       : "border-[#2E2E2E] bg-[#141414] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold">Simpan Preset Baru</span>
@@ -984,11 +981,10 @@ export default function ImageStudioPage() {
               presets.map((preset) => (
                 <div
                   key={preset.id}
-                  className={`p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                    preset.is_active
+                  className={`p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${preset.is_active
                       ? "bg-emerald-950/20 border-emerald-500/40"
                       : "bg-[#141414] border-[#2E2E2E] hover:border-surface-border"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="w-16 h-12 rounded-lg overflow-hidden border border-[#2E2E2E] bg-black shrink-0">

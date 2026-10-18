@@ -403,6 +403,24 @@ export const api = {
         body: JSON.stringify({ characters }),
       }
     ),
+  updateStoryboardSegment: (
+    projectId: string,
+    segmentId: string,
+    data: {
+      chapter?: string;
+      text?: string;
+      items?: { id: string; image_prompt: string }[];
+    }
+  ) =>
+    request<{
+      success: boolean;
+      segment_id: string;
+      narration: any;
+      storyboard_items: StoryboardItem[];
+    }>(`/api/v1/projects/${projectId}/storyboard/segments/${segmentId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   getStoryboardItems: (projectId: string) =>
     request<StoryboardItem[]>(`/api/v1/projects/${projectId}/storyboard/items`),
   updateStoryboardItem: (

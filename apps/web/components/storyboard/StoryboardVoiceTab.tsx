@@ -12,11 +12,17 @@ import {
   RefreshCw,
   Mic,
   ExternalLink,
+  Bookmark,
+  BookmarkPlus,
+  Save,
+  Trash2,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, StoryboardItem } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import { Button, Badge, Input } from "@/components/ui";
+import { presetStorage, VoicePreset } from "@/lib/presetStorage";
 import {
   GEMINI_TTS_MODELS,
   ELEVENLABS_TTS_MODELS,
@@ -50,6 +56,70 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const [fallbackEnabled, setFallbackEnabled] = useState<boolean>(true);
   const [customVoiceInput, setCustomVoiceInput] = useState<string>("");
   const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>("");
+
+  // Voice Presets state
+  const [voicePresets, setVoicePresets] = useState<VoicePreset[]>([]);
+  const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>("");
+  const [showSaveVoiceModal, setShowSaveVoiceModal] = useState<boolean>(false);
+  const [newVoicePresetName, setNewVoicePresetName] = useState<string>("");
+
+  useEffect(() => {
+    setVoicePresets(presetStorage.getVoicePresets());
+  }, []);
+
+  const handleLoadVoicePreset = (presetId: string) => {
+    setSelectedVoicePresetId(presetId);
+    const found = voicePresets.find((p) => p.id === presetId);
+    if (!found) return;
+    setProvider(found.provider);
+    setVoice(found.voice);
+    if (found.provider === "gemini") setGeminiModel(found.model);
+    else if (found.provider === "elevenlabs") setElevenlabsModel(found.model);
+    else if (found.provider === "runware") setRunwareModel(found.model);
+
+    if (found.customVoiceInput) setCustomVoiceInput(found.customVoiceInput);
+    if (found.runwareCustomVoiceInput) setRunwareCustomVoiceInput(found.runwareCustomVoiceInput);
+    setRate(found.rate ?? 0);
+    setPitch(found.pitch ?? 0);
+    showToast(`Preset suara "${found.name}" berhasil dimuat!`, "success");
+  };
+
+  const handleSaveVoicePreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVoicePresetName.trim()) {
+      showToast("Nama preset suara tidak boleh kosong", "error");
+      return;
+    }
+    let currentModel = "";
+    if (provider === "gemini") currentModel = geminiModel;
+    else if (provider === "elevenlabs") currentModel = elevenlabsModel;
+    else if (provider === "runware") currentModel = runwareModel;
+    else currentModel = "edge";
+
+    const saved = presetStorage.saveVoicePreset({
+      name: newVoicePresetName.trim(),
+      provider,
+      model: currentModel,
+      voice,
+      customVoiceInput: customVoiceInput || undefined,
+      runwareCustomVoiceInput: runwareCustomVoiceInput || undefined,
+      rate,
+      pitch,
+    });
+    setVoicePresets(presetStorage.getVoicePresets());
+    setSelectedVoicePresetId(saved.id);
+    setNewVoicePresetName("");
+    setShowSaveVoiceModal(false);
+    showToast(`Preset suara "${saved.name}" berhasil disimpan!`, "success");
+  };
+
+  const handleDeleteVoicePreset = (id: string, name: string) => {
+    presetStorage.deleteVoicePreset(id);
+    const remaining = presetStorage.getVoicePresets();
+    setVoicePresets(remaining);
+    if (selectedVoicePresetId === id) setSelectedVoicePresetId("");
+    showToast(`Preset suara "${name}" dihapus`, "info");
+  };
 
   // Sample Audio Player State
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -97,7 +167,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
       setLoadingSampleVoiceId(null);
       showToast("Gagal memuat sampel audio untuk " + voiceId, "error");
     };
-    a.play().catch(() => {});
+    a.play().catch(() => { });
   };
 
   // Fetch active config to sync fallback setting
@@ -177,7 +247,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
       setIsPlaying(true);
     }
   };
@@ -212,7 +282,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const hasTimingSynced = items.some((it) => it.end_time > 0);
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+    <div className="space-y-8 max-w-8xl mx-auto pb-16">
       {/* Step Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
         <div>
@@ -267,6 +337,79 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
             </div>
           </div>
 
+          {/* Preset Selector & Save Bar */}
+          <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Bookmark className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="text-xs font-semibold text-slate-300 shrink-0">Preset:</span>
+                <select
+                  value={selectedVoicePresetId}
+                  onChange={(e) => handleLoadVoicePreset(e.target.value)}
+                  className="bg-[#1C1C1C] border border-[#333] hover:border-emerald-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-emerald-500 font-medium truncate max-w-[200px]"
+                >
+                  <option value="" disabled>-- Muat Preset Suara --</option>
+                  {voicePresets.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
+                    </option>
+                  ))}
+                </select>
+                {selectedVoicePresetId && !voicePresets.find((p) => p.id === selectedVoicePresetId)?.isBuiltin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = voicePresets.find((p) => p.id === selectedVoicePresetId);
+                      if (cur) handleDeleteVoicePreset(cur.id, cur.name);
+                    }}
+                    title="Hapus Preset Kustom Ini"
+                    className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
+                className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white transition flex items-center gap-1 font-medium shrink-0"
+              >
+                <BookmarkPlus className="w-3.5 h-3.5" />
+                <span>Simpan Preset</span>
+              </button>
+            </div>
+
+            {/* Save Voice Preset Inline Form */}
+            {showSaveVoiceModal && (
+              <form onSubmit={handleSaveVoicePreset} className="flex items-center gap-2 pt-2 border-t border-[#222]">
+                <Input
+                  type="text"
+                  placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
+                  value={newVoicePresetName}
+                  onChange={(e) => setNewVoicePresetName(e.target.value)}
+                  autoFocus
+                  className="h-8 text-xs bg-[#1A1A1A] border-[#333] flex-1 text-white"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 gap-1 shrink-0"
+                >
+                  <Save className="w-3 h-3" />
+                  <span>Simpan</span>
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveVoiceModal(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            )}
+          </div>
+
           <div className="space-y-4">
             {/* Provider */}
             <div>
@@ -280,11 +423,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     setProvider("gemini");
                     setVoice("Puck");
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "gemini"
+                  className={`p-2.5 rounded-xl border text-left transition ${provider === "gemini"
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold">Gemini TTS</div>
                   <div className="text-[10px] text-muted-foreground">Natural Studio Voice</div>
@@ -296,11 +438,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     setProvider("elevenlabs");
                     setVoice("Adam");
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "elevenlabs"
+                  className={`p-2.5 rounded-xl border text-left transition ${provider === "elevenlabs"
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold">ElevenLabs</div>
                   <div className="text-[10px] text-muted-foreground">Zero Tone Drift (Gold)</div>
@@ -312,11 +453,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     setProvider("runware");
                     setVoice("fishaudio:s2.1@pro");
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "runware"
+                  className={`p-2.5 rounded-xl border text-left transition ${provider === "runware"
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold">Runware TTS</div>
                   <div className="text-[10px] text-muted-foreground">Fish / Qwen3 / xAI / MiniMax</div>
@@ -328,11 +468,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     setProvider("edge");
                     setVoice("id-ID-ArdiNeural");
                   }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "edge"
+                  className={`p-2.5 rounded-xl border text-left transition ${provider === "edge"
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs font-bold">Edge-TTS</div>
                   <div className="text-[10px] text-muted-foreground">Multi-Language Neural (Free)</div>
@@ -529,11 +668,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     <div
                       key={v.id}
                       onClick={() => setVoice(v.id)}
-                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${isSelected
                           ? "bg-violet-500/20 border-violet-500 text-violet-200 ring-1 ring-violet-500/40"
                           : "bg-[#141414] border-[#2E2E2E] text-slate-300 hover:bg-[#1A1A1A] hover:border-[#3E3E3E]"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
@@ -556,11 +694,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                             e.stopPropagation();
                             playVoiceSample(v.id);
                           }}
-                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] transition ${
-                            isPlayingSample
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] transition ${isPlayingSample
                               ? "bg-violet-600 text-white font-medium"
                               : "bg-[#222] hover:bg-[#333] text-slate-300 border border-[#333]"
-                          }`}
+                            }`}
                         >
                           {loadingSampleVoiceId === v.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -768,11 +905,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                             audioRef.current.currentTime = segStart;
                           }
                         }}
-                        className={`p-3 rounded-xl border cursor-pointer transition text-xs leading-relaxed ${
-                          isActive
+                        className={`p-3 rounded-xl border cursor-pointer transition text-xs leading-relaxed ${isActive
                             ? "border-violet-500 bg-violet-500/10 text-white font-medium shadow-md shadow-violet-500/5 ring-1 ring-violet-500/30"
                             : "border-[#2E2E2E] bg-[#141414] text-slate-300 hover:border-slate-600"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
                           <span className="font-mono font-bold text-violet-300">

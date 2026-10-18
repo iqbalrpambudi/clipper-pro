@@ -858,6 +858,116 @@ async def test_elevenlabs_tts_missing_key_throws_error():
 
 
 @pytest.mark.asyncio
+async def test_elevenlabs_model_specific_character_limits(monkeypatch):
+    """Test that ElevenLabs uses 40k max chars for Turbo/Flash and 10k for v2/v4 without chunking."""
+    from app.services import tts
+
+    call_records = []
+
+    async def mock_generate_elevenlabs(text, output_path, **kwargs):
+        call_records.append({"len": len(text), "model": kwargs.get("model")})
+        return 50.0
+
+    async def mock_concat(part_paths, output_path):
+        return 150.0
+
+    monkeypatch.setattr(tts, "generate_elevenlabs_tts", mock_generate_elevenlabs)
+    monkeypatch.setattr(tts, "_concat_mp3s", mock_concat)
+
+    # 1. 8,000 characters text (~8 minutes of speech)
+    long_script_8k = "Halo dunia cerita ini sangat panjang dan terstruktur. " * 150  # ~8,100 chars
+    assert 7000 < len(long_script_8k) < 10000
+
+    # For Multilingual v2: 8k characters should be sent in 1 SINGLE pass
+    call_records.clear()
+    dur = await tts.generate_speech_audio(
+        text=long_script_8k,
+        output_path="/tmp/eleven_v2_test.mp3",
+        provider="elevenlabs",
+        model="eleven_multilingual_v2",
+        fallback_enabled=False,
+    )
+    assert dur == 50.0
+    assert len(call_records) == 1, "Multilingual v2 must process ~8k chars in 1 single request"
+
+    # For v4: 8k characters should also be sent in 1 SINGLE pass
+    call_records.clear()
+    dur = await tts.generate_speech_audio(
+        text=long_script_8k,
+        output_path="/tmp/eleven_v4_test.mp3",
+        provider="elevenlabs",
+        model="eleven_v4",
+        fallback_enabled=False,
+    )
+    assert dur == 50.0
+    assert len(call_records) == 1, "Eleven v4 must process ~8k chars in 1 single request"
+
+    # For v4 Turbo: 8k characters (~8 minutes of speech) is sent in 1 SINGLE pass (<= 10k limit)
+    call_records.clear()
+    dur = await tts.generate_speech_audio(
+        text=long_script_8k,
+        output_path="/tmp/eleven_v4_turbo_test.mp3",
+        provider="elevenlabs",
+        model="eleven_v4_turbo",
+        fallback_enabled=False,
+    )
+    assert dur == 50.0
+    assert len(call_records) == 1, "Eleven v4 Turbo must process ~8k chars in 1 single request"
+
+    # For v4 / v4 Turbo with > 10k chars (e.g. 25k chars), it correctly chunks into multiple parts
+    ultra_script_25k = "Narasi panjang dokumenter sejarah berdurasi sangat panjang. " * 420  # ~25,000 chars
+    assert 20000 < len(ultra_script_25k) < 35000
+
+    call_records.clear()
+    dur = await tts.generate_speech_audio(
+        text=ultra_script_25k,
+        output_path="/tmp/eleven_v4_long_test.mp3",
+        provider="elevenlabs",
+        model="eleven_v4_turbo",
+        fallback_enabled=False,
+    )
+    assert dur == 150.0
+    assert len(call_records) > 1, "v4 Turbo must chunk texts > 10,000 chars to avoid ElevenLabs API error"
+
+    # For Flash v2.5: 25,000 characters should be sent in 1 SINGLE pass (since limit is 40,000)
+    call_records.clear()
+    dur = await tts.generate_speech_audio(
+        text=ultra_script_25k,
+        output_path="/tmp/eleven_flash_test.mp3",
+        provider="elevenlabs",
+        model="eleven_flash_v2_5",
+        fallback_enabled=False,
+    )
+    assert dur == 50.0
+    assert len(call_records) == 1, "Eleven Flash v2.5 must process ~25k chars in 1 single request"
+
+
+@pytest.mark.asyncio
+async def test_elevenlabs_character_limit_blocks_fallback(monkeypatch):
+    """Test that character limit errors in ElevenLabs raise an error and do NOT fallback to Edge-TTS."""
+    from app.services import tts
+
+    async def mock_fail_char_limit(*args, **kwargs):
+        raise tts.ElevenLabsCharacterLimitError("ElevenLabs Character Limit Terlampaui (400): request_too_large")
+
+    monkeypatch.setattr(tts, "generate_elevenlabs_tts", mock_fail_char_limit)
+
+    fallback_info = {}
+    with pytest.raises(RuntimeError) as exc_info:
+        await tts.generate_speech_audio(
+            text="Halo dunia naskah ini sangat panjang melebihi kapasitas.",
+            output_path="/tmp/eleven_fail.mp3",
+            provider="elevenlabs",
+            model="eleven_multilingual_v2",
+            fallback_enabled=True,  # Even with fallback enabled, it must NOT fallback!
+            fallback_info=fallback_info,
+        )
+
+    assert "ElevenLabs Character Limit Exceeded" in str(exc_info.value)
+    assert fallback_info.get("fell_back") is not True, "Character limit error must NEVER fallback to Edge-TTS"
+
+
+@pytest.mark.asyncio
 async def test_runware_tts_missing_key_throws_error():
     from app.services.tts import generate_runware_tts
 

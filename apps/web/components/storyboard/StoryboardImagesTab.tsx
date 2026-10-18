@@ -140,7 +140,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
   const failedCount = items.filter((it) => it.status === "failed").length;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
+    <div className="space-y-8 max-w-8xl mx-auto pb-16">
       {/* Step Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
         <div>
@@ -491,11 +491,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               onClick={() => handleGenerateSingle(item)}
                               disabled={isGeneratingThis || batchGenerateMutation.isPending}
                               variant={item.status === "ready" ? "outline" : "supabase"}
-                              className={`w-full text-xs h-8 gap-1.5 ${
-                                item.status === "ready"
+                              className={`w-full text-xs h-8 gap-1.5 ${item.status === "ready"
                                   ? "border-[#2E2E2E] hover:border-violet-500 hover:text-violet-300"
                                   : "bg-violet-600 hover:bg-violet-500 text-white"
-                              }`}
+                                }`}
                             >
                               {isGeneratingThis ? (
                                 <>
