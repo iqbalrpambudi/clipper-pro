@@ -133,6 +133,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         source_video_count=len(proj.source_videos),
         scene_count=len(proj.scenes),
         storyboard_count=len(proj.storyboard_items),
+        youtube_metadata=proj.youtube_metadata or {},
     )
 
     # Map file urls

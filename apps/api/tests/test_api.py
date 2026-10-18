@@ -972,5 +972,41 @@ def test_storyboard_item_response_cache_busting():
     assert str(int(now.timestamp())) in resp.image_url
 
 
+def test_youtube_timestamp_formatting():
+    from app.services.youtube import format_ms_to_timestamp, format_seconds_to_timestamp
+
+    assert format_ms_to_timestamp(0) == "00:00"
+    assert format_ms_to_timestamp(75000) == "01:15"
+    assert format_ms_to_timestamp(3665000) == "01:01:05"
+
+    assert format_seconds_to_timestamp(0) == "00:00"
+    assert format_seconds_to_timestamp(85.5) == "01:25"
+    assert format_seconds_to_timestamp(3600) == "01:00:00"
+
+
+def test_youtube_schemas_validation():
+    from app.schemas.storyboard import (
+        YouTubeMetadataGenerateRequest,
+        YouTubeThumbnailGenerateRequest,
+        YouTubeMetadataUpdateRequest,
+    )
+
+    req1 = YouTubeMetadataGenerateRequest(focus_angle="curiosity_gap", custom_prompt="Buat judul dramatis")
+    assert req1.focus_angle == "curiosity_gap"
+    assert req1.custom_prompt == "Buat judul dramatis"
+
+    req2 = YouTubeThumbnailGenerateRequest(prompt="A dramatic portrait of an ancient explorer")
+    assert req2.prompt == "A dramatic portrait of an ancient explorer"
+    assert req2.style_prompt is None
+
+    req3 = YouTubeMetadataUpdateRequest(
+        title="Rahasia Terbesar Dunia",
+        tags=["sejarah", "misteri"],
+    )
+    assert req3.title == "Rahasia Terbesar Dunia"
+    assert len(req3.tags) == 2
+
+
+
 
 

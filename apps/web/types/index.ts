@@ -22,6 +22,7 @@ export interface Project {
   storyboard_count?: number;
   storyboard_items?: StoryboardItem[];
   subtitle_style?: SubtitleStyle | null;
+  youtube_metadata?: YouTubeMetadata | null;
 }
 
 export interface WatermarkConfig {
@@ -301,4 +302,25 @@ export interface StudioAnalysisResult {
     [key: string]: any;
   };
 }
+
+export interface YouTubeThumbnailHistory {
+  id: string;
+  url: string;
+  file_path?: string;
+  prompt: string;
+  created_at: string;
+}
+
+export interface YouTubeMetadata {
+  title?: string;
+  title_options?: string[];
+  description?: string;
+  tags?: string[];
+  thumbnail_prompt?: string;
+  thumbnail_concept?: string;
+  thumbnail_url?: string;
+  thumbnail_history?: YouTubeThumbnailHistory[];
+  updated_at?: string;
+}
+
 

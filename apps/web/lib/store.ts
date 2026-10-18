@@ -11,7 +11,8 @@ export type StudioTab =
   | "storyboard_voice"
   | "storyboard_images"
   | "storyboard_timeline"
-  | "storyboard_render";
+  | "storyboard_render"
+  | "storyboard_youtube";
 
 export interface TaskEvent {
   project_id: string;

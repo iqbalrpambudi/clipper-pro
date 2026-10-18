@@ -58,3 +58,26 @@ class StoryboardVoiceoverGenerateRequest(BaseModel):
     voice: Optional[str] = None
     rate: Optional[str] = None
     pitch: Optional[str] = None
+
+
+class YouTubeMetadataGenerateRequest(BaseModel):
+    focus_angle: Optional[str] = None  # e.g. "curiosity_gap", "question", "storytelling", "educational"
+    custom_prompt: Optional[str] = None
+
+
+class YouTubeThumbnailGenerateRequest(BaseModel):
+    prompt: str
+    style_prompt: Optional[str] = None
+    preset_id: Optional[str] = None
+
+
+class YouTubeMetadataUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    title_options: Optional[List[str]] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    thumbnail_prompt: Optional[str] = None
+    thumbnail_concept: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    thumbnail_history: Optional[List[dict]] = None
+

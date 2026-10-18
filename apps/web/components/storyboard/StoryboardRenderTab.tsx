@@ -12,6 +12,8 @@ import {
   Trash2,
   HardDrive,
   StopCircle,
+  Youtube,
+  ArrowRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -120,7 +122,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 5 dari 5
+              Langkah 5 dari 6
             </span>
             <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
               Final Export Landscape 16:9
@@ -134,14 +136,26 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setActiveTab("storyboard_timeline")}
-          className="border-[#2E2E2E] text-xs"
-        >
-          Kembali ke Timeline
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveTab("storyboard_timeline")}
+            className="border-[#2E2E2E] text-xs"
+          >
+            Kembali ke Timeline
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => setActiveTab("storyboard_youtube")}
+            className="bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5 font-semibold shadow-md shadow-red-600/20"
+          >
+            <Youtube className="w-3.5 h-3.5 fill-current" />
+            <span>Lanjut ke YouTube & Thumbnail</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -465,6 +479,15 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             <Download className="w-3.5 h-3.5" />
                             <span>Unduh MP4</span>
                           </a>
+
+                          <Button
+                            size="sm"
+                            onClick={() => setActiveTab("storyboard_youtube")}
+                            className="bg-red-600/90 hover:bg-red-500 text-white text-xs h-8 gap-1.5 font-semibold"
+                          >
+                            <Youtube className="w-3.5 h-3.5 fill-current" />
+                            <span>YouTube & Thumbnail</span>
+                          </Button>
                         </>
                       )}
 

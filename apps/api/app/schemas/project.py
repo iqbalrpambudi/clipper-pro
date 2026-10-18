@@ -121,6 +121,7 @@ class ProjectResponse(ProjectBase):
     source_video_count: int = 0
     scene_count: int = 0
     storyboard_count: int = 0
+    youtube_metadata: Optional[Dict[str, Any]] = None
 
 
 class ProjectDetailResponse(ProjectResponse):

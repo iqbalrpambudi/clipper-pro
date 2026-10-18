@@ -14,6 +14,8 @@ import {
   StoryboardItem,
   ImagePreset,
   StudioAnalysisResult,
+  YouTubeMetadata,
+  YouTubeThumbnailHistory,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -471,4 +473,30 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // YouTube & Thumbnail Suite
+  generateYouTubeMetadata: (projectId: string, data?: { focus_angle?: string; custom_prompt?: string }) =>
+    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-metadata`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    }),
+  generateYouTubeThumbnail: (
+    projectId: string,
+    data: { prompt: string; style_prompt?: string; preset_id?: string }
+  ) =>
+    request<{ thumbnail_url: string; prompt: string; history: YouTubeThumbnailHistory[]; youtube_metadata: YouTubeMetadata }>(
+      `/api/v1/projects/${projectId}/storyboard/youtube/generate-thumbnail`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
+  updateYouTubeMetadata: (projectId: string, data: Partial<YouTubeMetadata>) =>
+    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  getYouTubeMetadata: (projectId: string) =>
+    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`),
 };
+

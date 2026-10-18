@@ -145,7 +145,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 3 dari 5
+              Langkah 3 dari 6
             </span>
             <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
               Studio Ilustrasi AI Hand-drawn

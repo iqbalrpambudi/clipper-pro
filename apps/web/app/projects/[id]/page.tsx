@@ -10,6 +10,7 @@ import {
   Download,
   Loader2,
   Image as ImageIcon,
+  Youtube,
 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
@@ -27,6 +28,7 @@ import {
   StoryboardImagesTab,
   StoryboardTimelineTab,
   StoryboardRenderTab,
+  StoryboardYoutubeTab,
 } from "@/components/storyboard";
 
 interface PageProps {
@@ -68,6 +70,7 @@ export default function ProjectStudioPage({ params }: PageProps) {
       "storyboard_images",
       "storyboard_timeline",
       "storyboard_render",
+      "storyboard_youtube",
     ];
     const shortTabList = ["media", "narration", "tts", "timeline", "render"];
 
@@ -282,6 +285,12 @@ export default function ProjectStudioPage({ params }: PageProps) {
       icon: Download,
       badge: (project as any).render_jobs?.length ? `${(project as any).render_jobs.length} Job` : undefined,
     },
+    {
+      id: "storyboard_youtube",
+      label: "6. YouTube & Thumbnail",
+      icon: Youtube,
+      badge: (project as any).youtube_metadata?.title ? "Siap" : undefined,
+    },
   ];
 
   const handleRenameProject = async (newName: string) => {
@@ -307,7 +316,7 @@ export default function ProjectStudioPage({ params }: PageProps) {
       {isStoryboard ? (
         <>
           {(activeTab === "storyboard_script" ||
-            !["storyboard_voice", "storyboard_images", "storyboard_timeline", "storyboard_render"].includes(
+            !["storyboard_voice", "storyboard_images", "storyboard_timeline", "storyboard_render", "storyboard_youtube"].includes(
               activeTab
             )) && <StoryboardScriptTab project={project as any} />}
           {activeTab === "storyboard_voice" && (
@@ -321,6 +330,9 @@ export default function ProjectStudioPage({ params }: PageProps) {
           )}
           {activeTab === "storyboard_render" && (
             <StoryboardRenderTab project={project as any} />
+          )}
+          {activeTab === "storyboard_youtube" && (
+            <StoryboardYoutubeTab project={project as any} />
           )}
         </>
       ) : (

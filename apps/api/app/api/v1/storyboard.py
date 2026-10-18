@@ -19,6 +19,9 @@ from app.schemas.storyboard import (
     StoryboardItemUpdateRequest,
     StoryboardSingleGenerateRequest,
     StoryboardBatchGenerateRequest,
+    YouTubeMetadataGenerateRequest,
+    YouTubeThumbnailGenerateRequest,
+    YouTubeMetadataUpdateRequest,
 )
 from app.services.storyboard import (
     generate_storyboard_script,
@@ -26,6 +29,10 @@ from app.services.storyboard import (
 )
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
+from app.services.youtube import (
+    generate_youtube_metadata,
+    generate_youtube_thumbnail,
+)
 
 log = logging.getLogger(__name__)
 
@@ -325,3 +332,99 @@ async def sync_timing(
         aligned_segments=narration.segments,
     )
     return {"success": True, "message": "Timing storyboard berhasil disinkronkan."}
+
+
+@router.post("/youtube/generate-metadata")
+async def generate_yt_metadata(
+    project_id: str,
+    payload: Optional[YouTubeMetadataGenerateRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate high-CTR YouTube title, alternative titles, SEO description with chapters, tags, and thumbnail prompt."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    try:
+        res = await generate_youtube_metadata(
+            db=db,
+            project_id=project_id,
+            focus_angle=payload.focus_angle if payload else None,
+            custom_prompt=payload.custom_prompt if payload else None,
+        )
+        return res
+    except Exception as e:
+        log.exception("Failed to generate YouTube metadata: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/youtube/generate-thumbnail")
+async def generate_yt_thumbnail(
+    project_id: str,
+    payload: YouTubeThumbnailGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate 16:9 YouTube thumbnail image based on customizable prompt."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    try:
+        res = await generate_youtube_thumbnail(
+            db=db,
+            project_id=project_id,
+            prompt=payload.prompt,
+            style_prompt=payload.style_prompt,
+            preset_id=payload.preset_id,
+        )
+        return res
+    except Exception as e:
+        log.exception("Failed to generate YouTube thumbnail: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/youtube/metadata")
+async def update_yt_metadata(
+    project_id: str,
+    payload: YouTubeMetadataUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update and persist YouTube metadata edits."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    curr = dict(proj.youtube_metadata or {})
+    if payload.title is not None:
+        curr["title"] = payload.title
+    if payload.title_options is not None:
+        curr["title_options"] = payload.title_options
+    if payload.description is not None:
+        curr["description"] = payload.description
+    if payload.tags is not None:
+        curr["tags"] = payload.tags
+    if payload.thumbnail_prompt is not None:
+        curr["thumbnail_prompt"] = payload.thumbnail_prompt
+    if payload.thumbnail_concept is not None:
+        curr["thumbnail_concept"] = payload.thumbnail_concept
+    if payload.thumbnail_url is not None:
+        curr["thumbnail_url"] = payload.thumbnail_url
+    if payload.thumbnail_history is not None:
+        curr["thumbnail_history"] = payload.thumbnail_history
+    curr["updated_at"] = datetime.utcnow().isoformat()
+
+    proj.youtube_metadata = curr
+    await db.commit()
+    await db.refresh(proj)
+    return curr
+
+
+@router.get("/youtube/metadata")
+async def get_yt_metadata(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current YouTube metadata and thumbnail state."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    return proj.youtube_metadata or {}
+
