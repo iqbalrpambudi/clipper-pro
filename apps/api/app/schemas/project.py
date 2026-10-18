@@ -35,6 +35,7 @@ class ProjectBase(BaseModel):
     project_type: str = "short_video"  # short_video | long_storyboard
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
+    language: str = "id"  # id | en
     background_fill: BackgroundFillSchema = BackgroundFillSchema()
     watermark: Optional[WatermarkSchema] = None
 
@@ -49,6 +50,7 @@ class ProjectUpdate(BaseModel):
     project_type: Optional[str] = None
     aspect_ratio: Optional[str] = None
     resolution: Optional[str] = None
+    language: Optional[str] = None
     background_fill: Optional[BackgroundFillSchema] = None
     watermark: Optional[WatermarkSchema] = None
     status: Optional[str] = None

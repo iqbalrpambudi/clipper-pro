@@ -60,11 +60,13 @@ class NarrationGenerateRequest(BaseModel):
     tone: str = "santai"  # santai, tegang, dramatis, formal, kocak, berwibawa, mencekam, hangat
     target_duration: int = 60  # seconds
     custom_prompt: Optional[str] = None
+    language: Optional[str] = "id"  # id | en
 
 
 class NarrationUpdateRequest(BaseModel):
     raw_text: str
     segments: Optional[List[Dict[str, Any]]] = None
+    language: Optional[str] = None
 
 
 class SegmentsUpdateRequest(BaseModel):
@@ -82,5 +84,6 @@ class NarrationResponse(BaseModel):
     tone: str
     target_duration: int
     raw_text: str
+    language: Optional[str] = "id"
     segments: List[Dict[str, Any]] = []
     status: str

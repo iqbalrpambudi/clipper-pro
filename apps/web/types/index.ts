@@ -24,6 +24,7 @@ export interface Project {
   subtitle_style?: SubtitleStyle | null;
   youtube_metadata?: YouTubeMetadata | null;
   characters?: StoryboardCharacter[] | null;
+  language?: string;
 }
 
 export interface StoryboardCharacter {
@@ -106,6 +107,7 @@ export interface Narration {
   tone: string;
   target_duration: number;
   raw_text: string;
+  language?: string;
   segments: SentenceSegment[];
   status: string;
 }
@@ -219,6 +221,8 @@ export interface VoiceInfo {
   sample_text: string;
   sample_audio_url?: string | null;
   description: string;
+  language?: string;
+  languages?: string[];
 }
 
 export interface ModelConfig {

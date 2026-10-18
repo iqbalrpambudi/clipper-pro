@@ -11,16 +11,101 @@ def build_master_scriptwriting_directive(
     tone: str = "santai",
     target_duration: int = 60,
     word_count: int = 132,
+    language: str = "id",
 ) -> str:
     """Master instruction injected into EVERY preset's system prompt (builtin + custom) at
     generation time. Enforces elite video retention standards with strict duration,
     word-count budget, and tone adherence at the system level so the LLM never loses context.
-    Automatically adapts its framework between short-form (vertical video) and YouTube long-form.
+    Automatically adapts its framework between short-form (vertical video) and YouTube long-form,
+    as well as between Indonesian and English languages.
     """
-    clean_topic = (topic or "").strip() or "Sesuai materi visual video"
-    clean_tone = (tone or "").strip() or "santai"
+    clean_topic = (topic or "").strip() or ("Matching video visual content" if language == "en" else "Sesuai materi visual video")
+    clean_tone = (tone or "").strip() or ("casual" if language == "en" else "santai")
     min_words = int(word_count * 0.85)
     max_words = int(word_count * 1.15)
+
+    if language == "en":
+        if target_duration >= 180:
+            duration_desc = f"{target_duration // 60} mins" if target_duration % 60 == 0 else f"{target_duration // 60}m {target_duration % 60}s"
+            return (
+                "\n\n=== GOLD STANDARD FOR LONG-FORM YOUTUBE SCRIPTWRITING (MANDATORY) ===\n"
+                "You are a world-class professional scriptwriter and master storyteller for long-form YouTube videos (16:9 landscape format, in-depth explainers, documentaries, and recaps).\n"
+                "Write an immersive, high-retention narration script in natural, modern American/international English that is informative, deeply engaging, and optimized for TTS voiceover delivery.\n"
+                "\n"
+                "🎯 PRIMARY PROJECT PARAMETERS (HIGHEST PRIORITY - STRICT COMPLIANCE REQUIRED):\n"
+                f"• Topic: {clean_topic}\n"
+                f"• Tone & Delivery: {clean_tone}\n"
+                f"• Target Voice Duration: {target_duration} seconds (~{duration_desc})\n"
+                f"• Strict Word Count Budget: ~{word_count} words (STRICT CORRIDOR: {min_words} - {max_words} words)\n"
+                "• Language: ENGLISH ONLY (Write 100% of the narration in fluent, captivating English. Never write in Indonesian).\n"
+                "\n"
+                "1. STRICT DURATION & WORD BUDGET COMPLIANCE (CRITICAL CONSTRAINT):\n"
+                f"   - The target duration is {target_duration} seconds. Total script length MUST NOT EXCEED {max_words} words!\n"
+                f"   - Develop a comprehensive, rich narrative within the word count corridor ({min_words} - {max_words} words).\n"
+                "\n"
+                "2. LONG-FORM DRAMATURGIC STORYTELLING STRUCTURE:\n"
+                "   - Cold Open & Atmospheric Hook: Open immediately with high stakes, an intriguing anomaly, or an urgent paradox without clichés.\n"
+                "   - Multi-Layered Exploration (World-building & Chronology): Establish context, historical background, and atmospheric details that build tension progressively.\n"
+                "   - Rational Analysis & Insight: Integrate scientific principles, logical deductions, or deeper explanations so the video is educational and substantive.\n"
+                "   - Climax & Thoughtful Reflection: Conclude with a memorable realization or a thought-provoking open question that drives organic discussion in comments.\n"
+                "\n"
+                "3. NATURAL SENTENCE CADENCE (3–6 SECONDS SWEET SPOT PER SEGMENT):\n"
+                "   - Ideal sentence length is 8 to 15 words (~3.5 to 6 seconds spoken duration).\n"
+                "   - AVOID microscopic fragments (1-3 words) that disrupt visual pacing.\n"
+                "   - AVOID run-on sentences (>22 words) lacking punctuation that sound breathless in TTS.\n"
+                "\n"
+                "4. SEAMLESS FLOW & TRANSITIONS (ANTI-STACCATO FLOW):\n"
+                "   - AVOID log-style inventory statements. Use natural conversational bridge phrases.\n"
+                "   - NEVER use technical editor jargon: 'scene', 'shot', 'clip', 'timestamp', 'on screen we see', 'the camera shows'.\n"
+                "\n"
+                "5. NATURAL CONVERSATIONAL ENGLISH & ANTI-AI CLICHÉS:\n"
+                "   - Use authentic spoken English with personality, confidence, and punch.\n"
+                "   - AVOID cheesy AI clichés: 'little did they know', 'it turns out', 'shockingly enough', 'in a world where'.\n"
+                f"   - Maintain the vocal color and tone '{clean_tone}' consistently throughout.\n"
+                "\n"
+                "6. CLEAN TTS-READY OUTPUT:\n"
+                "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
+                "   - DO NOT include conversational AI greetings like 'Sure! Here is the script:'.\n"
+                "   - DO NOT include stage directions/SFX in brackets like [Dramatic Music] or (Laughs).\n"
+                "   - DO NOT include scene labels or headings like 'ACT 1:', 'HOOK:', 'CONCLUSION:'."
+            )
+
+        return (
+            "\n\n=== GOLD STANDARD FOR SHORT-FORM VIDEO SCRIPTWRITING (MANDATORY) ===\n"
+            "You are an elite scriptwriter for viral vertical video platforms (TikTok, Instagram Reels, YouTube Shorts).\n"
+            "Write a high-retention narration script in natural, modern American/international English that captivates viewers from the very first second.\n"
+            "\n"
+            "🎯 PRIMARY PROJECT PARAMETERS (HIGHEST PRIORITY - STRICT COMPLIANCE REQUIRED):\n"
+            f"• Topic: {clean_topic}\n"
+            f"• Tone & Delivery: {clean_tone}\n"
+            f"• Target Voice Duration: {target_duration} seconds\n"
+            f"• Strict Word Count Budget: ~{word_count} words (STRICT CORRIDOR: {min_words} - {max_words} words)\n"
+            "• Language: ENGLISH ONLY (Write 100% of the narration in fluent, punchy English. Never write in Indonesian).\n"
+            "\n"
+            "1. STRICT DURATION & WORD BUDGET COMPLIANCE (CRITICAL CONSTRAINT):\n"
+            f"   - Target video duration is ONLY {target_duration} seconds. Script length MUST NOT EXCEED {max_words} words!\n"
+            "   - Focus strictly on the 2 to 4 most impactful moments and make every word count.\n"
+            "\n"
+            "2. KILLER SCROLL-STOPPING HOOK (Seconds 0-3):\n"
+            "   - The opening line MUST instantly stop the scroll by triggering intense curiosity, emotion, or tension (max 10-12 words).\n"
+            "   - FORBIDDEN boring clichés: 'Hey guys', 'In today's video', 'Did you know that', 'Have you ever wondered'. Jump right into the action!\n"
+            "\n"
+            "3. SEAMLESS FLOW & DYNAMIC RHYTHM:\n"
+            "   - AVOID staccato bullet-point style. Use natural verbal bridges connecting each beat.\n"
+            "   - NEVER use editor jargon: 'scene', 'clip', 'timestamp', 'on screen'. Tell the story as it unfolds in real time.\n"
+            "\n"
+            "4. NATURAL SPOKEN ENGLISH & NO AI ROBOTICS:\n"
+            "   - Use crisp, vibrant modern spoken English.\n"
+            "   - AVOID AI clichés: 'it turns out', 'little did they know', 'needless to say'.\n"
+            f"   - Maintain consistent '{clean_tone}' vocal personality from start to finish.\n"
+            "\n"
+            "5. MEMORABLE PAYOFF & ENGAGEMENT LOOP:\n"
+            "   - End with a strong payoff, surprising revelation, or reflective question that naturally sparks comments.\n"
+            "\n"
+            "6. CLEAN TTS-READY OUTPUT:\n"
+            "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
+            "   - NO greetings, NO stage directions in brackets, NO headings like 'HOOK:' or 'SCENE 1:'."
+        )
 
     if target_duration >= 180:
         duration_desc = f"{target_duration // 60} menit" if target_duration % 60 == 0 else f"{target_duration // 60}m {target_duration % 60}s"
@@ -34,6 +119,7 @@ def build_master_scriptwriting_directive(
             f"• Nada Bicara & Intonasi: {clean_tone}\n"
             f"• Target Durasi Suara: {target_duration} detik (~{duration_desc})\n"
             f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
+            "• Bahasa: BAHASA INDONESIA LENGKAP (Tulis seluruh narasi dalam Bahasa Indonesia lisan yang lancar dan memikat).\n"
             "\n"
             "1. KEPATUHAN KETAT TARGET DURASI & ANGGARAN KATA (CRITICAL CONSTRAINT):\n"
             f"   - Target durasi video adalah {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
@@ -79,6 +165,7 @@ def build_master_scriptwriting_directive(
         f"• Nada Bicara & Intonasi: {clean_tone}\n"
         f"• Target Durasi Suara: {target_duration} detik\n"
         f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
+        "• Bahasa: BAHASA INDONESIA LENGKAP (Tulis seluruh narasi dalam Bahasa Indonesia percakapan yang hidup dan punchy).\n"
         "\n"
         "1. KEPATUHAN KETAT TARGET DURASI & PANJANG KATA (CRITICAL CONSTRAINT):\n"
         f"   - Target durasi video HANYA {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
@@ -691,9 +778,10 @@ async def generate_narration_script(
     scenes_summary: Optional[List[Dict[str, Any]]] = None,
     custom_prompt: Optional[str] = None,
     category: Optional[str] = None,
+    language: str = "id",
 ) -> str:
     """Generate narrative script from LLM using chosen template and adaptive scene context."""
-    # Approximate words per second for Indonesian speech dynamically adjusted by tone
+    # Approximate words per second dynamically adjusted by tone
     pace_multipliers = {
         "tegang": 2.4,
         "kocak": 2.4,
@@ -718,14 +806,15 @@ async def generate_narration_script(
             log.warning("Adaptive summary failed (%s), falling back to compact scene log", e)
             scene_context_str = "\n".join(build_full_context_lines(_even_sample(scenes_summary, 40)))
     else:
-        scene_context_str = "Tidak ada metadata scene spesifik."
+        scene_context_str = "No specific scene metadata available." if language == "en" else "Tidak ada metadata scene spesifik."
 
-    clean_topic = topic or "Fakta menarik seputar video ini"
+    clean_topic = topic or ("Interesting facts about this video" if language == "en" else "Fakta menarik seputar video ini")
     min_words = int(word_count * 0.85)
     max_words = int(word_count * 1.15)
 
     if custom_prompt:
-        user_prompt = f"{custom_prompt}\n\nKonteks visual video:\n{scene_context_str}"
+        context_label = "Visual video context:" if language == "en" else "Konteks visual video:"
+        user_prompt = f"{custom_prompt}\n\n{context_label}\n{scene_context_str}"
     else:
         user_prompt = user_prompt_template.format(
             topic=clean_topic,
@@ -735,22 +824,35 @@ async def generate_narration_script(
             scene_context=scene_context_str,
         )
 
-    # Dual-Anchoring: Tegaskan kembali batas durasi, intonasi & alur mengalir di akhir user prompt
+    # Dual-Anchoring: Tegaskan kembali batas durasi, bahasa, intonasi & alur mengalir di akhir user prompt
     # agar recency bias LLM memperkuat instruksi sistem.
-    user_prompt += (
-        f"\n\n--- PENGINGAT KETAT DURASI, INTONASI & ALUR NARASI (WAJIB DIPATUHI) ---\n"
-        f"• Topik: {clean_topic}\n"
-        f"• Intonasi / Nada Bicara: {tone}\n"
-        f"• Target Durasi: {target_duration} detik (KORIDOR KETAT: {min_words} - {max_words} kata, target ~{word_count} kata).\n"
-        f"• Alur Bicara: Wajib mengalir alami dengan kalimat penghubung/jembatan antar tahapan; DILARANG kalimat patah-patah/staccato.\n"
-        f"Tulis HANYA naskah narasi final yang padat, mengalir hidup, dan langsung siap dibacakan oleh voiceover (TTS):"
-    )
+    if language == "en":
+        user_prompt += (
+            f"\n\n--- CRITICAL DURATION, TONE & LANGUAGE INSTRUCTION (MANDATORY) ---\n"
+            f"• Language: ENGLISH ONLY (Write 100% of the narration in fluent, captivating American/international English. Do NOT write in Indonesian).\n"
+            f"• Topic: {clean_topic}\n"
+            f"• Tone / Delivery: {tone}\n"
+            f"• Target Duration: {target_duration}s (STRICT CORRIDOR: {min_words} - {max_words} words, target ~{word_count} words).\n"
+            f"• Narrative Flow: Must flow naturally with connective phrases; NO robotic staccato sentences or AI clichés.\n"
+            f"Write ONLY the final spoken English narration script ready for TTS voiceover:"
+        )
+    else:
+        user_prompt += (
+            f"\n\n--- PENGINGAT KETAT DURASI, INTONASI & ALUR NARASI (WAJIB DIPATUHI) ---\n"
+            f"• Bahasa: BAHASA INDONESIA (Tulis seluruh narasi dalam Bahasa Indonesia lisan yang lancar dan memikat).\n"
+            f"• Topik: {clean_topic}\n"
+            f"• Intonasi / Nada Bicara: {tone}\n"
+            f"• Target Durasi: {target_duration} detik (KORIDOR KETAT: {min_words} - {max_words} kata, target ~{word_count} kata).\n"
+            f"• Alur Bicara: Wajib mengalir alami dengan kalimat penghubung/jembatan antar tahapan; DILARANG kalimat patah-patah/staccato.\n"
+            f"Tulis HANYA naskah narasi final yang padat, mengalir hidup, dan langsung siap dibacakan oleh voiceover (TTS):"
+        )
 
     master_directive = build_master_scriptwriting_directive(
         topic=clean_topic,
         tone=tone,
         target_duration=target_duration,
         word_count=word_count,
+        language=language,
     )
 
     raw_response = await adapter.generate_chat(
@@ -758,13 +860,13 @@ async def generate_narration_script(
         system_prompt=system_prompt + master_directive,
     )
 
-    # Clean any accidental conversational prefixes like "Tentu! Ini naskahnya:"
+    # Clean any accidental conversational prefixes like "Tentu! Ini naskahnya:" or "Sure! Here is the script:"
     clean_lines = []
     for line in raw_response.split("\n"):
         line_s = line.strip()
         if not line_s:
             continue
-        if re.match(r"^(tentu|ini dia|berikut|halo|oke)[^.!?:;]*[:\-]", line_s, re.IGNORECASE):
+        if re.match(r"^(tentu|ini dia|berikut|halo|oke|sure|here is|here's|certainly|welcome|alright)[^.!?:;]*[:\-]", line_s, re.IGNORECASE):
             continue
         clean_lines.append(line_s)
 

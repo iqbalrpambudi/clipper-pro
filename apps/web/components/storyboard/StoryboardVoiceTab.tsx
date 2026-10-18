@@ -126,12 +126,37 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
   const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
 
+  const projectLanguage = (project.narration?.language || project.language || "id").toLowerCase();
+
+  useEffect(() => {
+    const isEn = projectLanguage === "en";
+    if (isEn) {
+      if (voice.startsWith("id-")) {
+        setVoice(provider === "edge" ? "en-US-JennyNeural" : "Puck");
+      }
+    } else {
+      if (voice.startsWith("en-")) {
+        setVoice(provider === "edge" ? "id-ID-ArdiNeural" : "Puck");
+      }
+    }
+  }, [projectLanguage, provider, voice]);
+
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],
     queryFn: api.getVoices,
   });
 
-  const filteredVoices = voices.filter((v) => v.provider === provider);
+  const rawVoices = voices.filter((v) => v.provider === provider);
+  const isEnProject = projectLanguage === "en";
+  const filteredVoices = rawVoices.filter((v) => {
+    if (isEnProject) {
+      if (v.provider === "edge") return v.id.startsWith("en-");
+      return !v.id.startsWith("id-") && !v.id.startsWith("ja-");
+    } else {
+      if (v.provider === "edge") return v.id.startsWith("id-");
+      return !v.id.startsWith("en-") && !v.id.startsWith("ja-");
+    }
+  });
 
   const playVoiceSample = (voiceId: string) => {
     if (sampleAudioPlaying === voiceId) {
@@ -155,7 +180,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
     else if (provider === "elevenlabs") modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
     else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
 
-    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&t=${Date.now()}`;
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&language=${encodeURIComponent(projectLanguage)}&t=${Date.now()}`;
     a.src = sampleUrl;
     a.oncanplay = () => setLoadingSampleVoiceId(null);
     a.onended = () => {
@@ -219,6 +244,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
         pitch: pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`,
         model: activeModel,
         fallback_enabled: fallbackEnabled,
+        language: projectLanguage,
       });
     },
     onSuccess: () => {
@@ -466,7 +492,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   type="button"
                   onClick={() => {
                     setProvider("edge");
-                    setVoice("id-ID-ArdiNeural");
+                    setVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
                   }}
                   className={`p-2.5 rounded-xl border text-left transition ${provider === "edge"
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
@@ -653,17 +679,32 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
 
             {/* Voice Characters Selection (with Audio Sample Tester) */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-semibold text-slate-300">
                   Pustaka Suara ({filteredVoices.length} Karakter)
                 </label>
-                <span className="text-[10px] text-muted-foreground">Klik play untuk tes sampel</span>
+                {/* Locked Language Status Badge */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
+                  {projectLanguage === "en" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+                      <span>🇬🇧</span> English (Terkunci)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                      <span>🇮🇩</span> Indonesia (Terkunci)
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                 {filteredVoices.map((v) => {
                   const isSelected = voice === v.id;
                   const isPlayingSample = sampleAudioPlaying === v.id;
+                  const isEn = v.id.startsWith("en-");
+                  const isId = v.id.startsWith("id-");
+                  const isJa = v.id.startsWith("ja-");
                   return (
                     <div
                       key={v.id}
@@ -674,10 +715,24 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           <span className="text-xs font-bold truncate">{v.name}</span>
                           <Badge variant="outline" className="text-[9px] py-0 px-1 text-muted-foreground">
                             {v.gender}
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[9px] py-0 px-1 font-mono ${
+                              isEn
+                                ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                                : isId
+                                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                : isJa
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                            }`}
+                          >
+                            {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
                           </Badge>
                         </div>
                         {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />}

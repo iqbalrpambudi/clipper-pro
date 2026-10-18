@@ -1197,6 +1197,200 @@ async def test_character_consistency_bible():
     assert update_req.characters[0]["name"] == "Malin Kundang"
 
 
+def test_multilingual_script_and_storyboard_directives():
+    from app.services.narrative import build_master_scriptwriting_directive
+    from app.services.storyboard import (
+        build_storyboard_outline_prompt,
+        build_chapter_expansion_prompt,
+    )
+    from app.services.tts import AVAILABLE_VOICES
+    from app.schemas.project import ProjectCreate, ProjectUpdate
+
+    # 1. Test short-form narrative directive in EN vs ID
+    en_directive = build_master_scriptwriting_directive(
+        topic="Secrets of the deep ocean",
+        tone="dramatis",
+        word_count=150,
+        language="en",
+    )
+    assert "Language: ENGLISH ONLY" in en_directive
+    assert "Secrets of the deep ocean" in en_directive
+
+    id_directive = build_master_scriptwriting_directive(
+        topic="Misteri segitiga bermuda",
+        tone="misterius",
+        word_count=150,
+        language="id",
+    )
+    assert "Bahasa: BAHASA INDONESIA" in id_directive
+    assert "Misteri segitiga bermuda" in id_directive
+
+    # 2. Test storyboard outline prompt in EN
+    sys_en, usr_en = build_storyboard_outline_prompt(
+        topic="The Rise and Fall of the Roman Empire",
+        duration_mins=10,
+        tone="edukatif",
+        num_chapters=5,
+        language="en",
+    )
+    assert "CRITICAL LANGUAGE RULE: Write the entire outline" in sys_en
+    assert "The Rise and Fall of the Roman Empire" in usr_en
+
+    # 3. Test chapter expansion prompt in EN
+    exp_sys, exp_usr = build_chapter_expansion_prompt(
+        video_title="The Rise and Fall of the Roman Empire",
+        video_overview="An in-depth historical documentary",
+        chapter_index=1,
+        total_chapters=5,
+        chapter_title="Chapter 1: The Foundations of Rome",
+        chapter_synopsis="From the mythical twins Romulus and Remus to the Senate",
+        chapter_key_points=["Seven Hills of Rome", "Establishment of the Republic"],
+        target_chapter_words=450,
+        target_segments=3,
+        images_per_segment=2,
+        tone="edukatif",
+        characters=[],
+        language="en",
+    )
+    assert "All `narration_text` MUST be written in natural, engaging, fluent spoken ENGLISH" in exp_sys
+    assert "The Foundations of Rome" in exp_usr
+
+    # 4. Test voice list multilingual flags
+    en_voices = [v for v in AVAILABLE_VOICES if "en" in (v.languages or [v.language])]
+    id_voices = [v for v in AVAILABLE_VOICES if "id" in (v.languages or [v.language])]
+    assert len(en_voices) > 0, "Should have English-compatible voices"
+    assert len(id_voices) > 0, "Should have Indonesian-compatible voices"
+    assert any(v.id == "en-US-JennyNeural" for v in en_voices)
+    assert any(v.id == "id-ID-ArdiNeural" for v in id_voices)
+
+    # 5. Test Project schemas default and language values
+    proj_default = ProjectCreate(name="Default Project")
+    assert proj_default.language == "id"
+
+    proj_en = ProjectCreate(name="English Doc", language="en")
+    assert proj_en.language == "en"
+
+    proj_up = ProjectUpdate(language="en")
+    assert proj_up.language == "en"
+
+
+@pytest.mark.asyncio
+async def test_update_storyboard_segment_no_index_collision():
+    """Ensure updating a segment with ID 'seg-2' located at index 9 does NOT collide with index 1 (seg-1_2)."""
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.db import SessionLocal
+    from app.models.project import Project
+    from app.models.narration import Narration
+    from app.models.storyboard import StoryboardItem
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with SessionLocal() as db_session:
+            proj = Project(
+                name="Collision Test Project",
+                aspect_ratio="16:9",
+                resolution="1080p",
+                background_fill={"type": "blur"},
+            )
+            db_session.add(proj)
+            await db_session.commit()
+            await db_session.refresh(proj)
+
+            # 10 segments: 9 from chapter 1 (seg-1_1 .. seg-1_9), 10th is seg-2 from chapter 2
+            segments = [
+                {"id": f"seg-1_{i+1}", "chapter": "Babak 1", "text": f"Text babak 1 scene {i+1}"}
+                for i in range(9)
+            ]
+            segments.append({
+                "id": "seg-2",
+                "chapter": "Babak 2",
+                "text": "Text babak 2 scene 1 with bamboo",
+            })
+
+            narration = Narration(
+                project_id=proj.id,
+                topic="Test Collision",
+                tone="edukatif",
+                target_duration=60,
+                raw_text="\n\n".join(s["text"] for s in segments),
+                segments=segments,
+                status="completed",
+            )
+            db_session.add(narration)
+
+            # Storyboard items for seg-1_2 and seg-2
+            item_seg_1_2 = StoryboardItem(
+                project_id=proj.id,
+                order_index=1,
+                segment_id="seg-1_2",
+                chapter_title="Babak 1",
+                script_text="Text babak 1 scene 2",
+                image_prompt="Prompt for scene 2",
+                motion_effect="zoom_in",
+            )
+            item_seg_2 = StoryboardItem(
+                project_id=proj.id,
+                order_index=9,
+                segment_id="seg-2",
+                chapter_title="Babak 2",
+                script_text="Text babak 2 scene 1 with bamboo",
+                image_prompt="Prompt for scene 10",
+                motion_effect="pan_left",
+            )
+            db_session.add_all([item_seg_1_2, item_seg_2])
+            await db_session.commit()
+
+            # 1. Update segment 10 (id: 'seg-2') with segment_index=9
+            res = await client.put(
+                f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
+                json={
+                    "chapter": "Babak 2: Revisi",
+                    "text": "Text babak 2 scene 1 with bambu",
+                    "segment_index": 9,
+                },
+            )
+            assert res.status_code == 200, res.text
+            data = res.json()
+            assert data["success"] is True
+
+            # Refresh and verify
+            await db_session.refresh(narration)
+            await db_session.refresh(item_seg_1_2)
+            await db_session.refresh(item_seg_2)
+
+            # Index 9 MUST be updated
+            assert narration.segments[9]["text"] == "Text babak 2 scene 1 with bambu"
+            assert narration.segments[9]["chapter"] == "Babak 2: Revisi"
+            assert item_seg_2.script_text == "Text babak 2 scene 1 with bambu"
+            assert item_seg_2.chapter_title == "Babak 2: Revisi"
+
+            # Index 1 (seg-1_2) MUST NOT be touched
+            assert narration.segments[1]["text"] == "Text babak 1 scene 2"
+            assert narration.segments[1]["chapter"] == "Babak 1"
+            assert item_seg_1_2.script_text == "Text babak 1 scene 2"
+            assert item_seg_1_2.chapter_title == "Babak 1"
+
+            # 2. Update without segment_index (exact ID match must still pick index 9, NOT index 1)
+            res2 = await client.put(
+                f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
+                json={
+                    "text": "Text babak 2 scene 1 bamboo replaced cleanly",
+                },
+            )
+            assert res2.status_code == 200, res2.text
+            await db_session.refresh(narration)
+            await db_session.refresh(item_seg_1_2)
+            await db_session.refresh(item_seg_2)
+
+            assert narration.segments[9]["text"] == "Text babak 2 scene 1 bamboo replaced cleanly"
+            assert item_seg_2.script_text == "Text babak 2 scene 1 bamboo replaced cleanly"
+            assert narration.segments[1]["text"] == "Text babak 1 scene 2"
+            assert item_seg_1_2.script_text == "Text babak 1 scene 2"
+
+
+
+
 
 
 

@@ -45,11 +45,14 @@ async def generate_youtube_metadata(
     project_id: str,
     focus_angle: Optional[str] = None,
     custom_prompt: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generate high-CTR YouTube video title, alternative titles, SEO description with chapters, tags, and thumbnail visual prompt."""
     proj = await db.get(Project, project_id)
     if not proj:
         raise ValueError("Project tidak ditemukan")
+
+    target_lang = (language or proj.language or "id").strip().lower()
 
     # Fetch latest narration
     res_narration = await db.execute(
@@ -109,12 +112,20 @@ async def generate_youtube_metadata(
 
     # If still empty, provide default chapter breakdown
     if not chapter_milestones:
-        chapter_milestones = [
-            {"timestamp": "00:00", "title": "Pembuka & Misteri Awal"},
-            {"timestamp": "01:15", "title": "Fakta Tersembunyi"},
-            {"timestamp": "02:45", "title": "Titik Balik & Analisis"},
-            {"timestamp": "04:10", "title": "Kesimpulan & Pelajaran"},
-        ]
+        if target_lang == "en":
+            chapter_milestones = [
+                {"timestamp": "00:00", "title": "Hook & The Unsolved Mystery"},
+                {"timestamp": "01:15", "title": "The Hidden Reality"},
+                {"timestamp": "02:45", "title": "Turning Point & Breakthrough"},
+                {"timestamp": "04:10", "title": "Conclusion & Final Thoughts"},
+            ]
+        else:
+            chapter_milestones = [
+                {"timestamp": "00:00", "title": "Pembuka & Misteri Awal"},
+                {"timestamp": "01:15", "title": "Fakta Tersembunyi"},
+                {"timestamp": "02:45", "title": "Titik Balik & Analisis"},
+                {"timestamp": "04:10", "title": "Kesimpulan & Pelajaran"},
+            ]
     elif chapter_milestones[0]["timestamp"] != "00:00":
         # YouTube requires first chapter to be 00:00
         chapter_milestones[0]["timestamp"] = "00:00"
@@ -123,80 +134,158 @@ async def generate_youtube_metadata(
 
     # Build Angle Instruction
     angle_instruction = ""
-    if focus_angle == "curiosity_gap":
-        angle_instruction = "FOKUS UTAMA: Curiosity Gap maksimal — buat penonton merasa 'harus tahu jawabannya sekarang juga'."
-    elif focus_angle == "question":
-        angle_instruction = "FOKUS UTAMA: Pertanyaan provokatif / paradoks yang memancing perdebatan dan keingintahuan penonton."
-    elif focus_angle == "storytelling":
-        angle_instruction = "FOKUS UTAMA: Alur cerita & misteri epik — sudut pandang kisah nyata yang dramatis."
-    elif focus_angle == "educational":
-        angle_instruction = "FOKUS UTAMA: Penjelasan ilmiah & wawasan mendalam — terstruktur, informatif, dan otoritatif."
+    if target_lang == "en":
+        if focus_angle == "curiosity_gap":
+            angle_instruction = "PRIMARY FOCUS: Maximum Curiosity Gap — make viewers feel compelled to discover the answer immediately."
+        elif focus_angle == "question":
+            angle_instruction = "PRIMARY FOCUS: Provocative / paradoxical question that triggers debate and intense interest."
+        elif focus_angle == "storytelling":
+            angle_instruction = "PRIMARY FOCUS: Epic narrative arc & suspense — dramatic storytelling angle."
+        elif focus_angle == "educational":
+            angle_instruction = "PRIMARY FOCUS: Scientific explanation & deep insights — structured, authoritative, and fascinating."
 
-    system_prompt = (
-        "Anda adalah YouTube Strategist, Packaging Expert & Creative Director kelas dunia (spesialis video viral ber-CTR tinggi "
-        "seperti Veritasium, Lemmino, Kurzgesagt, Big Think, Vox, dan channel storytelling dokumenter Indonesia).\n"
-        "Tugas Anda adalah merancang paket publikasi YouTube lengkap yang memaksimalkan Click-Through Rate (CTR) dan retensi penonton.\n\n"
-        "=== STANDAR KELUARAN YANG WAJIB DIIKUTI ===\n"
-        "1. `title` (Judul Utama):\n"
-        "   - Panjang di bawah 70 karakter (agar tidak terpotong di YouTube mobile).\n"
-        "   - Kuat, memicu rasa penasaran mendalam (Curiosity Gap), tidak klise, berbobot, dan ramah SEO algoritma.\n\n"
-        "2. `title_options` (4-5 Variasi Judul Alternatif):\n"
-        "   - Opsi 1: Sudut 'Curiosity Gap' ekstrim.\n"
-        "   - Opsi 2: Sudut Pertanyaan Provokatif.\n"
-        "   - Opsi 3: Sudut 'Plot Twist' / Fakta Mengejutkan.\n"
-        "   - Opsi 4: Sudut Bercerita / Misteri Epik.\n"
-        "   - Opsi 5: Sudut Edukatif / Analisis Tajam.\n\n"
-        "3. `description` (Deskripsi Video YouTube Lengkap):\n"
-        "   - Baris 1-3: Hook kuat yang memikat penonton sebelum tombol '...more' (Show More).\n"
-        "   - Paragraf 2: Sinopsis ringkas isi video dan pelajaran berharga yang didapat.\n"
-        "   - Bagian Timestamps / Chapters: Susun rapi menggunakan daftar bab yang diberikan (misal: 00:00 - ...).\n"
-        "   - Bagian Call to Action: Ajak like, subscribe, share, dan pertanyaan pemantik untuk penonton berdiskusi di kolom komentar.\n"
-        "   - Baris terakhir: 3-5 Hashtags relevan (misal: #Sains #Sejarah #Dokumenter).\n\n"
-        "4. `tags` (Array 15-20 kata kunci):\n"
-        "   - Campuran broad keywords (sejarah, sains, dokumenter) dan long-tail keywords spesifik topik.\n\n"
-        "5. `thumbnail_hook_line1`:\n"
-        "   - Teks Utama Baris 1 Thumbnail (1-3 kata pendek, huruf kapital, sangat memikat, misal: 'JAWA 610 M', 'MALIN KUNDANG', 'SEBELUM MAJAPAHIT').\n\n"
-        "6. `thumbnail_hook_line2`:\n"
-        "   - Teks Hook Baris 2 Thumbnail (1-3 kata provokatif/pertanyaan dengan tanda tanya/seru, misal: 'TANPA SAMBAL?!', 'BUKAN DURHAKA?!', 'HILANG TOTAL?!').\n\n"
-        "7. `thumbnail_concept`:\n"
-        "   - Penjelasan konsep visual thumbnail dalam 1-2 kalimat Bahasa Indonesia (fokus emosi karakter, kontras warna, elemen visual hook).\n\n"
-        "8. `thumbnail_prompt`:\n"
-        "   - Prompt visual detail dalam BAHASA INGGRIS untuk AI Image Generator (16:9 widescreen landscape).\n"
-        "   - KOMPOSISI CATCHY VIRAL YOUTUBE (SANGAT PENTING - SEPERTI YOUTUBE EDUKASI/STORYTELLING VIRAL):\n"
-        "     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan karakter ilustrasi ekspresif yang menonjol (close-up atau mid-shot, kepala putih bersih/komik ekspresif, pose dinamis berekspresi kaget/heran atau memegang benda kunci cerita seperti piring makanan, naskah kuno, kompas, dll) langsung menghadap penonton.\n"
-        "     * Di latar belakang (background), pemandangan atau setting lingkungan yang kaya, hidup, dan kontras tinggi (misal pantai tropis dengan kapal kuno dan gunung bersinar matahari terbit yang megah, atau jalanan kota bersejarah yang dramatis).\n"
-        "     * Sisakan ruang kosong (negative space) yang bersih di sisi berlawanan untuk penempatan teks tebal (bold typography overlay).\n"
-        f"     * Terapkan estetika preset visual '{preset_name}' ({preset_master[:80] if preset_master else ''}).\n"
-        "     * DILARANG MEMUAT TEKS, TULISAN, KATA, HURUF, ANGKA, ATAU WATERMARK DI DALAM GAMBAR KARENA TEKS AKAN DILAPISKAN SECARA TERPISAH!\n\n"
-        "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-        "Kembalikan HANYA JSON valid dengan kunci:\n"
-        "{\n"
-        '  "title": "Judul Utama Ringkas & Menarik",\n'
-        '  "title_options": ["Judul 1", "Judul 2", "Judul 3", "Judul 4", "Judul 5"],\n'
-        '  "description": "Deskripsi lengkap dengan hook, sinopsis, timestamps bab, CTA, dan hashtags...",\n'
-        '  "tags": ["tag 1", "tag 2", "tag 3", "..."],\n'
-        '  "thumbnail_hook_line1": "TEKS BARIS 1",\n'
-        '  "thumbnail_hook_line2": "TEKS BARIS 2?!",\n'
-        '  "thumbnail_concept": "Konsep visual thumbnail dalam Bahasa Indonesia...",\n'
-        '  "thumbnail_prompt": "A high-CTR YouTube thumbnail illustration (16:9 widescreen). In the right foreground ..."\n'
-        "}"
-    )
+        system_prompt = (
+            "You are a world-class YouTube Strategist, Packaging Expert & Creative Director (specializing in viral high-CTR videos "
+            "like Veritasium, Lemmino, Kurzgesagt, Big Think, Vox, and top storytelling documentary channels).\n"
+            "Your task is to craft a comprehensive YouTube release package in ENGLISH that maximizes Click-Through Rate (CTR) and viewer retention.\n\n"
+            "=== CRITICAL LANGUAGE INSTRUCTION ===\n"
+            "All titles, descriptions, chapters, tags, and hook lines MUST be in natural, compelling ENGLISH.\n\n"
+            "=== STRICT OUTPUT STANDARDS ===\n"
+            "1. `title` (Main Title):\n"
+            "   - Under 70 characters (avoids being cut off on YouTube mobile).\n"
+            "   - Powerful, high Curiosity Gap, non-cliché, punchy, and algorithm-friendly.\n\n"
+            "2. `title_options` (4-5 Alternative Title Variations in English):\n"
+            "   - Option 1: Extreme Curiosity Gap angle.\n"
+            "   - Option 2: Provocative question angle.\n"
+            "   - Option 3: Plot twist / shocking revelation angle.\n"
+            "   - Option 4: Epic storytelling / historical mystery angle.\n"
+            "   - Option 5: Deep analysis / educational breakdown angle.\n\n"
+            "3. `description` (Full YouTube Description in English):\n"
+            "   - Lines 1-3: Compelling hook before the '...more' fold.\n"
+            "   - Paragraph 2: Concise synopsis and the core value/revelation viewers will gain.\n"
+            "   - Chapters / Timestamps section: Clean list using the provided milestones (e.g. 00:00 - ...).\n"
+            "   - Call To Action (CTA): Engagement prompt, question for comments, subscribe/like invitation.\n"
+            "   - Final line: 3-5 relevant English hashtags (#Science #History #Documentary #Explainer etc).\n\n"
+            "4. `tags` (Array of 15-20 English search keywords):\n"
+            "   - Mix of broad keywords and specific long-tail query tags.\n\n"
+            "5. `thumbnail_hook_line1`:\n"
+            "   - Line 1 Thumbnail Text (1-3 short words, ALL CAPS, bold impact, e.g. 'THE LOST EMPIRE', 'WHAT THEY HID', 'BEFORE THE FALL').\n\n"
+            "6. `thumbnail_hook_line2`:\n"
+            "   - Line 2 Hook Text (1-3 provocative words with punctuation, e.g. 'NEVER TOLD?!', 'WHY NOW?!', 'TOTALLY ERASED?!').\n\n"
+            "7. `thumbnail_concept`:\n"
+            "   - Thumbnail visual concept explanation in English (1-2 sentences on character emotion, contrast, visual hooks).\n\n"
+            "8. `thumbnail_prompt`:\n"
+            "   - Detailed visual prompt in ENGLISH for AI Image Generator (16:9 widescreen landscape).\n"
+            "   - COMPOSITION: In one foreground side (left or right 1/3), expressive illustrated character looking at the viewer. "
+            "In background, rich cinematic setting with high contrast. "
+            "Leave clean negative space on the opposite side for typography. "
+            f"Apply aesthetic preset '{preset_name}'. NO TEXT or letters inside the image itself!\n\n"
+            "=== OUTPUT FORMAT (PURE JSON ONLY) ===\n"
+            "Return ONLY valid JSON matching this schema:\n"
+            "{\n"
+            '  "title": "Punchy Main Title in English",\n'
+            '  "title_options": ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"],\n'
+            '  "description": "Full description with hook, synopsis, timestamps, CTA, and hashtags...",\n'
+            '  "tags": ["tag 1", "tag 2", "tag 3", "..."],\n'
+            '  "thumbnail_hook_line1": "HOOK LINE 1",\n'
+            '  "thumbnail_hook_line2": "HOOK LINE 2?!",\n'
+            '  "thumbnail_concept": "Visual concept description...",\n'
+            '  "thumbnail_prompt": "A high-CTR YouTube thumbnail illustration (16:9 widescreen). In the right foreground ..."\n'
+            "}"
+        )
+    else:
+        if focus_angle == "curiosity_gap":
+            angle_instruction = "FOKUS UTAMA: Curiosity Gap maksimal — buat penonton merasa 'harus tahu jawabannya sekarang juga'."
+        elif focus_angle == "question":
+            angle_instruction = "FOKUS UTAMA: Pertanyaan provokatif / paradoks yang memancing perdebatan dan keingintahuan penonton."
+        elif focus_angle == "storytelling":
+            angle_instruction = "FOKUS UTAMA: Alur cerita & misteri epik — sudut pandang kisah nyata yang dramatis."
+        elif focus_angle == "educational":
+            angle_instruction = "FOKUS UTAMA: Penjelasan ilmiah & wawasan mendalam — terstruktur, informatif, dan otoritatif."
 
-    truncated_narration = narration_text[:3500] if narration_text else "Video dokumenter eksploratif mendalam."
-    user_prompt = (
-        f"Topik Video / Judul Project: {proj.name}\n"
-        f"Gaya Visual Aktif: {preset_name}\n"
-    )
-    if angle_instruction:
-        user_prompt += f"{angle_instruction}\n"
-    if custom_prompt:
-        user_prompt += f"Instruksi Khusus dari Pengguna: {custom_prompt}\n"
+        system_prompt = (
+            "Anda adalah YouTube Strategist, Packaging Expert & Creative Director kelas dunia (spesialis video viral ber-CTR tinggi "
+            "seperti Veritasium, Lemmino, Kurzgesagt, Big Think, Vox, dan channel storytelling dokumenter Indonesia).\n"
+            "Tugas Anda adalah merancang paket publikasi YouTube lengkap yang memaksimalkan Click-Through Rate (CTR) dan retensi penonton.\n\n"
+            "=== STANDAR KELUARAN YANG WAJIB DIIKUTI ===\n"
+            "1. `title` (Judul Utama):\n"
+            "   - Panjang di bawah 70 karakter (agar tidak terpotong di YouTube mobile).\n"
+            "   - Kuat, memicu rasa penasaran mendalam (Curiosity Gap), tidak klise, berbobot, dan ramah SEO algoritma.\n\n"
+            "2. `title_options` (4-5 Variasi Judul Alternatif):\n"
+            "   - Opsi 1: Sudut 'Curiosity Gap' ekstrim.\n"
+            "   - Opsi 2: Sudut Pertanyaan Provokatif.\n"
+            "   - Opsi 3: Sudut 'Plot Twist' / Fakta Mengejutkan.\n"
+            "   - Opsi 4: Sudut Bercerita / Misteri Epik.\n"
+            "   - Opsi 5: Sudut Edukatif / Analisis Tajam.\n\n"
+            "3. `description` (Deskripsi Video YouTube Lengkap):\n"
+            "   - Baris 1-3: Hook kuat yang memikat penonton sebelum tombol '...more' (Show More).\n"
+            "   - Paragraf 2: Sinopsis ringkas isi video dan pelajaran berharga yang didapat.\n"
+            "   - Bagian Timestamps / Chapters: Susun rapi menggunakan daftar bab yang diberikan (misal: 00:00 - ...).\n"
+            "   - Bagian Call to Action: Ajak like, subscribe, share, dan pertanyaan pemantik untuk penonton berdiskusi di kolom komentar.\n"
+            "   - Baris terakhir: 3-5 Hashtags relevan (misal: #Sains #Sejarah #Dokumenter).\n\n"
+            "4. `tags` (Array 15-20 kata kunci):\n"
+            "   - Campuran broad keywords (sejarah, sains, dokumenter) dan long-tail keywords spesifik topik.\n\n"
+            "5. `thumbnail_hook_line1`:\n"
+            "   - Teks Utama Baris 1 Thumbnail (1-3 kata pendek, huruf kapital, sangat memikat, misal: 'JAWA 610 M', 'MALIN KUNDANG', 'SEBELUM MAJAPAHIT').\n\n"
+            "6. `thumbnail_hook_line2`:\n"
+            "   - Teks Hook Baris 2 Thumbnail (1-3 kata provokatif/pertanyaan dengan tanda tanya/seru, misal: 'TANPA SAMBAL?!', 'BUKAN DURHAKA?!', 'HILANG TOTAL?!').\n\n"
+            "7. `thumbnail_concept`:\n"
+            "   - Penjelasan konsep visual thumbnail dalam 1-2 kalimat Bahasa Indonesia (fokus emosi karakter, kontras warna, elemen visual hook).\n\n"
+            "8. `thumbnail_prompt`:\n"
+            "   - Prompt visual detail dalam BAHASA INGGRIS untuk AI Image Generator (16:9 widescreen landscape).\n"
+            "   - KOMPOSISI CATCHY VIRAL YOUTUBE (SANGAT PENTING - SEPERTI YOUTUBE EDUKASI/STORYTELLING VIRAL):\n"
+            "     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan karakter ilustrasi ekspresif yang menonjol (close-up atau mid-shot, kepala putih bersih/komik ekspresif, pose dinamis berekspresi kaget/heran atau memegang benda kunci cerita seperti piring makanan, naskah kuno, kompas, dll) langsung menghadap penonton.\n"
+            "     * Di latar belakang (background), pemandangan atau setting lingkungan yang kaya, hidup, dan kontras tinggi (misal pantai tropis dengan kapal kuno dan gunung bersinar matahari terbit yang megah, atau jalanan kota bersejarah yang dramatis).\n"
+            "     * Sisakan ruang kosong (negative space) yang bersih di sisi berlawanan untuk penempatan teks tebal (bold typography overlay).\n"
+            f"     * Terapkan estetika preset visual '{preset_name}' ({preset_master[:80] if preset_master else ''}).\n"
+            "     * DILARANG MEMUAT TEKS, TULISAN, KATA, HURUF, ANGKA, ATAU WATERMARK DI DALAM GAMBAR KARENA TEKS AKAN DILAPISKAN SECARA TERPISAH!\n\n"
+            "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
+            "Kembalikan HANYA JSON valid dengan kunci:\n"
+            "{\n"
+            '  "title": "Judul Utama Ringkas & Menarik",\n'
+            '  "title_options": ["Judul 1", "Judul 2", "Judul 3", "Judul 4", "Judul 5"],\n'
+            '  "description": "Deskripsi lengkap dengan hook, sinopsis, timestamps bab, CTA, dan hashtags...",\n'
+            '  "tags": ["tag 1", "tag 2", "tag 3", "..."],\n'
+            '  "thumbnail_hook_line1": "TEKS BARIS 1",\n'
+            '  "thumbnail_hook_line2": "TEKS BARIS 2?!",\n'
+            '  "thumbnail_concept": "Konsep visual thumbnail dalam Bahasa Indonesia...",\n'
+            '  "thumbnail_prompt": "A high-CTR YouTube thumbnail illustration (16:9 widescreen). In the right foreground ..."\n'
+            "}"
+        )
 
-    user_prompt += (
-        f"\nRingkasan / Naskah Narasi Video:\n\"\"\"{truncated_narration}\"\"\"\n\n"
-        f"Daftar Milestone Bab / Timestamp Video:\n{chapter_text_lines}\n\n"
-        "Buat paket metadata YouTube lengkap & thumbnail prompt sekarang dalam format JSON murni!"
-    )
+    truncated_narration = narration_text[:3500] if narration_text else ("In-depth documentary explainer video." if target_lang == "en" else "Video dokumenter eksploratif mendalam.")
+    if target_lang == "en":
+        user_prompt = (
+            f"Video Topic / Project Title: {proj.name}\n"
+            f"Active Visual Preset: {preset_name}\n"
+            f"Target Language: ENGLISH\n"
+        )
+        if angle_instruction:
+            user_prompt += f"{angle_instruction}\n"
+        if custom_prompt:
+            user_prompt += f"User Custom Instructions: {custom_prompt}\n"
+
+        user_prompt += (
+            f"\nNarration / Video Script Summary:\n\"\"\"{truncated_narration}\"\"\"\n\n"
+            f"Milestones / Video Timestamps:\n{chapter_text_lines}\n\n"
+            "Generate the complete YouTube metadata package & thumbnail prompt now in pure JSON format!"
+        )
+    else:
+        user_prompt = (
+            f"Topik Video / Judul Project: {proj.name}\n"
+            f"Gaya Visual Aktif: {preset_name}\n"
+            f"Bahasa Sasaran: BAHASA INDONESIA\n"
+        )
+        if angle_instruction:
+            user_prompt += f"{angle_instruction}\n"
+        if custom_prompt:
+            user_prompt += f"Instruksi Khusus dari Pengguna: {custom_prompt}\n"
+
+        user_prompt += (
+            f"\nRingkasan / Naskah Narasi Video:\n\"\"\"{truncated_narration}\"\"\"\n\n"
+            f"Daftar Milestone Bab / Timestamp Video:\n{chapter_text_lines}\n\n"
+            "Buat paket metadata YouTube lengkap & thumbnail prompt sekarang dalam format JSON murni!"
+        )
 
     llm_adapter = await get_active_llm_adapter(db)
     raw_res = await llm_adapter.generate_chat(
@@ -222,18 +311,32 @@ async def generate_youtube_metadata(
 
     if not parsed or not isinstance(parsed, dict):
         words = proj.name.upper().split()
-        hook1 = " ".join(words[:2]) if words else "MISTERI NYATA"
-        hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "TERNYATA BEGINI?!"
-        parsed = {
-            "title": proj.name,
-            "title_options": [proj.name],
-            "description": f"Video dokumenter menarik mengenai {proj.name}.\n\n{chapter_text_lines}\n\nJangan lupa Like & Subscribe!\n#Video #Dokumenter",
-            "tags": [proj.name, "dokumenter", "cerita", "edukasi"],
-            "thumbnail_hook_line1": hook1,
-            "thumbnail_hook_line2": hook2,
-            "thumbnail_concept": "Karakter ekspresif di foreground kanan memegang objek cerita dengan latar belakang pemandangan megah dan kontras tinggi.",
-            "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
-        }
+        if target_lang == "en":
+            hook1 = " ".join(words[:2]) if words else "REAL MYSTERY"
+            hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "WHAT HAPPENED?!"
+            parsed = {
+                "title": proj.name,
+                "title_options": [proj.name],
+                "description": f"Engaging documentary video exploring {proj.name}.\n\n{chapter_text_lines}\n\nDon't forget to Like & Subscribe!\n#Video #Documentary #Explainer",
+                "tags": [proj.name, "documentary", "story", "explainer", "history"],
+                "thumbnail_hook_line1": hook1,
+                "thumbnail_hook_line2": hook2,
+                "thumbnail_concept": "Expressive character in foreground gesturing towards viewer with scenic high-contrast background.",
+                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
+            }
+        else:
+            hook1 = " ".join(words[:2]) if words else "MISTERI NYATA"
+            hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "TERNYATA BEGINI?!"
+            parsed = {
+                "title": proj.name,
+                "title_options": [proj.name],
+                "description": f"Video dokumenter menarik mengenai {proj.name}.\n\n{chapter_text_lines}\n\nJangan lupa Like & Subscribe!\n#Video #Dokumenter",
+                "tags": [proj.name, "dokumenter", "cerita", "edukasi"],
+                "thumbnail_hook_line1": hook1,
+                "thumbnail_hook_line2": hook2,
+                "thumbnail_concept": "Karakter ekspresif di foreground kanan memegang objek cerita dengan latar belakang pemandangan megah dan kontras tinggi.",
+                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
+            }
 
     # Merge into existing project youtube_metadata
     curr_meta = dict(proj.youtube_metadata or {})

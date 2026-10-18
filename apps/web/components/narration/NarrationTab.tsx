@@ -60,6 +60,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("dramatis");
   const [targetDuration, setTargetDuration] = useState(60);
+  const [language, setLanguage] = useState<string>(project.narration?.language || project.language || "id");
   const [customPrompt, setCustomPrompt] = useState("");
   const [showPromptDetails, setShowPromptDetails] = useState(false);
   const [rawText, setRawText] = useState("");
@@ -81,6 +82,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
   useEffect(() => {
     if (project.narration) {
       setRawText(project.narration.raw_text);
+      if (project.narration.language) setLanguage(project.narration.language);
       if (project.narration.template_id)
         setSelectedTemplateId(project.narration.template_id);
       if (project.narration.topic) setTopic(project.narration.topic);
@@ -192,6 +194,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
         tone,
         target_duration: targetDuration,
         custom_prompt: customPrompt.trim() || undefined,
+        language,
       });
     },
     onSuccess: async (data) => {
@@ -211,6 +214,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
     mutationFn: () =>
       api.updateNarration(project.id, {
         raw_text: rawText,
+        language,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
@@ -233,6 +237,17 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const hasDialogTranscript = project.scenes.some(
     (s) => s.transcript && s.transcript.trim()
   );
+
+  const handleLanguageSelect = (newLang: string) => {
+    setLanguage(newLang);
+    api.updateProject(project.id, { language: newLang }).then(() => {
+      queryClient.setQueryData(["project", project.id], (old: any) => {
+        if (!old) return old;
+        return { ...old, language: newLang };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -458,6 +473,46 @@ export function NarrationTab({ project }: NarrationTabProps) {
               />
             </div>
 
+            {/* Language Selector (Central Project Language Control) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-foreground">
+                  Bahasa Utama Video (Kunci Seluruh Pipeline)
+                </label>
+                <span className="text-[10px] text-muted-foreground/80 font-mono">
+                  Mengunci Naskah, Voice TTS & Subtitle
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-[#121212] rounded-lg border border-[#2E2E2E]">
+                <button
+                  type="button"
+                  onClick={() => handleLanguageSelect("id")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition",
+                    language === "id"
+                      ? "bg-[#3ECF8E] text-black font-semibold shadow-sm"
+                      : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  <span className="text-base">🇮🇩</span>
+                  <span>Bahasa Indonesia</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLanguageSelect("en")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition",
+                    language === "en"
+                      ? "bg-[#3ECF8E] text-black font-semibold shadow-sm"
+                      : "text-muted-foreground hover:text-white"
+                  )}
+                >
+                  <span className="text-base">🇬🇧</span>
+                  <span>English Narration</span>
+                </button>
+              </div>
+            </div>
+
             {/* Tone & Target Duration Row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -617,6 +672,13 @@ export function NarrationTab({ project }: NarrationTabProps) {
         <SectionPanel
           title="Naskah & Segmentasi Storytelling"
           icon={<FileText className="w-4 h-4 text-[#3ECF8E]" />}
+          badge={
+            rawText ? (
+              <Badge variant="outline" className="text-[10px] font-mono border-[#3ECF8E]/30 text-[#3ECF8E] bg-[#3ECF8E]/10">
+                {(project.narration?.language || language) === "en" ? "🇬🇧 English" : "🇮🇩 Indonesian"}
+              </Badge>
+            ) : undefined
+          }
           actions={
             rawText ? (
               <div className="flex items-center gap-1.5">

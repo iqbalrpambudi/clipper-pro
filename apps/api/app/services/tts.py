@@ -702,6 +702,21 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
     ),
 ]
 
+for _v in AVAILABLE_VOICES:
+    if _v.provider in ("gemini", "elevenlabs", "runware"):
+        _v.language = "multi"
+        _v.languages = ["id", "en"]
+    elif _v.id.startswith("en-"):
+        _v.language = "en"
+        _v.languages = ["en"]
+    elif _v.id.startswith("id-"):
+        _v.language = "id"
+        _v.languages = ["id"]
+    elif _v.id.startswith("ja-"):
+        _v.language = "ja"
+        _v.languages = ["ja"]
+
+
 
 def estimate_tts_cost(text: str, provider: str = "gemini") -> CostEstimateResponse:
     char_count = len(text)
@@ -1333,6 +1348,7 @@ async def get_or_generate_voice_sample(
     model: str = "gemini-2.5-flash-preview-tts",
     api_key: Optional[str] = None,
     force_refresh: bool = False,
+    language: Optional[str] = None,
 ) -> Path:
     """Generate or return cached 2-3s sample audio for the specified voice."""
     settings = get_settings()
@@ -1343,17 +1359,27 @@ async def get_or_generate_voice_sample(
     clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
     clean_voice = re.sub(r"[^\w\-]", "", voice)
     clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs", "runware") else ""
+    target_lang = (language or ("en" if voice.startswith("en-") else "id")).strip().lower()
     suffix = f"_{clean_model}" if clean_model else ""
-    sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}.mp3"
+    sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}_{target_lang}.mp3"
 
     if not force_refresh and sample_path.exists() and sample_path.stat().st_size > 1000:
         return sample_path
 
     # Find matching sample text
-    sample_text = "Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!"
+    if target_lang == "en":
+        sample_text = "Welcome! This incredible story will completely change the way you see the world."
+    else:
+        sample_text = "Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!"
+
     for v in AVAILABLE_VOICES:
         if v.id == voice or (v.provider == clean_prov and v.name.lower().startswith(voice.lower())):
-            sample_text = v.sample_text
+            if target_lang == "en" and v.id.startswith("en-"):
+                sample_text = v.sample_text
+            elif target_lang != "en" and not v.id.startswith("en-"):
+                sample_text = v.sample_text
+            elif v.id.startswith("ja-"):
+                sample_text = v.sample_text
             break
 
     if clean_prov == "elevenlabs":
@@ -1491,6 +1517,7 @@ async def generate_speech_audio(
     segments: Optional[List[Dict[str, Any]]] = None,
     fallback_info: Optional[Dict[str, Any]] = None,
     fallback_enabled: bool = True,
+    language: Optional[str] = "id",
 ) -> float:
     """Entrypoint for TTS audio generation.
 
@@ -1508,6 +1535,8 @@ async def generate_speech_audio(
         raise ValueError("Teks narasi tidak boleh kosong.")
 
     prov = provider.lower().strip()
+
+    target_lang = (language or "id").strip().lower()
 
     # 1. ELEVENLABS TTS (KHUSUS ELEVENLABS: Gunakan limit kapasitas maksimal per arsitektur model)
     if prov == "elevenlabs":
@@ -1679,7 +1708,10 @@ async def generate_speech_audio(
                 log.error("Runware TTS failed and fallback is disabled: %s", e)
                 raise
             log.warning("Runware TTS failed (%s). Falling back to Edge-TTS...", e)
-            edge_voice = "id-ID-ArdiNeural" if "male" in voice.lower() or "inworld" in voice.lower() else "id-ID-GadisNeural"
+            if target_lang == "en":
+                edge_voice = "en-US-GuyNeural" if ("male" in voice.lower() or "inworld" in voice.lower()) else "en-US-JennyNeural"
+            else:
+                edge_voice = "id-ID-ArdiNeural" if "male" in voice.lower() or "inworld" in voice.lower() else "id-ID-GadisNeural"
             if fallback_info is not None:
                 fallback_info["fell_back"] = True
                 fallback_info["original_provider"] = "runware"
@@ -1761,7 +1793,10 @@ async def generate_speech_audio(
                 "Gemini TTS synthesis failed (%s). Automatically falling back to Edge-TTS to guarantee audible speech...",
                 e,
             )
-            edge_voice = "id-ID-ArdiNeural" if voice in ("Charon", "Fenrir", "Orus") else "id-ID-GadisNeural"
+            if target_lang == "en":
+                edge_voice = "en-US-GuyNeural" if voice in ("Charon", "Fenrir", "Orus", "Mimas") else "en-US-JennyNeural"
+            else:
+                edge_voice = "id-ID-ArdiNeural" if voice in ("Charon", "Fenrir", "Orus") else "id-ID-GadisNeural"
             if fallback_info is not None:
                 fallback_info["fell_back"] = True
                 fallback_info["original_provider"] = "gemini"
@@ -1780,10 +1815,15 @@ async def generate_speech_audio(
     # 4. EDGE-TTS
     else:
         try:
+            edge_v = voice
+            if target_lang == "en" and (edge_v in ("id-ID-GadisNeural", "id-ID-ArdiNeural", "default") or not edge_v.startswith("en-")):
+                edge_v = "en-US-JennyNeural"
+            elif target_lang != "en" and edge_v.startswith("en-") and edge_v in ("en-US-JennyNeural", "default"):
+                edge_v = "id-ID-GadisNeural"
             return await generate_edge_tts(
                 clean_text,
                 output_path,
-                voice=voice,
+                voice=edge_v,
                 rate=rate,
                 pitch=pitch,
             )

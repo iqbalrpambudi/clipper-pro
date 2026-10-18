@@ -95,7 +95,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   >("typography");
   const [activeFormula, setActiveFormula] = useState<string>("comic_reaction");
 
-  // Metadata generation options
+  // Metadata generation options (automatically locked to project & narration language)
+  const ytLanguage = (project.narration?.language || project.language || "id").toLowerCase();
   const [focusAngle, setFocusAngle] = useState<string>("curiosity_gap");
   const [customPrompt, setCustomPrompt] = useState<string>("");
 
@@ -163,6 +164,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       api.generateYouTubeMetadata(project.id, {
         focus_angle: focusAngle,
         custom_prompt: customPrompt.trim() || undefined,
+        language: ytLanguage,
       }),
     onSuccess: (data: YouTubeMetadata) => {
       if (data.title) setTitle(data.title);
@@ -1723,6 +1725,25 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           className="bg-black/40 border-[#2E2E2E] text-xs"
                         />
                       </div>
+                    </div>
+
+                    {/* Locked Language Status Banner */}
+                    <div className="flex items-center justify-between p-2.5 bg-black/40 rounded-xl border border-[#2E2E2E]">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-muted-foreground">Bahasa Output:</span>
+                        {ytLanguage === "en" ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+                            <span>🇬🇧</span> English (EN)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                            <span>🇮🇩</span> Indonesia (ID)
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground/75 font-mono">
+                        🔒 Mengikuti Naskah Tab 1
+                      </span>
                     </div>
 
                     <Button

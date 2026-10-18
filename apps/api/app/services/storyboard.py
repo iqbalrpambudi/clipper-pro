@@ -70,10 +70,78 @@ def build_storyboard_outline_prompt(
     num_chapters: int = 5,
     custom_instructions: Optional[str] = None,
     existing_characters: Optional[List[Dict[str, Any]]] = None,
+    language: str = "id",
 ) -> Tuple[str, str]:
     """Build prompts for Phase 1: High-level Master Storyboard Outline + Character Consistency Bible."""
     target_words = max(400, int(duration_mins * 135))
     words_per_chapter = int(round(target_words / max(1, num_chapters)))
+
+    if language == "en":
+        system_prompt = (
+            "You are a world-class YouTube Master Storyteller & Executive Producer for high-retention documentary/explainer videos "
+            "(in the style of MinutePhysics, Kurzgesagt, Big Think, Vox, or Veritasium).\n"
+            "Your task is to design a highly structured, captivating Master Outline in ENGLISH for a long-form YouTube video, "
+            "AND formulate a 'Character Bible' (visual identity locking) so that character depictions are 100% consistent across all scenes.\n\n"
+            "CRITICAL LANGUAGE RULE: Write the entire outline ('title', 'overview', 'chapter_title', 'synopsis', 'key_points') in fluent, compelling spoken ENGLISH.\n\n"
+            "=== OUTLINE STRUCTURE GUIDELINES ===\n"
+            f"- Target Total Speech Duration: {duration_mins} Minutes (~{target_words} total words).\n"
+            f"- Number of Chapters: Exactly {num_chapters} chapters, each developed into ~{words_per_chapter} words of in-depth narrative.\n"
+            "- Narrative Arc Must Follow Dramatic Pacing:\n"
+            "  1. Opening Chapter: Intriguing hook, paradox, or compelling question driving viewer curiosity.\n"
+            "  2. Exploration Chapter: Delving into root causes, historical context, data, or underlying mechanisms.\n"
+            "  3. Climax / Complication Chapter: Presenting conflict, critical challenges, or surprising twists.\n"
+            "  4. Breakthrough / Solution Chapter: Explaining the turning point, major discovery, or new perspective.\n"
+            "  5. Concluding Reflection: Philosophical insights, future impact, and a memorable takeaway.\n\n"
+            "=== CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE) ===\n"
+            "Identify all key figures/characters in this story (e.g. protagonist, family member, mentor, antagonist, or historical figure).\n"
+            "For each character, create a permanent 'visual_anchor' description in English specifying:\n"
+            "  - Physical traits & hair (age, facial structure, skin tone, hairstyle/color).\n"
+            "  - Signature Outfit: precise clothing color and style.\n"
+            "  - Permanent accessories: headband, hat, glasses, scarf, or distinct prop.\n"
+            "If the topic is abstract science/tech with no named persons, create 1 consistent narrator figure (e.g. 'a minimalist stickman researcher in loose earthy-toned draped robe').\n\n"
+            "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
+            "Return ONLY valid JSON without markdown fences or extraneous text matching this schema:\n"
+            "{\n"
+            '  "title": "Engaging & High-CTR Video Title in English",\n'
+            '  "overview": "Short, captivating 2-3 sentence overview of the entire story arc in English",\n'
+            '  "characters": [\n'
+            "    {\n"
+            '      "name": "Character Name",\n'
+            '      "role": "Protagonist / Narrator",\n'
+            '      "visual_anchor": "Specific visual description in English: physical traits, signature outfit, accessories"\n'
+            "    }\n"
+            "  ],\n"
+            '  "chapters": [\n'
+            "    {\n"
+            '      "chapter_index": 1,\n'
+            '      "chapter_title": "Chapter 1: The Initial Hook & Paradox",\n'
+            '      "synopsis": "Overview of storytelling focus, conflict, and tension built in this chapter in English.",\n'
+            '      "key_points": [\n'
+            '        "Key insight 1 to be covered",\n'
+            '        "Key insight 2 to be covered",\n'
+            '        "Key insight 3 to be covered"\n'
+            '      ]\n'
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+
+        user_prompt = (
+            f"Video Topic: {topic}\n"
+            f"Target Total Duration: {duration_mins} Minutes (~{target_words} words total)\n"
+            f"Number of Chapters: Exactly {num_chapters} chapters (~{words_per_chapter} words per chapter)\n"
+            f"Tone: {tone}\n"
+            "Language: ENGLISH (Generate all outline text in English)\n"
+        )
+        if existing_characters:
+            user_prompt += f"Previously Locked Characters: {json.dumps(existing_characters, ensure_ascii=False)}\n"
+        if custom_instructions:
+            user_prompt += f"Additional Instructions: {custom_instructions}\n"
+
+        user_prompt += (
+            f"\nGenerate the Master Outline and Character Bible for exactly {num_chapters} chapters now in pure JSON format."
+        )
+        return system_prompt, user_prompt
 
     system_prompt = (
         "Anda adalah Master Storyteller & Produser Eksekutif naskah video YouTube explainer/dokumenter "
@@ -121,7 +189,7 @@ def build_storyboard_outline_prompt(
         '        "Poin penting 1 yang akan dibahas",\n'
         '        "Poin penting 2 yang akan dibahas",\n'
         '        "Poin penting 3 yang akan dibahas"\n'
-        "      ]\n"
+        '      ]\n'
         "    }\n"
         "  ]\n"
         "}"
@@ -132,6 +200,7 @@ def build_storyboard_outline_prompt(
         f"Target Total Durasi: {duration_mins} Menit (~{target_words} kata total)\n"
         f"Jumlah Babak (Chapters): Tepat {num_chapters} babak (~{words_per_chapter} kata per babak)\n"
         f"Tone: {tone}\n"
+        "Bahasa: BAHASA INDONESIA (Buat outline dalam Bahasa Indonesia)\n"
     )
     if existing_characters:
         user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
@@ -160,6 +229,7 @@ def build_chapter_expansion_prompt(
     custom_instructions: Optional[str] = None,
     chapters_roadmap: Optional[List[Dict[str, Any]]] = None,
     characters: Optional[List[Dict[str, Any]]] = None,
+    language: str = "id",
 ) -> Tuple[str, str]:
     """Build prompts for Phase 2: Expanding a single chapter into full narration & visual scenes."""
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
@@ -170,105 +240,185 @@ def build_chapter_expansion_prompt(
     if characters and len(characters) > 0:
         char_lines = []
         for c in characters:
-            c_name = c.get("name", "Karakter")
+            c_name = c.get("name", "Karakter" if language == "id" else "Character")
             c_role = f" ({c.get('role')})" if c.get("role") else ""
             c_anchor = c.get("visual_anchor", "")
             char_lines.append(f"   • {c_name}{c_role}: {c_anchor}")
-        char_bible_instruction = (
-            "2. PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE - WAJIB 100% KONSISTEN):\n"
-            "   Daftar karakter dan deskripsi visual yang telah DIKUNCI untuk cerita ini:\n"
-            + "\n".join(char_lines) + "\n\n"
-            "   ATURAN KERAS PENGUNCIAN KARAKTER DI SETIAP SCENE:\n"
-            "   - Setiap kali salah satu karakter di atas muncul atau bertindak dalam adegan (`image_prompt`), Anda WAJIB menyertakan deskripsi 'visual_anchor' mereka yang persis sama kata demi kata (warna baju khas, jenis pakaian, aksesoris seperti ikat kepala atau tudung kepala).\n"
-            "   - DILARANG mengubah warna baju, gaya rambut, atau aksesoris mereka antar adegan agar karakter tampak 100% konsisten dan mudah dikenali penonton di seluruh video!\n\n"
-        )
+        if language == "en":
+            char_bible_instruction = (
+                "2. CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE - STRICT COMPLIANCE):\n"
+                "   Locked characters and visual anchors for this story:\n"
+                + "\n".join(char_lines) + "\n\n"
+                "   STRICT CHARACTER PROMPT RULES:\n"
+                "   - Whenever any character appears or acts in a scene (`image_prompt`), you MUST include their exact visual anchor word-for-word.\n"
+                "   - NEVER alter their outfit color, hairstyle, or signature accessories across scenes.\n\n"
+            )
+        else:
+            char_bible_instruction = (
+                "2. PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE - WAJIB 100% KONSISTEN):\n"
+                "   Daftar karakter dan deskripsi visual yang telah DIKUNCI untuk cerita ini:\n"
+                + "\n".join(char_lines) + "\n\n"
+                "   ATURAN KERAS PENGUNCIAN KARAKTER DI SETIAP SCENE:\n"
+                "   - Setiap kali salah satu karakter di atas muncul atau bertindak dalam adegan (`image_prompt`), Anda WAJIB menyertakan deskripsi 'visual_anchor' mereka yang persis sama kata demi kata (warna baju khas, jenis pakaian, aksesoris seperti ikat kepala atau tudung kepala).\n"
+                "   - DILARANG mengubah warna baju, gaya rambut, atau aksesoris mereka antar adegan agar karakter tampak 100% konsisten dan mudah dikenali penonton di seluruh video!\n\n"
+            )
 
-    system_prompt = (
-        "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter YouTube.\n"
-        f"Tugas Anda adalah menulis naskah narasi LENGKAP untuk Babak {chapter_index} dari {total_chapters} babak video, "
-        "terstruktur ke dalam segmen dan adegan visual (scenes) dengan kopling 1-to-1 antara kalimat narasi dan prompt gambar.\n\n"
-        "=== ATURAN KUNCI NARASI & VISUAL ===\n"
-        "1. KOPLING 1-TO-1 (1 Adegan = 1 Kalimat Narasi & 1 Prompt Visual):\n"
-        f"   - Babak ini WAJIB berisi tepat {target_segments} segmen.\n"
-        f"   - Setiap segmen WAJIB memiliki tepat {images_per_segment} adegan (scenes) -> Total tepat {total_chapter_scenes} scenes untuk babak ini.\n"
-        "   - Setiap scene memiliki `narration_text` dan `image_prompt` yang berpasangan langsung.\n"
-        "   - `narration_text`: 1–2 kalimat narasi utuh yang bernas, deskriptif, dan ekspresif (18–25 kata per scene). JANGAN membuat narasi terlalu pendek!\n"
-        f"   - `image_prompt`: Prompt ilustrasi visual Bahasa Inggris (16:9 landscape) yang secara konkret merepresentasikan kalimat narasi tersebut dan MENGADOPSI GAYA PRESET '{preset_label}'.\n\n"
-        f"{char_bible_instruction}"
-        f"{visual_guidelines}"
-        "4. TARGET PANJANG KATA & KESINAMBUNGAN (SANGAT PENTING):\n"
-        f"   - Total kata narasi untuk Babak {chapter_index} ini WAJIB mencapai minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata).\n"
-        "   - DILARANG menyingkat atau memangkas penjelasan! Uraikan argumen, metafora, dan cerita dengan detail dan memikat.\n"
-        "   - KESINAMBUNGAN CERITA: Naskah babak ini harus mengalir alami sebagai bagian dari keseluruhan video. "
-        "Jembatani awal babak secara mulus dari babak sebelumnya tanpa mengulang kalimat pembuka/salam, dan jangan mendahului topik babak berikutnya.\n\n"
-        "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-        "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup:\n"
-        "{\n"
-        f'  "chapter_title": "{chapter_title}",\n'
-        '  "segments": [\n'
-        "    {\n"
-        f'      "segment_id": "seg-{chapter_index}_1",\n'
-        '      "scenes": [\n'
-        "        {\n"
-        '          "scene_id": "scene-1",\n'
-        '          "narration_text": "Kalimat narasi adegan pertama yang kaya detail dan mendalam...",\n'
-        f'          "image_prompt": "{example_prompt_1}"\n'
-        "        },\n"
-        "        {\n"
-        '          "scene_id": "scene-2",\n'
-        '          "narration_text": "Kelanjutan narasi yang membangun keterhubungan logis atau visual progression...",\n'
-        f'          "image_prompt": "{example_prompt_2}"\n'
-        "        }\n"
-        "      ]\n"
-        "    }\n"
-        "  ]\n"
-        "}"
-    )
+    if language == "en":
+        system_prompt = (
+            "You are a world-class Master Storyteller, Visual Director & Scriptwriter for YouTube documentary videos.\n"
+            f"Your task is to write the COMPLETE narration script for Chapter {chapter_index} of {total_chapters} video chapters, "
+            "structured into segments and visual scenes with a strict 1-to-1 coupling between the spoken English narration sentence and the image prompt.\n\n"
+            "=== CRITICAL LANGUAGE RULE ===\n"
+            "All `narration_text` MUST be written in natural, engaging, fluent spoken ENGLISH (18–25 words per scene). "
+            "Under NO circumstances should any Indonesian words appear in the narration.\n\n"
+            "=== KEY NARRATION & VISUAL RULES ===\n"
+            "1. 1-TO-1 COUPLING (1 Scene = 1 Narration Sentence & 1 Visual Prompt):\n"
+            f"   - This chapter MUST contain exactly {target_segments} segments.\n"
+            f"   - Each segment MUST have exactly {images_per_segment} scenes -> Exactly {total_chapter_scenes} scenes total for this chapter.\n"
+            "   - Each scene has directly coupled `narration_text` and `image_prompt`.\n"
+            "   - `narration_text`: 1–2 complete, expressive, descriptive narration sentences in ENGLISH (18–25 words per scene). DO NOT make sentences too short!\n"
+            f"   - `image_prompt`: English visual illustration prompt (16:9 landscape) adopting preset style '{preset_label}'.\n\n"
+            f"{char_bible_instruction}"
+            f"{visual_guidelines}"
+            "4. TARGET WORD COUNT & STORY CONTINUITY (CRITICAL):\n"
+            f"   - Total narration words for Chapter {chapter_index} MUST reach at least {min_chapter_words} words (target ~{target_chapter_words} words).\n"
+            "   - DO NOT abbreviate explanations! Elaborate on insights, metaphors, and narrative pacing.\n"
+            "   - STORY CONTINUITY: The script must flow seamlessly as part of the overall video roadmap.\n\n"
+            "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
+            "Return ONLY valid JSON without markdown fences:\n"
+            "{\n"
+            f'  "chapter_title": "{chapter_title}",\n'
+            '  "segments": [\n'
+            "    {\n"
+            f'      "segment_id": "seg-{chapter_index}_1",\n'
+            '      "scenes": [\n'
+            "        {\n"
+            '          "scene_id": "scene-1",\n'
+            '          "narration_text": "Detailed, immersive first scene narration sentence in natural English...",\n'
+            f'          "image_prompt": "{example_prompt_1}"\n'
+            "        },\n"
+            "        {\n"
+            '          "scene_id": "scene-2",\n'
+            '          "narration_text": "Subsequent narration sentence driving the narrative forward in English...",\n'
+            f'          "image_prompt": "{example_prompt_2}"\n'
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+    else:
+        system_prompt = (
+            "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter YouTube.\n"
+            f"Tugas Anda adalah menulis naskah narasi LENGKAP untuk Babak {chapter_index} dari {total_chapters} babak video, "
+            "terstruktur ke dalam segmen dan adegan visual (scenes) dengan kopling 1-to-1 antara kalimat narasi dan prompt gambar.\n\n"
+            "=== ATURAN KUNCI NARASI & VISUAL ===\n"
+            "1. KOPLING 1-TO-1 (1 Adegan = 1 Kalimat Narasi & 1 Prompt Visual):\n"
+            f"   - Babak ini WAJIB berisi tepat {target_segments} segmen.\n"
+            f"   - Setiap segmen WAJIB memiliki tepat {images_per_segment} adegan (scenes) -> Total tepat {total_chapter_scenes} scenes untuk babak ini.\n"
+            "   - Setiap scene memiliki `narration_text` dan `image_prompt` yang berpasangan langsung.\n"
+            "   - `narration_text`: 1–2 kalimat narasi utuh yang bernas, deskriptif, dan ekspresif (18–25 kata per scene). JANGAN membuat narasi terlalu pendek!\n"
+            f"   - `image_prompt`: Prompt ilustrasi visual Bahasa Inggris (16:9 landscape) yang secara konkret merepresentasikan kalimat narasi tersebut dan MENGADOPSI GAYA PRESET '{preset_label}'.\n\n"
+            f"{char_bible_instruction}"
+            f"{visual_guidelines}"
+            "4. TARGET PANJANG KATA & KESINAMBUNGAN (SANGAT PENTING):\n"
+            f"   - Total kata narasi untuk Babak {chapter_index} ini WAJIB mencapai minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata).\n"
+            "   - DILARANG menyingkat atau memangkas penjelasan! Uraikan argumen, metafora, dan cerita dengan detail dan memikat.\n"
+            "   - KESINAMBUNGAN CERITA: Naskah babak ini harus mengalir alami sebagai bagian dari keseluruhan video. "
+            "Jembatani awal babak secara mulus dari babak sebelumnya tanpa mengulang kalimat pembuka/salam, dan jangan mendahului topik babak berikutnya.\n\n"
+            "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
+            "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup:\n"
+            "{\n"
+            f'  "chapter_title": "{chapter_title}",\n'
+            '  "segments": [\n'
+            "    {\n"
+            f'      "segment_id": "seg-{chapter_index}_1",\n'
+            '      "scenes": [\n'
+            "        {\n"
+            '          "scene_id": "scene-1",\n'
+            '          "narration_text": "Kalimat narasi adegan pertama yang kaya detail dan mendalam...",\n'
+            f'          "image_prompt": "{example_prompt_1}"\n'
+            "        },\n"
+            "        {\n"
+            '          "scene_id": "scene-2",\n'
+            '          "narration_text": "Kelanjutan narasi yang membangun keterhubungan logis atau visual progression...",\n'
+            f'          "image_prompt": "{example_prompt_2}"\n'
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
 
     roadmap_str = ""
     if chapters_roadmap:
         roadmap_lines = []
         for i, ch in enumerate(chapters_roadmap):
             c_idx = i + 1
-            c_title = ch.get("chapter_title", f"Babak {c_idx}")
+            c_title = ch.get("chapter_title", f"Babak {c_idx}" if language == "id" else f"Chapter {c_idx}")
             c_syn = ch.get("synopsis", "")
-            marker = " ➔ [FOKUS SAAT INI]" if c_idx == chapter_index else ""
+            marker = (" ➔ [CURRENT FOCUS]" if language == "en" else " ➔ [FOKUS SAAT INI]") if c_idx == chapter_index else ""
             roadmap_lines.append(f"  {c_idx}. {c_title}{marker}: {c_syn}")
-        roadmap_str = (
-            "ROADMAP KESELURUHAN ALUR CERITA (AGAR CERITA TETAP KONSISTEN & NYAMBUNG):\n"
-            + "\n".join(roadmap_lines)
-            + "\n\n"
-        )
+        roadmap_header = "OVERALL STORY ROADMAP (FOR STORY CONTINUITY):\n" if language == "en" else "ROADMAP KESELURUHAN ALUR CERITA (AGAR CERITA TETAP KONSISTEN & NYAMBUNG):\n"
+        roadmap_str = roadmap_header + "\n".join(roadmap_lines) + "\n\n"
 
     char_remind_str = ""
     if characters and len(characters) > 0:
         names = ", ".join(c.get("name", "") for c in characters if c.get("name"))
-        char_remind_str = f"- Karakter Terkunci (Gunakan visual anchor mereka persis): {names}\n"
+        char_remind_str = f"- Locked Characters (Use exact visual anchors): {names}\n" if language == "en" else f"- Karakter Terkunci (Gunakan visual anchor mereka persis): {names}\n"
 
-    kp_str = "\n".join(f"- {kp}" for kp in chapter_key_points) if chapter_key_points else "- Kembangkan sesuai sinopsis babak"
-    user_prompt = (
-        f"Konteks Video Keseluruhan:\n"
-        f"- Judul Video: {video_title}\n"
-        f"- Overview: {video_overview}\n\n"
-        f"{roadmap_str}"
-        f"FOKUS PENULISAN BABAK INI:\n"
-        f"- Babak: {chapter_title} (Babak {chapter_index} dari {total_chapters})\n"
-        f"- Sinopsis Babak: {chapter_synopsis}\n"
-        f"- Poin Kunci yang Harus Dibahas:\n{kp_str}\n\n"
-        f"TARGET TEKNIS:\n"
-        f"- Target Kata Narasi Babak Ini: Minimal {min_chapter_words} kata (target ~{target_chapter_words} kata)\n"
-        f"- Struktur Babak: Tepat {target_segments} segmen, masing-masing {images_per_segment} scenes (Total tepat {total_chapter_scenes} scenes)\n"
-        f"- Tone: {tone}\n"
-        f"- Gaya Visual Preset: {preset_label}\n"
-        f"{char_remind_str}"
-    )
-    if custom_instructions:
-        user_prompt += f"- Instruksi Tambahan: {custom_instructions}\n"
+    kp_str = "\n".join(f"- {kp}" for kp in chapter_key_points) if chapter_key_points else ("- Develop according to chapter synopsis" if language == "en" else "- Kembangkan sesuai sinopsis babak")
+    
+    if language == "en":
+        user_prompt = (
+            f"Overall Video Context:\n"
+            f"- Video Title: {video_title}\n"
+            f"- Overview: {video_overview}\n\n"
+            f"{roadmap_str}"
+            f"CHAPTER WRITING FOCUS:\n"
+            f"- Chapter: {chapter_title} (Chapter {chapter_index} of {total_chapters})\n"
+            f"- Chapter Synopsis: {chapter_synopsis}\n"
+            f"- Key Points to Cover:\n{kp_str}\n\n"
+            f"TECHNICAL TARGETS:\n"
+            f"- Target Chapter Word Count: Minimum {min_chapter_words} words (target ~{target_chapter_words} words)\n"
+            f"- Chapter Structure: Exactly {target_segments} segments, {images_per_segment} scenes each (Total exactly {total_chapter_scenes} scenes)\n"
+            f"- Tone: {tone}\n"
+            f"- Language: ENGLISH ONLY\n"
+            f"- Visual Style Preset: {preset_label}\n"
+            f"{char_remind_str}"
+        )
+        if custom_instructions:
+            user_prompt += f"- Additional Instructions: {custom_instructions}\n"
 
-    user_prompt += (
-        f"\nTuliskan naskah lengkap Babak {chapter_index} sekarang dalam format JSON murni.\n"
-        f"PENTING: Pastikan alur cerita menyambung secara alami dengan roadmap di atas dan memenuhi minimal {min_chapter_words} kata!"
-    )
+        user_prompt += (
+            f"\nWrite the complete script for Chapter {chapter_index} now in pure JSON format in ENGLISH.\n"
+            f"CRITICAL: Ensure the narration connects fluidly with the roadmap above and meets the minimum {min_chapter_words} words!"
+        )
+    else:
+        user_prompt = (
+            f"Konteks Video Keseluruhan:\n"
+            f"- Judul Video: {video_title}\n"
+            f"- Overview: {video_overview}\n\n"
+            f"{roadmap_str}"
+            f"FOKUS PENULISAN BABAK INI:\n"
+            f"- Babak: {chapter_title} (Babak {chapter_index} dari {total_chapters})\n"
+            f"- Sinopsis Babak: {chapter_synopsis}\n"
+            f"- Poin Kunci yang Harus Dibahas:\n{kp_str}\n\n"
+            f"TARGET TEKNIS:\n"
+            f"- Target Kata Narasi Babak Ini: Minimal {min_chapter_words} kata (target ~{target_chapter_words} kata)\n"
+            f"- Struktur Babak: Tepat {target_segments} segmen, masing-masing {images_per_segment} scenes (Total tepat {total_chapter_scenes} scenes)\n"
+            f"- Tone: {tone}\n"
+            f"- Bahasa: BAHASA INDONESIA\n"
+            f"- Gaya Visual Preset: {preset_label}\n"
+            f"{char_remind_str}"
+        )
+        if custom_instructions:
+            user_prompt += f"- Instruksi Tambahan: {custom_instructions}\n"
+
+        user_prompt += (
+            f"\nTuliskan naskah lengkap Babak {chapter_index} sekarang dalam format JSON murni.\n"
+            f"PENTING: Pastikan alur cerita menyambung secara alami dengan roadmap di atas dan memenuhi minimal {min_chapter_words} kata!"
+        )
     return system_prompt, user_prompt
 
 
@@ -280,6 +430,7 @@ def build_storyboard_prompt(
     preset: Optional[Any] = None,
     custom_instructions: Optional[str] = None,
     existing_characters: Optional[List[Dict[str, Any]]] = None,
+    language: str = "id",
 ) -> Tuple[str, str]:
     """Build system and user prompts for single-shot long-form storyboard scriptwriting + Character Bible."""
     target_words = max(400, int(duration_mins * 135))
@@ -294,80 +445,150 @@ def build_storyboard_prompt(
 
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
 
-    system_prompt = (
-        "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter/explainer YouTube "
-        "(gaya MinutePhysics, Kurzgesagt, Big Think, atau channel storytelling sejarah & sains populer).\n"
-        "Tugas Anda adalah menulis naskah narasi video panjang (landscape 16:9) yang mendalam, memikat, dan terstruktur "
-        "ke dalam adegan-adegan visual (scenes) dengan sinkronisasi 1-to-1 yang SEMPURNA antara kalimat narasi dan prompt gambar sketsa hand-drawn, "
-        "SERTA mendeteksi dan mengunci karakter (Character Bible) agar konsisten 100% antar adegan.\n\n"
-        "=== DETEKSI & PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE) ===\n"
-        "Identifikasi semua karakter penting dalam topik cerita ini (misalnya: tokoh utama, keluarga/ibu, atau figur sejarah).\n"
-        "Kunci deskripsi visual permanen ('visual_anchor') dalam Bahasa Inggris yang sangat spesifik untuk tiap karakter:\n"
-        "- Ciri fisik & rambut (usia, warna kulit, gaya rambut).\n"
-        "- Pakaian khas permanen (warna spesifik, potongan busana/baju).\n"
-        "- Aksesoris tetap (ikat kepala, tudung kepala, dsb.).\n"
-        "ATURAN KERAS: Setiap kali karakter tersebut muncul dalam `image_prompt`, Anda WAJIB menyertakan 'visual_anchor' mereka persis kata demi kata tanpa mengubah warna baju atau aksesoris mereka antar adegan!\n\n"
-        "=== PRINSIP KEKUATAN AUDIO-VISUAL (SINKRON & TIDAK AMBIGU) ===\n"
-        "1. KOPLING 1-TO-1 (1 Adegan = Tepat 1 Kalimat Narasi & 1 Prompt Visual):\n"
-        f"   - Setiap segmen dipecah menjadi tepat sejumlah adegan (scenes) sesuai parameter `Jumlah Gambar per Segmen` ({images_per_segment} scene per segmen).\n"
-        "   - Setiap adegan (scene) WAJIB memiliki `narration_text` dan `image_prompt` yang berpasangan secara langsung.\n"
-        "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene, setara durasi bicara ideal 7–9 detik). JANGAN membuat kalimat terlalu pendek atau terputus-putus!\n"
-        "   - `image_prompt`: Prompt ilustrasi visual (Bahasa Inggris) yang SECARA LITERAL DAN LANGSUNG merepresentasikan subjek konkret, aksi penceritaan, atau metafora visual yang dibicarakan dalam kalimat `narration_text` tersebut. JANGAN membuat gambar yang tidak nyambung, abstrak tanpa konteks, atau melompat ke topik lain!\n\n"
-        "2. KESINAMBUNGAN BERCERITA (VISUAL PROGRESSION):\n"
-        f"   - Dalam 1 segmen yang berisi {images_per_segment} adegan, bangun kesinambungan cerita sebab-akibat yang dinamis.\n"
-        "   - Penonton harus merasakan keterhubungan visual yang mengalir mulus dari detik ke detik tanpa kebingungan.\n\n"
-        f"{visual_guidelines}"
-        "4. TARGET PANJANG KATA & STRUKTUR CERITA:\n"
-        f"   - Target Total Durasi Bicara: {duration_mins} Menit.\n"
-        f"   - Target Total Kata Narasi: Sekitar {target_words} kata (rentang ketat {min_words}–{max_words} kata). PENTING: Naskah narasi WAJIB memenuhi target panjang kata ini! Jangan membuat naskah terlalu pendek atau ringkas.\n"
-        f"   - Struktur Keseluruhan: {num_chapters} Babak (Chapters), total sekitar {target_segments} Segmen (total tepat ~{total_scenes} adegan visual scenes).\n"
-        f"   - Nada Bicara (Tone): {tone}. Bahasa Indonesia lisan yang hidup, cerdas, mengalir, dan bernyawa.\n"
-        "   - Struktur Alur Cerita: Hook & Paradoks di awal ➔ Eksplorasi Berlapis ➔ Puncak Wawasan / Plot Twist ➔ Refleksi Penutup yang membekas.\n\n"
-        "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-        "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan struktur hierarkis berikut:\n"
-        "{\n"
-        '  "title": "Judul Menarik Video",\n'
-        '  "overview": "Sinopsis singkat 1-2 kalimat",\n'
-        '  "characters": [\n'
-        "    {\n"
-        '      "name": "Nama Karakter (mis. Malin Kundang)",\n'
-        '      "role": "Tokoh Utama",\n'
-        '      "visual_anchor": "Deskripsi visual spesifik Bahasa Inggris: ciri fisik, warna baju tetap, dan aksesoris khas (ikat kepala/tudung)"\n'
-        "    }\n"
-        "  ],\n"
-        '  "chapters": [\n'
-        "    {\n"
-        '      "chapter_title": "Babak 1: Misteri di Lautan Lepas",\n'
-        '      "segments": [\n'
-        "        {\n"
-        '          "segment_id": "seg-1",\n'
-        '          "scenes": [\n'
-        "            {\n"
-        '              "scene_id": "scene-1",\n'
-        '              "narration_text": "Di tengah samudra yang tampak tenang, para pelaut kuno mengarungi ombak hanya berpedoman pada rasi bintang yang berpijar di langit malam.",\n'
-        f'              "image_prompt": "{example_prompt_1}"\n'
-        "            },\n"
-        "            {\n"
-        '              "scene_id": "scene-2",\n'
-        '              "narration_text": "Namun saat kabut pekat mendadak turun menyelimuti cakrawala, jarum kompas mereka tiba-tiba berputar liar dan kehilangan arah utara sejati.",\n'
-        f'              "image_prompt": "{example_prompt_2}"\n'
-        "            }\n"
-        "          ]\n"
-        "        }\n"
-        "      ]\n"
-        "    }\n"
-        "  ]\n"
-        "}"
-    )
+    if language == "en":
+        system_prompt = (
+            "You are a world-class Master Storyteller, Visual Director & Scriptwriter for YouTube documentary/explainer videos "
+            "(style of MinutePhysics, Kurzgesagt, Big Think, or popular science and history storytelling channels).\n"
+            "Your task is to write an in-depth, captivating long-form video narration script (landscape 16:9) in ENGLISH, "
+            "structured into visual scenes with PERFECT 1-to-1 synchronization between the spoken English narration and the illustration prompts, "
+            "AND formulate a consistent Character Bible.\n\n"
+            "=== CRITICAL LANGUAGE INSTRUCTION ===\n"
+            "All narration text (`narration_text`), titles, and overview MUST be written in natural, engaging spoken ENGLISH. "
+            "Under NO circumstances should Indonesian be used in the narration text.\n\n"
+            "=== CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE) ===\n"
+            "Identify all key figures/characters in this story. Lock a permanent English 'visual_anchor' for each.\n"
+            "STRICT RULE: Whenever any character appears in `image_prompt`, you MUST include their exact visual anchor word-for-word.\n\n"
+            "=== AUDIO-VISUAL COUPLING (1-TO-1) ===\n"
+            f"1. Exactly {images_per_segment} scenes per segment.\n"
+            "2. Each scene has paired `narration_text` and `image_prompt`.\n"
+            "3. `narration_text`: 1–2 complete, expressive sentences in ENGLISH (18–25 words per scene).\n"
+            f"4. `image_prompt`: Concrete English illustration prompt adopting visual preset '{preset_label}'.\n\n"
+            f"{visual_guidelines}"
+            "4. TARGET WORD COUNT & STORY STRUCTURE:\n"
+            f"- Target Total Speech Duration: {duration_mins} Minutes.\n"
+            f"- Target Total Narration Words: ~{target_words} words (strict range {min_words}–{max_words} words).\n"
+            f"- Tone: {tone}. Dynamic, smart, conversational English.\n\n"
+            "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
+            "Return ONLY valid JSON matching this schema:\n"
+            "{\n"
+            '  "title": "Engaging Video Title in English",\n'
+            '  "overview": "Short 1-2 sentence synopsis in English",\n'
+            '  "characters": [\n'
+            "    {\n"
+            '      "name": "Character Name",\n'
+            '      "role": "Protagonist",\n'
+            '      "visual_anchor": "Specific visual description in English"\n'
+            "    }\n"
+            "  ],\n"
+            '  "chapters": [\n'
+            "    {\n"
+            '      "chapter_title": "Chapter 1: The Ocean Mystery",\n'
+            '      "segments": [\n'
+            "        {\n"
+            '          "segment_id": "seg-1",\n'
+            '          "scenes": [\n'
+            "            {\n"
+            '              "scene_id": "scene-1",\n'
+            '              "narration_text": "Across the tranquil ocean, ancient navigators steered their wooden ships by the silent constellations burning in the night sky.",\n'
+            f'              "image_prompt": "{example_prompt_1}"\n'
+            "            },\n"
+            "            {\n"
+            '              "scene_id": "scene-2",\n'
+            '              "narration_text": "Yet when a sudden dense fog descended upon the horizon, their compass needles spun wildly, losing true north without warning.",\n'
+            f'              "image_prompt": "{example_prompt_2}"\n'
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
 
-    user_prompt = (
-        f"Topik Video: {topic}\n"
-        f"Target Durasi: {duration_mins} menit (~{target_words} kata, minimal {min_words} kata)\n"
-        f"Gaya Visual Preset AI: {preset_label}\n"
-        f"Struktur: {num_chapters} Babak, sekitar {target_segments} segmen, tepat {images_per_segment} scenes per segmen (total ~{total_scenes} adegan visual)\n"
-        f"Tone: {tone}\n"
-        f"Jumlah Gambar per Segmen: {images_per_segment} scene per segmen\n"
-    )
+        user_prompt = (
+            f"Video Topic: {topic}\n"
+            f"Target Duration: {duration_mins} minutes (~{target_words} words, minimum {min_words} words)\n"
+            f"AI Visual Style Preset: {preset_label}\n"
+            f"Structure: {num_chapters} Chapters, ~{target_segments} segments, exactly {images_per_segment} scenes per segment (total ~{total_scenes} scenes)\n"
+            f"Tone: {tone}\n"
+            "Language: ENGLISH (Write all narration exclusively in English)\n"
+        )
+    else:
+        system_prompt = (
+            "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter/explainer YouTube "
+            "(gaya MinutePhysics, Kurzgesagt, Big Think, atau channel storytelling sejarah & sains populer).\n"
+            "Tugas Anda adalah menulis naskah narasi video panjang (landscape 16:9) yang mendalam, memikat, dan terstruktur "
+            "ke dalam adegan-adegan visual (scenes) dengan sinkronisasi 1-to-1 yang SEMPURNA antara kalimat narasi dan prompt gambar sketsa hand-drawn, "
+            "SERTA mendeteksi dan mengunci karakter (Character Bible) agar konsisten 100% antar adegan.\n\n"
+            "=== DETEKSI & PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE) ===\n"
+            "Identifikasi semua karakter penting dalam topik cerita ini (misalnya: tokoh utama, keluarga/ibu, atau figur sejarah).\n"
+            "Kunci deskripsi visual permanen ('visual_anchor') dalam Bahasa Inggris yang sangat spesifik untuk tiap karakter:\n"
+            "- Ciri fisik & rambut (usia, warna kulit, gaya rambut).\n"
+            "- Pakaian khas permanen (warna spesifik, potongan busana/baju).\n"
+            "- Aksesoris tetap (ikat kepala, tudung kepala, dsb.).\n"
+            "ATURAN KERAS: Setiap kali karakter tersebut muncul dalam `image_prompt`, Anda WAJIB menyertakan 'visual_anchor' mereka persis kata demi kata tanpa mengubah warna baju atau aksesoris mereka antar adegan!\n\n"
+            "=== PRINSIP KEKUATAN AUDIO-VISUAL (SINKRON & TIDAK AMBIGU) ===\n"
+            "1. KOPLING 1-TO-1 (1 Adegan = Tepat 1 Kalimat Narasi & 1 Prompt Visual):\n"
+            f"   - Setiap segmen dipecah menjadi tepat sejumlah adegan (scenes) sesuai parameter `Jumlah Gambar per Segmen` ({images_per_segment} scene per segmen).\n"
+            "   - Setiap adegan (scene) WAJIB memiliki `narration_text` dan `image_prompt` yang berpasangan secara langsung.\n"
+            "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene, setara durasi bicara ideal 7–9 detik). JANGAN membuat kalimat terlalu pendek atau terputus-putus!\n"
+            "   - `image_prompt`: Prompt ilustrasi visual (Bahasa Inggris) yang SECARA LITERAL DAN LANGSUNG merepresentasikan subjek konkret, aksi penceritaan, atau metafora visual yang dibicarakan dalam kalimat `narration_text` tersebut. JANGAN membuat gambar yang tidak nyambung, abstrak tanpa konteks, atau melompat ke topik lain!\n\n"
+            "2. KESINAMBUNGAN BERCERITA (VISUAL PROGRESSION):\n"
+            f"   - Dalam 1 segmen yang berisi {images_per_segment} adegan, bangun kesinambungan cerita sebab-akibat yang dinamis.\n"
+            "   - Penonton harus merasakan keterhubungan visual yang mengalir mulus dari detik ke detik tanpa kebingungan.\n\n"
+            f"{visual_guidelines}"
+            "4. TARGET PANJANG KATA & STRUKTUR CERITA:\n"
+            f"   - Target Total Durasi Bicara: {duration_mins} Menit.\n"
+            f"   - Target Total Kata Narasi: Sekitar {target_words} kata (rentang ketat {min_words}–{max_words} kata). PENTING: Naskah narasi WAJIB memenuhi target panjang kata ini! Jangan membuat naskah terlalu pendek atau ringkas.\n"
+            f"   - Struktur Keseluruhan: {num_chapters} Babak (Chapters), total sekitar {target_segments} Segmen (total tepat ~{total_scenes} adegan visual scenes).\n"
+            f"   - Nada Bicara (Tone): {tone}. Bahasa Indonesia lisan yang hidup, cerdas, mengalir, dan bernyawa.\n"
+            "   - Struktur Alur Cerita: Hook & Paradoks di awal ➔ Eksplorasi Berlapis ➔ Puncak Wawasan / Plot Twist ➔ Refleksi Penutup yang membekas.\n\n"
+            "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
+            "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan struktur hierarkis berikut:\n"
+            "{\n"
+            '  "title": "Judul Menarik Video",\n'
+            '  "overview": "Sinopsis singkat 1-2 kalimat",\n'
+            '  "characters": [\n'
+            "    {\n"
+            '      "name": "Nama Karakter (mis. Malin Kundang)",\n'
+            '      "role": "Tokoh Utama",\n'
+            '      "visual_anchor": "Deskripsi visual spesifik Bahasa Inggris: ciri fisik, warna baju tetap, dan aksesoris khas (ikat kepala/tudung)"\n'
+            "    }\n"
+            "  ],\n"
+            '  "chapters": [\n'
+            "    {\n"
+            '      "chapter_title": "Babak 1: Misteri di Lautan Lepas",\n'
+            '      "segments": [\n'
+            "        {\n"
+            '          "segment_id": "seg-1",\n'
+            '          "scenes": [\n'
+            "            {\n"
+            '              "scene_id": "scene-1",\n'
+            '              "narration_text": "Di tengah samudra yang tampak tenang, para pelaut kuno mengarungi ombak hanya berpedoman pada rasi bintang yang berpijar di langit malam.",\n'
+            f'              "image_prompt": "{example_prompt_1}"\n'
+            "            },\n"
+            "            {\n"
+            '              "scene_id": "scene-2",\n'
+            '              "narration_text": "Namun saat kabut pekat mendadak turun menyelimuti cakrawala, jarum kompas mereka tiba-tiba berputar liar dan kehilangan arah utara sejati.",\n'
+            f'              "image_prompt": "{example_prompt_2}"\n'
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+
+        user_prompt = (
+            f"Topik Video: {topic}\n"
+            f"Target Durasi: {duration_mins} menit (~{target_words} kata, minimal {min_words} kata)\n"
+            f"Gaya Visual Preset AI: {preset_label}\n"
+            f"Struktur: {num_chapters} Babak, sekitar {target_segments} segmen, tepat {images_per_segment} scenes per segmen (total ~{total_scenes} adegan visual)\n"
+            f"Tone: {tone}\n"
+            f"Jumlah Gambar per Segmen: {images_per_segment} scene per segmen\n"
+            "Bahasa: BAHASA INDONESIA\n"
+        )
     if existing_characters:
         user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
     if custom_instructions:
@@ -468,11 +689,14 @@ async def generate_storyboard_script(
     images_per_segment: int = 2,
     preset_id: Optional[str] = None,
     custom_instructions: Optional[str] = None,
+    language: str = "id",
 ) -> Tuple[Narration, List[StoryboardItem]]:
     """Generate long-form storyboard script and save Narration + StoryboardItem records."""
     proj = await db.get(Project, project_id)
     if not proj:
         raise ValueError(f"Project {project_id} tidak ditemukan.")
+
+    proj.language = language
 
     from app.services.image_studio import get_active_image_preset
     from app.models.image_preset import ImagePreset
@@ -507,6 +731,7 @@ async def generate_storyboard_script(
                 num_chapters=num_chapters,
                 custom_instructions=custom_instructions,
                 existing_characters=existing_characters,
+                language=language,
             )
             log.info(
                 "Phase 1: Generating Master Outline & Character Bible for project %s (topic='%s', dur=%dm, chapters=%d, target=%d words)...",
@@ -557,6 +782,7 @@ async def generate_storyboard_script(
                             custom_instructions=custom_instructions,
                             chapters_roadmap=outline_chapters,
                             characters=detected_characters,
+                            language=language,
                         )
 
                         last_err = None
@@ -601,6 +827,7 @@ async def generate_storyboard_script(
             preset=preset,
             custom_instructions=custom_instructions,
             existing_characters=existing_characters,
+            language=language,
         )
         raw_response = await llm_adapter.generate_chat(
             prompt=user_prompt,
@@ -760,6 +987,7 @@ async def generate_storyboard_script(
         raw_text=raw_script,
         segments=all_segments,
         status="generated",
+        language=language,
     )
     db.add(narration)
     await db.flush()

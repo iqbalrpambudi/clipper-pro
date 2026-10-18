@@ -58,8 +58,26 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
     project.narration?.target_duration ? Math.round(project.narration.target_duration / 60) : 5
   );
   const [tone, setTone] = useState(project.narration?.tone || "santai");
+  const [language, setLanguage] = useState<string>(project.narration?.language || project.language || "id");
   const [imagesPerSegment, setImagesPerSegment] = useState<number>(2);
   const [customInstructions, setCustomInstructions] = useState("");
+
+  const handleLanguageSelect = (newLang: string) => {
+    setLanguage(newLang);
+    api.updateProject(project.id, { language: newLang }).then(() => {
+      queryClient.setQueryData(["project", project.id], (old: any) => {
+        if (!old) return old;
+        return { ...old, language: newLang };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    });
+  };
+
+  useEffect(() => {
+    if (project.narration?.language) {
+      setLanguage(project.narration.language);
+    }
+  }, [project.narration?.language]);
 
   // Script & Narration Presets
   const [scriptPresets, setScriptPresets] = useState<ScriptPreset[]>([]);
@@ -160,13 +178,15 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
   // Segment Inline Editing State
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [editingSegmentIndex, setEditingSegmentIndex] = useState<number | null>(null);
   const [editChapter, setEditChapter] = useState<string>("");
   const [editText, setEditText] = useState<string>("");
   const [editItemPrompts, setEditItemPrompts] = useState<Record<string, string>>({});
 
   const handleStartEditSegment = (seg: any, idx: number, segItems: StoryboardItem[]) => {
-    const segId = seg.id || `seg-${idx + 1}`;
+    const segId = seg.id || seg.segment_id || `seg-${idx + 1}`;
     setEditingSegmentId(segId);
+    setEditingSegmentIndex(idx);
     setEditChapter(seg.chapter || `Babak ${idx + 1}`);
     setEditText(seg.text || "");
     const promptsMap: Record<string, string> = {};
@@ -178,6 +198,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
   const handleCancelEditSegment = () => {
     setEditingSegmentId(null);
+    setEditingSegmentIndex(null);
     setEditChapter("");
     setEditText("");
     setEditItemPrompts({});
@@ -186,11 +207,13 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const updateSegmentMutation = useMutation({
     mutationFn: ({
       segmentId,
+      segmentIndex,
       chapter,
       text,
       items: itemUpdates,
     }: {
       segmentId: string;
+      segmentIndex?: number;
       chapter: string;
       text: string;
       items: { id: string; image_prompt: string }[];
@@ -198,6 +221,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       api.updateStoryboardSegment(project.id, segmentId, {
         chapter,
         text,
+        segment_index: segmentIndex,
         items: itemUpdates,
       }),
     onSuccess: (data: any) => {
@@ -221,7 +245,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
     },
   });
 
-  const handleSaveEditSegment = (segmentId: string, segItems: StoryboardItem[]) => {
+  const handleSaveEditSegment = (segmentId: string, segItems: StoryboardItem[], segIdx?: number) => {
     const itemsPayload = segItems.map((it) => ({
       id: it.id,
       image_prompt:
@@ -230,6 +254,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
     updateSegmentMutation.mutate({
       segmentId,
+      segmentIndex: segIdx !== undefined ? segIdx : (editingSegmentIndex !== null ? editingSegmentIndex : undefined),
       chapter: editChapter.trim(),
       text: editText.trim(),
       items: itemsPayload,
@@ -244,6 +269,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       images_per_segment: number;
       preset_id?: string;
       custom_instructions?: string;
+      language?: string;
     }) => api.generateStoryboardScript(project.id, data),
     onSuccess: (data: any) => {
       if (data?.narration) {
@@ -279,6 +305,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       images_per_segment: imagesPerSegment,
       preset_id: selectedPresetId || undefined,
       custom_instructions: customInstructions.trim() || undefined,
+      language,
     });
   };
 
@@ -427,6 +454,44 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 onChange={(e) => setTopic(e.target.value)}
                 className="bg-[#141414] border-[#2E2E2E] text-xs leading-relaxed"
               />
+            </div>
+
+            {/* Language Selector (Central Project Language Control) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Bahasa Utama Video (Kunci Seluruh Pipeline)
+                </label>
+                <span className="text-[10px] text-violet-300/80 font-mono">
+                  Mengunci Naskah, Voice TTS & YouTube
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-[#121212] rounded-xl border border-[#2E2E2E]">
+                <button
+                  type="button"
+                  onClick={() => handleLanguageSelect("id")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                    language === "id"
+                      ? "bg-violet-600 text-white font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <span className="text-base">🇮🇩</span>
+                  <span>Bahasa Indonesia</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLanguageSelect("en")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                    language === "en"
+                      ? "bg-violet-600 text-white font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <span className="text-base">🇬🇧</span>
+                  <span>English Explainer</span>
+                </button>
+              </div>
             </div>
 
             {/* Target Duration Slider */}
@@ -815,8 +880,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    Daftar Babak & Segmen Naskah ({segments.length} Segmen)
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>Daftar Babak & Segmen Naskah ({segments.length} Segmen)</span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-violet-500/30 text-violet-300 bg-violet-500/10 normal-case">
+                      {(project.narration?.language || language) === "en" ? "🇬🇧 English Explainer" : "🇮🇩 Indonesian"}
+                    </Badge>
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
                     Alur cerita terstruktur dengan narasi voiceover & slot prompt visual AI
@@ -841,14 +909,13 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             {/* Segments List with full width 2-column layout */}
             <div className="space-y-4">
               {segments.map((seg: any, idx: number) => {
-                const segId = seg.id || `seg-${idx + 1}`;
-                const isEditing = editingSegmentId === segId;
-                const segItems = items.filter(
-                  (it) =>
-                    it.segment_id === seg.id ||
-                    it.segment_id === segId ||
-                    it.segment_id === `seg-${idx + 1}`
-                );
+                const segId = seg.id || seg.segment_id || `seg-${idx + 1}`;
+                const isEditing = editingSegmentIndex !== null ? editingSegmentIndex === idx : editingSegmentId === segId;
+                const segItems = items.filter((it) => {
+                  if (seg.id) return it.segment_id === seg.id;
+                  if (seg.segment_id) return it.segment_id === seg.segment_id;
+                  return it.segment_id === `seg-${idx + 1}`;
+                });
 
                 return (
                   <div
@@ -908,7 +975,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => handleSaveEditSegment(segId, segItems)}
+                              onClick={() => handleSaveEditSegment(segId, segItems, idx)}
                               disabled={updateSegmentMutation.isPending}
                               className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-1.5 shadow"
                             >
@@ -1016,7 +1083,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => handleSaveEditSegment(segId, segItems)}
+                          onClick={() => handleSaveEditSegment(segId, segItems, idx)}
                           disabled={updateSegmentMutation.isPending}
                           className="h-8 px-4 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-1.5 shadow"
                         >

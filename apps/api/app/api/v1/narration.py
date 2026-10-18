@@ -70,22 +70,31 @@ async def generate_narration(
 
     adapter = await get_active_llm_adapter(db)
 
+    lang = payload.language or proj.language or "id"
+    proj.language = lang
+
     try:
         script_text = await generate_narration_script(
             adapter=adapter,
             system_prompt=sys_prompt,
             user_prompt_template=usr_template,
-            topic=payload.topic or "Fakta unik seputar materi video",
+            topic=payload.topic or ("Interesting facts about this video" if lang == "en" else "Fakta unik seputar materi video"),
             tone=payload.tone,
             target_duration=payload.target_duration,
             scenes_summary=scenes_summary,
             custom_prompt=payload.custom_prompt,
             category=category,
+            language=lang,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal generate naskah dari AI: {str(e)}")
 
     segments = split_into_sentence_segments(script_text)
+
+    proj = await db.get(Project, project_id)
+    if proj:
+        proj.language = lang
+        db.add(proj)
 
     narration = Narration(
         project_id=project_id,
@@ -94,6 +103,7 @@ async def generate_narration(
         tone=payload.tone,
         target_duration=payload.target_duration,
         raw_text=script_text,
+        language=lang,
         segments=segments,
         status="generated",
     )
@@ -133,12 +143,19 @@ async def update_narration(
         narration = Narration(
             project_id=project_id,
             raw_text=payload.raw_text,
+            language=payload.language or "id",
             segments=payload.segments or split_into_sentence_segments(payload.raw_text),
             status="draft",
         )
         db.add(narration)
     else:
         narration.raw_text = payload.raw_text
+        if payload.language:
+            narration.language = payload.language
+            proj = await db.get(Project, project_id)
+            if proj:
+                proj.language = payload.language
+                db.add(proj)
         if payload.segments:
             narration.segments = payload.segments
         else:

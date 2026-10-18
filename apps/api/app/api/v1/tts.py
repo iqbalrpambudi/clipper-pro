@@ -102,6 +102,7 @@ async def get_voice_sample(
     provider: str = "gemini",
     voice: str = "Puck",
     model: Optional[str] = None,
+    language: Optional[str] = None,
     force: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
@@ -147,6 +148,7 @@ async def get_voice_sample(
             model=tts_model,
             api_key=api_key or None,
             force_refresh=force,
+            language=language,
         )
         return FileResponse(
             path=str(sample_path),
@@ -182,6 +184,8 @@ async def trigger_tts_generation(
     if not narration or not narration.raw_text:
         raise HTTPException(status_code=400, detail="Naskah narasi belum dibuat")
 
+    target_lang = (payload.language or getattr(narration, "language", None) or getattr(proj, "language", None) or "id").strip().lower()
+
     provider = payload.provider or "gemini"
     if payload.voice:
         voice = payload.voice
@@ -192,7 +196,11 @@ async def trigger_tts_generation(
     elif provider == "runware":
         voice = "fishaudio:s2.1@pro"
     else:
-        voice = "id-ID-GadisNeural"
+        voice = "en-US-JennyNeural" if target_lang == "en" else "id-ID-GadisNeural"
+
+    # If edge provider is selected for English narration but an ID voice was left, auto-switch to English voice
+    if provider == "edge" and target_lang == "en" and voice.startswith("id-"):
+        voice = "en-US-JennyNeural"
 
     # Estimate cost
     cost_est = estimate_tts_cost(narration.raw_text, provider)
@@ -224,6 +232,7 @@ async def trigger_tts_generation(
             payload.pitch,
             payload.model,
             payload.fallback_enabled,
+            target_lang,
         )
         await pool.close()
     except Exception:
@@ -238,6 +247,7 @@ async def trigger_tts_generation(
                 payload.pitch,
                 payload.model,
                 payload.fallback_enabled,
+                target_lang,
             )
         )
 

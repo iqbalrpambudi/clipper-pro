@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.db import get_db
 from app.core.storage import storage
@@ -79,6 +80,7 @@ async def generate_script(
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
     try:
+        lang = (payload.language or proj.language or "id").strip().lower()
         narration, items = await generate_storyboard_script(
             db=db,
             project_id=project_id,
@@ -88,6 +90,7 @@ async def generate_script(
             images_per_segment=payload.images_per_segment,
             preset_id=payload.preset_id,
             custom_instructions=payload.custom_instructions,
+            language=lang,
         )
         proj = await db.get(Project, project_id)
         return {
@@ -152,25 +155,57 @@ async def update_storyboard_segment(
     # 2. Update the segment inside narration.segments
     updated_segments = list(narration.segments or [])
     target_idx = -1
-    for idx, seg in enumerate(updated_segments):
-        s_id = str(seg.get("id", ""))
-        if s_id == str(segment_id) or str(seg.get("segment_id", "")) == str(segment_id) or f"seg-{idx+1}" == str(segment_id):
-            target_idx = idx
-            break
 
-    if target_idx != -1:
-        current_seg = dict(updated_segments[target_idx])
-        if payload.chapter is not None:
-            current_seg["chapter"] = payload.chapter
-        if payload.text is not None:
-            current_seg["text"] = payload.text
-        updated_segments[target_idx] = current_seg
-        narration.segments = updated_segments
-        # Rebuild narration.raw_text from all segments
-        narration.raw_text = "\n\n".join(
-            s.get("text", "").strip() for s in updated_segments if s.get("text")
+    # Priority 1: Use segment_index if provided and in range
+    if payload.segment_index is not None and 0 <= payload.segment_index < len(updated_segments):
+        cand_seg = updated_segments[payload.segment_index]
+        cand_id = str(cand_seg.get("id", ""))
+        cand_seg_id = str(cand_seg.get("segment_id", ""))
+        if (
+            cand_id == str(segment_id)
+            or cand_seg_id == str(segment_id)
+            or f"seg-{payload.segment_index + 1}" == str(segment_id)
+        ):
+            target_idx = payload.segment_index
+
+    # Priority 2: Exact match on id or segment_id across all segments
+    if target_idx == -1:
+        for idx, seg in enumerate(updated_segments):
+            s_id = str(seg.get("id", ""))
+            s_seg_id = str(seg.get("segment_id", ""))
+            if s_id == str(segment_id) or s_seg_id == str(segment_id):
+                target_idx = idx
+                break
+
+    # Priority 3 (Fallback): Match positional f"seg-{idx+1}" only if no exact id match exists
+    if target_idx == -1:
+        for idx, seg in enumerate(updated_segments):
+            if f"seg-{idx+1}" == str(segment_id):
+                target_idx = idx
+                break
+
+    if target_idx == -1:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Segmen storyboard '{segment_id}' tidak ditemukan dalam naskah proyek",
         )
-        narration.updated_at = datetime.utcnow()
+
+    current_seg = dict(updated_segments[target_idx])
+    actual_seg_id = str(current_seg.get("id") or current_seg.get("segment_id") or segment_id)
+
+    if payload.chapter is not None:
+        current_seg["chapter"] = payload.chapter
+    if payload.text is not None:
+        current_seg["text"] = payload.text
+    updated_segments[target_idx] = current_seg
+    narration.segments = updated_segments
+    flag_modified(narration, "segments")
+
+    # Rebuild narration.raw_text from all segments
+    narration.raw_text = "\n\n".join(
+        s.get("text", "").strip() for s in updated_segments if s.get("text")
+    )
+    narration.updated_at = datetime.utcnow()
 
     # 3. Update associated StoryboardItems
     res_items = await db.execute(
@@ -193,9 +228,9 @@ async def update_storyboard_segment(
                     target_it.script_text = payload.text
                 target_it.updated_at = datetime.utcnow()
 
-    # Also update script_text & chapter_title on items belonging to this segment
+    # Also update script_text & chapter_title on items belonging strictly to this segment
     for it in items:
-        if str(it.segment_id) == str(segment_id) or (target_idx != -1 and str(it.segment_id) == f"seg-{target_idx+1}"):
+        if str(it.segment_id) == str(segment_id) or str(it.segment_id) == actual_seg_id:
             if payload.chapter:
                 it.chapter_title = payload.chapter
             if payload.text:
@@ -468,11 +503,13 @@ async def generate_yt_metadata(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
     try:
+        lang = (payload.language if payload and payload.language else (proj.language or "id")).strip().lower()
         res = await generate_youtube_metadata(
             db=db,
             project_id=project_id,
             focus_angle=payload.focus_angle if payload else None,
             custom_prompt=payload.custom_prompt if payload else None,
+            language=lang,
         )
         return res
     except Exception as e:

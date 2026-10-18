@@ -5,11 +5,13 @@ from pydantic import BaseModel, ConfigDict
 class VoiceInfo(BaseModel):
     id: str
     name: str
-    provider: str  # gemini | edge
+    provider: str  # gemini | edge | elevenlabs | runware
     gender: str
     sample_text: str
     sample_audio_url: Optional[str] = None
     description: str
+    language: Optional[str] = "multi"  # "id", "en", or "multi"
+    languages: List[str] = ["id", "en"]
 
 
 class CostEstimateRequest(BaseModel):
@@ -33,6 +35,7 @@ class TTSGenerateRequest(BaseModel):
     pitch: str = "+0Hz"
     model: Optional[str] = None
     fallback_enabled: Optional[bool] = None
+    language: Optional[str] = None  # id | en (inferred from narration if omitted)
 
 
 class AudioTrackResponse(BaseModel):

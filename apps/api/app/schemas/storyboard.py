@@ -10,6 +10,7 @@ class StoryboardScriptGenerateRequest(BaseModel):
     images_per_segment: int = Field(default=2, ge=1, le=3)
     preset_id: Optional[str] = None
     custom_instructions: Optional[str] = None
+    language: Optional[str] = "id"  # id | en
 
 
 class StoryboardItemResponse(BaseModel):
@@ -58,11 +59,13 @@ class StoryboardVoiceoverGenerateRequest(BaseModel):
     voice: Optional[str] = None
     rate: Optional[str] = None
     pitch: Optional[str] = None
+    language: Optional[str] = None
 
 
 class YouTubeMetadataGenerateRequest(BaseModel):
     focus_angle: Optional[str] = None  # e.g. "curiosity_gap", "question", "storytelling", "educational"
     custom_prompt: Optional[str] = None
+    language: Optional[str] = "id"  # id | en
 
 
 class YouTubeThumbnailGenerateRequest(BaseModel):
@@ -97,5 +100,6 @@ class StoryboardSegmentItemUpdate(BaseModel):
 class StoryboardSegmentUpdateRequest(BaseModel):
     chapter: Optional[str] = None
     text: Optional[str] = None
+    segment_index: Optional[int] = None
     items: Optional[List[StoryboardSegmentItemUpdate]] = None
 

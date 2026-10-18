@@ -32,6 +32,7 @@ class Narration(Base):
     tone: Mapped[str] = mapped_column(String(50), default="santai")  # santai, formal, dramatis
     target_duration: Mapped[int] = mapped_column(Integer, default=60)  # seconds
     raw_text: Mapped[str] = mapped_column(Text, default="")
+    language: Mapped[str] = mapped_column(String(10), default="id")
     # segments: [ { "id": "seg-1", "text": "...", "start_ms": 0, "end_ms": 2500, "words": [...] } ]
     segments: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, generating, generated, tts_generating, aligned, failed

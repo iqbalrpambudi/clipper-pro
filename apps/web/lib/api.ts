@@ -89,9 +89,9 @@ export const api = {
   // Projects
   getProjects: () => request<Project[]>("/api/v1/projects"),
   getProject: (id: string) => request<Project & { source_videos: SourceVideo[]; scenes: Scene[]; narration?: Narration | null; audio?: AudioTrack | null; timeline?: Timeline | null; subtitle_style?: SubtitleStyle | null; render_jobs?: RenderJob[] }>(`/api/v1/projects/${id}`),
-  createProject: (data: { name: string; description?: string; project_type?: "short_video" | "long_storyboard"; aspect_ratio?: string; resolution?: string }) =>
+  createProject: (data: { name: string; description?: string; project_type?: "short_video" | "long_storyboard"; aspect_ratio?: string; resolution?: string; language?: string }) =>
     request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
-  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'project_type' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark'>>) =>
+  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'project_type' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark' | 'language'>>) =>
     request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteProject: (id: string) =>
     request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
@@ -171,12 +171,22 @@ export const api = {
     request<void>(`/api/v1/templates/${id}`, {
       method: "DELETE",
     }),
-  generateNarration: (projectId: string, data: { template_id: string; topic?: string; tone: string; target_duration: number; custom_prompt?: string }) =>
+  generateNarration: (
+    projectId: string,
+    data: {
+      template_id: string;
+      topic?: string;
+      tone: string;
+      target_duration: number;
+      custom_prompt?: string;
+      language?: string;
+    }
+  ) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration/generate`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateNarration: (projectId: string, data: { raw_text: string; segments?: any[] }) =>
+  updateNarration: (projectId: string, data: { raw_text: string; segments?: any[]; language?: string }) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -200,7 +210,15 @@ export const api = {
     }),
   generateTTS: (
     projectId: string,
-    data: { provider?: string; voice?: string; rate?: string; pitch?: string; model?: string; fallback_enabled?: boolean }
+    data: {
+      provider?: string;
+      voice?: string;
+      rate?: string;
+      pitch?: string;
+      model?: string;
+      fallback_enabled?: boolean;
+      language?: string;
+    }
   ) =>
     request<AudioTrack>(`/api/v1/projects/${projectId}/tts/generate`, {
       method: "POST",
@@ -383,6 +401,7 @@ export const api = {
       images_per_segment: number;
       preset_id?: string;
       custom_instructions?: string;
+      language?: string;
     }
   ) =>
     request<{
@@ -409,6 +428,7 @@ export const api = {
     data: {
       chapter?: string;
       text?: string;
+      segment_index?: number;
       items?: { id: string; image_prompt: string }[];
     }
   ) =>
@@ -502,7 +522,7 @@ export const api = {
     }),
 
   // YouTube & Thumbnail Suite
-  generateYouTubeMetadata: (projectId: string, data?: { focus_angle?: string; custom_prompt?: string }) =>
+  generateYouTubeMetadata: (projectId: string, data?: { focus_angle?: string; custom_prompt?: string; language?: string }) =>
     request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-metadata`, {
       method: "POST",
       body: JSON.stringify(data || {}),

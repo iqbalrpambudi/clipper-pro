@@ -381,6 +381,7 @@ async def generate_tts_and_align_job(
     pitch: str = "+0Hz",
     model: Optional[str] = None,
     fallback_enabled: Optional[bool] = None,
+    language: Optional[str] = None,
 ) -> None:
     """Async task to generate TTS audio and run forced word alignment."""
     async with SessionLocal() as db:
@@ -388,6 +389,7 @@ async def generate_tts_and_align_job(
         if not narration or not narration.raw_text:
             return
 
+        narration_lang = (language or getattr(narration, "language", None) or "id").strip().lower()
         narration.status = "tts_generating"
         await db.commit()
 
@@ -457,6 +459,7 @@ async def generate_tts_and_align_job(
                 segments=narration.segments,
                 fallback_info=fallback_info,
                 fallback_enabled=use_fallback,
+                language=narration_lang,
             )
 
             actual_provider = fallback_info.get("fallback_provider", provider)
@@ -496,6 +499,7 @@ async def generate_tts_and_align_job(
                 audio_path=str(audio_file),
                 segments=target_segments,
                 total_audio_duration_sec=duration,
+                language=narration_lang,
             )
 
             narration.segments = aligned_segments

@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [resolution, setResolution] = useState("1080p");
+  const [language, setLanguage] = useState<"id" | "en">("id");
   const [modeFilter, setModeFilter] = useState<"all" | "short_video" | "long_storyboard">("all");
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editLanguage, setEditLanguage] = useState<"id" | "en">("id");
 
   const { data: projects = [], isLoading } = useProjects();
   const createMutation = useCreateProject();
@@ -81,6 +83,7 @@ export default function DashboardPage() {
         project_type: createMode,
         aspect_ratio: aspectRatio,
         resolution,
+        language,
       },
       {
         onSuccess: () => {
@@ -100,6 +103,7 @@ export default function DashboardPage() {
         data: {
           name: editName.trim(),
           description: editDescription.trim() || undefined,
+          language: editLanguage,
         },
       },
       {
@@ -307,16 +311,27 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="p-5 pb-3">
                     <div className="flex items-start justify-between gap-3 mb-2">
-                      {isStoryboard ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/30">
-                          <ImageIcon className="w-3 h-3 text-violet-400" />
-                          Storyboard • 16:9 • {proj.resolution}
-                        </span>
-                      ) : (
-                        <Badge variant="supabase" className="font-mono text-[11px]">
-                          {proj.aspect_ratio} • {proj.resolution}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isStoryboard ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/30">
+                            <ImageIcon className="w-3 h-3 text-violet-400" />
+                            Storyboard • 16:9 • {proj.resolution}
+                          </span>
+                        ) : (
+                          <Badge variant="supabase" className="font-mono text-[11px]">
+                            {proj.aspect_ratio} • {proj.resolution}
+                          </Badge>
+                        )}
+                        {proj.language === "en" ? (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1 font-semibold">
+                            🇬🇧 EN
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-semibold">
+                            🇮🇩 ID
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-1">
                         <Button
@@ -328,6 +343,7 @@ export default function DashboardPage() {
                             setProjectToEdit(proj);
                             setEditName(proj.name);
                             setEditDescription(proj.description || "");
+                            setEditLanguage((proj.language as "id" | "en") || "id");
                           }}
                           className="text-muted-foreground hover:text-white hover:bg-white/5"
                           title="Edit Nama Project"
@@ -529,6 +545,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Bahasa Naskah & Narasi
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLanguage("id")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                    language === "id"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10"
+                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                  }`}
+                >
+                  <span className="text-base">🇮🇩</span>
+                  <span>Indonesia (ID)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage("en")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                    language === "en"
+                      ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10"
+                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                  }`}
+                >
+                  <span className="text-base">🇬🇧</span>
+                  <span>English (EN)</span>
+                </button>
+              </div>
+            </div>
+
             <DialogFooter className="pt-2">
               <Button
                 type="button"
@@ -560,7 +608,7 @@ export default function DashboardPage() {
               <DialogTitle>Edit Nama Project</DialogTitle>
             </div>
             <DialogDescription>
-              Ubah nama atau deskripsi project video Anda.
+              Ubah nama, deskripsi, atau bahasa utama project video Anda.
             </DialogDescription>
           </DialogHeader>
 
@@ -587,6 +635,38 @@ export default function DashboardPage() {
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Bahasa Utama Project
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditLanguage("id")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                    editLanguage === "id"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10"
+                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                  }`}
+                >
+                  <span className="text-base">🇮🇩</span>
+                  <span>Indonesia (ID)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditLanguage("en")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                    editLanguage === "en"
+                      ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10"
+                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                  }`}
+                >
+                  <span className="text-base">🇬🇧</span>
+                  <span>English (EN)</span>
+                </button>
+              </div>
             </div>
 
             <DialogFooter className="pt-2">

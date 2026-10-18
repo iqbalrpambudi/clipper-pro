@@ -332,6 +332,21 @@ export function TTSTab({ project }: TTSTabProps) {
     enabled: !!narrationText,
   });
 
+  const projectLanguage = (project.narration?.language || project.language || "id").toLowerCase();
+
+  useEffect(() => {
+    const isEn = projectLanguage === "en";
+    if (isEn) {
+      if (selectedVoice.startsWith("id-")) {
+        setSelectedVoice(provider === "edge" ? "en-US-JennyNeural" : "Puck");
+      }
+    } else {
+      if (selectedVoice.startsWith("en-")) {
+        setSelectedVoice(provider === "edge" ? "id-ID-ArdiNeural" : "Puck");
+      }
+    }
+  }, [projectLanguage, provider, selectedVoice]);
+
   const generateTTSMutation = useMutation({
     mutationFn: () => {
       setIsGeneratingTTS(true);
@@ -349,6 +364,7 @@ export function TTSTab({ project }: TTSTabProps) {
         pitch,
         model: activeModel,
         fallback_enabled: fallbackEnabled,
+        language: projectLanguage,
       });
     },
     onSuccess: async () => {
@@ -388,7 +404,7 @@ export function TTSTab({ project }: TTSTabProps) {
       const targetOffset = params?.offset_ms !== undefined ? params.offset_ms : offsetMs;
       return api.realignTTS(project.id, {
         offset_ms: targetOffset,
-        language: "id",
+        language: projectLanguage,
         model_size: params?.model_size || "base",
       });
     },
@@ -473,7 +489,7 @@ export function TTSTab({ project }: TTSTabProps) {
     else if (provider === "elevenlabs") modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
     else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
 
-    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&t=${Date.now()}`;
+    const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&language=${encodeURIComponent(projectLanguage)}&t=${Date.now()}`;
     audio.src = sampleUrl;
     audio.oncanplay = () => {
       setLoadingSampleVoiceId(null);
@@ -567,7 +583,7 @@ export function TTSTab({ project }: TTSTabProps) {
   };
 
   const baseVoices = voices.filter((v) => v.provider === provider);
-  const filteredVoices =
+  const rawVoicesList =
     provider === "elevenlabs" && elevenLabsCustomVoices.length > 0
       ? [
           ...elevenLabsCustomVoices,
@@ -581,6 +597,17 @@ export function TTSTab({ project }: TTSTabProps) {
           ),
         ]
       : baseVoices;
+
+  const isEnProject = projectLanguage === "en";
+  const filteredVoices = rawVoicesList.filter((v) => {
+    if (isEnProject) {
+      if (v.provider === "edge") return v.id.startsWith("en-");
+      return !v.id.startsWith("id-") && !v.id.startsWith("ja-");
+    } else {
+      if (v.provider === "edge") return v.id.startsWith("id-");
+      return !v.id.startsWith("en-") && !v.id.startsWith("ja-");
+    }
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -641,7 +668,7 @@ export function TTSTab({ project }: TTSTabProps) {
                 type="button"
                 onClick={() => {
                   setProvider("edge");
-                  setSelectedVoice("id-ID-GadisNeural");
+                  setSelectedVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
                 }}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
                   provider === "edge"
@@ -920,11 +947,33 @@ export function TTSTab({ project }: TTSTabProps) {
             </div>
           )}
 
+          {/* Locked Language Status Banner */}
+          <div className="flex items-center justify-between gap-2 mb-2 px-3 py-1.5 rounded-lg bg-[#141414] border border-[#262626]">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Katalog Suara Terkunci:</span>
+              {projectLanguage === "en" ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+                  <span>🇬🇧</span> English (EN)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                  <span>🇮🇩</span> Indonesia (ID)
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground/75 font-mono">
+              🔒 Mengikuti Naskah Tab 1
+            </span>
+          </div>
+
           {/* Voice Cards List (scrollable) */}
           <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
             {filteredVoices.map((v) => {
               const isSelected = selectedVoice === v.id;
               const isPlayingSample = sampleAudioPlaying === v.id;
+              const isEn = v.id.startsWith("en-");
+              const isId = v.id.startsWith("id-");
+              const isJa = v.id.startsWith("ja-");
               return (
                 <div
                   key={v.id}
@@ -936,12 +985,26 @@ export function TTSTab({ project }: TTSTabProps) {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
                       <span className="text-xs font-semibold text-foreground truncate min-w-0" title={v.name}>
                         {v.name}
                       </span>
                       <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground">
                         {v.gender}
+                      </Badge>
+                      <Badge
+                        variant="secondary"
+                        className={`text-[9px] py-0 px-1 font-mono ${
+                          isEn
+                            ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                            : isId
+                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                            : isJa
+                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                        }`}
+                      >
+                        {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
                       </Badge>
                     </div>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}

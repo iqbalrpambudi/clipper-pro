@@ -60,6 +60,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         project_type=payload.project_type,
         aspect_ratio=aspect,
         resolution=payload.resolution,
+        language=payload.language or "id",
         background_fill=payload.background_fill.model_dump(),
         watermark=payload.watermark.model_dump() if payload.watermark else None,
     )
@@ -333,6 +334,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.aspect_ratio = payload.aspect_ratio
     if payload.resolution is not None:
         proj.resolution = payload.resolution
+    if payload.language is not None:
+        proj.language = payload.language
     if payload.background_fill is not None:
         proj.background_fill = payload.background_fill.model_dump()
     if payload.watermark is not None:

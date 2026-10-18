@@ -21,6 +21,7 @@ class Project(Base):
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
+    language: Mapped[str] = mapped_column(String(10), default="id")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
