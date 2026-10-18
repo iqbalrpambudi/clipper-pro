@@ -779,8 +779,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         loop = asyncio.get_event_loop()
         last_progress_time = loop.time()
         start_time = loop.time()
-        INACTIVITY_TIMEOUT = 180.0  # 3 minutes without any progress update
-        OVERALL_TIMEOUT = 900.0     # 15 minutes max duration for entire render
+        audio_dur = float(getattr(audio_track, "duration", 0) or 0)
+        INACTIVITY_TIMEOUT = 600.0  # 10 minutes without any progress update (was 180s)
+        OVERALL_TIMEOUT = max(2400.0, float(audio_dur * 8) if audio_dur else 2400.0)  # 40+ minutes for long 1080p videos
 
         async def _progress(pct: int, msg: str):
             nonlocal last_progress_time
@@ -800,6 +801,10 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 message=msg or f"Memproses render video ({pct}%)...",
                 data={"job_id": render_job_id, "render_type": job.render_type},
             )
+
+        async def _heartbeat():
+            nonlocal last_progress_time
+            last_progress_time = loop.time()
 
         async def _watchdog():
             while True:
@@ -872,6 +877,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     watermark=project.watermark,
                     is_preview=(job.render_type == "preview"),
                     progress_callback=_progress,
+                    heartbeat_callback=_heartbeat,
                     project_id=project.id,
                     job_id=render_job_id,
                 )
@@ -901,6 +907,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     watermark=project.watermark,
                     is_preview=(job.render_type == "preview"),
                     progress_callback=_progress,
+                    heartbeat_callback=_heartbeat,
                     project_id=project.id,
                     job_id=render_job_id,
                 )

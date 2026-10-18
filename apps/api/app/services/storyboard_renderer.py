@@ -87,7 +87,8 @@ async def render_slide_subpixel_motion(
     proc_key: Optional[str] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
-    timeout: float = 120.0,
+    timeout: float = 300.0,
+    heartbeat_callback: Optional[Callable[[], Any]] = None,
 ) -> None:
     """
     Render a single storyboard slide image into an MPEG-TS chunk with 100% butter-smooth subpixel
@@ -155,6 +156,14 @@ async def render_slide_subpixel_motion(
                 if (i % 15 == 0) and (project_id or job_id):
                     if await is_cancelled(project_id, job_id=job_id):
                         raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
+
+                if (i % 30 == 0) and heartbeat_callback:
+                    try:
+                        hb_res = heartbeat_callback()
+                        if asyncio.iscoroutine(hb_res):
+                            await hb_res
+                    except Exception:
+                        pass
 
                 # Smooth cosine ease-in-out progress [0.0 -> 1.0]
                 t = i / tf_denom
@@ -255,6 +264,7 @@ async def render_storyboard_video(
     watermark: Optional[Dict[str, Any]] = None,
     is_preview: bool = False,
     progress_callback: Optional[Callable[[int, str], Any]] = None,
+    heartbeat_callback: Optional[Callable[[], Any]] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
 ) -> str:
@@ -387,7 +397,8 @@ async def render_storyboard_video(
                     proc_key=slide_proc_key,
                     project_id=project_id,
                     job_id=job_id,
-                    timeout=120.0,
+                    timeout=300.0,
+                    heartbeat_callback=heartbeat_callback,
                 )
 
                 completed_count += 1
@@ -418,7 +429,17 @@ async def render_storyboard_video(
             str(concatenated_video),
         ]
 
-        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key, timeout=180.0)
+        ret_concat, stderr_concat = await _run_ffmpeg(
+            concat_cmd,
+            proc_key=proc_key,
+            timeout=600.0,
+            progress_callback=progress_callback,
+            heartbeat_callback=heartbeat_callback,
+            start_pct=65,
+            end_pct=74,
+            total_duration_sec=audio_dur,
+            progress_msg_prefix="Menggabungkan rangkaian adegan visual",
+        )
         if ret_concat != 0:
             if await is_cancelled(project_id, job_id=job_id):
                 raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
@@ -475,9 +496,19 @@ async def render_storyboard_video(
         log.info("Running final storyboard ffmpeg cmd: %s", " ".join(cmd_final))
 
         if progress_callback:
-            await progress_callback(85, "Menyelesaikan kompilasi video final 16:9...")
+            await progress_callback(75, "Menyelesaikan kompilasi video final 16:9...")
 
-        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key, timeout=600.0)
+        ret_final, stderr_final = await _run_ffmpeg(
+            cmd_final,
+            proc_key=proc_key,
+            timeout=1800.0,
+            progress_callback=progress_callback,
+            heartbeat_callback=heartbeat_callback,
+            start_pct=75,
+            end_pct=98,
+            total_duration_sec=audio_dur,
+            progress_msg_prefix="Menyelesaikan kompilasi video final 16:9",
+        )
         if ret_final != 0:
             if await is_cancelled(project_id, job_id=job_id):
                 raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")

@@ -964,8 +964,11 @@ export default function SettingsPage() {
                         onChange={(e) => setElevenlabsModel(e.target.value)}
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                       >
+                        <option value="eleven_v4_turbo">Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)</option>
+                        <option value="eleven_v4">Eleven v4 (Flagship — Kualitas Sinematik Tertinggi)</option>
                         <option value="eleven_multilingual_v2">Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)</option>
-                        <option value="eleven_turbo_v2_5">Eleven Flash / Turbo 2.5 (Latensi super cepat & hemat kuota)</option>
+                        <option value="eleven_flash_v2_5">Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)</option>
+                        <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Generasi Sebelumnya)</option>
                       </select>
                       <p className="text-[10px] text-slate-500 mt-1">
                         Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal 100% konsisten dari awal hingga akhir.

@@ -12,6 +12,9 @@ import {
   Layers,
   Palette,
   ExternalLink,
+  Users,
+  Edit2,
+  Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -51,6 +54,32 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const [imagesPerSegment, setImagesPerSegment] = useState<number>(2);
   const [customInstructions, setCustomInstructions] = useState("");
 
+  // Character Consistency Bible state
+  const [editingCharacters, setEditingCharacters] = useState<boolean>(false);
+  const [charactersList, setCharactersList] = useState<any[]>(project.characters || []);
+
+  useEffect(() => {
+    if (project.characters) {
+      setCharactersList(project.characters);
+    }
+  }, [project.characters]);
+
+  const updateCharactersMutation = useMutation({
+    mutationFn: (newChars: any[]) => api.updateStoryboardCharacters(project.id, newChars),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["project", project.id], (old: any) => {
+        if (!old) return old;
+        return { ...old, characters: res.characters || [] };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      setEditingCharacters(false);
+      showToast("Profil karakter terkunci berhasil disimpan!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal memperbarui profil karakter", "error");
+    },
+  });
+
   const narration = project.narration;
   const segments: any[] = narration?.segments || [];
   const items: StoryboardItem[] = project.storyboard_items || [];
@@ -70,6 +99,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           if (!old) return old;
           return {
             ...old,
+            characters: data.characters || old.characters || [],
             narration: data.narration,
             storyboard_items: data.storyboard_items || [],
           };
@@ -364,6 +394,95 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   </span>
                 </div>
               </div>
+
+              {/* Character Consistency Bible Card */}
+              {charactersList && charactersList.length > 0 && (
+                <div className="rounded-2xl border border-violet-500/30 bg-[#161616] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-violet-400" />
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          Karakter Terkunci (Character Consistency Bible)
+                          <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono normal-case">
+                            Konsisten 100%
+                          </span>
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Ciri fisik, warna pakaian, dan aksesoris khas berikut dikunci otomatis di seluruh prompt gambar adegan.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingCharacters(!editingCharacters)}
+                      className="px-2.5 py-1 text-xs rounded-lg border border-[#333] hover:border-violet-500/50 text-slate-300 hover:text-white transition flex items-center gap-1.5 font-medium"
+                    >
+                      <Edit2 className="w-3 h-3 text-violet-400" />
+                      <span>{editingCharacters ? "Tutup Editor" : "Sesuaikan Ciri"}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {charactersList.map((char, cIdx) => (
+                      <div
+                        key={cIdx}
+                        className="p-3 rounded-xl bg-[#121212] border border-[#262626] hover:border-violet-500/40 transition space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-violet-300 flex items-center gap-1">
+                            👤 {char.name}
+                          </span>
+                          {char.role && (
+                            <span className="text-[10px] text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 font-mono">
+                              {char.role}
+                            </span>
+                          )}
+                        </div>
+                        {editingCharacters ? (
+                          <div className="space-y-1">
+                            <span className="text-[9px] text-slate-500 uppercase font-mono block">
+                              Deskripsi Visual Terkunci (Pakaian, Rambut, Aksesoris):
+                            </span>
+                            <textarea
+                              value={char.visual_anchor}
+                              onChange={(e) => {
+                                const updated = [...charactersList];
+                                updated[cIdx] = { ...char, visual_anchor: e.target.value };
+                                setCharactersList(updated);
+                              }}
+                              rows={3}
+                              className="w-full px-2 py-1.5 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs font-mono focus:outline-none focus:border-violet-500"
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/25 p-2 rounded-lg border border-[#222]">
+                            {char.visual_anchor}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {editingCharacters && (
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        size="sm"
+                        disabled={updateCharactersMutation.isPending}
+                        onClick={() => updateCharactersMutation.mutate(charactersList)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5"
+                      >
+                        {updateCharactersMutation.isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        <span>Simpan Perubahan Karakter</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Segments Accordion List */}
               <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 space-y-4">

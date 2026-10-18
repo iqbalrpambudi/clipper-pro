@@ -20,6 +20,7 @@ class Project(Base):
     background_fill: Mapped[dict] = mapped_column(JSON, default=lambda: {"mode": "blur", "color": "#000000"})
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
+    characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

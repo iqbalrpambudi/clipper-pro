@@ -23,6 +23,13 @@ export interface Project {
   storyboard_items?: StoryboardItem[];
   subtitle_style?: SubtitleStyle | null;
   youtube_metadata?: YouTubeMetadata | null;
+  characters?: StoryboardCharacter[] | null;
+}
+
+export interface StoryboardCharacter {
+  name: string;
+  role?: string;
+  visual_anchor: string;
 }
 
 export interface WatermarkConfig {
@@ -311,6 +318,27 @@ export interface YouTubeThumbnailHistory {
   created_at: string;
 }
 
+export interface ThumbnailOverlayConfig {
+  enabled: boolean;
+  line1: string;
+  line2: string;
+  color1: string;
+  color2: string;
+  position: "top-left" | "bottom-left" | "top-right" | "bottom-right" | "center" | "custom";
+  pos_x?: number; // 0 to 100 (%)
+  pos_y?: number; // 0 to 100 (%)
+  text_align?: "left" | "center" | "right";
+  font_family?: string;
+  font_size: number;
+  rotation: number;
+  outline_spread?: number;
+  outline_blur?: number;
+  outline_color?: string;
+  outline_enabled?: boolean;
+  blur_enabled?: boolean;
+  style_preset?: "minimal" | "modern" | "viral" | "comic" | "custom";
+}
+
 export interface YouTubeMetadata {
   title?: string;
   title_options?: string[];
@@ -320,6 +348,9 @@ export interface YouTubeMetadata {
   thumbnail_concept?: string;
   thumbnail_url?: string;
   thumbnail_history?: YouTubeThumbnailHistory[];
+  thumbnail_hook_line1?: string;
+  thumbnail_hook_line2?: string;
+  thumbnail_overlay?: ThumbnailOverlayConfig;
   updated_at?: string;
 }
 

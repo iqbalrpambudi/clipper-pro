@@ -1033,15 +1033,21 @@ async def generate_elevenlabs_tts(
         "Content-Type": "application/json",
         "Accept": "audio/mpeg",
     }
+    model_id = (model or "eleven_multilingual_v2").strip()
+    voice_settings: Dict[str, Any] = {
+        "stability": 0.75,
+        "similarity_boost": 0.85,
+    }
+    # ElevenLabs v4 architecture strictly accepts stability and similarity_boost.
+    # style and use_speaker_boost are legacy parameters for v1/v2 models.
+    if "v4" not in model_id.lower():
+        voice_settings["style"] = 0.0
+        voice_settings["use_speaker_boost"] = True
+
     payload = {
         "text": text,
-        "model_id": model or "eleven_multilingual_v2",
-        "voice_settings": {
-            "stability": 0.75,
-            "similarity_boost": 0.85,
-            "style": 0.0,
-            "use_speaker_boost": True,
-        },
+        "model_id": model_id,
+        "voice_settings": voice_settings,
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:

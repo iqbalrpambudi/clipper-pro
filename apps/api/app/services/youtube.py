@@ -154,13 +154,20 @@ async def generate_youtube_metadata(
         "   - Baris terakhir: 3-5 Hashtags relevan (misal: #Sains #Sejarah #Dokumenter).\n\n"
         "4. `tags` (Array 15-20 kata kunci):\n"
         "   - Campuran broad keywords (sejarah, sains, dokumenter) dan long-tail keywords spesifik topik.\n\n"
-        "5. `thumbnail_concept`:\n"
-        "   - Penjelasan konsep visual thumbnail dalam 1-2 kalimat Bahasa Indonesia (elemen visual hook, kontras warna, emosi subjek).\n\n"
-        "6. `thumbnail_prompt`:\n"
+        "5. `thumbnail_hook_line1`:\n"
+        "   - Teks Utama Baris 1 Thumbnail (1-3 kata pendek, huruf kapital, sangat memikat, misal: 'JAWA 610 M', 'MALIN KUNDANG', 'SEBELUM MAJAPAHIT').\n\n"
+        "6. `thumbnail_hook_line2`:\n"
+        "   - Teks Hook Baris 2 Thumbnail (1-3 kata provokatif/pertanyaan dengan tanda tanya/seru, misal: 'TANPA SAMBAL?!', 'BUKAN DURHAKA?!', 'HILANG TOTAL?!').\n\n"
+        "7. `thumbnail_concept`:\n"
+        "   - Penjelasan konsep visual thumbnail dalam 1-2 kalimat Bahasa Indonesia (fokus emosi karakter, kontras warna, elemen visual hook).\n\n"
+        "8. `thumbnail_prompt`:\n"
         "   - Prompt visual detail dalam BAHASA INGGRIS untuk AI Image Generator (16:9 widescreen landscape).\n"
-        "   - Fokus pada: subjek tunggal dramatis (Rule of Thirds), ekspresi kuat atau siluet misterius, cinematic atmospheric lighting, warna kontras tinggi yang mencolok di feed gelap YouTube.\n"
-        f"   - Terapkan estetika preset visual '{preset_name}' ({preset_master[:80] if preset_master else ''}).\n"
-        "   - DILARANG MEMUAT TEKS, TULISAN, KATA, HURUF, ANGKA, ATAU WATERMARK DI DALAM GAMBAR!\n\n"
+        "   - KOMPOSISI CATCHY VIRAL YOUTUBE (SANGAT PENTING - SEPERTI YOUTUBE EDUKASI/STORYTELLING VIRAL):\n"
+        "     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan karakter ilustrasi ekspresif yang menonjol (close-up atau mid-shot, kepala putih bersih/komik ekspresif, pose dinamis berekspresi kaget/heran atau memegang benda kunci cerita seperti piring makanan, naskah kuno, kompas, dll) langsung menghadap penonton.\n"
+        "     * Di latar belakang (background), pemandangan atau setting lingkungan yang kaya, hidup, dan kontras tinggi (misal pantai tropis dengan kapal kuno dan gunung bersinar matahari terbit yang megah, atau jalanan kota bersejarah yang dramatis).\n"
+        "     * Sisakan ruang kosong (negative space) yang bersih di sisi berlawanan untuk penempatan teks tebal (bold typography overlay).\n"
+        f"     * Terapkan estetika preset visual '{preset_name}' ({preset_master[:80] if preset_master else ''}).\n"
+        "     * DILARANG MEMUAT TEKS, TULISAN, KATA, HURUF, ANGKA, ATAU WATERMARK DI DALAM GAMBAR KARENA TEKS AKAN DILAPISKAN SECARA TERPISAH!\n\n"
         "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
         "Kembalikan HANYA JSON valid dengan kunci:\n"
         "{\n"
@@ -168,8 +175,10 @@ async def generate_youtube_metadata(
         '  "title_options": ["Judul 1", "Judul 2", "Judul 3", "Judul 4", "Judul 5"],\n'
         '  "description": "Deskripsi lengkap dengan hook, sinopsis, timestamps bab, CTA, dan hashtags...",\n'
         '  "tags": ["tag 1", "tag 2", "tag 3", "..."],\n'
+        '  "thumbnail_hook_line1": "TEKS BARIS 1",\n'
+        '  "thumbnail_hook_line2": "TEKS BARIS 2?!",\n'
         '  "thumbnail_concept": "Konsep visual thumbnail dalam Bahasa Indonesia...",\n'
-        '  "thumbnail_prompt": "A cinematic dramatic 16:9 widescreen illustration of ... in style of ..."\n'
+        '  "thumbnail_prompt": "A high-CTR YouTube thumbnail illustration (16:9 widescreen). In the right foreground ..."\n'
         "}"
     )
 
@@ -212,13 +221,18 @@ async def generate_youtube_metadata(
                 pass
 
     if not parsed or not isinstance(parsed, dict):
+        words = proj.name.upper().split()
+        hook1 = " ".join(words[:2]) if words else "MISTERI NYATA"
+        hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "TERNYATA BEGINI?!"
         parsed = {
             "title": proj.name,
             "title_options": [proj.name],
             "description": f"Video dokumenter menarik mengenai {proj.name}.\n\n{chapter_text_lines}\n\nJangan lupa Like & Subscribe!\n#Video #Dokumenter",
             "tags": [proj.name, "dokumenter", "cerita", "edukasi"],
-            "thumbnail_concept": "Ilustrasi dramatis 16:9 yang menggambarkan subjek utama video dengan pencahayaan kontras tinggi.",
-            "thumbnail_prompt": f"A cinematic widescreen 16:9 dramatic illustration depicting {proj.name}, highly detailed, compelling visual hook, cinematic lighting.",
+            "thumbnail_hook_line1": hook1,
+            "thumbnail_hook_line2": hook2,
+            "thumbnail_concept": "Karakter ekspresif di foreground kanan memegang objek cerita dengan latar belakang pemandangan megah dan kontras tinggi.",
+            "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
         }
 
     # Merge into existing project youtube_metadata
@@ -229,6 +243,40 @@ async def generate_youtube_metadata(
     curr_meta["tags"] = parsed.get("tags") or []
     curr_meta["thumbnail_concept"] = parsed.get("thumbnail_concept") or ""
     curr_meta["thumbnail_prompt"] = parsed.get("thumbnail_prompt") or ""
+
+    hook1 = (parsed.get("thumbnail_hook_line1") or "MISTERI BESAR").strip().upper()
+    hook2 = (parsed.get("thumbnail_hook_line2") or "TERNYATA BEGINI?!").strip().upper()
+    curr_meta["thumbnail_hook_line1"] = hook1
+    curr_meta["thumbnail_hook_line2"] = hook2
+
+    existing_overlay = curr_meta.get("thumbnail_overlay")
+    if not existing_overlay or not isinstance(existing_overlay, dict):
+        curr_meta["thumbnail_overlay"] = {
+            "enabled": True,
+            "line1": hook1,
+            "line2": hook2,
+            "color1": "#FFFFFF",
+            "color2": "#FFE600",
+            "position": "top-left",
+            "pos_x": 6,
+            "pos_y": 8,
+            "text_align": "left",
+            "font_family": "Bebas Neue",
+            "font_size": 48,
+            "rotation": -3,
+            "outline_spread": 1.5,
+            "outline_blur": 6,
+            "outline_color": "#000000",
+            "outline_enabled": True,
+            "blur_enabled": True,
+            "style_preset": "modern",
+        }
+    else:
+        ov = dict(existing_overlay)
+        ov["line1"] = hook1
+        ov["line2"] = hook2
+        curr_meta["thumbnail_overlay"] = ov
+
     curr_meta["updated_at"] = datetime.utcnow().isoformat()
 
     proj.youtube_metadata = curr_meta

@@ -25,5 +25,5 @@ class WorkerSettings:
     ]
     redis_settings = get_redis_settings()
     max_jobs = 4
-    job_timeout = 1800  # 30 minutes
+    job_timeout = 3600  # 60 minutes for high-res 1080p long renders
     on_startup = startup

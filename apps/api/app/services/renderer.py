@@ -26,32 +26,139 @@ from app.services.cancellation import (
 )
 
 
+TIME_REGEX = re.compile(r"time=(\d+):(\d+):(\d+\.\d+)")
+
+
 async def _run_ffmpeg(
     cmd: List[str],
     proc_key: Optional[str] = None,
     timeout: Optional[float] = None,
+    progress_callback: Optional[Callable[[int, str], Any]] = None,
+    heartbeat_callback: Optional[Callable[[], Any]] = None,
+    start_pct: int = 80,
+    end_pct: int = 98,
+    total_duration_sec: float = 0.0,
+    progress_msg_prefix: str = "Memproses video",
 ) -> tuple[int, bytes]:
-    """Run an ffmpeg command, killing the child if the task is cancelled or timed out."""
+    """
+    Run an FFmpeg command, reading stderr asynchronously to stream progress updates
+    and heartbeat pulses so long renders (like 1080p Full HD) never trigger inactivity timeouts.
+    """
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
     if proc_key:
         register_process(proc_key, proc)
+
+    stderr_chunks: List[bytes] = []
+    loop = asyncio.get_event_loop()
+    last_output_time = loop.time()
+    last_callback_time = 0.0
+    last_reported_pct = start_pct
+
+    async def _read_stderr():
+        nonlocal last_output_time, last_callback_time, last_reported_pct
+        if not proc.stdout:
+            return
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            stderr_chunks.append(line)
+            now = loop.time()
+            last_output_time = now
+
+            line_str = line.decode("utf-8", errors="replace")
+            m = TIME_REGEX.search(line_str)
+            if m:
+                hrs, mins, secs = int(m.group(1)), int(m.group(2)), float(m.group(3))
+                current_time = hrs * 3600 + mins * 60 + secs
+
+                # Pulse heartbeat or progress every 2 seconds
+                if now - last_callback_time >= 2.0:
+                    last_callback_time = now
+                    if progress_callback:
+                        if total_duration_sec > 0:
+                            fraction = min(1.0, max(0.0, current_time / total_duration_sec))
+                            calc_pct = start_pct + int(fraction * (end_pct - start_pct))
+                            if calc_pct > last_reported_pct:
+                                last_reported_pct = calc_pct
+                            time_str = f"{int(current_time // 60):02d}:{int(current_time % 60):02d} / {int(total_duration_sec // 60):02d}:{int(total_duration_sec % 60):02d}"
+                            pct_str = int(fraction * 100)
+                            msg = f"{progress_msg_prefix} ({time_str} - {pct_str}%)..."
+                        else:
+                            time_str = f"{int(current_time // 60):02d}:{int(current_time % 60):02d}"
+                            msg = f"{progress_msg_prefix} ({time_str})..."
+
+                        try:
+                            res = progress_callback(last_reported_pct, msg)
+                            if asyncio.iscoroutine(res):
+                                await res
+                        except Exception:
+                            pass
+                    elif heartbeat_callback:
+                        try:
+                            res = heartbeat_callback()
+                            if asyncio.iscoroutine(res):
+                                await res
+                        except Exception:
+                            pass
+            else:
+                # Even without time regex, if stderr is emitting and 3s passed, pulse heartbeat
+                if now - last_callback_time >= 3.0:
+                    last_callback_time = now
+                    if heartbeat_callback:
+                        try:
+                            res = heartbeat_callback()
+                            if asyncio.iscoroutine(res):
+                                await res
+                        except Exception:
+                            pass
+                    elif progress_callback:
+                        try:
+                            res = progress_callback(last_reported_pct, f"{progress_msg_prefix}...")
+                            if asyncio.iscoroutine(res):
+                                await res
+                        except Exception:
+                            pass
+
+    effective_timeout = timeout if (timeout and timeout > 0) else 1200.0
+
     try:
-        if timeout and timeout > 0:
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        else:
-            _, stderr = await proc.communicate()
-    except asyncio.TimeoutError:
-        log.error("FFmpeg process timed out after %s seconds: %s", timeout, " ".join(cmd[:10]))
+        read_task = asyncio.create_task(_read_stderr())
+
+        # Wait loop checking if process finishes or if no output was received for > effective_timeout
+        while proc.returncode is None:
+            try:
+                await asyncio.wait_for(asyncio.shield(proc.wait()), timeout=2.0)
+            except asyncio.TimeoutError:
+                if loop.time() - last_output_time > effective_timeout:
+                    log.error(
+                        "FFmpeg process timed out after %s seconds of inactivity: %s",
+                        effective_timeout,
+                        " ".join(cmd[:10]),
+                    )
+                    raise TimeoutError(
+                        f"Proses rendering FFmpeg macet/timeout setelah {int(effective_timeout)} detik tanpa respon."
+                    )
+
+        await read_task
+    except (TimeoutError, asyncio.TimeoutError):
+        log.error(
+            "FFmpeg process timed out after %s seconds: %s",
+            effective_timeout,
+            " ".join(cmd[:10]),
+        )
         try:
             proc.kill()
             await proc.wait()
         except ProcessLookupError:
             pass
-        raise TimeoutError(f"Proses rendering FFmpeg macet/timeout setelah {int(timeout)} detik tanpa respon.")
+        raise TimeoutError(
+            f"Proses rendering FFmpeg macet/timeout setelah {int(effective_timeout)} detik tanpa respon."
+        )
     except (asyncio.CancelledError, TaskCancelledException):
         try:
             proc.kill()
@@ -62,6 +169,8 @@ async def _run_ffmpeg(
     finally:
         if proc_key:
             unregister_process(proc_key)
+
+    stderr = b"".join(stderr_chunks)
     return proc.returncode or 0, stderr
 
 
@@ -185,6 +294,7 @@ async def render_timeline_video(
     watermark: Optional[Dict[str, Any]] = None,
     is_preview: bool = False,
     progress_callback: Optional[Callable[[int, str], Any]] = None,
+    heartbeat_callback: Optional[Callable[[], Any]] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
 ) -> str:
@@ -401,7 +511,17 @@ async def render_timeline_video(
         if progress_callback:
             await progress_callback(55, "Menggabungkan urutan klip video...")
 
-        ret_concat, stderr_concat = await _run_ffmpeg(concat_cmd, proc_key=proc_key, timeout=180.0)
+        ret_concat, stderr_concat = await _run_ffmpeg(
+            concat_cmd,
+            proc_key=proc_key,
+            timeout=600.0,
+            progress_callback=progress_callback,
+            heartbeat_callback=heartbeat_callback,
+            start_pct=55,
+            end_pct=68,
+            total_duration_sec=audio_dur,
+            progress_msg_prefix="Menggabungkan urutan klip video",
+        )
         if ret_concat != 0:
             if await is_cancelled(project_id, job_id=job_id):
                 raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
@@ -471,9 +591,19 @@ async def render_timeline_video(
         log.info("Running final ffmpeg cmd: %s", " ".join(cmd_final))
 
         if progress_callback:
-            await progress_callback(85, "Merender hasil akhir video...")
+            await progress_callback(75, "Merender hasil akhir video...")
 
-        ret_final, stderr_final = await _run_ffmpeg(cmd_final, proc_key=proc_key, timeout=600.0)
+        ret_final, stderr_final = await _run_ffmpeg(
+            cmd_final,
+            proc_key=proc_key,
+            timeout=1800.0,
+            progress_callback=progress_callback,
+            heartbeat_callback=heartbeat_callback,
+            start_pct=75,
+            end_pct=98,
+            total_duration_sec=audio_dur,
+            progress_msg_prefix="Merender kompilasi video final",
+        )
 
         if ret_final != 0:
             if await is_cancelled(project_id, job_id=job_id):

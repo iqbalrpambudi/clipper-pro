@@ -14,6 +14,7 @@ import {
   X,
   Edit3,
   Palette,
+  Users,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -209,6 +210,32 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
+
+      {/* Character Bible Locked Bar */}
+      {project.characters && project.characters.length > 0 && (
+        <div className="p-3 rounded-xl border border-violet-500/20 bg-violet-950/15 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-violet-300 font-semibold shrink-0">
+              <Users className="w-4 h-4 text-violet-400" />
+              <span>Karakter Terkunci:</span>
+            </div>
+            {project.characters.map((char: any, i: number) => (
+              <span
+                key={i}
+                className="px-2.5 py-1 rounded-lg bg-black/40 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                title={char.visual_anchor}
+              >
+                <span className="font-bold text-violet-300">👤 {char.name}</span>
+                {char.role && <span className="text-[10px] text-slate-400">({char.role})</span>}
+                <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1 rounded">✓ Terkunci</span>
+              </span>
+            ))}
+          </div>
+          <span className="text-[11px] text-slate-400 italic">
+            Deskripsi pakaian & ciri visual disinkronkan ke seluruh adegan
+          </span>
+        </div>
+      )}
 
       {/* Top Banner Action Bar */}
       <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-gradient-to-r from-[#181818] via-[#1C1824] to-[#181818] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">

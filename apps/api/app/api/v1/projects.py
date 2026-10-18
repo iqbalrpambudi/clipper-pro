@@ -134,6 +134,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         scene_count=len(proj.scenes),
         storyboard_count=len(proj.storyboard_items),
         youtube_metadata=proj.youtube_metadata or {},
+        characters=proj.characters or [],
     )
 
     # Map file urls
@@ -338,6 +339,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.watermark = payload.watermark.model_dump()
     if payload.status is not None:
         proj.status = payload.status
+    if payload.characters is not None:
+        proj.characters = payload.characters
 
     await db.commit()
     await db.refresh(proj)

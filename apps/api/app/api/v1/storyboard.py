@@ -22,6 +22,7 @@ from app.schemas.storyboard import (
     YouTubeMetadataGenerateRequest,
     YouTubeThumbnailGenerateRequest,
     YouTubeMetadataUpdateRequest,
+    StoryboardCharactersUpdateRequest,
 )
 from app.services.storyboard import (
     generate_storyboard_script,
@@ -87,9 +88,11 @@ async def generate_script(
             preset_id=payload.preset_id,
             custom_instructions=payload.custom_instructions,
         )
+        proj = await db.get(Project, project_id)
         return {
             "success": True,
             "project_id": project_id,
+            "characters": getattr(proj, "characters", []) or [],
             "narration": {
                 "id": narration.id,
                 "topic": narration.topic,
@@ -104,6 +107,22 @@ async def generate_script(
     except Exception as e:
         log.exception("Error generating storyboard script for project %s: %s", project_id, e)
         raise HTTPException(status_code=500, detail=f"Gagal generate naskah: {str(e)}")
+
+
+@router.put("/characters")
+async def update_storyboard_characters(
+    project_id: str,
+    payload: StoryboardCharactersUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update or customize the character consistency bible for this project."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    proj.characters = payload.characters
+    await db.commit()
+    await db.refresh(proj)
+    return {"success": True, "characters": proj.characters or []}
 
 
 @router.get("/items", response_model=List[StoryboardItemResponse])
@@ -409,6 +428,12 @@ async def update_yt_metadata(
         curr["thumbnail_url"] = payload.thumbnail_url
     if payload.thumbnail_history is not None:
         curr["thumbnail_history"] = payload.thumbnail_history
+    if payload.thumbnail_hook_line1 is not None:
+        curr["thumbnail_hook_line1"] = payload.thumbnail_hook_line1
+    if payload.thumbnail_hook_line2 is not None:
+        curr["thumbnail_hook_line2"] = payload.thumbnail_hook_line2
+    if payload.thumbnail_overlay is not None:
+        curr["thumbnail_overlay"] = payload.thumbnail_overlay
     curr["updated_at"] = datetime.utcnow().isoformat()
 
     proj.youtube_metadata = curr

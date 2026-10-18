@@ -1007,6 +1007,88 @@ def test_youtube_schemas_validation():
     assert len(req3.tags) == 2
 
 
+@pytest.mark.asyncio
+async def test_run_ffmpeg_and_render_timeouts():
+    from app.services.renderer import _run_ffmpeg
+    from app.workers.settings import WorkerSettings
+
+    # 1. Verify WorkerSettings job_timeout is 3600 (60 minutes)
+    assert WorkerSettings.job_timeout == 3600
+
+    # 2. Test _run_ffmpeg runs and streams output with heartbeat
+    heartbeat_called = False
+
+    async def _hb():
+        nonlocal heartbeat_called
+        heartbeat_called = True
+
+    cmd = ["ffmpeg", "-version"]
+    code, err = await _run_ffmpeg(cmd, heartbeat_callback=_hb, timeout=30.0)
+    assert code == 0
+    assert b"ffmpeg version" in err
+
+
+@pytest.mark.asyncio
+async def test_character_consistency_bible():
+    from app.services.storyboard import (
+        build_storyboard_outline_prompt,
+        build_chapter_expansion_prompt,
+        build_storyboard_prompt,
+    )
+    from app.schemas.storyboard import StoryboardCharactersUpdateRequest
+
+    # 1. Test outline prompt includes Character Bible instructions
+    sys_p, usr_p = build_storyboard_outline_prompt(
+        topic="Legenda Malin Kundang",
+        duration_mins=5,
+        tone="dramatis",
+        num_chapters=4,
+    )
+    assert "CHARACTER BIBLE" in sys_p
+    assert "visual_anchor" in sys_p
+    assert "crimson red" in sys_p
+
+    # 2. Test chapter expansion prompt injects characters into system & user prompt
+    characters = [
+        {
+            "name": "Malin Kundang",
+            "role": "Tokoh Utama",
+            "visual_anchor": "a lean young Indonesian boy, sun-tanned skin, wearing a vibrant crimson red short-sleeved traditional shirt, woven brown fabric headband, bare feet",
+        },
+        {
+            "name": "Ibu Mande Rubayah",
+            "role": "Ibu Malin",
+            "visual_anchor": "an elderly Indonesian mother with gentle wrinkled face, faded cream cotton headscarf, dark indigo batik sarong",
+        },
+    ]
+
+    exp_sys, exp_usr = build_chapter_expansion_prompt(
+        video_title="Legenda Malin Kundang",
+        video_overview="Kisah anak durhaka yang dikutuk menjadi batu",
+        chapter_index=2,
+        total_chapters=4,
+        chapter_title="Babak 2: Keberangkatan Merantau",
+        chapter_synopsis="Malin berpamitan pada ibunya di dermaga kapal kayu",
+        chapter_key_points=["Pamitan di dermaga", "Ibu memberikan bekal"],
+        target_chapter_words=500,
+        target_segments=3,
+        images_per_segment=2,
+        tone="dramatis",
+        characters=characters,
+    )
+    assert "PENGUNCIAN KONSISTENSI KARAKTER" in exp_sys
+    assert "crimson red short-sleeved traditional shirt" in exp_sys
+    assert "faded cream cotton headscarf" in exp_sys
+    assert "Malin Kundang" in exp_usr
+
+    # 3. Test StoryboardCharactersUpdateRequest schema
+    update_req = StoryboardCharactersUpdateRequest(characters=characters)
+    assert len(update_req.characters) == 2
+    assert update_req.characters[0]["name"] == "Malin Kundang"
+
+
+
+
 
 
 

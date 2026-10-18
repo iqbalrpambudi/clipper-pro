@@ -52,6 +52,7 @@ class ProjectUpdate(BaseModel):
     background_fill: Optional[BackgroundFillSchema] = None
     watermark: Optional[WatermarkSchema] = None
     status: Optional[str] = None
+    characters: Optional[List[Dict[str, Any]]] = None
 
 
 class SourceVideoResponse(BaseModel):
@@ -122,6 +123,7 @@ class ProjectResponse(ProjectBase):
     scene_count: int = 0
     storyboard_count: int = 0
     youtube_metadata: Optional[Dict[str, Any]] = None
+    characters: Optional[List[Dict[str, Any]]] = None
 
 
 class ProjectDetailResponse(ProjectResponse):

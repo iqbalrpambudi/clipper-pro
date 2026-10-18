@@ -80,16 +80,34 @@ export const GEMINI_TTS_MODELS = [
 
 export const ELEVENLABS_TTS_MODELS = [
   {
+    id: "eleven_v4_turbo",
+    name: "Eleven v4 Turbo",
+    badge: "Next-Gen Low Latency",
+    desc: "Arsitektur v4 terbaru, latensi ultra-cepat (~100ms), 90+ bahasa, intonasi emosional tinggi.",
+  },
+  {
+    id: "eleven_v4",
+    name: "Eleven v4",
+    badge: "Flagship Ultra-Realism",
+    desc: "Model v4 tertinggi untuk kualitas vokal sinematik dan ekspresi emosional paling mendalam.",
+  },
+  {
     id: "eleven_multilingual_v2",
     name: "Eleven Multilingual v2",
     badge: "Gold Standard (Paling Stabil)",
     desc: "Kualitas vokal paling stabil tanpa tone drift, artikulasi emosional tinggi.",
   },
   {
+    id: "eleven_flash_v2_5",
+    name: "Eleven Flash v2.5",
+    badge: "Super Cepat & Hemat Kuota",
+    desc: "Latensi super cepat & hemat kuota karakter 50% untuk video harian.",
+  },
+  {
     id: "eleven_turbo_v2_5",
     name: "Eleven Flash / Turbo 2.5",
-    badge: "Super Cepat & Hemat Kuota",
-    desc: "Latensi super cepat & hemat kuota karakter untuk video harian.",
+    badge: "Fast Generation",
+    desc: "Generasi Turbo v2.5 seimbang antara kecepatan dan kestabilan.",
   },
 ];
 

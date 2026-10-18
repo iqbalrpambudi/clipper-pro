@@ -388,12 +388,21 @@ export const api = {
     request<{
       success: boolean;
       project_id: string;
+      characters?: any[];
       narration: any;
       storyboard_items: StoryboardItem[];
     }>(`/api/v1/projects/${projectId}/storyboard/generate-script`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateStoryboardCharacters: (projectId: string, characters: any[]) =>
+    request<{ success: boolean; characters: any[] }>(
+      `/api/v1/projects/${projectId}/storyboard/characters`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ characters }),
+      }
+    ),
   getStoryboardItems: (projectId: string) =>
     request<StoryboardItem[]>(`/api/v1/projects/${projectId}/storyboard/items`),
   updateStoryboardItem: (

@@ -80,4 +80,11 @@ class YouTubeMetadataUpdateRequest(BaseModel):
     thumbnail_concept: Optional[str] = None
     thumbnail_url: Optional[str] = None
     thumbnail_history: Optional[List[dict]] = None
+    thumbnail_hook_line1: Optional[str] = None
+    thumbnail_hook_line2: Optional[str] = None
+    thumbnail_overlay: Optional[dict] = None
+
+
+class StoryboardCharactersUpdateRequest(BaseModel):
+    characters: List[dict]
 
