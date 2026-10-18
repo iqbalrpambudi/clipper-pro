@@ -18,7 +18,7 @@ from app.core.events import publish_project_event
 from app.services.ytdlp import download_video, get_video_info
 from app.services.scene_detector import detect_scenes, get_video_metadata
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
-from app.services.storyboard import sync_storyboard_timing_from_alignment
+from app.services.storyboard import sync_storyboard_timing_from_alignment, resolve_prompt_variables
 from app.services.image_gen import generate_single_image
 from app.services.vision_tagger import analyze_scenes_batch
 from app.services.tts import generate_speech_audio, estimate_tts_cost
@@ -1213,6 +1213,7 @@ async def generate_storyboard_images_job(
 ) -> None:
     """Async background task to generate storyboard illustrations via AI image provider."""
     async with SessionLocal() as db:
+        proj = await db.get(Project, project_id)
         res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
         cfg = res.scalar_one_or_none()
 
@@ -1275,11 +1276,18 @@ async def generate_storyboard_images_job(
                 await db.commit()
 
             try:
+                resolved_prompt = resolve_prompt_variables(
+                    it.image_prompt,
+                    characters=getattr(proj, "characters", None) if proj else None,
+                    locations=getattr(proj, "locations", None) if proj else None,
+                    world_setting=getattr(proj, "world_setting", None) if proj else None,
+                    preset_master_prompt=style_prompt,
+                )
                 async with sem:
                     if await is_cancelled(project_id):
                         return
                     f_path, rel_url = await generate_single_image(
-                        prompt=it.image_prompt,
+                        prompt=resolved_prompt,
                         project_id=project_id,
                         item_id=it.id,
                         base_url=base_url,

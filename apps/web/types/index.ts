@@ -24,13 +24,35 @@ export interface Project {
   subtitle_style?: SubtitleStyle | null;
   youtube_metadata?: YouTubeMetadata | null;
   characters?: StoryboardCharacter[] | null;
+  locations?: StoryboardLocation[] | null;
+  world_setting?: StoryboardWorldSetting | null;
   language?: string;
 }
 
+export interface StoryboardCharacterVariant {
+  variant_id: string;
+  label: string;
+  visual_anchor: string;
+}
+
 export interface StoryboardCharacter {
+  id?: string;
   name: string;
   role?: string;
   visual_anchor: string;
+  variants?: StoryboardCharacterVariant[];
+}
+
+export interface StoryboardLocation {
+  id: string;
+  name: string;
+  environment_anchor: string;
+}
+
+export interface StoryboardWorldSetting {
+  era?: string;
+  time_setting?: string;
+  atmosphere?: string;
 }
 
 export interface WatermarkConfig {
@@ -261,6 +283,7 @@ export interface StoryboardItem {
   order_index: number;
   script_text: string;
   image_prompt: string;
+  resolved_prompt?: string | null;
   image_url?: string | null;
   motion_effect: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static";
   start_time: number;

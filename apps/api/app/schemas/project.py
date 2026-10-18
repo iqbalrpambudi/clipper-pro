@@ -55,6 +55,8 @@ class ProjectUpdate(BaseModel):
     watermark: Optional[WatermarkSchema] = None
     status: Optional[str] = None
     characters: Optional[List[Dict[str, Any]]] = None
+    locations: Optional[List[Dict[str, Any]]] = None
+    world_setting: Optional[Dict[str, Any]] = None
 
 
 class SourceVideoResponse(BaseModel):
@@ -126,6 +128,8 @@ class ProjectResponse(ProjectBase):
     storyboard_count: int = 0
     youtube_metadata: Optional[Dict[str, Any]] = None
     characters: Optional[List[Dict[str, Any]]] = None
+    locations: Optional[List[Dict[str, Any]]] = None
+    world_setting: Optional[Dict[str, Any]] = None
 
 
 class ProjectDetailResponse(ProjectResponse):

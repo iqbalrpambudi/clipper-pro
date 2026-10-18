@@ -15,11 +15,94 @@ import {
   Edit3,
   Palette,
   Users,
+  MapPin,
+  Compass,
+  Eye,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, StoryboardItem } from "@/types";
 import { Button, Textarea, Badge } from "@/components/ui";
+
+function renderTokenizedPrompt(promptText: string) {
+  if (!promptText) return null;
+  const parts = promptText.split(/(\[[^\]]+\])/g);
+  return (
+    <span>
+      {parts.map((part, pIdx) => {
+        if (!part.startsWith("[") || !part.endsWith("]")) {
+          return <span key={pIdx}>{part}</span>;
+        }
+        const inner = part.slice(1, -1).trim();
+        const lower = inner.toLowerCase();
+
+        if (lower.startsWith("preset:") || lower === "preset style" || lower === "style") {
+          return (
+            <span
+              key={pIdx}
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-semibold align-baseline"
+              title="Gaya Gambar Preset AI"
+            >
+              <Sparkles className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              {part}
+            </span>
+          );
+        }
+
+        if (lower.startsWith("char:") || lower.startsWith("karakter:")) {
+          return (
+            <span
+              key={pIdx}
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono text-[10px] font-semibold align-baseline"
+              title="Karakter & Varian Wujud"
+            >
+              <Users className="w-2.5 h-2.5 text-violet-400 shrink-0" />
+              {part}
+            </span>
+          );
+        }
+
+        if (lower.startsWith("loc:") || lower.startsWith("lokasi:")) {
+          return (
+            <span
+              key={pIdx}
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-mono text-[10px] font-semibold align-baseline"
+              title="Latar Tempat Kejadian"
+            >
+              <MapPin className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+              {part}
+            </span>
+          );
+        }
+
+        if (lower === "era" || lower.startsWith("era:") || lower.startsWith("world:")) {
+          return (
+            <span
+              key={pIdx}
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[10px] font-semibold align-baseline"
+              title="Setting Era Waktu & Atmosfer"
+            >
+              <Compass className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+              {part}
+            </span>
+          );
+        }
+
+        return (
+          <span
+            key={pIdx}
+            className="inline-flex items-center mx-0.5 px-1.5 py-0.2 rounded bg-white/10 text-slate-200 border border-white/15 font-mono text-[10px] font-semibold align-baseline"
+          >
+            {part}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 interface StoryboardImagesTabProps {
   project: Project & {
@@ -45,6 +128,17 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
 
   // Generating single item tracker
   const [generatingItemId, setGeneratingItemId] = useState<string | null>(null);
+
+  // Toggle viewing raw variable prompt vs compiled AI visual prompt
+  const [showCompiledPrompt, setShowCompiledPrompt] = useState<boolean>(false);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+
+  const handleCopyPrompt = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPromptId(id);
+    setTimeout(() => setCopiedPromptId(null), 2000);
+    showToast("Prompt visual berhasil disalin ke clipboard!", "info");
+  };
 
   // Image Presets query
   const { data: presets = [] } = useQuery({
@@ -211,28 +305,73 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         </Link>
       </div>
 
-      {/* Character Bible Locked Bar */}
-      {project.characters && project.characters.length > 0 && (
-        <div className="p-3 rounded-xl border border-violet-500/20 bg-violet-950/15 flex flex-wrap items-center justify-between gap-3 text-xs">
+      {/* Continuity Bible Locked Bar (Characters & Variants, Locations, Era) */}
+      {((project.characters && project.characters.length > 0) ||
+        (project.locations && project.locations.length > 0) ||
+        project.world_setting?.era) && (
+        <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-black/40 to-black/40 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 text-violet-300 font-semibold shrink-0">
               <Users className="w-4 h-4 text-violet-400" />
-              <span>Karakter Terkunci:</span>
+              <span>Continuity Bible:</span>
             </div>
-            {project.characters.map((char: any, i: number) => (
+
+            {/* Characters */}
+            {project.characters?.map((char: any, i: number) => {
+              const charId = char.id || char.name?.toLowerCase().replace(/\s+/g, "");
+              const hasVariants = Array.isArray(char.variants) && char.variants.length > 0;
+              return (
+                <span
+                  key={`char-${i}`}
+                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                  title={char.visual_anchor}
+                >
+                  <span className="font-bold text-violet-300">👤 {char.name}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300">
+                    [char:{charId}]
+                  </span>
+                  {hasVariants && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
+                      +{char.variants.length} varian
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+
+            {/* Locations */}
+            {project.locations?.map((loc: any, i: number) => {
+              const locId = loc.id || loc.name?.toLowerCase().replace(/\s+/g, "");
+              return (
+                <span
+                  key={`loc-${i}`}
+                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-sky-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                  title={loc.environment_anchor}
+                >
+                  <span className="font-bold text-sky-300">🗺️ {loc.name}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300">
+                    [loc:{locId}]
+                  </span>
+                </span>
+              );
+            })}
+
+            {/* World Setting Era */}
+            {project.world_setting?.era && (
               <span
-                key={i}
-                className="px-2.5 py-1 rounded-lg bg-black/40 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
-                title={char.visual_anchor}
+                className="px-2.5 py-1 rounded-lg bg-black/50 border border-emerald-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                title={project.world_setting.atmosphere}
               >
-                <span className="font-bold text-violet-300">👤 {char.name}</span>
-                {char.role && <span className="text-[10px] text-slate-400">({char.role})</span>}
-                <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1 rounded">✓ Terkunci</span>
+                <span className="font-bold text-emerald-300">⏳ {project.world_setting.era}</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
+                  [era]
+                </span>
               </span>
-            ))}
+            )}
           </div>
+
           <span className="text-[11px] text-slate-400 italic">
-            Deskripsi pakaian & ciri visual disinkronkan ke seluruh adegan
+            Deskripsi visual disinkronkan otomatis saat generate
           </span>
         </div>
       )}
@@ -271,11 +410,40 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           </div>
         </div>
 
-        <Button
-          onClick={() => batchGenerateMutation.mutate()}
-          disabled={batchGenerateMutation.isPending || items.length === 0}
-          className="bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-lg shadow-violet-500/20 gap-2 shrink-0 py-2.5"
-        >
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Prompt Mode Toggle (Clean Variables vs Full Compiled Prompt) */}
+          <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#2E2E2E]">
+            <button
+              type="button"
+              onClick={() => setShowCompiledPrompt(false)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                !showCompiledPrompt
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Code className="w-3.5 h-3.5" />
+              <span>Prompt Variabel</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCompiledPrompt(true)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                showCompiledPrompt
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Preview Lengkap (Compiled)</span>
+            </button>
+          </div>
+
+          <Button
+            onClick={() => batchGenerateMutation.mutate()}
+            disabled={batchGenerateMutation.isPending || items.length === 0}
+            className="bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-lg shadow-violet-500/20 gap-2 shrink-0 py-2.5"
+          >
           {batchGenerateMutation.isPending ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -289,6 +457,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           )}
         </Button>
       </div>
+    </div>
 
       {/* Main Items Gallery Grouped by Segment */}
       {items.length === 0 ? (
@@ -414,8 +583,68 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                 value={editPromptText}
                                 onChange={(e) => setEditPromptText(e.target.value)}
                                 className="text-[11px] bg-[#181818] border-violet-500/50 text-white leading-normal font-mono"
+                                placeholder="Tulis visual prompt..."
                               />
-                              <div className="flex justify-end gap-1.5">
+
+                              {/* Quick Token Insertion Chips */}
+                              <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                                <span className="text-[9px] text-slate-500 font-mono">Sisipkan:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditPromptText((prev) => `${prev} [preset:style]`)}
+                                  className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono transition"
+                                >
+                                  + [preset:style]
+                                </button>
+                                {project.characters?.map((c: any, ci: number) => {
+                                  const cId = c.id || c.name?.toLowerCase().replace(/\s+/g, "");
+                                  return (
+                                    <React.Fragment key={`tok-c-${ci}`}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditPromptText((prev) => `${prev} [char:${cId}]`)}
+                                        className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                      >
+                                        + [char:{cId}]
+                                      </button>
+                                      {c.variants?.map((v: any, vi: number) => (
+                                        <button
+                                          key={`tok-v-${ci}-${vi}`}
+                                          type="button"
+                                          onClick={() => setEditPromptText((prev) => `${prev} [char:${cId}:${v.variant_id}]`)}
+                                          className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                        >
+                                          + [char:{cId}:{v.variant_id}]
+                                        </button>
+                                      ))}
+                                    </React.Fragment>
+                                  );
+                                })}
+                                {project.locations?.map((l: any, li: number) => {
+                                  const lId = l.id || l.name?.toLowerCase().replace(/\s+/g, "");
+                                  return (
+                                    <button
+                                      key={`tok-l-${li}`}
+                                      type="button"
+                                      onClick={() => setEditPromptText((prev) => `${prev} [loc:${lId}]`)}
+                                      className="px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] font-mono transition"
+                                    >
+                                      + [loc:{lId}]
+                                    </button>
+                                  );
+                                })}
+                                {project.world_setting?.era && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditPromptText((prev) => `${prev} [era]`)}
+                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-mono transition"
+                                  >
+                                    + [era]
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="flex justify-end gap-1.5 pt-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -434,26 +663,61 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-semibold text-slate-500 font-mono">
-                                  Visual Prompt
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingItemId(item.id);
-                                    setEditPromptText(item.image_prompt);
-                                  }}
-                                  className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
-                                >
-                                  <Edit3 className="w-2.5 h-2.5" />
-                                  <span>Edit</span>
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] uppercase font-semibold text-slate-500 font-mono">
+                                    Visual Prompt
+                                  </span>
+                                  {showCompiledPrompt && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono font-medium">
+                                      Compiled
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleCopyPrompt(
+                                        item.id,
+                                        showCompiledPrompt
+                                          ? item.resolved_prompt || item.image_prompt
+                                          : item.image_prompt
+                                      )
+                                    }
+                                    className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-mono transition p-0.5"
+                                    title="Salin Prompt"
+                                  >
+                                    {copiedPromptId === item.id ? (
+                                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-2.5 h-2.5" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingItemId(item.id);
+                                      setEditPromptText(item.image_prompt);
+                                    }}
+                                    className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
+                                  >
+                                    <Edit3 className="w-2.5 h-2.5" />
+                                    <span>Edit</span>
+                                  </button>
+                                </div>
                               </div>
-                              <p className="text-[11px] text-slate-300 font-mono leading-relaxed line-clamp-3">
-                                {item.image_prompt}
-                              </p>
+
+                              {showCompiledPrompt ? (
+                                <p className="text-[11px] text-slate-200 font-mono leading-relaxed line-clamp-4 bg-black/40 p-2 rounded-lg border border-[#222]">
+                                  {item.resolved_prompt || item.image_prompt}
+                                </p>
+                              ) : (
+                                <div className="text-[11px] text-slate-300 font-mono leading-relaxed line-clamp-3">
+                                  {renderTokenizedPrompt(item.image_prompt)}
+                                </div>
+                              )}
                             </div>
                           )}
 

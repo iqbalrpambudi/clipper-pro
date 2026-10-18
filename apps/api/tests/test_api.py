@@ -1389,6 +1389,178 @@ async def test_update_storyboard_segment_no_index_collision():
             assert item_seg_1_2.script_text == "Text babak 1 scene 2"
 
 
+@pytest.mark.asyncio
+async def test_story_continuity_bible_variable_resolution():
+    from app.services.storyboard import resolve_prompt_variables
+
+    characters = [
+        {
+            "id": "malin",
+            "name": "Malin Kundang",
+            "visual_anchor": "a lean Indonesian man with determined eyes",
+            "variants": [
+                {
+                    "variant_id": "muda",
+                    "label": "Masa Kecil",
+                    "visual_anchor": "a lean young Indonesian boy in crimson shirt and bare feet",
+                },
+                {
+                    "variant_id": "dewasa",
+                    "label": "Saudagar Sukses",
+                    "visual_anchor": "an opulent wealthy merchant in emerald green royal robe and golden keris",
+                },
+                {
+                    "variant_id": "batu",
+                    "label": "Patung Batu",
+                    "visual_anchor": "a weathered grey stone statue kneeling in prostration pose on the rocks",
+                },
+            ],
+        },
+        {
+            "id": "ibu",
+            "name": "Mande Rubayah",
+            "visual_anchor": "an elderly mother with wrinkled face and faded cream headscarf",
+        },
+    ]
+
+    locations = [
+        {
+            "id": "pesisir_pantai",
+            "name": "Pesisir Pantai Air Manis",
+            "environment_anchor": "a rocky Indonesian tropical coast with crashing ocean waves and palm trees",
+        }
+    ]
+
+    world_setting = {
+        "era": "14th Century Ancient Nusantara",
+        "time_setting": "Traditional Maritime Past",
+        "atmosphere": "Moody storm lighting and dramatic ocean spray",
+    }
+
+    preset_style = "Cinematic hand-drawn 2D animation, Studio Ghibli inspired, high quality"
+
+    # Test 1: Standard tags [preset:style], [char:malin:batu], [loc:pesisir_pantai]
+    raw_prompt_1 = "A cinematic [16:9] shot in [preset:style] of [char:malin:batu] crying on [loc:pesisir_pantai], in [era]."
+    resolved_1 = resolve_prompt_variables(
+        raw_prompt_1,
+        characters=characters,
+        locations=locations,
+        world_setting=world_setting,
+        preset_master_prompt=preset_style,
+    )
+
+    assert "[16:9]" in resolved_1  # Aspect ratio preserved!
+    assert "Cinematic hand-drawn 2D animation" in resolved_1
+    assert "weathered grey stone statue kneeling in prostration pose" in resolved_1
+    assert "rocky Indonesian tropical coast with crashing ocean waves" in resolved_1
+    assert "14th Century Ancient Nusantara" in resolved_1
+    assert "[char:" not in resolved_1
+    assert "[loc:" not in resolved_1
+
+    # Test 2: Shorthand user syntax like [malinkundang:batu] and [pesisirpantai]
+    raw_prompt_2 = "Close-up shot of [malinkundang:batu] kneeling, nearby [manderubayah] weeping at [pesisirpantai]."
+    resolved_2 = resolve_prompt_variables(
+        raw_prompt_2,
+        characters=characters,
+        locations=locations,
+        world_setting=world_setting,
+    )
+    assert "weathered grey stone statue" in resolved_2
+    assert "elderly mother with wrinkled face" in resolved_2
+    assert "rocky Indonesian tropical coast" in resolved_2
+
+
+@pytest.mark.asyncio
+async def test_continuity_bible_api_endpoints():
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.db import SessionLocal, engine
+    from app.models.project import Project
+    from app.models.storyboard import StoryboardItem
+
+    await engine.dispose()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with SessionLocal() as db_session:
+            proj = Project(
+                name="Project Continuity Bible Test",
+                aspect_ratio="16:9",
+                project_type="long_storyboard",
+                characters=[],
+                locations=[],
+                world_setting={},
+            )
+            db_session.add(proj)
+            await db_session.commit()
+            await db_session.refresh(proj)
+
+            # Create a storyboard item with tokenized prompt
+            item = StoryboardItem(
+                project_id=proj.id,
+                order_index=1,
+                script_text="Malin telah menjadi batu",
+                image_prompt="A dramatic shot in [preset:style] of [char:malin:batu] on [loc:pantai].",
+                status="pending",
+            )
+            db_session.add(item)
+            await db_session.commit()
+
+        # 1. Update continuity bible via PUT endpoint
+        put_res = await client.put(
+            f"/api/v1/projects/{proj.id}/storyboard/continuity-bible",
+            json={
+                "characters": [
+                    {
+                        "id": "malin",
+                        "name": "Malin",
+                        "variants": [
+                            {
+                                "variant_id": "batu",
+                                "label": "Patung Batu",
+                                "visual_anchor": "a cursed granite stone statue frozen in regret",
+                            }
+                        ],
+                    }
+                ],
+                "locations": [
+                    {
+                        "id": "pantai",
+                        "name": "Pantai Karang",
+                        "environment_anchor": "a misty coastline with black volcanic sand",
+                    }
+                ],
+                "world_setting": {
+                    "era": "Pre-colonial Nusantara",
+                    "atmosphere": "Dark stormy skies with lightning",
+                },
+            },
+        )
+        assert put_res.status_code == 200, put_res.text
+        put_data = put_res.json()
+        assert put_data["success"] is True
+        assert len(put_data["characters"]) == 1
+        assert len(put_data["locations"]) == 1
+        assert put_data["world_setting"]["era"] == "Pre-colonial Nusantara"
+
+        # 2. Get continuity bible via GET endpoint
+        get_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/continuity-bible")
+        assert get_res.status_code == 200
+        get_data = get_res.json()
+        assert len(get_data["characters"]) == 1
+        assert get_data["characters"][0]["id"] == "malin"
+
+        # 3. Get storyboard items and verify resolved_prompt is computed
+        items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
+        assert items_res.status_code == 200
+        items_data = items_res.json()
+        assert len(items_data) == 1
+        assert items_data[0]["image_prompt"] == "A dramatic shot in [preset:style] of [char:malin:batu] on [loc:pantai]."
+        assert items_data[0]["resolved_prompt"] is not None
+        assert "cursed granite stone statue" in items_data[0]["resolved_prompt"]
+        assert "misty coastline with black volcanic sand" in items_data[0]["resolved_prompt"]
+
+
+
 
 
 

@@ -12,6 +12,9 @@ import {
   VoiceInfo,
   ModelConfig,
   StoryboardItem,
+  StoryboardCharacter,
+  StoryboardLocation,
+  StoryboardWorldSetting,
   ImagePreset,
   StudioAnalysisResult,
   YouTubeMetadata,
@@ -422,6 +425,29 @@ export const api = {
         body: JSON.stringify({ characters }),
       }
     ),
+  getStoryboardContinuityBible: (projectId: string) =>
+    request<{
+      characters: StoryboardCharacter[];
+      locations: StoryboardLocation[];
+      world_setting: StoryboardWorldSetting;
+    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible`),
+  updateStoryboardContinuityBible: (
+    projectId: string,
+    data: {
+      characters?: StoryboardCharacter[];
+      locations?: StoryboardLocation[];
+      world_setting?: StoryboardWorldSetting;
+    }
+  ) =>
+    request<{
+      success: boolean;
+      characters: StoryboardCharacter[];
+      locations: StoryboardLocation[];
+      world_setting: StoryboardWorldSetting;
+    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   updateStoryboardSegment: (
     projectId: string,
     segmentId: string,

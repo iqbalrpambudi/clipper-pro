@@ -21,10 +21,18 @@ import {
   BookmarkPlus,
   Save,
   X,
+  MapPin,
+  Compass,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, StoryboardItem } from "@/types";
+import {
+  Project,
+  StoryboardItem,
+  StoryboardCharacter,
+  StoryboardLocation,
+  StoryboardWorldSetting,
+} from "@/types";
 import { Button, Input, Textarea, Badge } from "@/components/ui";
 import { presetStorage, ScriptPreset } from "@/lib/presetStorage";
 
@@ -130,45 +138,110 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
     showToast(`Preset "${name}" dihapus`, "info");
   };
 
-  // Character Consistency Bible state
-  const [editingCharacters, setEditingCharacters] = useState<boolean>(false);
-  const [charactersList, setCharactersList] = useState<any[]>(project.characters || []);
+  // Story Continuity Bible state (Characters & Variants, Locations, World Setting)
+  const [bibleTab, setBibleTab] = useState<"characters" | "locations" | "world">("characters");
+  const [editingBible, setEditingBible] = useState<boolean>(false);
+  const [charactersList, setCharactersList] = useState<StoryboardCharacter[]>(project.characters || []);
+  const [locationsList, setLocationsList] = useState<StoryboardLocation[]>(project.locations || []);
+  const [worldSetting, setWorldSetting] = useState<StoryboardWorldSetting>(project.world_setting || {});
 
   useEffect(() => {
-    if (project.characters) {
-      setCharactersList(project.characters);
-    }
-  }, [project.characters]);
+    if (project.characters) setCharactersList(project.characters);
+    if (project.locations) setLocationsList(project.locations);
+    if (project.world_setting) setWorldSetting(project.world_setting);
+  }, [project.characters, project.locations, project.world_setting]);
 
   const handleAddCharacter = () => {
+    const idx = charactersList.length + 1;
     setCharactersList((prev) => [
       ...prev,
       {
-        name: `Tokoh ${prev.length + 1}`,
-        role: "Tokoh Pendukung",
+        id: `char_${idx}`,
+        name: `Tokoh ${idx}`,
+        role: "Tokoh Utama",
         visual_anchor: "",
+        variants: [],
       },
     ]);
-    setEditingCharacters(true);
+    setBibleTab("characters");
+    setEditingBible(true);
   };
 
   const handleDeleteCharacter = (idx: number) => {
     setCharactersList((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const updateCharactersMutation = useMutation({
-    mutationFn: (newChars: any[]) => api.updateStoryboardCharacters(project.id, newChars),
+  const handleAddVariant = (charIdx: number) => {
+    setCharactersList((prev) => {
+      const updated = [...prev];
+      const char = { ...updated[charIdx] };
+      const variants = Array.isArray(char.variants) ? [...char.variants] : [];
+      variants.push({
+        variant_id: `varian_${variants.length + 1}`,
+        label: `Varian ${variants.length + 1}`,
+        visual_anchor: "",
+      });
+      char.variants = variants;
+      updated[charIdx] = char;
+      return updated;
+    });
+    setEditingBible(true);
+  };
+
+  const handleDeleteVariant = (charIdx: number, varIdx: number) => {
+    setCharactersList((prev) => {
+      const updated = [...prev];
+      const char = { ...updated[charIdx] };
+      if (Array.isArray(char.variants)) {
+        char.variants = char.variants.filter((_, i) => i !== varIdx);
+      }
+      updated[charIdx] = char;
+      return updated;
+    });
+  };
+
+  const handleAddLocation = () => {
+    const idx = locationsList.length + 1;
+    setLocationsList((prev) => [
+      ...prev,
+      {
+        id: `lokasi_${idx}`,
+        name: `Lokasi ${idx}`,
+        environment_anchor: "",
+      },
+    ]);
+    setBibleTab("locations");
+    setEditingBible(true);
+  };
+
+  const handleDeleteLocation = (idx: number) => {
+    setLocationsList((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateBibleMutation = useMutation({
+    mutationFn: () =>
+      api.updateStoryboardContinuityBible(project.id, {
+        characters: charactersList,
+        locations: locationsList,
+        world_setting: worldSetting,
+      }),
     onSuccess: (res) => {
       queryClient.setQueryData(["project", project.id], (old: any) => {
         if (!old) return old;
-        return { ...old, characters: res.characters || [] };
+        return {
+          ...old,
+          characters: res.characters || [],
+          locations: res.locations || [],
+          world_setting: res.world_setting || {},
+        };
       });
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      setEditingCharacters(false);
-      showToast("Profil karakter terkunci berhasil disimpan!", "success");
+      queryClient.invalidateQueries({ queryKey: ["storyboard-items", project.id] });
+      setEditingBible(false);
+      showToast("Story Continuity Bible berhasil disimpan!", "success");
     },
     onError: (err: any) => {
-      showToast(err.message || "Gagal memperbarui profil karakter", "error");
+      showToast(err.message || "Gagal memperbarui Story Continuity Bible", "error");
     },
   });
 
@@ -278,6 +351,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           return {
             ...old,
             characters: data.characters || old.characters || [],
+            locations: data.locations || old.locations || [],
+            world_setting: data.world_setting || old.world_setting || {},
             narration: data.narration,
             storyboard_items: data.storyboard_items || [],
           };
@@ -705,155 +780,533 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             </div>
           </div>
 
-          {/* Bottom Right Card: Karakter Terkunci (Character Consistency Bible) */}
+          {/* Bottom Right Card: Story Continuity Bible (Characters & Variants, Locations, World Setting) */}
           <div className="rounded-2xl border border-violet-500/30 bg-[#161616] p-5 shadow-xl flex-1 flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#2A2A2A]">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-violet-400" />
-                <div>
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    Karakter Terkunci
-                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono normal-case">
-                      Konsisten 100%
-                    </span>
-                  </h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Ciri fisik & visual dikunci otomatis di semua prompt gambar
-                  </p>
+            {/* Bible Header & Sub-tabs */}
+            <div className="space-y-3 pb-3 border-b border-[#2A2A2A]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-violet-400" />
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      Story Continuity Bible
+                      <span className="text-[9px] text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full font-mono normal-case">
+                        Sistem Variabel AI
+                      </span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Penguncian konsistensi karakter & varian wujud, latar tempat, dan era waktu
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleAddCharacter}
-                  className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Tambah</span>
-                </button>
-                {charactersList.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {bibleTab === "characters" && (
+                    <button
+                      type="button"
+                      onClick={handleAddCharacter}
+                      className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Tambah Karakter</span>
+                    </button>
+                  )}
+                  {bibleTab === "locations" && (
+                    <button
+                      type="button"
+                      onClick={handleAddLocation}
+                      className="px-2.5 py-1 text-xs rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/30 text-sky-300 hover:text-white transition flex items-center gap-1 font-medium"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Tambah Tempat</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setEditingCharacters(!editingCharacters)}
+                    onClick={() => setEditingBible(!editingBible)}
                     className="px-2.5 py-1 text-xs rounded-lg border border-[#333] hover:border-violet-500/50 text-slate-300 hover:text-white transition flex items-center gap-1 font-medium"
                   >
                     <Edit2 className="w-3 h-3 text-violet-400" />
-                    <span>{editingCharacters ? "Selesai" : "Edit"}</span>
+                    <span>{editingBible ? "Selesai" : "Edit"}</span>
                   </button>
-                )}
+                </div>
+              </div>
+
+              {/* 3 Sub-tabs navigation */}
+              <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => setBibleTab("characters")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "characters"
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Karakter & Varian</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+                    {charactersList.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBibleTab("locations")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "locations"
+                      ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Latar Tempat</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+                    {locationsList.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBibleTab("world")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "world"
+                      ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Era & Atmosfer</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+                    {worldSetting.era ? "Aktif" : "-"}
+                  </span>
+                </button>
               </div>
             </div>
 
-            {/* Character Cards or Empty State */}
-            {charactersList && charactersList.length > 0 ? (
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {charactersList.map((char, cIdx) => (
-                    <div
-                      key={cIdx}
-                      className="p-3 rounded-xl bg-[#121212] border border-[#262626] hover:border-violet-500/40 transition space-y-2"
-                    >
-                      {editingCharacters ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              value={char.name}
-                              placeholder="Nama Tokoh"
-                              onChange={(e) => {
-                                const updated = [...charactersList];
-                                updated[cIdx] = { ...char, name: e.target.value };
-                                setCharactersList(updated);
-                              }}
-                              className="flex-1 px-2 py-1 bg-[#181818] rounded border border-[#333] text-white text-xs font-semibold focus:outline-none focus:border-violet-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCharacter(cIdx)}
-                              className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <input
-                            type="text"
-                            value={char.role || ""}
-                            placeholder="Peran (mis. Tokoh Utama)"
-                            onChange={(e) => {
-                              const updated = [...charactersList];
-                              updated[cIdx] = { ...char, role: e.target.value };
-                              setCharactersList(updated);
-                            }}
-                            className="w-full px-2 py-1 bg-[#181818] rounded border border-[#333] text-slate-300 text-[11px] focus:outline-none focus:border-violet-500"
-                          />
-                          <textarea
-                            value={char.visual_anchor}
-                            placeholder="Deskripsi fisik: pakaian, warna, rambut, aksesoris..."
-                            onChange={(e) => {
-                              const updated = [...charactersList];
-                              updated[cIdx] = { ...char, visual_anchor: e.target.value };
-                              setCharactersList(updated);
-                            }}
-                            rows={2}
-                            className="w-full px-2 py-1 bg-[#181818] rounded border border-[#333] text-foreground text-[11px] font-mono focus:outline-none focus:border-violet-500"
-                          />
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold text-violet-300 flex items-center gap-1">
-                              👤 {char.name}
-                            </span>
-                            {char.role && (
-                              <span className="text-[10px] text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 font-mono">
-                                {char.role}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/30 p-2 rounded-lg border border-[#222]">
-                            {char.visual_anchor || "Belum ada ciri visual khusus."}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+            {/* TAB CONTENT 1: Karakter & Varian */}
+            {bibleTab === "characters" && (
+              <div className="space-y-3">
+                {charactersList && charactersList.length > 0 ? (
+                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    <div className="space-y-3">
+                      {charactersList.map((char, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] hover:border-violet-500/40 transition space-y-2.5"
+                        >
+                          {editingBible ? (
+                            <div className="space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={char.name}
+                                  placeholder="Nama Tokoh (mis. Malin Kundang)"
+                                  onChange={(e) => {
+                                    const updated = [...charactersList];
+                                    updated[cIdx] = { ...char, name: e.target.value };
+                                    setCharactersList(updated);
+                                  }}
+                                  className="flex-1 px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs font-semibold focus:outline-none focus:border-violet-500"
+                                />
+                                <input
+                                  type="text"
+                                  value={char.id || ""}
+                                  placeholder="Slug ID (mis. malin)"
+                                  onChange={(e) => {
+                                    const updated = [...charactersList];
+                                    updated[cIdx] = { ...char, id: e.target.value };
+                                    setCharactersList(updated);
+                                  }}
+                                  className="w-28 px-2 py-1.5 bg-[#181818] rounded border border-[#333] text-violet-300 font-mono text-[11px] focus:outline-none focus:border-violet-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCharacter(cIdx)}
+                                  className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+                                  title="Hapus Karakter"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                {editingCharacters && (
-                  <div className="flex justify-end pt-1">
-                    <Button
-                      size="sm"
-                      disabled={updateCharactersMutation.isPending}
-                      onClick={() => updateCharactersMutation.mutate(charactersList)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5"
+                              <input
+                                type="text"
+                                value={char.role || ""}
+                                placeholder="Peran (mis. Tokoh Utama, Ibu, Antagonis)"
+                                onChange={(e) => {
+                                  const updated = [...charactersList];
+                                  updated[cIdx] = { ...char, role: e.target.value };
+                                  setCharactersList(updated);
+                                }}
+                                className="w-full px-2.5 py-1 bg-[#181818] rounded border border-[#333] text-slate-300 text-[11px] focus:outline-none focus:border-violet-500"
+                              />
+
+                              <textarea
+                                value={char.visual_anchor}
+                                placeholder="Ciri visual permanen (Bahasa Inggris): a lean Indonesian man, sun-tanned skin, expressive eyes..."
+                                onChange={(e) => {
+                                  const updated = [...charactersList];
+                                  updated[cIdx] = { ...char, visual_anchor: e.target.value };
+                                  setCharactersList(updated);
+                                }}
+                                rows={2}
+                                className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-[11px] font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
+                              />
+
+                              {/* Variants Sub-list */}
+                              <div className="pt-2 border-t border-[#222] space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider">
+                                    Varian Bentuk / Usia:
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddVariant(cIdx)}
+                                    className="text-[10px] text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Tambah Varian</span>
+                                  </button>
+                                </div>
+
+                                {char.variants && char.variants.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {char.variants.map((v, vIdx) => (
+                                      <div
+                                        key={vIdx}
+                                        className="p-2 rounded-lg bg-[#0e0e0e] border border-[#2a2a2a] space-y-1.5"
+                                      >
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            type="text"
+                                            value={v.label}
+                                            placeholder="Label Varian (mis. Patung Batu)"
+                                            onChange={(e) => {
+                                              const updated = [...charactersList];
+                                              const variants = [...(updated[cIdx].variants || [])];
+                                              variants[vIdx] = { ...v, label: e.target.value };
+                                              updated[cIdx] = { ...updated[cIdx], variants };
+                                              setCharactersList(updated);
+                                            }}
+                                            className="flex-1 px-2 py-1 bg-[#161616] rounded border border-[#333] text-white text-[11px] focus:outline-none"
+                                          />
+                                          <input
+                                            type="text"
+                                            value={v.variant_id}
+                                            placeholder="ID Varian (mis. batu)"
+                                            onChange={(e) => {
+                                              const updated = [...charactersList];
+                                              const variants = [...(updated[cIdx].variants || [])];
+                                              variants[vIdx] = { ...v, variant_id: e.target.value };
+                                              updated[cIdx] = { ...updated[cIdx], variants };
+                                              setCharactersList(updated);
+                                            }}
+                                            className="w-24 px-2 py-1 bg-[#161616] rounded border border-[#333] text-amber-300 font-mono text-[10px] focus:outline-none"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteVariant(cIdx, vIdx)}
+                                            className="p-1 text-red-400 hover:text-red-300 transition"
+                                            title="Hapus Varian"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                        <textarea
+                                          value={v.visual_anchor}
+                                          placeholder="Visual Anchor varian (Bahasa Inggris): weathered grey stone statue in prostrating kneeling pose..."
+                                          onChange={(e) => {
+                                            const updated = [...charactersList];
+                                            const variants = [...(updated[cIdx].variants || [])];
+                                            variants[vIdx] = { ...v, visual_anchor: e.target.value };
+                                            updated[cIdx] = { ...updated[cIdx], variants };
+                                            setCharactersList(updated);
+                                          }}
+                                          rows={2}
+                                          className="w-full px-2 py-1 bg-[#161616] rounded border border-[#333] text-slate-300 text-[10px] font-mono focus:outline-none"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-slate-500 italic">
+                                    Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot; untuk menambahkan versi muda, dewasa, atau bentuk perubahan wujud.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-violet-300 flex items-center gap-1">
+                                    👤 {char.name}
+                                  </span>
+                                  {char.role && (
+                                    <span className="text-[10px] text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 font-mono">
+                                      {char.role}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                  [char:{char.id || char.name.toLowerCase().replace(/\s+/g, "")}]
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
+                                {char.visual_anchor || "Belum ada ciri visual khusus."}
+                              </p>
+
+                              {/* Display Variants if any */}
+                              {char.variants && char.variants.length > 0 && (
+                                <div className="space-y-1.5 pt-1.5 border-t border-[#222]">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                    Varian Wujud / Usia:
+                                  </span>
+                                  <div className="grid grid-cols-1 gap-1.5">
+                                    {char.variants.map((v, vIdx) => (
+                                      <div
+                                        key={vIdx}
+                                        className="p-2 rounded bg-black/60 border border-[#262626] flex flex-col gap-1"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] font-semibold text-amber-300">
+                                            ✨ {v.label}
+                                          </span>
+                                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                            [char:{char.id || char.name.toLowerCase().replace(/\s+/g, "")}:{v.variant_id}]
+                                          </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                                          {v.visual_anchor}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
+                    <p className="text-xs text-slate-400">
+                      Belum ada profil karakter terkunci.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+                      Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda dapat menambahkannya manual sekarang.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddCharacter}
+                      className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium inline-flex items-center gap-1.5 transition shadow"
                     >
-                      {updateCharactersMutation.isPending ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                      <span>Simpan Perubahan Karakter</span>
-                    </Button>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Karakter Pertama</span>
+                    </button>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
-                <p className="text-xs text-slate-400">
-                  Belum ada profil karakter terkunci.
-                </p>
-                <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-                  Karakter utama akan dideteksi otomatis saat generate naskah, atau Anda dapat menambahkan profil karakter manual sekarang.
-                </p>
+            )}
+
+            {/* TAB CONTENT 2: Latar Tempat (Locations) */}
+            {bibleTab === "locations" && (
+              <div className="space-y-3">
+                {locationsList && locationsList.length > 0 ? (
+                  <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                    {locationsList.map((loc, lIdx) => (
+                      <div
+                        key={lIdx}
+                        className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] hover:border-sky-500/40 transition space-y-2"
+                      >
+                        {editingBible ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={loc.name}
+                                placeholder="Nama Tempat (mis. Pantai Air Manis)"
+                                onChange={(e) => {
+                                  const updated = [...locationsList];
+                                  updated[lIdx] = { ...loc, name: e.target.value };
+                                  setLocationsList(updated);
+                                }}
+                                className="flex-1 px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs font-semibold focus:outline-none focus:border-sky-500"
+                              />
+                              <input
+                                type="text"
+                                value={loc.id || ""}
+                                placeholder="Slug ID (mis. pantai)"
+                                onChange={(e) => {
+                                  const updated = [...locationsList];
+                                  updated[lIdx] = { ...loc, id: e.target.value };
+                                  setLocationsList(updated);
+                                }}
+                                className="w-28 px-2 py-1.5 bg-[#181818] rounded border border-[#333] text-sky-300 font-mono text-[11px] focus:outline-none focus:border-sky-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteLocation(lIdx)}
+                                className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+                                title="Hapus Lokasi"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <textarea
+                              value={loc.environment_anchor}
+                              placeholder="Deskripsi Lingkungan (Bahasa Inggris): rocky coast, crashing sea waves, traditional wooden fishing boats, palm trees..."
+                              onChange={(e) => {
+                                const updated = [...locationsList];
+                                updated[lIdx] = { ...loc, environment_anchor: e.target.value };
+                                setLocationsList(updated);
+                              }}
+                              rows={2}
+                              className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-[11px] font-mono focus:outline-none focus:border-sky-500 leading-relaxed"
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-sky-300 flex items-center gap-1">
+                                🗺️ {loc.name}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                                [loc:{loc.id || loc.name.toLowerCase().replace(/\s+/g, "")}]
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
+                              {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
+                    <p className="text-xs text-slate-400">
+                      Belum ada latar tempat terkunci.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+                      Latar tempat (arsitektur, pantai, kapal, istana) akan dikunci otomatis agar latar belakang gambar tetap konsisten antar babak.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddLocation}
+                      className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium inline-flex items-center gap-1.5 transition shadow"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Tempat Pertama</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT 3: Era & Atmosfer (World Setting) */}
+            {bibleTab === "world" && (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Era & Masa Sejarah:
+                    </label>
+                    {editingBible ? (
+                      <input
+                        type="text"
+                        value={worldSetting.era || ""}
+                        placeholder="mis. Zaman Kerajaan Nusantara Abad ke-14 (Pra-modern, tanpa teknologi mesin/listrik)"
+                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, era: e.target.value }))}
+                        className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
+                      />
+                    ) : (
+                      <p className="text-xs text-amber-300 font-semibold bg-black/40 p-2 rounded-lg border border-[#222]">
+                        {worldSetting.era || "Belum ditentukan (default: Pra-modern/Historis)"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Garis Waktu (Time Setting):
+                    </label>
+                    {editingBible ? (
+                      <input
+                        type="text"
+                        value={worldSetting.time_setting || ""}
+                        placeholder="mis. Masa Lalu Tradisional / Sejarah"
+                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, time_setting: e.target.value }))}
+                        className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-300 bg-black/40 p-2 rounded-lg border border-[#222]">
+                        {worldSetting.time_setting || "Masa Lalu Tradisional"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Atmosfer Visual & Pencahayaan:
+                    </label>
+                    {editingBible ? (
+                      <textarea
+                        value={worldSetting.atmosphere || ""}
+                        placeholder="mis. Cinematic warm vintage tone, golden sunset lighting, dramatic stormy sky in climax"
+                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, atmosphere: e.target.value }))}
+                        rows={2}
+                        className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    ) : (
+                      <p className="text-[11px] text-slate-300 font-mono bg-black/40 p-2 rounded-lg border border-[#222] leading-relaxed">
+                        {worldSetting.atmosphere || "Pencahayaan dramatis dan atmosfer visual sesuai tone naskah."}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-[#222] flex items-center justify-between text-[10px] text-slate-400">
+                    <span>Variabel Prompt:</span>
+                    <span className="font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                      [era]
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Actions for Story Continuity Bible */}
+            {editingBible && (
+              <div className="flex items-center justify-between pt-2 border-t border-[#262626]">
                 <button
                   type="button"
-                  onClick={handleAddCharacter}
-                  className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium inline-flex items-center gap-1.5 transition shadow"
+                  onClick={() => {
+                    setEditingBible(false);
+                    setCharactersList(project.characters || []);
+                    setLocationsList(project.locations || []);
+                    setWorldSetting(project.world_setting || {});
+                  }}
+                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Karakter Manual</span>
+                  Batal
                 </button>
+                <Button
+                  size="sm"
+                  disabled={updateBibleMutation.isPending}
+                  onClick={() => updateBibleMutation.mutate()}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5"
+                >
+                  {updateBibleMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  <span>Simpan Story Continuity Bible</span>
+                </Button>
               </div>
             )}
           </div>

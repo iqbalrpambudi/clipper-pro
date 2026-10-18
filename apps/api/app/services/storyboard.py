@@ -15,6 +15,168 @@ from app.services.ai_adapters.factory import get_active_llm_adapter
 log = logging.getLogger(__name__)
 
 
+def _normalize_key(text: str) -> str:
+    """Normalize names/labels for fuzzy token matching: lowercase alphanumeric only."""
+    if not text:
+        return ""
+    return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+def resolve_prompt_variables(
+    prompt_template: str,
+    characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    world_setting: Optional[Dict[str, Any]] = None,
+    preset_master_prompt: Optional[str] = None,
+) -> str:
+    """
+    Resolve and compile variable tokens in a storyboard image prompt template.
+    
+    Supported tokens:
+    - [preset:style], [style], [Preset Style] -> preset master prompt
+    - [era], [world:era] -> world_setting era
+    - [char:<char_id_or_name>:<variant_id_or_label>] -> specific character variant
+    - [char:<char_id_or_name>] -> default character anchor
+    - [<char_name_or_id>:<variant>] -> shorthand character variant (e.g. [malinkundang:batu])
+    - [loc:<loc_id_or_name>] or [location:<loc_id_or_name>] -> location anchor
+    - [<loc_name_or_id>] -> shorthand location (e.g. [pesisirairmanis])
+    """
+    if not prompt_template or not isinstance(prompt_template, str):
+        return ""
+
+    chars = characters or []
+    locs = locations or []
+    world = world_setting or {}
+    style_text = (preset_master_prompt or "").strip()
+
+    # Pre-index characters for rapid and fuzzy lookup
+    char_map: Dict[str, Dict[str, Any]] = {}
+    for c in chars:
+        if not isinstance(c, dict):
+            continue
+        c_id = _normalize_key(c.get("id", ""))
+        c_name = _normalize_key(c.get("name", ""))
+        if c_id:
+            char_map[c_id] = c
+        if c_name:
+            char_map[c_name] = c
+
+    # Pre-index locations
+    loc_map: Dict[str, Dict[str, Any]] = {}
+    for l in locs:
+        if not isinstance(l, dict):
+            continue
+        l_id = _normalize_key(l.get("id", "") or l.get("location_id", ""))
+        l_name = _normalize_key(l.get("name", ""))
+        if l_id:
+            loc_map[l_id] = l
+        if l_name:
+            loc_map[l_name] = l
+
+    def _find_character(query: str) -> Optional[Dict[str, Any]]:
+        norm_q = _normalize_key(query)
+        if not norm_q:
+            return None
+        if norm_q in char_map:
+            return char_map[norm_q]
+        # Partial containment match
+        for k, c in char_map.items():
+            if norm_q in k or k in norm_q:
+                return c
+        return None
+
+    def _find_variant(char_dict: Dict[str, Any], variant_query: str) -> str:
+        norm_v = _normalize_key(variant_query)
+        variants = char_dict.get("variants")
+        if isinstance(variants, list) and len(variants) > 0:
+            for v in variants:
+                if not isinstance(v, dict):
+                    continue
+                v_id = _normalize_key(v.get("variant_id", ""))
+                v_lbl = _normalize_key(v.get("label", "") or v.get("name", ""))
+                if norm_v == v_id or norm_v == v_lbl or norm_v in v_lbl or v_lbl in norm_v:
+                    return v.get("visual_anchor") or v.get("description") or ""
+            # Fallback to first variant if none matched
+            first_v = variants[0]
+            if isinstance(first_v, dict):
+                return first_v.get("visual_anchor") or first_v.get("description") or ""
+        return char_dict.get("visual_anchor") or ""
+
+    def _find_location(query: str) -> Optional[str]:
+        norm_q = _normalize_key(query)
+        if not norm_q:
+            return None
+        if norm_q in loc_map:
+            l = loc_map[norm_q]
+            return l.get("environment_anchor") or l.get("description") or ""
+        # Partial containment match
+        for k, l in loc_map.items():
+            if norm_q in k or k in norm_q:
+                return l.get("environment_anchor") or l.get("description") or ""
+        return None
+
+    def _token_replacer(match: re.Match) -> str:
+        raw_inner = match.group(1).strip()
+        lower_inner = raw_inner.lower()
+
+        # 1. Preset Style
+        if lower_inner in ["preset:style", "style", "preset style", "preset_style"]:
+            return style_text
+
+        # 2. Era & World Setting
+        if lower_inner in ["era", "world:era", "world_setting:era"]:
+            return (world.get("era") or "").strip()
+        if lower_inner.startswith("time:") or lower_inner.startswith("mood:"):
+            key = raw_inner.split(":", 1)[1].strip()
+            return (world.get(key) or world.get("atmosphere") or "").strip()
+
+        # 3. Explicit Character Token [char:name:variant] or [char:name]
+        if lower_inner.startswith("char:") or lower_inner.startswith("character:"):
+            parts = raw_inner.split(":", 2)
+            c_name = parts[1].strip()
+            v_name = parts[2].strip() if len(parts) > 2 else ""
+            c_obj = _find_character(c_name)
+            if c_obj:
+                if v_name:
+                    return _find_variant(c_obj, v_name)
+                return c_obj.get("visual_anchor") or ""
+
+        # 4. Explicit Location Token [loc:name] or [location:name]
+        if lower_inner.startswith("loc:") or lower_inner.startswith("location:"):
+            l_name = raw_inner.split(":", 1)[1].strip()
+            found_loc = _find_location(l_name)
+            if found_loc is not None:
+                return found_loc
+
+        # 5. Shorthand character variant [malinkundang:batu]
+        if ":" in raw_inner and not lower_inner.startswith("http"):
+            parts = raw_inner.split(":", 1)
+            c_cand = _find_character(parts[0].strip())
+            if c_cand:
+                return _find_variant(c_cand, parts[1].strip())
+
+        # 6. Shorthand single token: check character or location
+        c_cand = _find_character(raw_inner)
+        if c_cand:
+            return _find_variant(c_cand, "")
+
+        l_cand = _find_location(raw_inner)
+        if l_cand is not None:
+            return l_cand
+
+        # If not matched to any token pattern (e.g. aspect ratio [16:9]), leave original
+        return match.group(0)
+
+    # Replace bracketed tokens: matches [token] but avoids nested or mismatched
+    resolved = re.sub(r"\[([a-zA-Z0-9_: -]+)\]", _token_replacer, prompt_template)
+
+    # Clean up whitespace and stray punctuation
+    resolved = re.sub(r"\s+", " ", resolved)
+    resolved = re.sub(r"\s+([,.;])", r"\1", resolved)
+    resolved = re.sub(r"([,])\s*([,])", r",", resolved)
+    return resolved.strip()
+
+
 def _build_visual_guidelines(preset: Optional[Any]) -> Tuple[str, str, str, str]:
     """Helper to extract consistent visual guidelines and example prompts from preset."""
     if preset:
@@ -70,9 +232,11 @@ def build_storyboard_outline_prompt(
     num_chapters: int = 5,
     custom_instructions: Optional[str] = None,
     existing_characters: Optional[List[Dict[str, Any]]] = None,
+    existing_locations: Optional[List[Dict[str, Any]]] = None,
+    existing_world_setting: Optional[Dict[str, Any]] = None,
     language: str = "id",
 ) -> Tuple[str, str]:
-    """Build prompts for Phase 1: High-level Master Storyboard Outline + Character Consistency Bible."""
+    """Build prompts for Phase 1: High-level Master Storyboard Outline + Story Continuity Bible (Characters with variants, locations, world setting)."""
     target_words = max(400, int(duration_mins * 135))
     words_per_chapter = int(round(target_words / max(1, num_chapters)))
 
@@ -81,7 +245,8 @@ def build_storyboard_outline_prompt(
             "You are a world-class YouTube Master Storyteller & Executive Producer for high-retention documentary/explainer videos "
             "(in the style of MinutePhysics, Kurzgesagt, Big Think, Vox, or Veritasium).\n"
             "Your task is to design a highly structured, captivating Master Outline in ENGLISH for a long-form YouTube video, "
-            "AND formulate a 'Character Bible' (visual identity locking) so that character depictions are 100% consistent across all scenes.\n\n"
+            "AND formulate a complete 'Story World & Continuity Bible' (characters with age/form variants, recurring locations, and historical/era setting) "
+            "so that visuals remain 100% consistent across all scenes.\n\n"
             "CRITICAL LANGUAGE RULE: Write the entire outline ('title', 'overview', 'chapter_title', 'synopsis', 'key_points') in fluent, compelling spoken ENGLISH.\n\n"
             "=== OUTLINE STRUCTURE GUIDELINES ===\n"
             f"- Target Total Speech Duration: {duration_mins} Minutes (~{target_words} total words).\n"
@@ -92,23 +257,55 @@ def build_storyboard_outline_prompt(
             "  3. Climax / Complication Chapter: Presenting conflict, critical challenges, or surprising twists.\n"
             "  4. Breakthrough / Solution Chapter: Explaining the turning point, major discovery, or new perspective.\n"
             "  5. Concluding Reflection: Philosophical insights, future impact, and a memorable takeaway.\n\n"
-            "=== CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE) ===\n"
-            "Identify all key figures/characters in this story (e.g. protagonist, family member, mentor, antagonist, or historical figure).\n"
-            "For each character, create a permanent 'visual_anchor' description in English specifying:\n"
-            "  - Physical traits & hair (age, facial structure, skin tone, hairstyle/color).\n"
-            "  - Signature Outfit: precise clothing color and style.\n"
-            "  - Permanent accessories: headband, hat, glasses, scarf, or distinct prop.\n"
-            "If the topic is abstract science/tech with no named persons, create 1 consistent narrator figure (e.g. 'a minimalist stickman researcher in loose earthy-toned draped robe').\n\n"
+            "=== STORY CONTINUITY BIBLE (CHARACTERS, VARIANTS, LOCATIONS, ERA) ===\n"
+            "1. World Setting (`world_setting`):\n"
+            "   - `era`: Historical, contemporary, or futuristic era (e.g. '14th Century Ancient Nusantara Maritime Kingdom (pre-modern, no modern tech)').\n"
+            "   - `time_setting`: Narrative timeline (e.g. 'Traditional Past', 'Near Future', 'Modern Era').\n"
+            "   - `atmosphere`: Visual mood, color palette, and lighting progression.\n"
+            "2. Characters (`characters`):\n"
+            "   Identify all key figures. For each character, provide:\n"
+            "   - `id`: Short unique slug (e.g. 'malin', 'mother').\n"
+            "   - `name`: Full character name.\n"
+            "   - `role`: 'Protagonist', 'Antagonist', 'Supporting', etc.\n"
+            "   - `visual_anchor`: Default permanent physical traits and signature style in English.\n"
+            "   - `variants`: If the character undergoes aging, costume changes, or physical transformations across the story, provide distinct variants:\n"
+            "     * e.g., young version, wealthy adult merchant version, cursed stone statue pose version.\n"
+            "     * Each variant has `variant_id` ('muda', 'dewasa', 'batu'), `label`, and specific English `visual_anchor`.\n"
+            "3. Key Locations (`locations`):\n"
+            "   Define 2-4 key recurring environments in the story:\n"
+            "   - `id`: Short unique slug (e.g. 'coastal_village', 'merchant_ship', 'cliff_storm').\n"
+            "   - `name`: Location name.\n"
+            "   - `environment_anchor`: Specific English visual description of architecture, geography, and lighting.\n\n"
             "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
-            "Return ONLY valid JSON without markdown fences or extraneous text matching this schema:\n"
+            "Return ONLY valid JSON matching this schema:\n"
             "{\n"
             '  "title": "Engaging & High-CTR Video Title in English",\n'
             '  "overview": "Short, captivating 2-3 sentence overview of the entire story arc in English",\n'
+            '  "world_setting": {\n'
+            '    "era": "Historical / Futuristic Era context",\n'
+            '    "time_setting": "Traditional Past / Modern",\n'
+            '    "atmosphere": "Visual lighting and color mood"\n'
+            "  },\n"
             '  "characters": [\n'
             "    {\n"
+            '      "id": "char_id",\n'
             '      "name": "Character Name",\n'
-            '      "role": "Protagonist / Narrator",\n'
-            '      "visual_anchor": "Specific visual description in English: physical traits, signature outfit, accessories"\n'
+            '      "role": "Protagonist",\n'
+            '      "visual_anchor": "Default physical description in English",\n'
+            '      "variants": [\n'
+            "        {\n"
+            '          "variant_id": "young",\n'
+            '          "label": "Youth / Young Version",\n'
+            '          "visual_anchor": "Specific physical and outfit details for young stage"\n'
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ],\n"
+            '  "locations": [\n'
+            "    {\n"
+            '      "id": "loc_id",\n'
+            '      "name": "Location Name",\n'
+            '      "environment_anchor": "Detailed architectural and environmental description in English"\n'
             "    }\n"
             "  ],\n"
             '  "chapters": [\n'
@@ -118,8 +315,7 @@ def build_storyboard_outline_prompt(
             '      "synopsis": "Overview of storytelling focus, conflict, and tension built in this chapter in English.",\n'
             '      "key_points": [\n'
             '        "Key insight 1 to be covered",\n'
-            '        "Key insight 2 to be covered",\n'
-            '        "Key insight 3 to be covered"\n'
+            '        "Key insight 2 to be covered"\n'
             '      ]\n'
             "    }\n"
             "  ]\n"
@@ -135,11 +331,15 @@ def build_storyboard_outline_prompt(
         )
         if existing_characters:
             user_prompt += f"Previously Locked Characters: {json.dumps(existing_characters, ensure_ascii=False)}\n"
+        if existing_locations:
+            user_prompt += f"Previously Locked Locations: {json.dumps(existing_locations, ensure_ascii=False)}\n"
+        if existing_world_setting:
+            user_prompt += f"Previously Locked World Setting: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
         if custom_instructions:
             user_prompt += f"Additional Instructions: {custom_instructions}\n"
 
         user_prompt += (
-            f"\nGenerate the Master Outline and Character Bible for exactly {num_chapters} chapters now in pure JSON format."
+            f"\nGenerate the Master Outline and Story Continuity Bible for exactly {num_chapters} chapters now in pure JSON format."
         )
         return system_prompt, user_prompt
 
@@ -148,7 +348,8 @@ def build_storyboard_outline_prompt(
         "(gaya MinutePhysics, Kurzgesagt, Big Think, Vox, atau Veritasium).\n"
         "Tugas Anda adalah merancang Master Outline alur cerita video YouTube berdurasi panjang yang sangat terstruktur, "
         "memikat, dan memiliki ritme penceritaan dramatis yang kuat dari awal hingga akhir, "
-        "SERTA menyusun 'Character Bible' (penguncian identitas visual karakter) agar penggambaran tokoh 100% konsisten di seluruh adegan.\n\n"
+        "SERTA menyusun 'Story World & Continuity Bible' (penguncian identitas karakter dengan varian bentuk/usia, latar tempat utama, dan era waktu kejadian) "
+        "agar seluruh ilustrasi visual tetap 100% konsisten antar adegan.\n\n"
         "=== PANDUAN STRUKTUR OUTLINE ===\n"
         f"- Target Total Durasi Bicara: {duration_mins} Menit (~{target_words} kata total narasi).\n"
         f"- Jumlah Babak (Chapters): Tepat {num_chapters} babak, di mana setiap babak akan dikembangkan menjadi ~{words_per_chapter} kata narasi mendalam.\n"
@@ -158,26 +359,66 @@ def build_storyboard_outline_prompt(
         "  3. Babak Puncak / Komplikasi: Menghadirkan konflik, krisis, tantangan kritis, atau plot twist tak terduga.\n"
         "  4. Babak Solusi / Terobosan: Menjelaskan jalan keluar, penemuan penting, atau pemahaman baru.\n"
         "  5. Babak Penutup: Refleksi filosofis, dampak masa depan, dan kesimpulan yang membekas di pikiran penonton.\n\n"
-        "=== DETEKSI & PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE) ===\n"
-        "Identifikasi semua karakter/tokoh kunci dalam topik cerita ini (misalnya: tokoh utama, keluarga/ibu, mentor, antagonis, atau figur sejarah).\n"
-        "Untuk setiap karakter, buat deskripsi visual permanen ('visual_anchor') dalam Bahasa Inggris yang sangat spesifik dan konkret, mencakup:\n"
-        "  - Ciri fisik & rambut (usia, bentuk wajah, warna kulit, gaya/warna rambut).\n"
-        "  - Pakaian khas permanen (Signature Outfit): warna baju yang sangat spesifik (misal 'crimson red traditional shirt'), jenis potongan pakaian, celana/sarung/kain.\n"
-        "  - Aksesoris tetap: ikat kepala, tudung kepala, topi, kacamata, selendang, atau properti khas yang selalu melekat.\n"
-        "Contoh Kasus Malin Kundang:\n"
-        "  • Malin Kundang (Tokoh Utama): 'a lean young Indonesian boy, sun-tanned skin, wearing a vibrant crimson red short-sleeved traditional shirt, woven brown fabric headband (ikat kepala udeng), rolled-up dark trousers, bare feet'\n"
-        "  • Ibu Mande Rubayah (Ibu Malin): 'an elderly Indonesian mother with gentle wrinkled face, grey hair covered under a faded cream cotton headscarf (tudung kepala), wearing a dark indigo batik sarong and modest traditional kebaya'\n"
-        "Jika topik berupa sains/teknologi abstrak tanpa tokoh cerita bernama, buat 1 karakter figur narator ilustrasi yang konsisten (misal 'a minimalist stickman researcher in loose earthy-toned draped robe').\n\n"
+        "=== DETEKSI & PENGUNCIAN STORY CONTINUITY & CHARACTER BIBLE ===\n"
+        "1. Latar Waktu & Era (`world_setting`):\n"
+        "   - `era`: Periode sejarah / masa (misal: 'Zaman Kerajaan Maritim Nusantara Abad ke-14 (Pra-modern, tanpa teknologi mesin/listrik)').\n"
+        "   - `time_setting`: Garis waktu (misal: 'Masa Lalu Tradisional').\n"
+        "   - `atmosphere`: Mood visual, palet warna, dan gaya pencahayaan.\n"
+        "2. Karakter & Varian Wujud (`characters`):\n"
+        "   Identifikasi semua karakter/tokoh kunci. Untuk setiap karakter sertakan:\n"
+        "   - `id`: Slug pendek (misal 'malin', 'ibu').\n"
+        "   - `name`: Nama Karakter (misal 'Malin Kundang').\n"
+        "   - `role`: Peran (misal 'Tokoh Utama').\n"
+        "   - `visual_anchor`: Deskripsi visual Bahasa Inggris permanen.\n"
+        "   - `variants`: Jika karakter mengalami perubahan usia (muda vs tua/dewasa) atau transformasi bentuk (seperti Malin berubah menjadi patung batu bersujud), buat varian terpisah:\n"
+        "     * Varian 'muda': 'a lean young Indonesian boy, sun-tanned skin, wearing a faded crimson red cotton shirt, brown fabric headband (ikat kepala udeng), bare feet'\n"
+        "     * Varian 'dewasa': 'a confident mature Indonesian merchant in his 30s, wearing an opulent emerald-green and gold-embroidered silk royal tunic, royal destar headcloth, golden keris'\n"
+        "     * Varian 'batu': 'a dramatic weathered grey andesite stone statue of a man frozen in a prostrating kneeling pose (sujud) with face touching the ground, mossy texture, sea spray crashing against stone surface'\n"
+        "3. Latar Tempat Utama (`locations`):\n"
+        "   Definisikan 2-4 lingkungan tempat kejadian utama:\n"
+        "   - `id`: Slug pendek (misal 'pesisir_air_manis', 'kapal_saudagar').\n"
+        "   - `name`: Nama tempat (misal 'Pesisir Pantai Air Manis').\n"
+        "   - `environment_anchor`: Deskripsi visual lingkungan dalam Bahasa Inggris (arsitektur gubuk panggung kayu, pohon kelapa, pasir pantai berkarang, perahu cadik tradisional).\n\n"
         "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
         "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan skema berikut:\n"
         "{\n"
         '  "title": "Judul Menarik & Menggugah Rasa Ingin Tahu",\n'
         '  "overview": "Sinopsis singkat alur cerita keseluruhan 2-3 kalimat yang memikat",\n'
+        '  "world_setting": {\n'
+        '    "era": "Zaman Kerajaan Kuno Nusantara Abad ke-14",\n'
+        '    "time_setting": "Masa Lalu Tradisional",\n'
+        '    "atmosphere": "Warm vintage cinematic with stormy contrast in climax"\n'
+        "  },\n"
         '  "characters": [\n'
         "    {\n"
-        '      "name": "Nama Karakter (mis. Malin Kundang)",\n'
+        '      "id": "malin",\n'
+        '      "name": "Malin Kundang",\n'
         '      "role": "Tokoh Utama",\n'
-        '      "visual_anchor": "Deskripsi visual spesifik Bahasa Inggris: ciri fisik, warna baju tetap, dan aksesoris khas (ikat kepala/tudung)"\n'
+        '      "visual_anchor": "a lean Indonesian man with expressive eyes...",\n'
+        '      "variants": [\n'
+        "        {\n"
+        '          "variant_id": "muda",\n'
+        '          "label": "Masa Kecil / Nelayan",\n'
+        '          "visual_anchor": "a lean young Indonesian boy, sun-tanned skin, wearing faded crimson red shirt, rolled-up dark trousers, woven brown fabric headband (udeng), bare feet"\n'
+        "        },\n"
+        "        {\n"
+        '          "variant_id": "dewasa",\n'
+        '          "label": "Dewasa / Saudagar",\n'
+        '          "visual_anchor": "a confident mature Indonesian merchant in his 30s, wearing emerald-green and gold-embroidered silk royal tunic, royal destar headcloth, golden keris"\n'
+        "        },\n"
+        "        {\n"
+        '          "variant_id": "batu",\n'
+        '          "label": "Patung Batu Sujud",\n'
+        '          "visual_anchor": "a dramatic weathered grey andesite stone statue of a man frozen in a prostrating kneeling pose (sujud) with face touching the ground, mossy texture, sea spray crashing against stone surface"\n'
+        "        }\n"
+        "      ]\n"
+        "    }\n"
+        "  ],\n"
+        '  "locations": [\n'
+        "    {\n"
+        '      "id": "pesisir_air_manis",\n'
+        '      "name": "Pesisir Pantai Air Manis",\n'
+        '      "environment_anchor": "traditional coastal Indonesian village, simple wooden stilt huts with thatched nipah palm roofs, coconut palms leaning over sandy beach, wooden outrigger canoes resting on shore"\n'
         "    }\n"
         "  ],\n"
         '  "chapters": [\n'
@@ -187,8 +428,7 @@ def build_storyboard_outline_prompt(
         '      "synopsis": "Penjelasan fokus penceritaan pada babak ini, apa yang dibahas dan tensi apa yang dibangun.",\n'
         '      "key_points": [\n'
         '        "Poin penting 1 yang akan dibahas",\n'
-        '        "Poin penting 2 yang akan dibahas",\n'
-        '        "Poin penting 3 yang akan dibahas"\n'
+        '        "Poin penting 2 yang akan dibahas"\n'
         '      ]\n'
         "    }\n"
         "  ]\n"
@@ -204,13 +444,108 @@ def build_storyboard_outline_prompt(
     )
     if existing_characters:
         user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
+    if existing_locations:
+        user_prompt += f"Latar tempat yang telah dikunci sebelumnya: {json.dumps(existing_locations, ensure_ascii=False)}\n"
+    if existing_world_setting:
+        user_prompt += f"Setting dunia/era sebelumnya: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
     if custom_instructions:
         user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
 
     user_prompt += (
-        f"\nBuatlah Master Outline dan Character Bible untuk tepat {num_chapters} babak sekarang dalam format JSON murni."
+        f"\nBuatlah Master Outline dan Story Continuity Bible untuk tepat {num_chapters} babak sekarang dalam format JSON murni."
     )
     return system_prompt, user_prompt
+
+
+def _format_continuity_bible_instructions(
+    characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    world_setting: Optional[Dict[str, Any]] = None,
+    language: str = "id",
+) -> str:
+    """Format Character Variants, Locations, and World Setting into tokenized instructions."""
+    lines: List[str] = []
+
+    # 1. Characters and their variants
+    if characters and len(characters) > 0:
+        if language == "en":
+            lines.append("1. CHARACTER CONSISTENCY & VARIANT TOKENS:")
+        else:
+            lines.append("1. PENGUNCIAN KONSISTENSI KARAKTER & VARIAN BENTUK/USIA:")
+
+        for c in characters:
+            c_name = c.get("name", "Character" if language == "en" else "Karakter")
+            c_id = c.get("id") or _normalize_key(c_name)
+            c_role = f" ({c.get('role')})" if c.get("role") else ""
+            c_anchor = c.get("visual_anchor", "")
+            variants = c.get("variants")
+
+            if isinstance(variants, list) and len(variants) > 0:
+                lines.append(f"   • {c_name}{c_role}:")
+                for v in variants:
+                    v_id = v.get("variant_id") or _normalize_key(v.get("label", ""))
+                    v_lbl = v.get("label", v_id)
+                    v_anchor = v.get("visual_anchor", "")
+                    lines.append(f"     - Use token `[char:{c_id}:{v_id}]` for {v_lbl} (Visual: {v_anchor})")
+            else:
+                lines.append(f"   • {c_name}{c_role}: Use token `[char:{c_id}]` (Visual: {c_anchor})")
+        lines.append("")
+
+    # 2. Locations
+    if locations and len(locations) > 0:
+        if language == "en":
+            lines.append("2. KEY RECURRING LOCATION TOKENS:")
+        else:
+            lines.append("2. TOKEN LATAR TEMPAT UTAMA (LOCATIONS):")
+
+        for l in locations:
+            l_name = l.get("name", "Location" if language == "en" else "Lokasi")
+            l_id = l.get("id") or l.get("location_id") or _normalize_key(l_name)
+            l_anchor = l.get("environment_anchor", "")
+            lines.append(f"   • {l_name}: Use token `[loc:{l_id}]` (Environment: {l_anchor})")
+        lines.append("")
+
+    # 3. World Setting
+    if world_setting and isinstance(world_setting, dict) and any(world_setting.values()):
+        if language == "en":
+            lines.append("3. WORLD SETTING & ERA CONTEXT:")
+        else:
+            lines.append("3. SETTING ERA & ATMOSFER DUNIA:")
+        if world_setting.get("era"):
+            lines.append(f"   • Era: {world_setting.get('era')}")
+        if world_setting.get("time_setting"):
+            lines.append(f"   • Time Timeline: {world_setting.get('time_setting')}")
+        if world_setting.get("atmosphere"):
+            lines.append(f"   • Visual Atmosphere/Lighting: {world_setting.get('atmosphere')}")
+        lines.append("")
+
+    # 4. Mandatory tokenized rule
+    if language == "en":
+        lines.append(
+            "=== MANDATORY TOKENIZED IMAGE PROMPT RULES ===\n"
+            "To keep prompts readable and 100% consistent across scenes, you MUST write every `image_prompt` using variable tokens:\n"
+            "- Insert character variant token: `[char:<char_id>:<variant_id>]` (or `[char:<char_id>]`).\n"
+            "- Insert location token: `[loc:<loc_id>]`.\n"
+            "- Insert visual preset token: `[preset:style]`.\n"
+            "- Describe the specific character action, emotion, 16:9 widescreen cinematic framing, and lighting vividly.\n"
+            "Examples:\n"
+            "  * `A cinematic 16:9 shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards horizon under gentle morning sunlight.`\n"
+            "  * `A dramatic low-angle 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain and lightning strikes.`"
+        )
+    else:
+        lines.append(
+            "=== ATURAN WAJIB PENULISAN IMAGE PROMPT BERBASIS TOKEN (SANGAT PENTING) ===\n"
+            "Agar prompt ringkas, sangat mudah dibaca/di-review manusia, dan 100% konsisten antar slide, Anda WAJIB menyusun setiap `image_prompt` menggunakan TOKEN VARIABEL:\n"
+            "- Sisipkan token karakter & varian: `[char:<char_id>:<variant_id>]` (contoh: `[char:malin:muda]`, `[char:malin:dewasa]`, `[char:malin:batu]`).\n"
+            "- Sisipkan token latar tempat: `[loc:<loc_id>]` (contoh: `[loc:pesisir_air_manis]`, `[loc:kapal_saudagar]`).\n"
+            "- Sisipkan token gaya visual preset: `[preset:style]`.\n"
+            "- Tuliskan aksi konkret tokoh, ekspresi emosi, framing kamera 16:9 widescreen, dan pencahayaan secara hidup.\n"
+            "Contoh format prompt yang WAJIB ditaati:\n"
+            "  * Adegan 1: `A cinematic 16:9 shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards the ocean with ambitious eyes under gentle morning sunlight.`\n"
+            "  * Adegan 2: `A dramatic low-angle 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain, lightning flashing in dark stormy sky.`"
+        )
+
+    return "\n".join(lines) + "\n\n"
 
 
 def build_chapter_expansion_prompt(
@@ -229,6 +564,8 @@ def build_chapter_expansion_prompt(
     custom_instructions: Optional[str] = None,
     chapters_roadmap: Optional[List[Dict[str, Any]]] = None,
     characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    world_setting: Optional[Dict[str, Any]] = None,
     language: str = "id",
 ) -> Tuple[str, str]:
     """Build prompts for Phase 2: Expanding a single chapter into full narration & visual scenes."""
@@ -236,32 +573,12 @@ def build_chapter_expansion_prompt(
     min_chapter_words = int(round(target_chapter_words * 0.90))
     total_chapter_scenes = target_segments * images_per_segment
 
-    char_bible_instruction = ""
-    if characters and len(characters) > 0:
-        char_lines = []
-        for c in characters:
-            c_name = c.get("name", "Karakter" if language == "id" else "Character")
-            c_role = f" ({c.get('role')})" if c.get("role") else ""
-            c_anchor = c.get("visual_anchor", "")
-            char_lines.append(f"   • {c_name}{c_role}: {c_anchor}")
-        if language == "en":
-            char_bible_instruction = (
-                "2. CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE - STRICT COMPLIANCE):\n"
-                "   Locked characters and visual anchors for this story:\n"
-                + "\n".join(char_lines) + "\n\n"
-                "   STRICT CHARACTER PROMPT RULES:\n"
-                "   - Whenever any character appears or acts in a scene (`image_prompt`), you MUST include their exact visual anchor word-for-word.\n"
-                "   - NEVER alter their outfit color, hairstyle, or signature accessories across scenes.\n\n"
-            )
-        else:
-            char_bible_instruction = (
-                "2. PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE - WAJIB 100% KONSISTEN):\n"
-                "   Daftar karakter dan deskripsi visual yang telah DIKUNCI untuk cerita ini:\n"
-                + "\n".join(char_lines) + "\n\n"
-                "   ATURAN KERAS PENGUNCIAN KARAKTER DI SETIAP SCENE:\n"
-                "   - Setiap kali salah satu karakter di atas muncul atau bertindak dalam adegan (`image_prompt`), Anda WAJIB menyertakan deskripsi 'visual_anchor' mereka yang persis sama kata demi kata (warna baju khas, jenis pakaian, aksesoris seperti ikat kepala atau tudung kepala).\n"
-                "   - DILARANG mengubah warna baju, gaya rambut, atau aksesoris mereka antar adegan agar karakter tampak 100% konsisten dan mudah dikenali penonton di seluruh video!\n\n"
-            )
+    continuity_instruction = _format_continuity_bible_instructions(
+        characters=characters,
+        locations=locations,
+        world_setting=world_setting,
+        language=language,
+    )
 
     if language == "en":
         system_prompt = (
@@ -277,8 +594,8 @@ def build_chapter_expansion_prompt(
             f"   - Each segment MUST have exactly {images_per_segment} scenes -> Exactly {total_chapter_scenes} scenes total for this chapter.\n"
             "   - Each scene has directly coupled `narration_text` and `image_prompt`.\n"
             "   - `narration_text`: 1–2 complete, expressive, descriptive narration sentences in ENGLISH (18–25 words per scene). DO NOT make sentences too short!\n"
-            f"   - `image_prompt`: English visual illustration prompt (16:9 landscape) adopting preset style '{preset_label}'.\n\n"
-            f"{char_bible_instruction}"
+            "   - `image_prompt`: Concise, tokenized visual prompt in English (16:9 widescreen) using Continuity tokens.\n\n"
+            f"{continuity_instruction}"
             f"{visual_guidelines}"
             "4. TARGET WORD COUNT & STORY CONTINUITY (CRITICAL):\n"
             f"   - Total narration words for Chapter {chapter_index} MUST reach at least {min_chapter_words} words (target ~{target_chapter_words} words).\n"
@@ -295,12 +612,12 @@ def build_chapter_expansion_prompt(
             "        {\n"
             '          "scene_id": "scene-1",\n'
             '          "narration_text": "Detailed, immersive first scene narration sentence in natural English...",\n'
-            f'          "image_prompt": "{example_prompt_1}"\n'
+            '          "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:char_id:variant_id] action on [loc:loc_id], morning lighting, dramatic angle."\n'
             "        },\n"
             "        {\n"
             '          "scene_id": "scene-2",\n'
             '          "narration_text": "Subsequent narration sentence driving the narrative forward in English...",\n'
-            f'          "image_prompt": "{example_prompt_2}"\n'
+            '          "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:char_id:variant_id] reaction on [loc:loc_id], atmospheric mood."\n'
             "        }\n"
             "      ]\n"
             "    }\n"
@@ -318,8 +635,8 @@ def build_chapter_expansion_prompt(
             f"   - Setiap segmen WAJIB memiliki tepat {images_per_segment} adegan (scenes) -> Total tepat {total_chapter_scenes} scenes untuk babak ini.\n"
             "   - Setiap scene memiliki `narration_text` dan `image_prompt` yang berpasangan langsung.\n"
             "   - `narration_text`: 1–2 kalimat narasi utuh yang bernas, deskriptif, dan ekspresif (18–25 kata per scene). JANGAN membuat narasi terlalu pendek!\n"
-            f"   - `image_prompt`: Prompt ilustrasi visual Bahasa Inggris (16:9 landscape) yang secara konkret merepresentasikan kalimat narasi tersebut dan MENGADOPSI GAYA PRESET '{preset_label}'.\n\n"
-            f"{char_bible_instruction}"
+            "   - `image_prompt`: Prompt visual ringkas berbasis token variabel ([char:...], [loc:...], [preset:style]) yang secara konkret merepresentasikan kalimat narasi.\n\n"
+            f"{continuity_instruction}"
             f"{visual_guidelines}"
             "4. TARGET PANJANG KATA & KESINAMBUNGAN (SANGAT PENTING):\n"
             f"   - Total kata narasi untuk Babak {chapter_index} ini WAJIB mencapai minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata).\n"
@@ -337,12 +654,12 @@ def build_chapter_expansion_prompt(
             "        {\n"
             '          "scene_id": "scene-1",\n'
             '          "narration_text": "Kalimat narasi adegan pertama yang kaya detail dan mendalam...",\n'
-            f'          "image_prompt": "{example_prompt_1}"\n'
+            '          "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:char_id:variant_id] action on [loc:loc_id], morning sunlight, dramatic angle."\n'
             "        },\n"
             "        {\n"
             '          "scene_id": "scene-2",\n'
             '          "narration_text": "Kelanjutan narasi yang membangun keterhubungan logis atau visual progression...",\n'
-            f'          "image_prompt": "{example_prompt_2}"\n'
+            '          "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:char_id:variant_id] reaction on [loc:loc_id], atmospheric mood."\n'
             "        }\n"
             "      ]\n"
             "    }\n"
@@ -430,9 +747,11 @@ def build_storyboard_prompt(
     preset: Optional[Any] = None,
     custom_instructions: Optional[str] = None,
     existing_characters: Optional[List[Dict[str, Any]]] = None,
+    existing_locations: Optional[List[Dict[str, Any]]] = None,
+    existing_world_setting: Optional[Dict[str, Any]] = None,
     language: str = "id",
 ) -> Tuple[str, str]:
-    """Build system and user prompts for single-shot long-form storyboard scriptwriting + Character Bible."""
+    """Build system and user prompts for single-shot long-form storyboard scriptwriting + Story Continuity Bible."""
     target_words = max(400, int(duration_mins * 135))
     min_words = int(target_words * 0.90)
     max_words = int(target_words * 1.10)
@@ -444,25 +763,28 @@ def build_storyboard_prompt(
     num_chapters = max(3, min(6, int(round(duration_mins * 0.7))))
 
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
+    continuity_instruction = _format_continuity_bible_instructions(
+        characters=existing_characters,
+        locations=existing_locations,
+        world_setting=existing_world_setting,
+        language=language,
+    )
 
     if language == "en":
         system_prompt = (
-            "You are a world-class Master Storyteller, Visual Director & Scriptwriter for YouTube documentary/explainer videos "
-            "(style of MinutePhysics, Kurzgesagt, Big Think, or popular science and history storytelling channels).\n"
+            "You are a world-class Master Storyteller, Visual Director & Scriptwriter for YouTube documentary/explainer videos.\n"
             "Your task is to write an in-depth, captivating long-form video narration script (landscape 16:9) in ENGLISH, "
             "structured into visual scenes with PERFECT 1-to-1 synchronization between the spoken English narration and the illustration prompts, "
-            "AND formulate a consistent Character Bible.\n\n"
+            "AND formulate a complete Story Continuity Bible (character variants, locations, world setting) with tokenized variable prompts.\n\n"
             "=== CRITICAL LANGUAGE INSTRUCTION ===\n"
             "All narration text (`narration_text`), titles, and overview MUST be written in natural, engaging spoken ENGLISH. "
             "Under NO circumstances should Indonesian be used in the narration text.\n\n"
-            "=== CHARACTER CONSISTENCY LOCKING (CHARACTER BIBLE) ===\n"
-            "Identify all key figures/characters in this story. Lock a permanent English 'visual_anchor' for each.\n"
-            "STRICT RULE: Whenever any character appears in `image_prompt`, you MUST include their exact visual anchor word-for-word.\n\n"
+            f"{continuity_instruction}"
             "=== AUDIO-VISUAL COUPLING (1-TO-1) ===\n"
             f"1. Exactly {images_per_segment} scenes per segment.\n"
             "2. Each scene has paired `narration_text` and `image_prompt`.\n"
             "3. `narration_text`: 1–2 complete, expressive sentences in ENGLISH (18–25 words per scene).\n"
-            f"4. `image_prompt`: Concrete English illustration prompt adopting visual preset '{preset_label}'.\n\n"
+            "4. `image_prompt`: Concise English illustration prompt using variable tokens (`[preset:style]`, `[char:id:variant]`, `[loc:id]`).\n\n"
             f"{visual_guidelines}"
             "4. TARGET WORD COUNT & STORY STRUCTURE:\n"
             f"- Target Total Speech Duration: {duration_mins} Minutes.\n"
@@ -473,11 +795,31 @@ def build_storyboard_prompt(
             "{\n"
             '  "title": "Engaging Video Title in English",\n'
             '  "overview": "Short 1-2 sentence synopsis in English",\n'
+            '  "world_setting": {\n'
+            '    "era": "Historical or futuristic era setting",\n'
+            '    "time_setting": "Traditional Past / Modern",\n'
+            '    "atmosphere": "Visual lighting and mood"\n'
+            "  },\n"
             '  "characters": [\n'
             "    {\n"
+            '      "id": "char_id",\n'
             '      "name": "Character Name",\n'
             '      "role": "Protagonist",\n'
-            '      "visual_anchor": "Specific visual description in English"\n'
+            '      "visual_anchor": "Default physical description in English",\n'
+            '      "variants": [\n'
+            "        {\n"
+            '          "variant_id": "young",\n'
+            '          "label": "Youth / Young Version",\n'
+            '          "visual_anchor": "Specific physical traits and outfit for young stage"\n'
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ],\n"
+            '  "locations": [\n'
+            "    {\n"
+            '      "id": "loc_id",\n'
+            '      "name": "Location Name",\n'
+            '      "environment_anchor": "Specific architectural and landscape description in English"\n'
             "    }\n"
             "  ],\n"
             '  "chapters": [\n'
@@ -490,12 +832,7 @@ def build_storyboard_prompt(
             "            {\n"
             '              "scene_id": "scene-1",\n'
             '              "narration_text": "Across the tranquil ocean, ancient navigators steered their wooden ships by the silent constellations burning in the night sky.",\n'
-            f'              "image_prompt": "{example_prompt_1}"\n'
-            "            },\n"
-            "            {\n"
-            '              "scene_id": "scene-2",\n'
-            '              "narration_text": "Yet when a sudden dense fog descended upon the horizon, their compass needles spun wildly, losing true north without warning.",\n'
-            f'              "image_prompt": "{example_prompt_2}"\n'
+            '              "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:char_id:variant_id] on [loc:loc_id], looking through a brass spyglass under night sky."\n'
             "            }\n"
             "          ]\n"
             "        }\n"
@@ -518,41 +855,56 @@ def build_storyboard_prompt(
             "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter/explainer YouTube "
             "(gaya MinutePhysics, Kurzgesagt, Big Think, atau channel storytelling sejarah & sains populer).\n"
             "Tugas Anda adalah menulis naskah narasi video panjang (landscape 16:9) yang mendalam, memikat, dan terstruktur "
-            "ke dalam adegan-adegan visual (scenes) dengan sinkronisasi 1-to-1 yang SEMPURNA antara kalimat narasi dan prompt gambar sketsa hand-drawn, "
-            "SERTA mendeteksi dan mengunci karakter (Character Bible) agar konsisten 100% antar adegan.\n\n"
-            "=== DETEKSI & PENGUNCIAN KONSISTENSI KARAKTER (CHARACTER BIBLE) ===\n"
-            "Identifikasi semua karakter penting dalam topik cerita ini (misalnya: tokoh utama, keluarga/ibu, atau figur sejarah).\n"
-            "Kunci deskripsi visual permanen ('visual_anchor') dalam Bahasa Inggris yang sangat spesifik untuk tiap karakter:\n"
-            "- Ciri fisik & rambut (usia, warna kulit, gaya rambut).\n"
-            "- Pakaian khas permanen (warna spesifik, potongan busana/baju).\n"
-            "- Aksesoris tetap (ikat kepala, tudung kepala, dsb.).\n"
-            "ATURAN KERAS: Setiap kali karakter tersebut muncul dalam `image_prompt`, Anda WAJIB menyertakan 'visual_anchor' mereka persis kata demi kata tanpa mengubah warna baju atau aksesoris mereka antar adegan!\n\n"
+            "ke dalam adegan-adegan visual (scenes) dengan sinkronisasi 1-to-1 yang SEMPURNA antara kalimat narasi dan prompt gambar,\n"
+            "SERTA menyusun Story Continuity Bible (varian bentuk/usia karakter, latar tempat, dan era waktu kejadian) menggunakan prompt berbasis token variabel.\n\n"
+            f"{continuity_instruction}"
             "=== PRINSIP KEKUATAN AUDIO-VISUAL (SINKRON & TIDAK AMBIGU) ===\n"
             "1. KOPLING 1-TO-1 (1 Adegan = Tepat 1 Kalimat Narasi & 1 Prompt Visual):\n"
             f"   - Setiap segmen dipecah menjadi tepat sejumlah adegan (scenes) sesuai parameter `Jumlah Gambar per Segmen` ({images_per_segment} scene per segmen).\n"
             "   - Setiap adegan (scene) WAJIB memiliki `narration_text` dan `image_prompt` yang berpasangan secara langsung.\n"
-            "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene, setara durasi bicara ideal 7–9 detik). JANGAN membuat kalimat terlalu pendek atau terputus-putus!\n"
-            "   - `image_prompt`: Prompt ilustrasi visual (Bahasa Inggris) yang SECARA LITERAL DAN LANGSUNG merepresentasikan subjek konkret, aksi penceritaan, atau metafora visual yang dibicarakan dalam kalimat `narration_text` tersebut. JANGAN membuat gambar yang tidak nyambung, abstrak tanpa konteks, atau melompat ke topik lain!\n\n"
-            "2. KESINAMBUNGAN BERCERITA (VISUAL PROGRESSION):\n"
-            f"   - Dalam 1 segmen yang berisi {images_per_segment} adegan, bangun kesinambungan cerita sebab-akibat yang dinamis.\n"
-            "   - Penonton harus merasakan keterhubungan visual yang mengalir mulus dari detik ke detik tanpa kebingungan.\n\n"
+            "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene). JANGAN membuat kalimat terlalu pendek!\n"
+            "   - `image_prompt`: Prompt visual ringkas (Bahasa Inggris) yang menyematkan token variabel `[preset:style]`, `[char:id:variant]`, dan `[loc:id]` secara tepat.\n\n"
             f"{visual_guidelines}"
             "4. TARGET PANJANG KATA & STRUKTUR CERITA:\n"
-            f"   - Target Total Durasi Bicara: {duration_mins} Menit.\n"
-            f"   - Target Total Kata Narasi: Sekitar {target_words} kata (rentang ketat {min_words}–{max_words} kata). PENTING: Naskah narasi WAJIB memenuhi target panjang kata ini! Jangan membuat naskah terlalu pendek atau ringkas.\n"
-            f"   - Struktur Keseluruhan: {num_chapters} Babak (Chapters), total sekitar {target_segments} Segmen (total tepat ~{total_scenes} adegan visual scenes).\n"
-            f"   - Nada Bicara (Tone): {tone}. Bahasa Indonesia lisan yang hidup, cerdas, mengalir, dan bernyawa.\n"
-            "   - Struktur Alur Cerita: Hook & Paradoks di awal ➔ Eksplorasi Berlapis ➔ Puncak Wawasan / Plot Twist ➔ Refleksi Penutup yang membekas.\n\n"
+            f"- Target Total Durasi Bicara: {duration_mins} Menit.\n"
+            f"- Target Total Kata Narasi: Sekitar {target_words} kata (rentang ketat {min_words}–{max_words} kata). Naskah narasi WAJIB memenuhi target kata ini!\n"
+            f"- Struktur Keseluruhan: {num_chapters} Babak, sekitar {target_segments} Segmen (total tepat ~{total_scenes} adegan visual scenes).\n"
+            f"- Nada Bicara (Tone): {tone}.\n\n"
             "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
             "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan struktur hierarkis berikut:\n"
             "{\n"
             '  "title": "Judul Menarik Video",\n'
             '  "overview": "Sinopsis singkat 1-2 kalimat",\n'
+            '  "world_setting": {\n'
+            '    "era": "Zaman Kerajaan Kuno Nusantara Abad ke-14",\n'
+            '    "time_setting": "Masa Lalu Tradisional",\n'
+            '    "atmosphere": "Warm vintage cinematic with stormy contrast in climax"\n'
+            "  },\n"
             '  "characters": [\n'
             "    {\n"
-            '      "name": "Nama Karakter (mis. Malin Kundang)",\n'
+            '      "id": "malin",\n'
+            '      "name": "Malin Kundang",\n'
             '      "role": "Tokoh Utama",\n'
-            '      "visual_anchor": "Deskripsi visual spesifik Bahasa Inggris: ciri fisik, warna baju tetap, dan aksesoris khas (ikat kepala/tudung)"\n'
+            '      "visual_anchor": "a lean Indonesian man with expressive eyes...",\n'
+            '      "variants": [\n'
+            "        {\n"
+            '          "variant_id": "muda",\n'
+            '          "label": "Masa Kecil / Nelayan",\n'
+            '          "visual_anchor": "a lean young Indonesian boy in faded crimson red shirt and udeng headband"\n'
+            "        },\n"
+            "        {\n"
+            '          "variant_id": "batu",\n'
+            '          "label": "Patung Batu Sujud",\n'
+            '          "visual_anchor": "a dramatic weathered grey andesite stone statue in prostrating kneeling pose (sujud)"\n'
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  ],\n"
+            '  "locations": [\n'
+            "    {\n"
+            '      "id": "pesisir_air_manis",\n'
+            '      "name": "Pesisir Pantai Air Manis",\n'
+            '      "environment_anchor": "traditional coastal Indonesian village, simple wooden stilt huts with thatched nipah palm roofs, coconut palms leaning over sandy beach"\n'
             "    }\n"
             "  ],\n"
             '  "chapters": [\n'
@@ -565,12 +917,7 @@ def build_storyboard_prompt(
             "            {\n"
             '              "scene_id": "scene-1",\n'
             '              "narration_text": "Di tengah samudra yang tampak tenang, para pelaut kuno mengarungi ombak hanya berpedoman pada rasi bintang yang berpijar di langit malam.",\n'
-            f'              "image_prompt": "{example_prompt_1}"\n'
-            "            },\n"
-            "            {\n"
-            '              "scene_id": "scene-2",\n'
-            '              "narration_text": "Namun saat kabut pekat mendadak turun menyelimuti cakrawala, jarum kompas mereka tiba-tiba berputar liar dan kehilangan arah utara sejati.",\n'
-            f'              "image_prompt": "{example_prompt_2}"\n'
+            '              "image_prompt": "A cinematic 16:9 shot in [preset:style] of [char:malin:muda] on [loc:pesisir_air_manis], looking out towards horizon with ambitious eyes under gentle morning sunlight."\n'
             "            }\n"
             "          ]\n"
             "        }\n"
@@ -591,16 +938,20 @@ def build_storyboard_prompt(
         )
     if existing_characters:
         user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
+    if existing_locations:
+        user_prompt += f"Latar tempat yang telah dikunci sebelumnya: {json.dumps(existing_locations, ensure_ascii=False)}\n"
+    if existing_world_setting:
+        user_prompt += f"Setting dunia/era sebelumnya: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
     if custom_instructions:
         user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
 
     user_prompt += (
-        f"\nTuliskan naskah narasi lengkap dan Character Bible sekarang dalam format JSON murni.\n"
+        f"\nTuliskan naskah narasi lengkap dan Story Continuity Bible sekarang dalam format JSON murni.\n"
         f"PENTING SEKALI TENTANG PANJANG KATA & DURASI:\n"
         f"- Target durasi bicara adalah {duration_mins} menit penuh.\n"
         f"- Total kata narasi WAJIB mencapai minimal {min_words} kata (target ideal ~{target_words} kata).\n"
         f"- Kembangkan setiap scene menjadi 2 kalimat narasi yang padat, ekspresif, dan mendalam (18–25 kata per scene).\n"
-        f"- Setiap segmen harus memiliki tepat {images_per_segment} scenes yang berpasangan secara 1-to-1 dengan prompt visual (Bahasa Inggris) yang MENGADOPSI GAYA PRESET '{preset_label}' dan MENYISIPKAN 'visual_anchor' karakter secara konsisten."
+        f"- Gunakan token variabel [preset:style], [char:id:variant], dan [loc:id] pada setiap image_prompt secara konsisten."
     )
     return system_prompt, user_prompt
 
@@ -718,12 +1069,17 @@ async def generate_storyboard_script(
 
     chapters: List[Dict[str, Any]] = []
     existing_characters = proj.characters if (isinstance(proj.characters, list) and len(proj.characters) > 0) else None
+    existing_locations = proj.locations if (isinstance(proj.locations, list) and len(proj.locations) > 0) else None
+    existing_world_setting = proj.world_setting if (isinstance(proj.world_setting, dict) and len(proj.world_setting) > 0) else None
+
     detected_characters: List[Dict[str, Any]] = list(existing_characters) if existing_characters else []
+    detected_locations: List[Dict[str, Any]] = list(existing_locations) if existing_locations else []
+    detected_world_setting: Dict[str, Any] = dict(existing_world_setting) if existing_world_setting else {}
 
     # TWO-PHASE CHUNKED GENERATION (for duration_mins >= 3)
     if duration_mins >= 3:
         try:
-            # PHASE 1: Generate Master Outline + Character Bible
+            # PHASE 1: Generate Master Outline + Continuity Bible
             outline_sys, outline_usr = build_storyboard_outline_prompt(
                 topic=topic,
                 duration_mins=duration_mins,
@@ -731,10 +1087,12 @@ async def generate_storyboard_script(
                 num_chapters=num_chapters,
                 custom_instructions=custom_instructions,
                 existing_characters=existing_characters,
+                existing_locations=existing_locations,
+                existing_world_setting=existing_world_setting,
                 language=language,
             )
             log.info(
-                "Phase 1: Generating Master Outline & Character Bible for project %s (topic='%s', dur=%dm, chapters=%d, target=%d words)...",
+                "Phase 1: Generating Master Outline & Continuity Bible for project %s (topic='%s', dur=%dm, chapters=%d, target=%d words)...",
                 project_id, topic, duration_mins, num_chapters, target_total_words
             )
             raw_outline = await llm_adapter.generate_chat(
@@ -751,6 +1109,12 @@ async def generate_storyboard_script(
             if not existing_characters and outline_data.get("characters"):
                 detected_characters = outline_data.get("characters", []) or []
                 log.info("Detected %d locked characters from outline: %s", len(detected_characters), [c.get("name") for c in detected_characters])
+            if not existing_locations and outline_data.get("locations"):
+                detected_locations = outline_data.get("locations", []) or []
+                log.info("Detected %d locations from outline: %s", len(detected_locations), [l.get("name") for l in detected_locations])
+            if not existing_world_setting and outline_data.get("world_setting"):
+                detected_world_setting = outline_data.get("world_setting", {}) or {}
+                log.info("Detected world setting from outline: %s", detected_world_setting.get("era"))
 
             if outline_chapters and len(outline_chapters) > 0:
                 # PHASE 2: Expand each chapter concurrently with Semaphore
@@ -782,6 +1146,8 @@ async def generate_storyboard_script(
                             custom_instructions=custom_instructions,
                             chapters_roadmap=outline_chapters,
                             characters=detected_characters,
+                            locations=detected_locations,
+                            world_setting=detected_world_setting,
                             language=language,
                         )
 
@@ -827,6 +1193,8 @@ async def generate_storyboard_script(
             preset=preset,
             custom_instructions=custom_instructions,
             existing_characters=existing_characters,
+            existing_locations=existing_locations,
+            existing_world_setting=existing_world_setting,
             language=language,
         )
         raw_response = await llm_adapter.generate_chat(
@@ -843,6 +1211,12 @@ async def generate_storyboard_script(
         if not existing_characters and data.get("characters"):
             detected_characters = data.get("characters", []) or []
             log.info("Detected %d locked characters from single-shot: %s", len(detected_characters), [c.get("name") for c in detected_characters])
+        if not existing_locations and data.get("locations"):
+            detected_locations = data.get("locations", []) or []
+            log.info("Detected %d locations from single-shot: %s", len(detected_locations), [l.get("name") for l in detected_locations])
+        if not existing_world_setting and data.get("world_setting"):
+            detected_world_setting = data.get("world_setting", {}) or {}
+            log.info("Detected world setting from single-shot: %s", detected_world_setting.get("era"))
 
     # Flatten segments for the Narration model
     all_segments: List[Dict[str, Any]] = []
@@ -997,6 +1371,8 @@ async def generate_storyboard_script(
         db.add(item)
 
     proj.characters = detected_characters
+    proj.locations = detected_locations
+    proj.world_setting = detected_world_setting
     proj.status = "ready"
     await db.commit()
     await db.refresh(narration)

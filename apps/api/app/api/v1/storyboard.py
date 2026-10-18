@@ -24,11 +24,13 @@ from app.schemas.storyboard import (
     YouTubeThumbnailGenerateRequest,
     YouTubeMetadataUpdateRequest,
     StoryboardCharactersUpdateRequest,
+    StoryboardContinuityBibleUpdateRequest,
     StoryboardSegmentUpdateRequest,
 )
 from app.services.storyboard import (
     generate_storyboard_script,
     sync_storyboard_timing_from_alignment,
+    resolve_prompt_variables,
 )
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
@@ -42,11 +44,26 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/storyboard", tags=["storyboard"])
 
 
-def _item_to_response(item: StoryboardItem) -> StoryboardItemResponse:
+def _item_to_response(
+    item: StoryboardItem,
+    project: Optional[Project] = None,
+    preset_style: Optional[str] = None,
+) -> StoryboardItemResponse:
     url = storage.to_relative_url(item.file_path)
     if url and item.updated_at:
         v = int(item.updated_at.timestamp())
         url = f"{url}?v={v}"
+
+    resolved = None
+    if project:
+        resolved = resolve_prompt_variables(
+            item.image_prompt,
+            characters=getattr(project, "characters", None),
+            locations=getattr(project, "locations", None),
+            world_setting=getattr(project, "world_setting", None),
+            preset_master_prompt=preset_style,
+        )
+
     return StoryboardItemResponse(
         id=item.id,
         project_id=item.project_id,
@@ -56,6 +73,7 @@ def _item_to_response(item: StoryboardItem) -> StoryboardItemResponse:
         order_index=item.order_index,
         script_text=item.script_text,
         image_prompt=item.image_prompt,
+        resolved_prompt=resolved,
         image_url=url,
         motion_effect=item.motion_effect or "zoom_in",
         start_time=float(item.start_time) if item.start_time is not None else 0.0,
@@ -93,10 +111,15 @@ async def generate_script(
             language=lang,
         )
         proj = await db.get(Project, project_id)
+        active_preset = await get_active_image_preset(db)
+        preset_style = active_preset.master_prompt if active_preset else None
+
         return {
             "success": True,
             "project_id": project_id,
             "characters": getattr(proj, "characters", []) or [],
+            "locations": getattr(proj, "locations", []) or [],
+            "world_setting": getattr(proj, "world_setting", {}) or {},
             "narration": {
                 "id": narration.id,
                 "topic": narration.topic,
@@ -106,11 +129,54 @@ async def generate_script(
                 "segments": narration.segments,
                 "status": narration.status,
             },
-            "storyboard_items": [_item_to_response(it) for it in items],
+            "storyboard_items": [_item_to_response(it, project=proj, preset_style=preset_style) for it in items],
         }
     except Exception as e:
         log.exception("Error generating storyboard script for project %s: %s", project_id, e)
         raise HTTPException(status_code=500, detail=f"Gagal generate naskah: {str(e)}")
+
+
+@router.get("/continuity-bible")
+async def get_storyboard_continuity_bible(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch the full Story Continuity Bible (characters with variants, locations, world setting)."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    return {
+        "success": True,
+        "characters": getattr(proj, "characters", []) or [],
+        "locations": getattr(proj, "locations", []) or [],
+        "world_setting": getattr(proj, "world_setting", {}) or {},
+    }
+
+
+@router.put("/continuity-bible")
+async def update_storyboard_continuity_bible(
+    project_id: str,
+    payload: StoryboardContinuityBibleUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update or customize the full Story Continuity Bible for this project."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    if payload.characters is not None:
+        proj.characters = payload.characters
+    if payload.locations is not None:
+        proj.locations = payload.locations
+    if payload.world_setting is not None:
+        proj.world_setting = payload.world_setting
+    await db.commit()
+    await db.refresh(proj)
+    return {
+        "success": True,
+        "characters": getattr(proj, "characters", []) or [],
+        "locations": getattr(proj, "locations", []) or [],
+        "world_setting": getattr(proj, "world_setting", {}) or {},
+    }
 
 
 @router.put("/characters")
@@ -119,7 +185,7 @@ async def update_storyboard_characters(
     payload: StoryboardCharactersUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update or customize the character consistency bible for this project."""
+    """Update or customize the character consistency bible for this project (backward-compatible)."""
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
@@ -248,6 +314,10 @@ async def update_storyboard_segment(
     )
     all_items = res_items_after.scalars().all()
 
+    # Fetch active preset for style resolution
+    preset = await get_active_image_preset(db)
+    preset_style = preset.master_prompt if preset else None
+
     return {
         "success": True,
         "segment_id": segment_id,
@@ -260,7 +330,7 @@ async def update_storyboard_segment(
             "segments": narration.segments,
             "status": narration.status,
         },
-        "storyboard_items": [_item_to_response(it) for it in all_items],
+        "storyboard_items": [_item_to_response(it, project=proj, preset_style=preset_style) for it in all_items],
     }
 
 
@@ -270,13 +340,17 @@ async def list_storyboard_items(
     db: AsyncSession = Depends(get_db),
 ):
     """List all storyboard illustration slots for this project."""
+    proj = await db.get(Project, project_id)
+    preset = await get_active_image_preset(db)
+    preset_style = preset.master_prompt if preset else None
+
     res = await db.execute(
         select(StoryboardItem)
         .where(StoryboardItem.project_id == project_id)
         .order_by(StoryboardItem.order_index.asc())
     )
     items = res.scalars().all()
-    return [_item_to_response(it) for it in items]
+    return [_item_to_response(it, project=proj, preset_style=preset_style) for it in items]
 
 
 @router.patch("/items/{item_id}", response_model=StoryboardItemResponse)
@@ -308,7 +382,10 @@ async def update_storyboard_item(
 
     await db.commit()
     await db.refresh(item)
-    return _item_to_response(item)
+    proj = await db.get(Project, project_id)
+    preset = await get_active_image_preset(db)
+    preset_style = preset.master_prompt if preset else None
+    return _item_to_response(item, project=proj, preset_style=preset_style)
 
 
 @router.post("/items/{item_id}/generate-image", response_model=StoryboardItemResponse)
@@ -350,9 +427,18 @@ async def generate_single_storyboard_image(
     item.updated_at = datetime.utcnow()
     await db.commit()
 
+    proj = await db.get(Project, project_id)
+    resolved_prompt = resolve_prompt_variables(
+        item.image_prompt,
+        characters=getattr(proj, "characters", None) if proj else None,
+        locations=getattr(proj, "locations", None) if proj else None,
+        world_setting=getattr(proj, "world_setting", None) if proj else None,
+        preset_master_prompt=style_prompt,
+    )
+
     try:
         file_path, _ = await generate_single_image(
-            prompt=item.image_prompt,
+            prompt=resolved_prompt,
             project_id=project_id,
             item_id=item_id,
             base_url=base_url,
@@ -367,7 +453,7 @@ async def generate_single_storyboard_image(
         item.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(item)
-        return _item_to_response(item)
+        return _item_to_response(item, project=proj, preset_style=style_prompt)
     except Exception as e:
         log.exception("Failed to generate image for storyboard item %s: %s", item_id, e)
         item.status = "failed"
@@ -432,9 +518,16 @@ async def generate_all_storyboard_images(
             await db.commit()
 
         try:
+            resolved_prompt = resolve_prompt_variables(
+                it.image_prompt,
+                characters=getattr(proj, "characters", None) if proj else None,
+                locations=getattr(proj, "locations", None) if proj else None,
+                world_setting=getattr(proj, "world_setting", None) if proj else None,
+                preset_master_prompt=style_prompt,
+            )
             async with sem:
                 f_path, _ = await generate_single_image(
-                    prompt=it.image_prompt,
+                    prompt=resolved_prompt,
                     project_id=project_id,
                     item_id=it.id,
                     base_url=base_url,

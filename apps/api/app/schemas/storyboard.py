@@ -24,6 +24,7 @@ class StoryboardItemResponse(BaseModel):
     order_index: int
     script_text: str
     image_prompt: str
+    resolved_prompt: Optional[str] = None
     image_url: Optional[str] = None
     motion_effect: str = "zoom_in"
     start_time: float = 0.0
@@ -90,6 +91,12 @@ class YouTubeMetadataUpdateRequest(BaseModel):
 
 class StoryboardCharactersUpdateRequest(BaseModel):
     characters: List[dict]
+
+
+class StoryboardContinuityBibleUpdateRequest(BaseModel):
+    characters: Optional[List[dict]] = None
+    locations: Optional[List[dict]] = None
+    world_setting: Optional[dict] = None
 
 
 class StoryboardSegmentItemUpdate(BaseModel):
