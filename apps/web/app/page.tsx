@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Sparkles,
   Plus,
-  Video,
-  Film,
   Settings as SettingsIcon,
-  Trash2,
-  ArrowRight,
-  Edit3,
-  Image as ImageIcon,
   Palette,
+  Film,
+  Search,
+  RotateCcw,
 } from "lucide-react";
 import {
   useProjects,
@@ -21,33 +18,25 @@ import {
   useUpdateProject,
 } from "@/hooks/useProjects";
 import { Project } from "@/types";
+import { Button, Badge } from "@/components/ui";
 import {
-  Button,
-  Input,
-  Textarea,
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui";
+  ProjectCard,
+  ProjectFilter,
+  ProjectModeFilter,
+  ProjectSortOption,
+  CreateProjectDialog,
+  EditProjectDialog,
+  DeleteProjectDialog,
+} from "@/components/dashboard";
 
 export default function DashboardPage() {
+  // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"short_video" | "long_storyboard">("short_video");
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [resolution, setResolution] = useState("1080p");
   const [language, setLanguage] = useState<"id" | "en">("id");
-  const [modeFilter, setModeFilter] = useState<"all" | "short_video" | "long_storyboard">("all");
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   // Edit Project State
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
@@ -55,22 +44,74 @@ export default function DashboardPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editLanguage, setEditLanguage] = useState<"id" | "en">("id");
 
+  // Delete Project State
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+
+  // Filter & Search states
+  const [modeFilter, setModeFilter] = useState<ProjectModeFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState<ProjectSortOption>("newest");
+
+  // React Query Hooks
   const { data: projects = [], isLoading } = useProjects();
   const createMutation = useCreateProject();
   const deleteMutation = useDeleteProject();
   const updateMutation = useUpdateProject();
 
-  const shortCount = projects.filter((p) => (p.project_type || "short_video") === "short_video").length;
-  const storyboardCount = projects.filter((p) => p.project_type === "long_storyboard").length;
+  // Mode counts
+  const shortCount = useMemo(
+    () => projects.filter((p) => (p.project_type || "short_video") === "short_video").length,
+    [projects]
+  );
+  const storyboardCount = useMemo(
+    () => projects.filter((p) => p.project_type === "long_storyboard").length,
+    [projects]
+  );
 
-  const filteredProjects = projects.filter((p) => {
-    if (modeFilter === "all") return true;
-    return (p.project_type || "short_video") === modeFilter;
-  });
+  // Filtered & Sorted Projects
+  const filteredProjects = useMemo(() => {
+    let result = projects.filter((p) => {
+      // 1. Mode filter
+      if (modeFilter !== "all") {
+        const type = p.project_type || "short_video";
+        if (type !== modeFilter) return false;
+      }
+      // 2. Search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchName = p.name?.toLowerCase().includes(query);
+        const matchDesc = p.description?.toLowerCase().includes(query);
+        if (!matchName && !matchDesc) return false;
+      }
+      return true;
+    });
 
-  const handleOpenCreate = (mode: "short_video" | "long_storyboard") => {
+    // 3. Sorting
+    result.sort((a, b) => {
+      if (sortOption === "name_asc") {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortOption === "name_desc") {
+        return b.name.localeCompare(a.name);
+      }
+      if (sortOption === "oldest") {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeA - timeB;
+      }
+      // Default: newest
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return result;
+  }, [projects, modeFilter, searchQuery, sortOption]);
+
+  const handleOpenCreate = (mode: "short_video" | "long_storyboard" = "short_video") => {
     setCreateMode(mode);
     setAspectRatio(mode === "long_storyboard" ? "16:9" : "9:16");
+    setName("");
     setIsCreateOpen(true);
   };
 
@@ -94,6 +135,13 @@ export default function DashboardPage() {
     );
   };
 
+  const handleOpenEdit = (proj: Project) => {
+    setProjectToEdit(proj);
+    setEditName(proj.name);
+    setEditDescription(proj.description || "");
+    setEditLanguage((proj.language as "id" | "en") || "id");
+  };
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectToEdit || !editName.trim()) return;
@@ -114,6 +162,20 @@ export default function DashboardPage() {
         },
       }
     );
+  };
+
+  const handleDeleteConfirm = () => {
+    if (projectToDelete) {
+      deleteMutation.mutate(projectToDelete.id, {
+        onSuccess: () => setProjectToDelete(null),
+      });
+    }
+  };
+
+  const handleResetFilters = () => {
+    setModeFilter("all");
+    setSearchQuery("");
+    setSortOption("newest");
   };
 
   return (
@@ -140,7 +202,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-3">
             <Link href="/image-studio">
-              <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E] text-violet-300 hover:text-white hover:border-violet-500/50">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs border-[#2E2E2E] text-violet-300 hover:text-white hover:border-violet-500/50"
+              >
                 <Palette className="w-4 h-4 text-violet-400" />
                 <span>Visual Image Studio</span>
               </Button>
@@ -151,6 +217,22 @@ export default function DashboardPage() {
                 <span>Model Settings</span>
               </Button>
             </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area: Project List & Filters Only */}
+      <main className="max-w-8xl mx-auto flex-1 w-full px-6 py-8">
+        {/* Dashboard Title & Quick Action */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Project Saya</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Kelola dan lanjutkan pembuatan video pendek & storyboard Anda
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
             <Button
               onClick={() => handleOpenCreate("short_video")}
               variant="supabase"
@@ -162,579 +244,141 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
-      </header>
 
-      {/* Hero Banner with Dual Mode Visual */}
-      <main className="max-w-8xl mx-auto flex-1 w-full px-6 py-8">
-        <div className="relative p-8 mb-10 overflow-hidden border border-[#2E2E2E] bg-gradient-to-br from-[#1C1C1C] via-[#181818] to-[#141414] shadow-2xl rounded-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#3ECF8E]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Filter & Search Bar */}
+        <ProjectFilter
+          modeFilter={modeFilter}
+          onModeFilterChange={setModeFilter}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          sortOption={sortOption}
+          onSortOptionChange={setSortOption}
+          totalCount={projects.length}
+          shortCount={shortCount}
+          storyboardCount={storyboardCount}
+          filteredCount={filteredProjects.length}
+          onResetFilters={handleResetFilters}
+        />
 
-          <div className="relative z-10 max-w-3xl">
-            <div className="flex items-center gap-2 mb-4">
-              <Badge variant="supabase" className="gap-1.5 px-3 py-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                AI Video Engine Multi-Format
-              </Badge>
-              <span className="text-xs text-muted-foreground font-mono">
-                {projects.length} Total Projects
-              </span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-3">
-              Studio Produksi{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3ECF8E] via-[#34D399] to-[#6EE7B7]">
-                Short Video Viral
-              </span>{" "}
-              &{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-purple-400">
-                Long Storyboard Explainer
-              </span>.
-            </h1>
-
-            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed mb-6">
-              Pilih mode produksi Anda: <strong>Short Video Clipper</strong> untuk auto-cut video YouTube menjadi klip 9:16 vertikal dengan subtitle karaoke viral, atau <strong>Long Storyboard Explainer</strong> untuk generate naskah 4–8 menit, suara TTS, dan ilustrasi sketsa hand-drawn AI 16:9.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={() => handleOpenCreate("short_video")}
-                variant="supabase"
-                size="lg"
-                className="gap-2 font-semibold shadow-lg shadow-[#3ECF8E]/20"
-              >
-                <Film className="w-4 h-4" />
-                <span>Buat Short Video (9:16)</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => handleOpenCreate("long_storyboard")}
-                className="px-5 py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/40 text-violet-200 font-semibold text-sm flex items-center gap-2 transition shadow-lg shadow-violet-500/10"
-              >
-                <ImageIcon className="w-4 h-4 text-violet-400" />
-                <span>Buat Long Storyboard (16:9)</span>
-                <ArrowRight className="w-4 h-4 text-violet-400" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mode Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Project Saya</h2>
-            <p className="text-xs text-muted-foreground">Kelola semua project video dan storyboard Anda</p>
-          </div>
-
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181818] border border-[#2E2E2E]">
-            <button
-              onClick={() => setModeFilter("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${modeFilter === "all"
-                ? "bg-[#2A2A2A] text-white shadow-xs"
-                : "text-muted-foreground hover:text-white"
-                }`}
-            >
-              Semua ({projects.length})
-            </button>
-            <button
-              onClick={() => setModeFilter("short_video")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${modeFilter === "short_video"
-                ? "bg-[#3ECF8E]/20 text-[#3ECF8E] font-semibold border border-[#3ECF8E]/30"
-                : "text-muted-foreground hover:text-white"
-                }`}
-            >
-              <Film className="w-3.5 h-3.5" />
-              <span>Short Video (9:16) ({shortCount})</span>
-            </button>
-            <button
-              onClick={() => setModeFilter("long_storyboard")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${modeFilter === "long_storyboard"
-                ? "bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30"
-                : "text-muted-foreground hover:text-white"
-                }`}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>Storyboard (16:9) ({storyboardCount})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Projects Grid */}
+        {/* Projects Grid or States */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="h-48 rounded-xl bg-[#1C1C1C] animate-pulse border border-[#2E2E2E]" />
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div
+                key={n}
+                className="h-44 rounded-xl bg-[#1C1C1C] animate-pulse border border-[#2E2E2E]"
+              />
             ))}
           </div>
         ) : filteredProjects.length === 0 ? (
-          <Card className="p-12 text-center border-dashed border-2 border-[#2E2E2E] bg-[#181818]/50">
-            {modeFilter === "long_storyboard" ? (
-              <ImageIcon className="w-12 h-12 text-violet-400/60 mx-auto mb-3" />
-            ) : (
-              <Film className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            )}
-            <h3 className="text-base font-semibold text-white mb-1">
-              {modeFilter === "all"
-                ? "Belum Ada Project"
-                : modeFilter === "long_storyboard"
-                  ? "Belum Ada Project Long Storyboard"
-                  : "Belum Ada Project Short Video"}
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
-              {modeFilter === "long_storyboard"
-                ? "Mulai buat naskah narasi 4–8 menit dan ilustrasi hand-drawn AI untuk video dokumenter Anda."
-                : "Mulai buat short video pertama Anda dengan mengunggah video atau menempel link YouTube."}
-            </p>
-            <div className="flex justify-center gap-3">
+          projects.length === 0 ? (
+            /* Empty State when zero total projects exist */
+            <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border-2 border-dashed border-[#2E2E2E] bg-[#181818]/40">
+              <div className="w-14 h-14 rounded-2xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-4 shadow-inner">
+                <Film className="w-7 h-7 text-[#3ECF8E]" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-1.5">Belum Ada Project</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
+                Mulai buat video pendek TikTok/Reels dari YouTube atau susun naskah storyboard explainer dengan ilustrasi AI.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  onClick={() => handleOpenCreate("short_video")}
+                  variant="supabase"
+                  size="sm"
+                  className="gap-2 font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Buat Short Video (9:16)</span>
+                </Button>
+                <Button
+                  onClick={() => handleOpenCreate("long_storyboard")}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-violet-500/40 text-violet-300 hover:text-white hover:bg-violet-600/20 font-medium"
+                >
+                  <Plus className="w-4 h-4 text-violet-400" />
+                  <span>Buat Long Storyboard (16:9)</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Empty State when filters/search yield no matches */
+            <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border-2 border-dashed border-[#2E2E2E] bg-[#181818]/40">
+              <div className="w-12 h-12 rounded-xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-3.5">
+                <Search className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-1">
+                Tidak ada project yang sesuai
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-sm mb-5 leading-relaxed">
+                Tidak ditemukan project yang cocok dengan filter atau kata kunci pencarian Anda.
+              </p>
               <Button
-                onClick={() => handleOpenCreate(modeFilter === "long_storyboard" ? "long_storyboard" : "short_video")}
-                variant="supabase"
+                onClick={handleResetFilters}
+                variant="outline"
                 size="sm"
+                className="gap-2 text-xs border-[#2E2E2E]"
               >
-                {modeFilter === "long_storyboard" ? "Buat Long Storyboard" : "Buat Short Video"}
+                <RotateCcw className="w-3.5 h-3.5 text-[#3ECF8E]" />
+                <span>Reset Semua Filter</span>
               </Button>
             </div>
-          </Card>
+          )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((proj) => {
-              const isStoryboard = proj.project_type === "long_storyboard";
-              return (
-                <Card
-                  key={proj.id}
-                  className={`group relative border-[#2E2E2E] bg-[#181818] transition-all duration-200 flex flex-col justify-between hover:bg-[#1C1C1C] hover:shadow-xl ${isStoryboard
-                    ? "hover:border-violet-500/50 hover:shadow-violet-500/5"
-                    : "hover:border-[#3ECF8E]/50 hover:shadow-[#3ECF8E]/5"
-                    }`}
-                >
-                  <CardHeader className="p-5 pb-3">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {isStoryboard ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/30">
-                            <ImageIcon className="w-3 h-3 text-violet-400" />
-                            Storyboard • 16:9 • {proj.resolution}
-                          </span>
-                        ) : (
-                          <Badge variant="supabase" className="font-mono text-[11px]">
-                            {proj.aspect_ratio} • {proj.resolution}
-                          </Badge>
-                        )}
-                        {proj.language === "en" ? (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1 font-semibold">
-                            🇬🇧 EN
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-semibold">
-                            🇮🇩 ID
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setProjectToEdit(proj);
-                            setEditName(proj.name);
-                            setEditDescription(proj.description || "");
-                            setEditLanguage((proj.language as "id" | "en") || "id");
-                          }}
-                          className="text-muted-foreground hover:text-white hover:bg-white/5"
-                          title="Edit Nama Project"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setProjectToDelete(proj);
-                          }}
-                          className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
-                          title="Hapus Project"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Link href={`/projects/${proj.id}`}>
-                      <CardTitle
-                        className={`text-base font-bold text-white transition ${isStoryboard ? "group-hover:text-violet-400" : "group-hover:text-[#3ECF8E]"
-                          }`}
-                      >
-                        {proj.name}
-                      </CardTitle>
-                    </Link>
-                    {proj.description && (
-                      <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                        {proj.description}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-
-                  <CardFooter className="p-5 pt-3 border-t border-[#2E2E2E]/60 flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      {isStoryboard ? (
-                        <>
-                          <span className="flex items-center gap-1 text-violet-300">
-                            <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
-                            {proj.storyboard_count || 0} Ilustrasi
-                          </span>
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Film className="w-3.5 h-3.5" />
-                            Long Video
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex items-center gap-1">
-                            <Video className="w-3.5 h-3.5 text-muted-foreground" />
-                            {proj.source_video_count || 0} Media
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Film className="w-3.5 h-3.5 text-muted-foreground" />
-                            {proj.scene_count || 0} Scene
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    <Link
-                      href={`/projects/${proj.id}`}
-                      className={`flex items-center gap-1 font-medium group-hover:translate-x-0.5 transition ${isStoryboard ? "text-violet-400" : "text-[#3ECF8E]"
-                        }`}
-                    >
-                      <span>{isStoryboard ? "Storyboard Studio" : "Clip Studio"}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </CardFooter>
-                </Card>
-              );
-            })}
+            {filteredProjects.map((proj) => (
+              <ProjectCard
+                key={proj.id}
+                project={proj}
+                onEdit={handleOpenEdit}
+                onDelete={setProjectToDelete}
+              />
+            ))}
           </div>
         )}
       </main>
 
-      {/* Dialog: New Project with Mode Selection Cards */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Buat Project Baru</DialogTitle>
-            <DialogDescription>
-              Pilih mode pembuatan video yang ingin Anda produksi.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
-            {/* Mode Selection Cards */}
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-2">
-                Pilih Mode Project
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Card 1: Short Video */}
-                <div
-                  onClick={() => {
-                    setCreateMode("short_video");
-                    setAspectRatio("9:16");
-                  }}
-                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${createMode === "short_video"
-                    ? "border-[#3ECF8E] bg-[#3ECF8E]/5 ring-1 ring-[#3ECF8E]/30"
-                    : "border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/40"
-                    }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#3ECF8E]/10 flex items-center justify-center text-[#3ECF8E]">
-                        <Film className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#3ECF8E]/10 text-[#3ECF8E] font-semibold">
-                        9:16 Vertikal
-                      </span>
-                    </div>
-                    <h4 className="text-xs font-bold text-white mb-1">Short Video Clipper</h4>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Potong video panjang jadi klip TikTok/Reels viral dengan Scene AI & subtitle karaoke.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Card 2: Long Storyboard */}
-                <div
-                  onClick={() => {
-                    setCreateMode("long_storyboard");
-                    setAspectRatio("16:9");
-                  }}
-                  className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${createMode === "long_storyboard"
-                    ? "border-violet-500 bg-violet-500/5 ring-1 ring-violet-500/30"
-                    : "border-[#2E2E2E] bg-[#181818] hover:border-violet-500/40"
-                    }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
-                        <ImageIcon className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 font-semibold">
-                        16:9 Landscape
-                      </span>
-                    </div>
-                    <h4 className="text-xs font-bold text-white mb-1">Long Storyboard Explainer</h4>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Generate naskah 4–8 menit, suara TTS, dan ilustrasi sketsa hand-drawn AI per segmen.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Nama Project
-              </label>
-              <Input
-                type="text"
-                required
-                placeholder={
-                  createMode === "long_storyboard"
-                    ? "Mis. Misteri Segitiga Bermuda dan Dimensi Waktu"
-                    : "Mis. Fakta Menakjubkan Lautan Dalam"
-                }
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Aspect Ratio
-                </label>
-                <select
-                  value={aspectRatio}
-                  onChange={(e) => setAspectRatio(e.target.value)}
-                  className="w-full h-9 px-3 py-1 bg-[#181818] rounded-md border border-[#2E2E2E] text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                >
-                  <option value="9:16">9:16 (TikTok/Reels/Shorts)</option>
-                  <option value="16:9">16:9 (Landscape YouTube)</option>
-                  <option value="1:1">1:1 (Square Feed)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Resolusi
-                </label>
-                <select
-                  value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  className="w-full h-9 px-3 py-1 bg-[#181818] rounded-md border border-[#2E2E2E] text-foreground text-sm focus:outline-none focus:border-primary"
-                >
-                  <option value="1080p">1080p (Full HD)</option>
-                  <option value="720p">720p (Fast Render)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Bahasa Naskah & Narasi
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLanguage("id")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    language === "id"
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10"
-                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
-                  }`}
-                >
-                  <span className="text-base">🇮🇩</span>
-                  <span>Indonesia (ID)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage("en")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    language === "en"
-                      ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10"
-                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
-                  }`}
-                >
-                  <span className="text-base">🇬🇧</span>
-                  <span>English (EN)</span>
-                </button>
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCreateOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                variant="supabase"
-                size="sm"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? "Membuat..." : "Buat Project"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog: Create Project */}
+      <CreateProjectDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        createMode={createMode}
+        setCreateMode={setCreateMode}
+        name={name}
+        setName={setName}
+        aspectRatio={aspectRatio}
+        setAspectRatio={setAspectRatio}
+        resolution={resolution}
+        setResolution={setResolution}
+        language={language}
+        setLanguage={setLanguage}
+        onSubmit={handleCreate}
+        isPending={createMutation.isPending}
+      />
 
       {/* Dialog: Edit Project */}
-      <Dialog open={!!projectToEdit} onOpenChange={(open) => !open && setProjectToEdit(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Edit3 className="w-5 h-5 text-[#3ECF8E]" />
-              <DialogTitle>Edit Nama Project</DialogTitle>
-            </div>
-            <DialogDescription>
-              Ubah nama, deskripsi, atau bahasa utama project video Anda.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Nama Project
-              </label>
-              <Input
-                type="text"
-                required
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Deskripsi (Opsional)
-              </label>
-              <Textarea
-                rows={3}
-                placeholder="Catatan tambahan untuk project ini..."
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Bahasa Utama Project
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditLanguage("id")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    editLanguage === "id"
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10"
-                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
-                  }`}
-                >
-                  <span className="text-base">🇮🇩</span>
-                  <span>Indonesia (ID)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditLanguage("en")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    editLanguage === "en"
-                      ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10"
-                      : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
-                  }`}
-                >
-                  <span className="text-base">🇬🇧</span>
-                  <span>English (EN)</span>
-                </button>
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setProjectToEdit(null)}
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                variant="supabase"
-                size="sm"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditProjectDialog
+        open={!!projectToEdit}
+        onOpenChange={(open) => !open && setProjectToEdit(null)}
+        name={editName}
+        setName={setEditName}
+        description={editDescription}
+        setDescription={setEditDescription}
+        language={editLanguage}
+        setLanguage={setEditLanguage}
+        onSubmit={handleEditSubmit}
+        isPending={updateMutation.isPending}
+      />
 
       {/* Dialog: Delete Confirmation */}
-      <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
-                <Trash2 className="w-4 h-4" />
-              </div>
-              <DialogTitle>Hapus Project</DialogTitle>
-            </div>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus project{" "}
-              <strong className="text-white font-medium">{projectToDelete?.name}</strong>?
-              Semua data media, naskah, timeline, dan hasil render akan dihapus permanen.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setProjectToDelete(null)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (projectToDelete) {
-                  deleteMutation.mutate(projectToDelete.id, {
-                    onSuccess: () => setProjectToDelete(null),
-                  });
-                }
-              }}
-            >
-              {deleteMutation.isPending ? "Menghapus..." : "Hapus Project"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteProjectDialog
+        project={projectToDelete}
+        open={!!projectToDelete}
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }
