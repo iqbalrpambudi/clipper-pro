@@ -11,6 +11,7 @@ export type StudioTab =
   | "storyboard_voice"
   | "storyboard_images"
   | "storyboard_timeline"
+  | "storyboard_watermark"
   | "storyboard_render"
   | "storyboard_youtube";
 
@@ -62,11 +63,52 @@ interface StudioState {
   activeTask: TaskEvent | null;
   setActiveTask: (task: TaskEvent | null, projectId?: string) => void;
 
+  // Tab Drafts Persistence Across Tab Switches
+  voiceDraftsByProject: Record<string, VoiceDraftState>;
+  setVoiceDraft: (projectId: string, draft: Partial<VoiceDraftState>) => void;
+  getVoiceDraft: (projectId: string) => VoiceDraftState | undefined;
+
+  scriptDraftsByProject: Record<string, ScriptDraftState>;
+  setScriptDraft: (projectId: string, draft: Partial<ScriptDraftState>) => void;
+  getScriptDraft: (projectId: string) => ScriptDraftState | undefined;
+
+  subtitleDraftsByProject: Record<string, SubtitleDraftState>;
+  setSubtitleDraft: (projectId: string, draft: Partial<SubtitleDraftState>) => void;
+  getSubtitleDraft: (projectId: string) => SubtitleDraftState | undefined;
+
   toast: { message: string; type: "success" | "error" | "info" } | null;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   hideToast: () => void;
 }
 
+export interface VoiceDraftState {
+  provider?: string;
+  voice?: string;
+  geminiModel?: string;
+  elevenlabsModel?: string;
+  runwareModel?: string;
+  rate?: number | string;
+  pitch?: number | string;
+  fallbackEnabled?: boolean;
+  customVoiceInput?: string;
+  runwareCustomVoiceInput?: string;
+  selectedVoicePresetId?: string;
+}
+
+export interface ScriptDraftState {
+  durationMins?: number;
+  tone?: string;
+  selectedPresetId?: string;
+  selectedScriptPresetId?: string;
+  imagesPerSegment?: number;
+  customInstructions?: string;
+  topic?: string;
+}
+
+export interface SubtitleDraftState {
+  style?: any;
+  selectedPresetId?: string;
+}
 
 export const useStudioStore = create<StudioState>((set, get) => ({
   activeTab: "media",
@@ -119,6 +161,45 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         activeTask: state.currentProjectId === targetProjectId ? task : state.activeTask,
       };
     });
+  },
+
+  voiceDraftsByProject: {},
+  setVoiceDraft: (projectId, draft) => {
+    set((state) => ({
+      voiceDraftsByProject: {
+        ...state.voiceDraftsByProject,
+        [projectId]: { ...(state.voiceDraftsByProject[projectId] || {}), ...draft },
+      },
+    }));
+  },
+  getVoiceDraft: (projectId) => {
+    return get().voiceDraftsByProject[projectId];
+  },
+
+  scriptDraftsByProject: {},
+  setScriptDraft: (projectId, draft) => {
+    set((state) => ({
+      scriptDraftsByProject: {
+        ...state.scriptDraftsByProject,
+        [projectId]: { ...(state.scriptDraftsByProject[projectId] || {}), ...draft },
+      },
+    }));
+  },
+  getScriptDraft: (projectId) => {
+    return get().scriptDraftsByProject[projectId];
+  },
+
+  subtitleDraftsByProject: {},
+  setSubtitleDraft: (projectId, draft) => {
+    set((state) => ({
+      subtitleDraftsByProject: {
+        ...state.subtitleDraftsByProject,
+        [projectId]: { ...(state.subtitleDraftsByProject[projectId] || {}), ...draft },
+      },
+    }));
+  },
+  getSubtitleDraft: (projectId) => {
+    return get().subtitleDraftsByProject[projectId];
   },
 
   toast: null,

@@ -25,6 +25,7 @@ import {
   Compass,
   RefreshCw,
   MoreVertical,
+  Copy,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -57,7 +58,8 @@ interface StoryboardScriptTabProps {
 
 export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const queryClient = useQueryClient();
-  const { setActiveTab, showToast } = useStudioStore();
+  const { setActiveTab, showToast, scriptDraftsByProject, setScriptDraft } = useStudioStore();
+  const draft = scriptDraftsByProject[project.id];
 
   const { data: presets = [] } = useQuery({
     queryKey: ["image-presets"],
@@ -65,22 +67,28 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   });
 
   const activePreset = presets.find((p) => p.is_active) || presets[0];
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(draft?.selectedPresetId || "");
 
   useEffect(() => {
-    if (activePreset && !selectedPresetId) {
+    if (activePreset && !selectedPresetId && !draft?.selectedPresetId) {
       setSelectedPresetId(activePreset.id);
     }
-  }, [activePreset, selectedPresetId]);
+  }, [activePreset, selectedPresetId, draft?.selectedPresetId]);
 
-  const [topic, setTopic] = useState(project.narration?.topic || project.name || "");
-  const [durationMins, setDurationMins] = useState<number>(
-    project.narration?.target_duration ? Math.round(project.narration.target_duration / 60) : 5
+  const [topic, setTopic] = useState<string>(
+    draft?.topic !== undefined
+      ? draft.topic
+      : (project.narration?.topic || project.name || "")
   );
-  const [tone, setTone] = useState(project.narration?.tone || "santai");
+  const [durationMins, setDurationMins] = useState<number>(
+    draft?.durationMins !== undefined
+      ? draft.durationMins
+      : (project.narration?.target_duration ? Math.round(project.narration.target_duration / 60) : 5)
+  );
+  const [tone, setTone] = useState<string>(draft?.tone || project.narration?.tone || "santai");
   const [language, setLanguage] = useState<string>(project.narration?.language || project.language || "id");
-  const [imagesPerSegment, setImagesPerSegment] = useState<number>(2);
-  const [customInstructions, setCustomInstructions] = useState("");
+  const [imagesPerSegment, setImagesPerSegment] = useState<number>(draft?.imagesPerSegment ?? 2);
+  const [customInstructions, setCustomInstructions] = useState<string>(draft?.customInstructions || "");
 
   const handleLanguageSelect = (newLang: string) => {
     setLanguage(newLang);
@@ -101,9 +109,32 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
   // Script & Narration Presets
   const [scriptPresets, setScriptPresets] = useState<ScriptPreset[]>([]);
-  const [selectedScriptPresetId, setSelectedScriptPresetId] = useState<string>("");
+  const [selectedScriptPresetId, setSelectedScriptPresetId] = useState<string>(draft?.selectedScriptPresetId || "");
   const [showSaveScriptModal, setShowSaveScriptModal] = useState<boolean>(false);
   const [newScriptPresetName, setNewScriptPresetName] = useState<string>("");
+
+  // Sync script draft across tab switches
+  useEffect(() => {
+    setScriptDraft(project.id, {
+      topic,
+      durationMins,
+      tone,
+      selectedPresetId,
+      selectedScriptPresetId,
+      imagesPerSegment,
+      customInstructions,
+    });
+  }, [
+    project.id,
+    topic,
+    durationMins,
+    tone,
+    selectedPresetId,
+    selectedScriptPresetId,
+    imagesPerSegment,
+    customInstructions,
+    setScriptDraft,
+  ]);
 
   useEffect(() => {
     setScriptPresets(presetStorage.getScriptPresets());
@@ -297,6 +328,41 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const segments: any[] = narration?.segments || [];
   const items: StoryboardItem[] = project.storyboard_items || [];
 
+  // Narration Copy state & handlers
+  const [hasCopiedNarration, setHasCopiedNarration] = useState(false);
+  const [copiedSegmentId, setCopiedSegmentId] = useState<string | null>(null);
+
+  const handleCopyAllNarration = () => {
+    let fullText = "";
+    if (segments && segments.length > 0) {
+      fullText = segments
+        .map((s: any) => (s.text || "").trim())
+        .filter(Boolean)
+        .join("\n\n");
+    }
+    if (!fullText && narration?.raw_text) {
+      fullText = narration.raw_text.trim();
+    }
+
+    if (!fullText) {
+      showToast("Belum ada teks narasi untuk disalin", "info");
+      return;
+    }
+
+    navigator.clipboard.writeText(fullText);
+    setHasCopiedNarration(true);
+    setTimeout(() => setHasCopiedNarration(false), 2500);
+    showToast("Seluruh teks narasi berhasil disalin ke clipboard!", "success");
+  };
+
+  const handleCopySegment = (segText: string, segKey: string) => {
+    if (!segText) return;
+    navigator.clipboard.writeText(segText);
+    setCopiedSegmentId(segKey);
+    setTimeout(() => setCopiedSegmentId(null), 2000);
+    showToast("Teks segmen narasi berhasil disalin!", "success");
+  };
+
   // Segment Inline Editing State
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingSegmentIndex, setEditingSegmentIndex] = useState<number | null>(null);
@@ -482,13 +548,30 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         </div>
 
         {segments.length > 0 && (
-          <Button
-            onClick={() => setActiveTab("storyboard_voice")}
-            className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
-          >
-            <span>Lanjut ke Suara & Sync</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyAllNarration}
+              className="h-9 text-xs font-semibold gap-1.5 border-[#333] bg-[#202020] hover:bg-[#2A2A2A] text-slate-200 hover:text-white transition shadow-sm"
+              title="Salin seluruh teks narasi ke clipboard"
+            >
+              {hasCopiedNarration ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-violet-400" />
+              )}
+              <span>{hasCopiedNarration ? "Tersalin!" : "Salin Semua Narasi"}</span>
+            </Button>
+
+            <Button
+              onClick={() => setActiveTab("storyboard_voice")}
+              className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
+            >
+              <span>Lanjut ke Suara & Sync</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         )}
       </div>
 
@@ -813,9 +896,25 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   Ringkasan Metrik Video
                 </h4>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {segments.length > 0 ? "Hasil Riil Naskah" : "Target Estimasi"}
-              </span>
+              {segments.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleCopyAllNarration}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-[#222] hover:bg-[#2B2B2B] border border-[#333] transition"
+                  title="Salin seluruh teks narasi ke clipboard"
+                >
+                  {hasCopiedNarration ? (
+                    <Check className="w-3 h-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3 h-3 text-violet-400" />
+                  )}
+                  <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
+                </button>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Target Estimasi
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-[#131313] border border-[#262626]">
@@ -1478,7 +1577,22 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyAllNarration}
+                  className="h-8 text-xs font-semibold gap-1.5 border-[#333] bg-[#222] hover:bg-[#2A2A2A] text-slate-200 hover:text-white transition shadow-sm"
+                  title="Salin seluruh teks naskah narasi ke clipboard"
+                >
+                  {hasCopiedNarration ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-violet-400" />
+                  )}
+                  <span>{hasCopiedNarration ? "Tersalin!" : "Salin Semua Narasi"}</span>
+                </Button>
+
                 <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
                   {items.length} Prompt Gambar Siap
                 </span>
@@ -1537,15 +1651,32 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                           {segItems.length} Ilustrasi Gambar
                         </span>
                         {!isEditing ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStartEditSegment(seg, idx, segItems)}
-                            className="h-7 px-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/10 gap-1.5"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-violet-400" />
-                            <span>Edit Segmen</span>
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopySegment(seg.text || "", segId)}
+                              className="h-7 px-2 text-xs text-slate-400 hover:text-white hover:bg-white/10 gap-1"
+                              title="Salin teks segmen ini"
+                            >
+                              {copiedSegmentId === segId ? (
+                                <Check className="w-3 h-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-slate-400" />
+                              )}
+                              <span className="text-[11px]">{copiedSegmentId === segId ? "Tersalin" : "Salin"}</span>
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleStartEditSegment(seg, idx, segItems)}
+                              className="h-7 px-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/10 gap-1.5"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-violet-400" />
+                              <span>Edit Segmen</span>
+                            </Button>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <Button

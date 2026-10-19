@@ -180,10 +180,71 @@ def _build_watermark_filter(
     video_w: int,
     video_h: int,
 ) -> Optional[str]:
-    """Build an FFmpeg drawtext filter string for watermark overlay."""
+    """Build an FFmpeg drawtext or movie overlay filter string for watermark overlay."""
     if not watermark or not watermark.get("enabled"):
         return None
 
+    wm_type = str(watermark.get("watermark_type") or "text").strip().lower()
+    scale = video_w / 1080.0
+    base_ox = float(watermark.get("offset_x", 30) or 30)
+    base_oy = float(watermark.get("offset_y", 30) or 30)
+    ox = max(4, int(round(base_ox * scale)))
+    oy = max(4, int(round(base_oy * scale)))
+    opacity = float(watermark.get("opacity", 0.85) if watermark.get("opacity") is not None else 0.85)
+    opacity = max(0.05, min(1.0, opacity))
+
+    pos = str(watermark.get("position") or "bottom-right").lower().replace(" ", "-")
+    custom_x = float(watermark.get("custom_x", 50) if watermark.get("custom_x") is not None else 50)
+    custom_y = float(watermark.get("custom_y", 50) if watermark.get("custom_y") is not None else 50)
+    custom_x = max(0.0, min(100.0, custom_x))
+    custom_y = max(0.0, min(100.0, custom_y))
+    cx_ratio = custom_x / 100.0
+    cy_ratio = custom_y / 100.0
+
+    # Image Watermark
+    if wm_type == "image" or (not str(watermark.get("text") or "").strip() and (watermark.get("image_path") or watermark.get("image_url"))):
+        from app.core.storage import storage
+        img_file: Optional[Path] = None
+        if watermark.get("image_path"):
+            p = Path(watermark["image_path"])
+            if p.exists():
+                img_file = p
+        if not img_file and watermark.get("image_url"):
+            p = storage.to_absolute_path(watermark["image_url"])
+            if p and p.exists():
+                img_file = p
+
+        if not img_file:
+            return None
+
+        esc_img_path = _escape_filter_path(str(img_file))
+        base_w = float(watermark.get("image_width", 160) or 160)
+        scaled_w = max(20, int(round(base_w * scale)))
+
+        if pos == "top-left":
+            pos_expr = f"{ox}:{oy}"
+        elif pos == "top-center":
+            pos_expr = f"(main_w-overlay_w)/2:{oy}"
+        elif pos == "top-right":
+            pos_expr = f"main_w-overlay_w-{ox}:{oy}"
+        elif pos == "center-left":
+            pos_expr = f"{ox}:(main_h-overlay_h)/2"
+        elif pos == "center":
+            pos_expr = f"(main_w-overlay_w)/2:(main_h-overlay_h)/2"
+        elif pos == "center-right":
+            pos_expr = f"main_w-overlay_w-{ox}:(main_h-overlay_h)/2"
+        elif pos == "bottom-left":
+            pos_expr = f"{ox}:main_h-overlay_h-{oy}"
+        elif pos == "bottom-center":
+            pos_expr = f"(main_w-overlay_w)/2:main_h-overlay_h-{oy}"
+        elif pos == "custom":
+            pos_expr = f"({cx_ratio:.4f})*(main_w-overlay_w):({cy_ratio:.4f})*(main_h-overlay_h)"
+        else:  # default bottom-right
+            pos_expr = f"main_w-overlay_w-{ox}:main_h-overlay_h-{oy}"
+
+        return f"movie='{esc_img_path}',scale={scaled_w}:-1,format=rgba,colorchannelmixer=aa={opacity:.2f}[wm];[in][wm]overlay={pos_expr}"
+
+    # Text Watermark
     text = str(watermark.get("text") or "").strip()
     if not text:
         return None
@@ -217,37 +278,34 @@ def _build_watermark_filter(
     esc_font_path = _escape_filter_path(str(font_path))
 
     # Scale font size and offsets relative to baseline width 1080
-    scale = video_w / 1080.0
     base_font_size = float(watermark.get("font_size", 36) or 36)
     font_size = max(12, int(round(base_font_size * scale)))
-
-    base_ox = float(watermark.get("offset_x", 30) or 30)
-    base_oy = float(watermark.get("offset_y", 30) or 30)
-    ox = max(4, int(round(base_ox * scale)))
-    oy = max(4, int(round(base_oy * scale)))
 
     # Color & opacity
     color_hex = str(watermark.get("font_color") or "#FFFFFF").strip().lstrip("#")
     if len(color_hex) != 6:
         color_hex = "FFFFFF"
-    opacity = float(watermark.get("opacity", 0.85) if watermark.get("opacity") is not None else 0.85)
-    opacity = max(0.05, min(1.0, opacity))
     font_color_arg = f"0x{color_hex}@{opacity:.2f}"
 
     # Positioning expressions
-    pos = str(watermark.get("position") or "bottom-right").lower().replace(" ", "-")
     if pos == "top-left":
         pos_expr = f"x={ox}:y={oy}"
     elif pos == "top-center":
         pos_expr = f"x=(w-text_w)/2:y={oy}"
     elif pos == "top-right":
         pos_expr = f"x=w-text_w-{ox}:y={oy}"
+    elif pos == "center-left":
+        pos_expr = f"x={ox}:y=(h-text_h)/2"
     elif pos == "center":
         pos_expr = f"x=(w-text_w)/2:y=(h-text_h)/2"
+    elif pos == "center-right":
+        pos_expr = f"x=w-text_w-{ox}:y=(h-text_h)/2"
     elif pos == "bottom-left":
         pos_expr = f"x={ox}:y=h-text_h-{oy}"
     elif pos == "bottom-center":
         pos_expr = f"x=(w-text_w)/2:y=h-text_h-{oy}"
+    elif pos == "custom":
+        pos_expr = f"x=({cx_ratio:.4f})*(w-text_w):y=({cy_ratio:.4f})*(h-text_h)"
     else:  # default bottom-right
         pos_expr = f"x=w-text_w-{ox}:y=h-text_h-{oy}"
 

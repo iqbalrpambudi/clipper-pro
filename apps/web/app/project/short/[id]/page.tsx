@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect } from "react";
+import React, { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +40,15 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
     tasksByProject,
   } = useStudioStore();
   const updateProjectMutation = useUpdateProject();
+
+  // Reset activeTab to initial Tab 1 whenever project opens or switches
+  const lastMountedProjectIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastMountedProjectIdRef.current !== id) {
+      lastMountedProjectIdRef.current = id;
+      setActiveTab("media");
+    }
+  }, [id, setActiveTab]);
 
   // Scope active project ID in store
   useEffect(() => {

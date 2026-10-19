@@ -585,6 +585,43 @@ def test_watermark_filter_builder(tmp_path):
     wm_disabled = WatermarkSchema(enabled=False, text="hello").model_dump()
     assert _build_watermark_filter(wm_disabled, tmp_path, 1080, 1920) is None
 
+    # Test custom image watermark
+    fake_img = tmp_path / "logo.png"
+    fake_img.write_bytes(b"\x89PNG\r\n\x1a\nfakecontent")
+    wm_img = WatermarkSchema(
+        enabled=True,
+        watermark_type="image",
+        image_path=str(fake_img),
+        image_width=200,
+        opacity=0.75,
+        position="top-left",
+        offset_x=25,
+        offset_y=25,
+    ).model_dump()
+    img_filter_str = _build_watermark_filter(wm_img, tmp_path, video_w=1920, video_h=1080)
+    # Test center-left, center-right, and custom drag position
+    wm_custom = WatermarkSchema(
+        enabled=True,
+        text="Custom Pos",
+        position="custom",
+        custom_x=42.5,
+        custom_y=30.0,
+    ).model_dump()
+    custom_filter = _build_watermark_filter(wm_custom, tmp_path, 1920, 1080)
+    assert custom_filter is not None
+    assert "0.4250" in custom_filter
+    assert "0.3000" in custom_filter
+
+    wm_cl = WatermarkSchema(
+        enabled=True,
+        text="Center Left",
+        position="center-left",
+    ).model_dump()
+    cl_filter = _build_watermark_filter(wm_cl, tmp_path, 1920, 1080)
+    assert cl_filter is not None
+    assert "(h-text_h)/2" in cl_filter
+
+
 
 @pytest.mark.asyncio
 async def test_project_watermark_update():
@@ -1297,96 +1334,100 @@ async def test_update_storyboard_segment_no_index_collision():
             await db_session.commit()
             await db_session.refresh(proj)
 
-            # 10 segments: 9 from chapter 1 (seg-1_1 .. seg-1_9), 10th is seg-2 from chapter 2
-            segments = [
-                {"id": f"seg-1_{i+1}", "chapter": "Babak 1", "text": f"Text babak 1 scene {i+1}"}
-                for i in range(9)
-            ]
-            segments.append({
-                "id": "seg-2",
-                "chapter": "Babak 2",
-                "text": "Text babak 2 scene 1 with bamboo",
-            })
+        try:
+            async with SessionLocal() as db_session:
+                # 10 segments: 9 from chapter 1 (seg-1_1 .. seg-1_9), 10th is seg-2 from chapter 2
+                segments = [
+                    {"id": f"seg-1_{i+1}", "chapter": "Babak 1", "text": f"Text babak 1 scene {i+1}"}
+                    for i in range(9)
+                ]
+                segments.append({
+                    "id": "seg-2",
+                    "chapter": "Babak 2",
+                    "text": "Text babak 2 scene 1 with bamboo",
+                })
 
-            narration = Narration(
-                project_id=proj.id,
-                topic="Test Collision",
-                tone="edukatif",
-                target_duration=60,
-                raw_text="\n\n".join(s["text"] for s in segments),
-                segments=segments,
-                status="completed",
-            )
-            db_session.add(narration)
+                narration = Narration(
+                    project_id=proj.id,
+                    topic="Test Collision",
+                    tone="edukatif",
+                    target_duration=60,
+                    raw_text="\n\n".join(s["text"] for s in segments),
+                    segments=segments,
+                    status="completed",
+                )
+                db_session.add(narration)
 
-            # Storyboard items for seg-1_2 and seg-2
-            item_seg_1_2 = StoryboardItem(
-                project_id=proj.id,
-                order_index=1,
-                segment_id="seg-1_2",
-                chapter_title="Babak 1",
-                script_text="Text babak 1 scene 2",
-                image_prompt="Prompt for scene 2",
-                motion_effect="zoom_in",
-            )
-            item_seg_2 = StoryboardItem(
-                project_id=proj.id,
-                order_index=9,
-                segment_id="seg-2",
-                chapter_title="Babak 2",
-                script_text="Text babak 2 scene 1 with bamboo",
-                image_prompt="Prompt for scene 10",
-                motion_effect="pan_left",
-            )
-            db_session.add_all([item_seg_1_2, item_seg_2])
-            await db_session.commit()
+                # Storyboard items for seg-1_2 and seg-2
+                item_seg_1_2 = StoryboardItem(
+                    project_id=proj.id,
+                    order_index=1,
+                    segment_id="seg-1_2",
+                    chapter_title="Babak 1",
+                    script_text="Text babak 1 scene 2",
+                    image_prompt="Prompt for scene 2",
+                    motion_effect="zoom_in",
+                )
+                item_seg_2 = StoryboardItem(
+                    project_id=proj.id,
+                    order_index=9,
+                    segment_id="seg-2",
+                    chapter_title="Babak 2",
+                    script_text="Text babak 2 scene 1 with bamboo",
+                    image_prompt="Prompt for scene 10",
+                    motion_effect="pan_left",
+                )
+                db_session.add_all([item_seg_1_2, item_seg_2])
+                await db_session.commit()
 
-            # 1. Update segment 10 (id: 'seg-2') with segment_index=9
-            res = await client.put(
-                f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
-                json={
-                    "chapter": "Babak 2: Revisi",
-                    "text": "Text babak 2 scene 1 with bambu",
-                    "segment_index": 9,
-                },
-            )
-            assert res.status_code == 200, res.text
-            data = res.json()
-            assert data["success"] is True
+                # 1. Update segment 10 (id: 'seg-2') with segment_index=9
+                res = await client.put(
+                    f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
+                    json={
+                        "chapter": "Babak 2: Revisi",
+                        "text": "Text babak 2 scene 1 with bambu",
+                        "segment_index": 9,
+                    },
+                )
+                assert res.status_code == 200, res.text
+                data = res.json()
+                assert data["success"] is True
 
-            # Refresh and verify
-            await db_session.refresh(narration)
-            await db_session.refresh(item_seg_1_2)
-            await db_session.refresh(item_seg_2)
+                # Refresh and verify
+                await db_session.refresh(narration)
+                await db_session.refresh(item_seg_1_2)
+                await db_session.refresh(item_seg_2)
 
-            # Index 9 MUST be updated
-            assert narration.segments[9]["text"] == "Text babak 2 scene 1 with bambu"
-            assert narration.segments[9]["chapter"] == "Babak 2: Revisi"
-            assert item_seg_2.script_text == "Text babak 2 scene 1 with bambu"
-            assert item_seg_2.chapter_title == "Babak 2: Revisi"
+                # Index 9 MUST be updated
+                assert narration.segments[9]["text"] == "Text babak 2 scene 1 with bambu"
+                assert narration.segments[9]["chapter"] == "Babak 2: Revisi"
+                assert item_seg_2.script_text == "Text babak 2 scene 1 with bambu"
+                assert item_seg_2.chapter_title == "Babak 2: Revisi"
 
-            # Index 1 (seg-1_2) MUST NOT be touched
-            assert narration.segments[1]["text"] == "Text babak 1 scene 2"
-            assert narration.segments[1]["chapter"] == "Babak 1"
-            assert item_seg_1_2.script_text == "Text babak 1 scene 2"
-            assert item_seg_1_2.chapter_title == "Babak 1"
+                # Index 1 (seg-1_2) MUST NOT be touched
+                assert narration.segments[1]["text"] == "Text babak 1 scene 2"
+                assert narration.segments[1]["chapter"] == "Babak 1"
+                assert item_seg_1_2.script_text == "Text babak 1 scene 2"
+                assert item_seg_1_2.chapter_title == "Babak 1"
 
-            # 2. Update without segment_index (exact ID match must still pick index 9, NOT index 1)
-            res2 = await client.put(
-                f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
-                json={
-                    "text": "Text babak 2 scene 1 bamboo replaced cleanly",
-                },
-            )
-            assert res2.status_code == 200, res2.text
-            await db_session.refresh(narration)
-            await db_session.refresh(item_seg_1_2)
-            await db_session.refresh(item_seg_2)
+                # 2. Update without segment_index (exact ID match must still pick index 9, NOT index 1)
+                res2 = await client.put(
+                    f"/api/v1/projects/{proj.id}/storyboard/segments/seg-2",
+                    json={
+                        "text": "Text babak 2 scene 1 bamboo replaced cleanly",
+                    },
+                )
+                assert res2.status_code == 200, res2.text
+                await db_session.refresh(narration)
+                await db_session.refresh(item_seg_1_2)
+                await db_session.refresh(item_seg_2)
 
-            assert narration.segments[9]["text"] == "Text babak 2 scene 1 bamboo replaced cleanly"
-            assert item_seg_2.script_text == "Text babak 2 scene 1 bamboo replaced cleanly"
-            assert narration.segments[1]["text"] == "Text babak 1 scene 2"
-            assert item_seg_1_2.script_text == "Text babak 1 scene 2"
+                assert narration.segments[9]["text"] == "Text babak 2 scene 1 bamboo replaced cleanly"
+                assert item_seg_2.script_text == "Text babak 2 scene 1 bamboo replaced cleanly"
+                assert narration.segments[1]["text"] == "Text babak 1 scene 2"
+                assert item_seg_1_2.script_text == "Text babak 1 scene 2"
+        finally:
+            await client.delete(f"/api/v1/projects/{proj.id}")
 
 
 @pytest.mark.asyncio
@@ -1571,59 +1612,62 @@ async def test_continuity_bible_api_endpoints():
             db_session.add(item)
             await db_session.commit()
 
-        # 1. Update continuity bible via PUT endpoint
-        put_res = await client.put(
-            f"/api/v1/projects/{proj.id}/storyboard/continuity-bible",
-            json={
-                "characters": [
-                    {
-                        "id": "malin",
-                        "name": "Malin",
-                        "variants": [
-                            {
-                                "variant_id": "batu",
-                                "label": "Patung Batu",
-                                "visual_anchor": "a cursed granite stone statue frozen in regret",
-                            }
-                        ],
-                    }
-                ],
-                "locations": [
-                    {
-                        "id": "pantai",
-                        "name": "Pantai Karang",
-                        "environment_anchor": "a misty coastline with black volcanic sand",
-                    }
-                ],
-                "world_setting": {
-                    "era": "Pre-colonial Nusantara",
-                    "atmosphere": "Dark stormy skies with lightning",
+        try:
+            # 1. Update continuity bible via PUT endpoint
+            put_res = await client.put(
+                f"/api/v1/projects/{proj.id}/storyboard/continuity-bible",
+                json={
+                    "characters": [
+                        {
+                            "id": "malin",
+                            "name": "Malin",
+                            "variants": [
+                                {
+                                    "variant_id": "batu",
+                                    "label": "Patung Batu",
+                                    "visual_anchor": "a cursed granite stone statue frozen in regret",
+                                }
+                            ],
+                        }
+                    ],
+                    "locations": [
+                        {
+                            "id": "pantai",
+                            "name": "Pantai Karang",
+                            "environment_anchor": "a misty coastline with black volcanic sand",
+                        }
+                    ],
+                    "world_setting": {
+                        "era": "Pre-colonial Nusantara",
+                        "atmosphere": "Dark stormy skies with lightning",
+                    },
                 },
-            },
-        )
-        assert put_res.status_code == 200, put_res.text
-        put_data = put_res.json()
-        assert put_data["success"] is True
-        assert len(put_data["characters"]) == 1
-        assert len(put_data["locations"]) == 1
-        assert put_data["world_setting"]["era"] == "Pre-colonial Nusantara"
+            )
+            assert put_res.status_code == 200, put_res.text
+            put_data = put_res.json()
+            assert put_data["success"] is True
+            assert len(put_data["characters"]) == 1
+            assert len(put_data["locations"]) == 1
+            assert put_data["world_setting"]["era"] == "Pre-colonial Nusantara"
 
-        # 2. Get continuity bible via GET endpoint
-        get_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/continuity-bible")
-        assert get_res.status_code == 200
-        get_data = get_res.json()
-        assert len(get_data["characters"]) == 1
-        assert get_data["characters"][0]["id"] == "malin"
+            # 2. Get continuity bible via GET endpoint
+            get_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/continuity-bible")
+            assert get_res.status_code == 200
+            get_data = get_res.json()
+            assert len(get_data["characters"]) == 1
+            assert get_data["characters"][0]["id"] == "malin"
 
-        # 3. Get storyboard items and verify resolved_prompt is computed
-        items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
-        assert items_res.status_code == 200
-        items_data = items_res.json()
-        assert len(items_data) == 1
-        assert items_data[0]["image_prompt"] == "A dramatic shot in [preset:style] of [char:malin:batu] on [loc:pantai]."
-        assert items_data[0]["resolved_prompt"] is not None
-        assert "cursed granite stone statue" in items_data[0]["resolved_prompt"]
-        assert "misty coastline with black volcanic sand" in items_data[0]["resolved_prompt"]
+            # 3. Get storyboard items and verify resolved_prompt is computed
+            items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
+            assert items_res.status_code == 200
+            items_data = items_res.json()
+            assert len(items_data) == 1
+            assert items_data[0]["image_prompt"] == "A dramatic shot in [preset:style] of [char:malin:batu] on [loc:pantai]."
+            assert items_data[0]["resolved_prompt"] is not None
+            assert "cursed granite stone statue" in items_data[0]["resolved_prompt"]
+            assert "misty coastline with black volcanic sand" in items_data[0]["resolved_prompt"]
+        finally:
+            await client.delete(f"/api/v1/projects/{proj.id}")
 
 
 @pytest.mark.asyncio
@@ -1674,84 +1718,87 @@ async def test_extract_continuity_bible_from_script():
             db_session.add(item)
             await db_session.commit()
 
-        mock_payload = json.dumps({
-            "world_setting": {
-                "era": "Ancient Golden Age Arabia",
-                "time_setting": "Masa Lalu Fantasi Tradisional",
-                "atmosphere": "Warm golden desert sunset with mystical turquoise glow"
-            },
-            "characters": [
-                {
-                    "id": "aladin",
-                    "name": "Aladdin",
-                    "role": "Tokoh Utama",
-                    "visual_anchor": "a charming young Arab street youth with shaggy black hair and worn purple vest",
-                    "variants": [
-                        {
-                            "variant_id": "muda",
-                            "label": "Masa Miskin",
-                            "visual_anchor": "a scrappy agile Arab boy in patched linen clothes and crimson fez"
-                        }
-                    ]
+        try:
+            mock_payload = json.dumps({
+                "world_setting": {
+                    "era": "Ancient Golden Age Arabia",
+                    "time_setting": "Masa Lalu Fantasi Tradisional",
+                    "atmosphere": "Warm golden desert sunset with mystical turquoise glow"
                 },
-                {
-                    "id": "jin",
-                    "name": "Jin Lampu",
-                    "role": "Pendukung Sakti",
-                    "visual_anchor": "a colossal radiant azure-blue mythical genie with smoky lower body and golden wrist cuffs",
-                    "variants": []
-                },
-                {
-                    "id": "jasmine",
-                    "name": "Putri Jasmine",
-                    "role": "Putri Kerajaan",
-                    "visual_anchor": "an elegant Arabian princess with cascading raven hair, turquoise silk harem pantaloons and gold tiara",
-                    "variants": []
-                }
-            ],
-            "locations": [
-                {
-                    "id": "gua_keajaiban",
-                    "name": "Gua Keajaiban",
-                    "environment_anchor": "a cavernous underground chamber filled with shimmering mountains of gold treasure and glowing crystals"
-                }
-            ]
-        })
+                "characters": [
+                    {
+                        "id": "aladin",
+                        "name": "Aladdin",
+                        "role": "Tokoh Utama",
+                        "visual_anchor": "a charming young Arab street youth with shaggy black hair and worn purple vest",
+                        "variants": [
+                            {
+                                "variant_id": "muda",
+                                "label": "Masa Miskin",
+                                "visual_anchor": "a scrappy agile Arab boy in patched linen clothes and crimson fez"
+                            }
+                        ]
+                    },
+                    {
+                        "id": "jin",
+                        "name": "Jin Lampu",
+                        "role": "Pendukung Sakti",
+                        "visual_anchor": "a colossal radiant azure-blue mythical genie with smoky lower body and golden wrist cuffs",
+                        "variants": []
+                    },
+                    {
+                        "id": "jasmine",
+                        "name": "Putri Jasmine",
+                        "role": "Putri Kerajaan",
+                        "visual_anchor": "an elegant Arabian princess with cascading raven hair, turquoise silk harem pantaloons and gold tiara",
+                        "variants": []
+                    }
+                ],
+                "locations": [
+                    {
+                        "id": "gua_keajaiban",
+                        "name": "Gua Keajaiban",
+                        "environment_anchor": "a cavernous underground chamber filled with shimmering mountains of gold treasure and glowing crystals"
+                    }
+                ]
+            })
 
-        mock_adapter = AsyncMock()
-        mock_adapter.generate_chat.return_value = mock_payload
+            mock_adapter = AsyncMock()
+            mock_adapter.generate_chat.return_value = mock_payload
 
-        with patch("app.services.storyboard.get_active_llm_adapter", return_value=mock_adapter):
-            extract_res = await client.post(
-                f"/api/v1/projects/{proj.id}/storyboard/continuity-bible/extract",
-                json={"custom_instructions": "Prioritaskan tokoh utama dan jin"}
-            )
-            assert extract_res.status_code == 200, extract_res.text
-            data = extract_res.json()
-            assert data["success"] is True
-            assert len(data["characters"]) == 3
-            assert data["characters"][0]["id"] == "aladin"
-            assert data["characters"][1]["id"] == "jin"
-            assert data["characters"][2]["id"] == "jasmine"
-            assert len(data["locations"]) == 1
-            assert data["world_setting"]["era"] == "Ancient Golden Age Arabia"
+            with patch("app.services.storyboard.get_active_llm_adapter", return_value=mock_adapter):
+                extract_res = await client.post(
+                    f"/api/v1/projects/{proj.id}/storyboard/continuity-bible/extract",
+                    json={"custom_instructions": "Prioritaskan tokoh utama dan jin"}
+                )
+                assert extract_res.status_code == 200, extract_res.text
+                data = extract_res.json()
+                assert data["success"] is True
+                assert len(data["characters"]) == 3
+                assert data["characters"][0]["id"] == "aladin"
+                assert data["characters"][1]["id"] == "jin"
+                assert data["characters"][2]["id"] == "jasmine"
+                assert len(data["locations"]) == 1
+                assert data["world_setting"]["era"] == "Ancient Golden Age Arabia"
 
-            # Check database persistence
-            async with SessionLocal() as db_session:
-                updated_proj = await db_session.get(Project, proj.id)
-                assert len(updated_proj.characters) == 3
-                assert len(updated_proj.locations) == 1
+                # Check database persistence
+                async with SessionLocal() as db_session:
+                    updated_proj = await db_session.get(Project, proj.id)
+                    assert len(updated_proj.characters) == 3
+                    assert len(updated_proj.locations) == 1
 
                 # Check StoryboardItem resolved_prompt is computed via API items endpoint
-            items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
-            assert items_res.status_code == 200
-            items_data = items_res.json()
-            assert len(items_data) == 1
-            it = items_data[0]
-            assert it["resolved_prompt"] is not None
-            assert "a scrappy agile Arab boy" in it["resolved_prompt"]
-            assert "azure-blue mythical genie" in it["resolved_prompt"]
-            assert "cavernous underground chamber" in it["resolved_prompt"]
+                items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
+                assert items_res.status_code == 200
+                items_data = items_res.json()
+                assert len(items_data) == 1
+                it = items_data[0]
+                assert it["resolved_prompt"] is not None
+                assert "a scrappy agile Arab boy" in it["resolved_prompt"]
+                assert "azure-blue mythical genie" in it["resolved_prompt"]
+                assert "cavernous underground chamber" in it["resolved_prompt"]
+        finally:
+            await client.delete(f"/api/v1/projects/{proj.id}")
 
 
 def test_strip_bars_and_ensure_16_9_letterbox():

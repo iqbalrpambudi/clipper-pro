@@ -57,12 +57,25 @@ export interface StoryboardWorldSetting {
 
 export interface WatermarkConfig {
   enabled: boolean;
+  watermark_type?: "text" | "image";
   text: string;
   font_family: string;
   font_size: number;
   font_color: string;
   opacity: number;
-  position: "top-left" | "top-center" | "top-right" | "center" | "bottom-left" | "bottom-center" | "bottom-right";
+  position:
+    | "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right"
+    | "custom";
+  custom_x?: number; // 0 - 100 percentage
+  custom_y?: number; // 0 - 100 percentage
   offset_x: number;
   offset_y: number;
   has_background?: boolean;
@@ -70,6 +83,10 @@ export interface WatermarkConfig {
   background_opacity?: number;
   has_shadow?: boolean;
   shadow_color?: string;
+  image_url?: string | null;
+  image_path?: string | null;
+  image_width?: number;
+  image_height?: number | null;
 }
 
 export interface SourceVideo {
@@ -142,6 +159,7 @@ export interface AudioTrack {
   voice: string;
   rate: string;
   pitch: string;
+  model?: string | null;
   audio_url?: string | null;
   duration: number;
   estimated_cost: number;

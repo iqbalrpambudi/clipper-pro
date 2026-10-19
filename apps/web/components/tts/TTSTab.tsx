@@ -153,16 +153,52 @@ function formatAudioTime(secs: number): string {
 
 export function TTSTab({ project }: TTSTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, setActiveTab, activeTask } = useStudioStore();
+  const { showToast, setActiveTab, activeTask, voiceDraftsByProject, setVoiceDraft } = useStudioStore();
 
-  const [selectedVoice, setSelectedVoice] = useState("Puck");
-  const [provider, setProvider] = useState("gemini");
-  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash-preview-tts");
-  const [elevenlabsModel, setElevenlabsModel] = useState("eleven_multilingual_v2");
-  const [runwareModel, setRunwareModel] = useState("fishaudio:s2.1@pro");
-  const [rate, setRate] = useState("+0%");
-  const [pitch, setPitch] = useState("+0Hz");
-  const [fallbackEnabled, setFallbackEnabled] = useState(true);
+  const draft = voiceDraftsByProject[project.id];
+
+  const initialProvider = draft?.provider || project.audio?.provider || "gemini";
+  const initialVoice = draft?.voice || project.audio?.voice || (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
+  const initialGeminiModel = draft?.geminiModel || (project.audio?.provider === "gemini" && project.audio?.model) || "gemini-2.5-flash-preview-tts";
+  const initialElevenlabsModel = draft?.elevenlabsModel || (project.audio?.provider === "elevenlabs" && project.audio?.model) || "eleven_multilingual_v2";
+  const initialRunwareModel = draft?.runwareModel || (project.audio?.provider === "runware" && project.audio?.model) || "fishaudio:s2.1@pro";
+  const initialRate = draft?.rate !== undefined ? String(draft.rate) : (project.audio?.rate || "+0%");
+  const initialPitch = draft?.pitch !== undefined ? String(draft.pitch) : (project.audio?.pitch || "+0Hz");
+  const initialFallback = draft?.fallbackEnabled ?? true;
+
+  const [selectedVoice, setSelectedVoice] = useState(initialVoice);
+  const [provider, setProvider] = useState(initialProvider);
+  const [geminiModel, setGeminiModel] = useState(initialGeminiModel);
+  const [elevenlabsModel, setElevenlabsModel] = useState(initialElevenlabsModel);
+  const [runwareModel, setRunwareModel] = useState(initialRunwareModel);
+  const [rate, setRate] = useState(initialRate);
+  const [pitch, setPitch] = useState(initialPitch);
+  const [fallbackEnabled, setFallbackEnabled] = useState(initialFallback);
+
+  // Sync draft whenever user changes voice settings in short studio
+  useEffect(() => {
+    setVoiceDraft(project.id, {
+      provider,
+      voice: selectedVoice,
+      geminiModel,
+      elevenlabsModel,
+      runwareModel,
+      rate,
+      pitch,
+      fallbackEnabled,
+    });
+  }, [
+    project.id,
+    provider,
+    selectedVoice,
+    geminiModel,
+    elevenlabsModel,
+    runwareModel,
+    rate,
+    pitch,
+    fallbackEnabled,
+    setVoiceDraft,
+  ]);
 
   // Fetch active config to sync saved tts_provider & fallback setting
   const { data: appConfig } = useQuery({
@@ -170,8 +206,17 @@ export function TTSTab({ project }: TTSTabProps) {
     queryFn: api.getModelConfig,
   });
 
+  const hasInitializedConfigRef = useRef(false);
   useEffect(() => {
-    if (appConfig?.tts_provider) {
+    if (hasInitializedConfigRef.current) return;
+    if (draft || project.audio?.provider) {
+      hasInitializedConfigRef.current = true;
+      return;
+    }
+    if (!appConfig) return;
+    hasInitializedConfigRef.current = true;
+
+    if (appConfig.tts_provider) {
       if (appConfig.tts_provider === "elevenlabs") {
         setProvider("elevenlabs");
         setSelectedVoice("Adam");
@@ -185,12 +230,12 @@ export function TTSTab({ project }: TTSTabProps) {
         setGeminiModel(appConfig.tts_provider);
       }
     }
-    if (appConfig?.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
-    if (appConfig?.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
-    if (appConfig?.tts_fallback_enabled !== undefined) {
+    if (appConfig.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
+    if (appConfig.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
+    if (appConfig.tts_fallback_enabled !== undefined) {
       setFallbackEnabled(appConfig.tts_fallback_enabled);
     }
-  }, [appConfig]);
+  }, [appConfig, draft, project.audio?.provider]);
 
   const selectedModelObj =
     provider === "gemini"
@@ -293,7 +338,7 @@ export function TTSTab({ project }: TTSTabProps) {
     if (project.audio?.duration) {
       setAudioDuration(project.audio.duration);
     }
-    if (!isGeneratingTTS) {
+    if (!isGeneratingTTS && !draft) {
       if (project.audio?.provider) {
         setProvider(project.audio.provider);
       }

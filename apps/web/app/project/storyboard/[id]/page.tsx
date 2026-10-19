@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect } from "react";
+import React, { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   Volume2,
   Image as ImageIcon,
   Layers,
+  Stamp,
   Download,
   Youtube,
   Loader2,
@@ -22,6 +23,7 @@ import {
   StoryboardVoiceTab,
   StoryboardImagesTab,
   StoryboardTimelineTab,
+  StoryboardWatermarkTab,
   StoryboardRenderTab,
   StoryboardYoutubeTab,
 } from "@/components/storyboard";
@@ -35,6 +37,7 @@ const STORYBOARD_TABS = [
   "storyboard_voice",
   "storyboard_images",
   "storyboard_timeline",
+  "storyboard_watermark",
   "storyboard_render",
   "storyboard_youtube",
 ];
@@ -51,6 +54,15 @@ export default function StoryboardStudioPage({ params }: PageProps) {
     tasksByProject,
   } = useStudioStore();
   const updateProjectMutation = useUpdateProject();
+
+  // Reset activeTab to initial Tab 1 whenever project opens or switches
+  const lastMountedProjectIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastMountedProjectIdRef.current !== id) {
+      lastMountedProjectIdRef.current = id;
+      setActiveTab("storyboard_script");
+    }
+  }, [id, setActiveTab]);
 
   // Scope active project ID in store
   useEffect(() => {
@@ -191,14 +203,20 @@ export default function StoryboardStudioPage({ params }: PageProps) {
       badge: "16:9",
     },
     {
+      id: "storyboard_watermark",
+      label: "5. Watermark & Audio",
+      icon: Stamp,
+      badge: (project as any).watermark?.enabled ? "Aktif" : undefined,
+    },
+    {
       id: "storyboard_render",
-      label: "5. Render 16:9",
+      label: "6. Render 16:9",
       icon: Download,
       badge: (project as any).render_jobs?.length ? `${(project as any).render_jobs.length} Job` : undefined,
     },
     {
       id: "storyboard_youtube",
-      label: "6. YouTube & Thumbnail",
+      label: "7. YouTube & Thumbnail",
       icon: Youtube,
       badge: (project as any).youtube_metadata?.title ? "Siap" : undefined,
     },
@@ -225,9 +243,14 @@ export default function StoryboardStudioPage({ params }: PageProps) {
       onRenderClick={() => setActiveTab("storyboard_render")}
     >
       {(activeTab === "storyboard_script" ||
-        !["storyboard_voice", "storyboard_images", "storyboard_timeline", "storyboard_render", "storyboard_youtube"].includes(
-          activeTab
-        )) && <StoryboardScriptTab project={project as any} />}
+        ![
+          "storyboard_voice",
+          "storyboard_images",
+          "storyboard_timeline",
+          "storyboard_watermark",
+          "storyboard_render",
+          "storyboard_youtube",
+        ].includes(activeTab)) && <StoryboardScriptTab project={project as any} />}
       {activeTab === "storyboard_voice" && (
         <StoryboardVoiceTab project={project as any} />
       )}
@@ -236,6 +259,9 @@ export default function StoryboardStudioPage({ params }: PageProps) {
       )}
       {activeTab === "storyboard_timeline" && (
         <StoryboardTimelineTab project={project as any} />
+      )}
+      {activeTab === "storyboard_watermark" && (
+        <StoryboardWatermarkTab project={project as any} />
       )}
       {activeTab === "storyboard_render" && (
         <StoryboardRenderTab project={project as any} />

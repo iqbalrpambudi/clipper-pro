@@ -170,12 +170,14 @@ const COLOR_PRESETS = [
 
 export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const queryClient = useQueryClient();
-  const { setActiveTab, showToast } = useStudioStore();
+  const { setActiveTab, showToast, subtitleDraftsByProject, setSubtitleDraft } = useStudioStore();
 
   const narration = project.narration;
   const audio = (project as any).audio || (project as any).audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
   const segments: any[] = narration?.segments || [];
+
+  const draft = subtitleDraftsByProject[project.id];
 
   // Playback state
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -189,33 +191,62 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const [activeRightTab, setActiveRightTab] = useState<"motion" | "subtitles">("subtitles");
 
   // Subtitle Style State (WYSIWYG 16:9 canvas)
-  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(() => ({
-    enabled: project.subtitle_style?.enabled !== false,
-    preset_name: project.subtitle_style?.preset_name || "viral_tiktok",
-    font_family: project.subtitle_style?.font_family || "Poppins",
-    font_size: project.subtitle_style?.font_size ?? 38,
-    font_weight: project.subtitle_style?.font_weight || "Bold",
-    primary_color: project.subtitle_style?.primary_color || "#FFFFFF",
-    highlight_color: project.subtitle_style?.highlight_color || "#FFE600",
-    outline_color: project.subtitle_style?.outline_color || "#000000",
-    outline_width: project.subtitle_style?.outline_width ?? 4,
-    box_color: project.subtitle_style?.box_color || "#000000",
-    box_opacity: project.subtitle_style?.box_opacity ?? 0.0,
-    position: project.subtitle_style?.position || "bottom",
-    offset_y: project.subtitle_style?.offset_y ?? -30,
-    offset_x: project.subtitle_style?.offset_x ?? 0,
-    display_mode: project.subtitle_style?.display_mode || "burst",
-    burst_word_count: project.subtitle_style?.burst_word_count ?? 2,
-    highlight_animation: project.subtitle_style?.highlight_animation || "color",
-    scale_factor: project.subtitle_style?.scale_factor ?? 1.0,
-    emoji_enabled: false,
-  }));
+  const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(() => {
+    if (draft?.style) return draft.style;
+    return {
+      enabled: project.subtitle_style?.enabled !== false,
+      preset_name: project.subtitle_style?.preset_name || "viral_tiktok",
+      font_family: project.subtitle_style?.font_family || "Poppins",
+      font_size: project.subtitle_style?.font_size ?? 38,
+      font_weight: project.subtitle_style?.font_weight || "Bold",
+      primary_color: project.subtitle_style?.primary_color || "#FFFFFF",
+      highlight_color: project.subtitle_style?.highlight_color || "#FFE600",
+      outline_color: project.subtitle_style?.outline_color || "#000000",
+      outline_width: project.subtitle_style?.outline_width ?? 4,
+      box_color: project.subtitle_style?.box_color || "#000000",
+      box_opacity: project.subtitle_style?.box_opacity ?? 0.0,
+      position: project.subtitle_style?.position || "bottom",
+      offset_y: project.subtitle_style?.offset_y ?? -30,
+      offset_x: project.subtitle_style?.offset_x ?? 0,
+      display_mode: project.subtitle_style?.display_mode || "burst",
+      burst_word_count: project.subtitle_style?.burst_word_count ?? 2,
+      highlight_animation: project.subtitle_style?.highlight_animation || "color",
+      scale_factor: project.subtitle_style?.scale_factor ?? 1.0,
+      emoji_enabled: false,
+    };
+  });
 
   // Custom Subtitle Presets state
   const [customSubtitlePresets, setCustomSubtitlePresets] = useState<SubtitleCustomPreset[]>([]);
-  const [selectedSubtitlePresetId, setSelectedSubtitlePresetId] = useState<string>("");
+  const [selectedSubtitlePresetId, setSelectedSubtitlePresetId] = useState<string>(draft?.selectedPresetId || "");
   const [showSaveSubtitleModal, setShowSaveSubtitleModal] = useState<boolean>(false);
   const [newSubtitlePresetName, setNewSubtitlePresetName] = useState<string>("");
+
+  // Sync draft to store on change so switching tabs retains user modifications
+  useEffect(() => {
+    setSubtitleDraft(project.id, {
+      style: subtitleStyle,
+      selectedPresetId: selectedSubtitlePresetId,
+    });
+  }, [project.id, subtitleStyle, selectedSubtitlePresetId, setSubtitleDraft]);
+
+  // Debounced auto-save to backend
+  const isInitialSubtitleMountRef = useRef(true);
+  useEffect(() => {
+    if (isInitialSubtitleMountRef.current) {
+      isInitialSubtitleMountRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      api.updateSubtitleStyle(project.id, subtitleStyle).then((res) => {
+        queryClient.setQueryData(["project", project.id], (old: any) => {
+          if (!old) return old;
+          return { ...old, subtitle_style: res || subtitleStyle };
+        });
+      }).catch(() => {});
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [subtitleStyle, project.id, queryClient]);
 
   useEffect(() => {
     setCustomSubtitlePresets(presetStorage.getSubtitlePresets());
@@ -498,10 +529,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
           </Button>
 
           <Button
-            onClick={() => setActiveTab("storyboard_render")}
+            onClick={() => setActiveTab("storyboard_watermark")}
             className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
           >
-            <span>Lanjut ke Render & Export</span>
+            <span>Lanjut ke Watermark & Audio</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>

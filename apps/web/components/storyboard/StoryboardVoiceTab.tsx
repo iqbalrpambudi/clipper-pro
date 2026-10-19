@@ -17,6 +17,8 @@ import {
   Save,
   Trash2,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -39,29 +41,85 @@ interface StoryboardVoiceTabProps {
 
 export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const queryClient = useQueryClient();
-  const { setActiveTab, showToast } = useStudioStore();
+  const { setActiveTab, showToast, voiceDraftsByProject, setVoiceDraft } = useStudioStore();
 
   const narration = project.narration;
   const audio = (project as any).audio || (project as any).audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
   const segments: any[] = narration?.segments || [];
 
-  const [provider, setProvider] = useState<string>("gemini");
-  const [voice, setVoice] = useState<string>("Puck");
-  const [geminiModel, setGeminiModel] = useState<string>("gemini-2.5-flash-preview-tts");
-  const [elevenlabsModel, setElevenlabsModel] = useState<string>("eleven_multilingual_v2");
-  const [runwareModel, setRunwareModel] = useState<string>("fishaudio:s2.1@pro");
-  const [rate, setRate] = useState<number>(0);
-  const [pitch, setPitch] = useState<number>(0);
-  const [fallbackEnabled, setFallbackEnabled] = useState<boolean>(true);
-  const [customVoiceInput, setCustomVoiceInput] = useState<string>("");
-  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>("");
+  const draft = voiceDraftsByProject[project.id];
+
+  const parseRate = (val: any) => {
+    if (typeof val === "number") return val;
+    if (!val) return 0;
+    return parseInt(String(val).replace(/[%+]/g, "")) || 0;
+  };
+  const parsePitch = (val: any) => {
+    if (typeof val === "number") return val;
+    if (!val) return 0;
+    return parseInt(String(val).replace(/[Hz+]/g, "")) || 0;
+  };
+
+  const initialProvider = draft?.provider || audio?.provider || "gemini";
+  const initialVoice = draft?.voice || audio?.voice || (initialProvider === "edge" ? "id-ID-ArdiNeural" : "Puck");
+  const initialGeminiModel = draft?.geminiModel || (audio?.provider === "gemini" && audio?.model) || "gemini-2.5-flash-preview-tts";
+  const initialElevenlabsModel = draft?.elevenlabsModel || (audio?.provider === "elevenlabs" && audio?.model) || "eleven_multilingual_v2";
+  const initialRunwareModel = draft?.runwareModel || (audio?.provider === "runware" && audio?.model) || "fishaudio:s2.1@pro";
+  const initialRate = draft?.rate !== undefined ? parseRate(draft.rate) : parseRate(audio?.rate);
+  const initialPitch = draft?.pitch !== undefined ? parsePitch(draft.pitch) : parsePitch(audio?.pitch);
+  const initialFallback = draft?.fallbackEnabled ?? true;
+  const initialCustomVoiceInput = draft?.customVoiceInput || "";
+  const initialRunwareCustomVoiceInput = draft?.runwareCustomVoiceInput || "";
+  const initialPresetId = draft?.selectedVoicePresetId || "";
+
+  const [provider, setProvider] = useState<string>(initialProvider);
+  const [voice, setVoice] = useState<string>(initialVoice);
+  const [geminiModel, setGeminiModel] = useState<string>(initialGeminiModel);
+  const [elevenlabsModel, setElevenlabsModel] = useState<string>(initialElevenlabsModel);
+  const [runwareModel, setRunwareModel] = useState<string>(initialRunwareModel);
+  const [rate, setRate] = useState<number>(initialRate);
+  const [pitch, setPitch] = useState<number>(initialPitch);
+  const [fallbackEnabled, setFallbackEnabled] = useState<boolean>(initialFallback);
+  const [customVoiceInput, setCustomVoiceInput] = useState<string>(initialCustomVoiceInput);
+  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>(initialRunwareCustomVoiceInput);
 
   // Voice Presets state
   const [voicePresets, setVoicePresets] = useState<VoicePreset[]>([]);
-  const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>("");
+  const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>(initialPresetId);
   const [showSaveVoiceModal, setShowSaveVoiceModal] = useState<boolean>(false);
   const [newVoicePresetName, setNewVoicePresetName] = useState<string>("");
+
+  // Sync draft whenever user changes voice settings
+  useEffect(() => {
+    setVoiceDraft(project.id, {
+      provider,
+      voice,
+      geminiModel,
+      elevenlabsModel,
+      runwareModel,
+      rate,
+      pitch,
+      fallbackEnabled,
+      customVoiceInput,
+      runwareCustomVoiceInput,
+      selectedVoicePresetId,
+    });
+  }, [
+    project.id,
+    provider,
+    voice,
+    geminiModel,
+    elevenlabsModel,
+    runwareModel,
+    rate,
+    pitch,
+    fallbackEnabled,
+    customVoiceInput,
+    runwareCustomVoiceInput,
+    selectedVoicePresetId,
+    setVoiceDraft,
+  ]);
 
   useEffect(() => {
     setVoicePresets(presetStorage.getVoicePresets());
@@ -125,6 +183,31 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
   const [loadingSampleVoiceId, setLoadingSampleVoiceId] = useState<string | null>(null);
+
+  // Narration copy state & handler
+  const [hasCopiedNarration, setHasCopiedNarration] = useState(false);
+  const handleCopyAllNarration = () => {
+    let fullText = "";
+    if (segments && segments.length > 0) {
+      fullText = segments
+        .map((s: any) => (s.text || "").trim())
+        .filter(Boolean)
+        .join("\n\n");
+    }
+    if (!fullText && narration?.raw_text) {
+      fullText = narration.raw_text.trim();
+    }
+
+    if (!fullText) {
+      showToast("Belum ada teks narasi untuk disalin", "info");
+      return;
+    }
+
+    navigator.clipboard.writeText(fullText);
+    setHasCopiedNarration(true);
+    setTimeout(() => setHasCopiedNarration(false), 2500);
+    showToast("Seluruh teks narasi berhasil disalin ke clipboard!", "success");
+  };
 
   const projectLanguage = (project.narration?.language || project.language || "id").toLowerCase();
 
@@ -201,11 +284,21 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
     queryFn: api.getModelConfig,
   });
 
+  const hasInitializedConfigRef = useRef(false);
   useEffect(() => {
-    if (appConfig?.tts_fallback_enabled !== undefined) {
+    if (hasInitializedConfigRef.current) return;
+    // If draft or existing project audio exists, DO NOT override with default appConfig!
+    if (draft || audio?.provider) {
+      hasInitializedConfigRef.current = true;
+      return;
+    }
+    if (!appConfig) return;
+    hasInitializedConfigRef.current = true;
+
+    if (appConfig.tts_fallback_enabled !== undefined) {
       setFallbackEnabled(appConfig.tts_fallback_enabled);
     }
-    if (appConfig?.tts_provider) {
+    if (appConfig.tts_provider) {
       if (appConfig.tts_provider === "elevenlabs") {
         setProvider("elevenlabs");
         setVoice("Adam");
@@ -220,9 +313,9 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
         setVoice("Puck");
       }
     }
-    if (appConfig?.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
-    if (appConfig?.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
-  }, [appConfig]);
+    if (appConfig.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
+    if (appConfig.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
+  }, [appConfig, draft, audio?.provider]);
 
   // Audio Playback State
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -943,9 +1036,32 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
 
               {/* Segments Live Highlights */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Naskah Berjalan Sesuai Audio:
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Naskah Berjalan Sesuai Audio:
+                  </h4>
+                  {(segments.length > 0 || narration?.raw_text) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyAllNarration}
+                      className="h-7 px-2.5 text-[11px] font-medium border-[#333] bg-[#181818] hover:bg-violet-600/20 hover:text-violet-300 hover:border-violet-500/50 transition-all flex items-center gap-1.5"
+                    >
+                      {hasCopiedNarration ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-semibold">Tersalin!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Salin Semua Narasi</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {segments.map((seg: any, idx: number) => {
                     const segStart = (seg.start_ms || 0) / 1000;

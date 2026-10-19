@@ -1,5 +1,8 @@
+from pathlib import Path
+import shutil
+import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -348,6 +351,47 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
     await db.commit()
     await db.refresh(proj)
     return ProjectResponse.model_validate(proj)
+
+
+@router.post("/{project_id}/watermark/upload")
+async def upload_watermark_image(
+    project_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload custom image/logo for watermark overlay."""
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File gambar wajib disertakan")
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".svg"):
+        raise HTTPException(
+            status_code=400,
+            detail="Format file tidak didukung. Gunakan PNG, JPG, JPEG, SVG, atau WebP",
+        )
+
+    wm_dir = storage.get_project_dir(project_id) / "watermarks"
+    wm_dir.mkdir(parents=True, exist_ok=True)
+    unique_name = f"watermark_{uuid.uuid4().hex[:10]}{ext}"
+    dest_path = wm_dir / unique_name
+
+    try:
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan file watermark: {str(e)}")
+
+    rel_url = storage.to_relative_url(dest_path) or f"/storage/projects/{project_id}/watermarks/{unique_name}"
+    return {
+        "success": True,
+        "filename": unique_name,
+        "file_path": str(dest_path),
+        "url": rel_url,
+    }
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -140,10 +140,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveTab("storyboard_timeline")}
+            onClick={() => setActiveTab("storyboard_watermark")}
             className="border-[#2E2E2E] text-xs"
           >
-            Kembali ke Timeline
+            Kembali ke Watermark & Audio
           </Button>
 
           <Button
