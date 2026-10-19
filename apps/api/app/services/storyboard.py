@@ -410,7 +410,7 @@ def build_storyboard_outline_prompt(
             "   - `time_setting`: Narrative timeline (e.g. 'Traditional Past', 'Near Future', 'Modern Era').\n"
             "   - `atmosphere`: Visual mood, color palette, and lighting progression.\n"
             "2. Characters (`characters`):\n"
-            "   Identify all key figures. For each character, provide:\n"
+            "   Identify ALL characters and key figures involved in the story (NOT restricted to 4; include protagonists, antagonists, mentors, and all supporting figures, e.g. 2 to 8+ characters as needed). For each character, provide:\n"
             "   - `id`: Short unique slug (e.g. 'malin', 'mother').\n"
             "   - `name`: Full character name.\n"
             "   - `role`: 'Protagonist', 'Antagonist', 'Supporting', etc.\n"
@@ -419,7 +419,7 @@ def build_storyboard_outline_prompt(
             "     * e.g., young version, wealthy adult merchant version, cursed stone statue pose version.\n"
             "     * Each variant has `variant_id` ('muda', 'dewasa', 'batu'), `label`, and specific English `visual_anchor`.\n"
             "3. Key Locations (`locations`):\n"
-            "   Define 2-4 key recurring environments in the story:\n"
+            "   Define 2-6 key recurring environments in the story:\n"
             "   - `id`: Short unique slug (e.g. 'coastal_village', 'merchant_ship', 'cliff_storm').\n"
             "   - `name`: Location name.\n"
             "   - `environment_anchor`: Specific English visual description of architecture, geography, and lighting.\n\n"
@@ -512,7 +512,7 @@ def build_storyboard_outline_prompt(
         "   - `time_setting`: Garis waktu (misal: 'Masa Lalu Tradisional').\n"
         "   - `atmosphere`: Mood visual, palet warna, dan gaya pencahayaan.\n"
         "2. Karakter & Varian Wujud (`characters`):\n"
-        "   Identifikasi semua karakter/tokoh kunci. Untuk setiap karakter sertakan:\n"
+        "   Identifikasi SEMUA karakter dan tokoh yang terlibat dalam cerita (TIDAK DIBATASI 4; masukkan semua tokoh utama, antagonis, pendamping, maupun tokoh pendukung yang memiliki dialog/peran, misal 2 hingga 8+ karakter sesuai kebutuhan naskah cerita). Untuk setiap karakter sertakan:\n"
         "   - `id`: Slug pendek (misal 'malin', 'ibu').\n"
         "   - `name`: Nama Karakter (misal 'Malin Kundang').\n"
         "   - `role`: Peran (misal 'Tokoh Utama').\n"
@@ -522,7 +522,7 @@ def build_storyboard_outline_prompt(
         "     * Varian 'dewasa': 'a confident mature Indonesian merchant in his 30s, wearing an opulent emerald-green and gold-embroidered silk royal tunic, royal destar headcloth, golden keris'\n"
         "     * Varian 'batu': 'a dramatic weathered grey andesite stone statue of a man frozen in a prostrating kneeling pose (sujud) with face touching the ground, mossy texture, sea spray crashing against stone surface'\n"
         "3. Latar Tempat Utama (`locations`):\n"
-        "   Definisikan 2-4 lingkungan tempat kejadian utama:\n"
+        "   Definisikan 2-6 lingkungan tempat kejadian utama:\n"
         "   - `id`: Slug pendek (misal 'pesisir_air_manis', 'kapal_saudagar').\n"
         "   - `name`: Nama tempat (misal 'Pesisir Pantai Air Manis').\n"
         "   - `environment_anchor`: Deskripsi visual lingkungan dalam Bahasa Inggris (arsitektur gubuk panggung kayu, pohon kelapa, pasir pantai berkarang, perahu cadik tradisional).\n\n"
@@ -1197,6 +1197,7 @@ async def generate_storyboard_script(
     preset_id: Optional[str] = None,
     custom_instructions: Optional[str] = None,
     language: str = "id",
+    reset_bible: bool = False,
 ) -> Tuple[Narration, List[StoryboardItem]]:
     """Generate long-form storyboard script and save Narration + StoryboardItem records."""
     proj = await db.get(Project, project_id)
@@ -1224,9 +1225,14 @@ async def generate_storyboard_script(
     segments_per_chapter = max(2, int(round(scenes_per_chapter / max(1, images_per_segment))))
 
     chapters: List[Dict[str, Any]] = []
-    existing_characters = proj.characters if (isinstance(proj.characters, list) and len(proj.characters) > 0) else None
-    existing_locations = proj.locations if (isinstance(proj.locations, list) and len(proj.locations) > 0) else None
-    existing_world_setting = proj.world_setting if (isinstance(proj.world_setting, dict) and len(proj.world_setting) > 0) else None
+    if reset_bible:
+        existing_characters = None
+        existing_locations = None
+        existing_world_setting = None
+    else:
+        existing_characters = proj.characters if (isinstance(proj.characters, list) and len(proj.characters) > 0) else None
+        existing_locations = proj.locations if (isinstance(proj.locations, list) and len(proj.locations) > 0) else None
+        existing_world_setting = proj.world_setting if (isinstance(proj.world_setting, dict) and len(proj.world_setting) > 0) else None
 
     detected_characters: List[Dict[str, Any]] = list(existing_characters) if existing_characters else []
     detected_locations: List[Dict[str, Any]] = list(existing_locations) if existing_locations else []
@@ -1654,3 +1660,147 @@ async def sync_storyboard_timing_from_alignment(
 
     await db.commit()
     log.info("Synchronized timing for %d storyboard items in project %s.", len(items), project_id)
+
+
+async def extract_storyboard_continuity_bible_from_script(
+    db: AsyncSession,
+    project_id: str,
+    custom_instructions: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Extract Story Continuity Bible (characters & variants, locations, world setting)
+    directly from the existing narration/script of the project using LLM.
+    """
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise ValueError(f"Project {project_id} tidak ditemukan.")
+
+    # 1. Gather all narration text from Narration or StoryboardItems
+    narration_query = await db.execute(select(Narration).where(Narration.project_id == project_id))
+    narrations = narration_query.scalars().all()
+    narration = narrations[0] if narrations else None
+
+    items_query = await db.execute(
+        select(StoryboardItem)
+        .where(StoryboardItem.project_id == project_id)
+        .order_by(StoryboardItem.order_index)
+    )
+    items = items_query.scalars().all()
+
+    text_parts = []
+    if narration and narration.raw_text:
+        text_parts.append(narration.raw_text)
+    elif narration and narration.segments:
+        for seg in narration.segments:
+            if isinstance(seg, dict) and seg.get("text"):
+                text_parts.append(seg.get("text"))
+
+    if not text_parts and items:
+        for it in items:
+            if it.script_text:
+                text_parts.append(it.script_text)
+
+    full_story_text = "\n\n".join(text_parts).strip()
+    if not full_story_text:
+        raise ValueError("Naskah cerita belum tersedia. Buat atau generate naskah terlebih dahulu sebelum mengekstrak karakter.")
+
+    llm_adapter = await get_active_llm_adapter(db)
+
+    system_prompt = (
+        "You are an Elite Visual Story Director, Character Supervisor, and Script Analyst for cinematic video production.\n"
+        "Your task is to thoroughly analyze the provided story script and extract the definitive 'Story Continuity Bible':\n\n"
+        "1. ALL CHARACTERS (`characters`):\n"
+        "   Extract EVERY character who appears, speaks, or acts in the story (protagonists, antagonists, mentors, companions, supporting roles).\n"
+        "   Do NOT arbitrarily limit the count to 3 or 4; if 5, 6, 8, or more characters are in the script, list ALL of them.\n"
+        "   For each character provide:\n"
+        "   - `id`: Unique short lowercase slug (e.g. 'aladin', 'penyihir', 'jasmine', 'sultan', 'jin').\n"
+        "   - `name`: Full character name in Indonesian or original story name.\n"
+        "   - `role`: Role in narrative ('Tokoh Utama / Protagonist', 'Antagonis', 'Pendukung', etc.).\n"
+        "   - `visual_anchor`: Detailed, consistent visual description in ENGLISH suitable for image generation prompts "
+        "     (exact age/range, ethnic appearance/skin tone, facial structure, eye color, hair style/color, facial hair, body build, signature attire/costume with colors & fabric textures, accessories/weapons).\n"
+        "   - `variants`: If the character undergoes visual changes (aging from youth to adult, poor vs royal costume, magical transformation or statue form), provide distinct variants:\n"
+        "     * `variant_id`: Short slug ('muda', 'dewasa', 'batu', 'raja', etc.)\n"
+        "     * `label`: Descriptive label (e.g. 'Masa Muda', 'Bentuk Patung Batu')\n"
+        "     * `visual_anchor`: Specific English physical & costume description for that stage.\n\n"
+        "2. RECURRING LOCATIONS (`locations`):\n"
+        "   Identify 2 to 6 key distinct locations/settings where events take place:\n"
+        "   - `id`: Short slug (e.g. 'istana_agrabah', 'gua_keajaiban', 'pasar_kota').\n"
+        "   - `name`: Full location name.\n"
+        "   - `environment_anchor`: Detailed architectural, environmental, and lighting description in ENGLISH.\n\n"
+        "3. WORLD SETTING & ERA (`world_setting`):\n"
+        "   - `era`: Specific historical period or universe setting (e.g. 'Zaman Kerajaan Maritim Nusantara Abad ke-14', 'Ancient Middle Eastern Golden Age').\n"
+        "   - `time_setting`: Narrative timeline (e.g. 'Masa Lalu Tradisional', 'Masa Depan').\n"
+        "   - `atmosphere`: Visual mood, color palette, and cinematic lighting progression.\n\n"
+        "=== STRICT OUTPUT FORMAT (PURE JSON ONLY) ===\n"
+        "Return ONLY a valid JSON object matching this schema without any markdown formatting or commentary:\n"
+        "{\n"
+        '  "world_setting": {\n'
+        '    "era": "...",\n'
+        '    "time_setting": "...",\n'
+        '    "atmosphere": "..."\n'
+        '  },\n'
+        '  "characters": [\n'
+        '    {\n'
+        '      "id": "char_slug",\n'
+        '      "name": "Nama Karakter",\n'
+        '      "role": "Peran",\n'
+        '      "visual_anchor": "Detailed English visual description...",\n'
+        '      "variants": [\n'
+        '        {\n'
+        '          "variant_id": "muda",\n'
+        '          "label": "Masa Muda",\n'
+        '          "visual_anchor": "Specific visual description for young variant..."\n'
+        '        }\n'
+        '      ]\n'
+        '    }\n'
+        '  ],\n'
+        '  "locations": [\n'
+        '    {\n'
+        '      "id": "loc_slug",\n'
+        '      "name": "Nama Lokasi",\n'
+        '      "environment_anchor": "Detailed English environment description..."\n'
+        '    }\n'
+        '  ]\n'
+        "}"
+    )
+
+    user_prompt = (
+        f"Topic / Story Title: {proj.name or 'Story Script'}\n\n"
+        f"Naskah Cerita Lengkap:\n"
+        f"\"\"\"\n{full_story_text}\n\"\"\"\n\n"
+        + (f"Instruksi Tambahan Pengguna:\n{custom_instructions}\n\n" if custom_instructions else "")
+        + "Ekstrak seluruh karakter, varian wujud, latar tempat, dan era setting dari naskah di atas ke dalam format JSON Continuity Bible."
+    )
+
+    log.info("Extracting Continuity Bible from script for project %s (script length=%d chars)...", project_id, len(full_story_text))
+    raw_response = await llm_adapter.generate_chat(
+        prompt=user_prompt,
+        system_prompt=system_prompt,
+        json_mode=True,
+        timeout=90.0,
+        max_tokens=4096,
+    )
+
+    data = extract_json_payload(raw_response)
+    characters = data.get("characters", []) or []
+    locations = data.get("locations", []) or []
+    world_setting = data.get("world_setting", {}) or {}
+
+    proj.characters = characters
+    proj.locations = locations
+    proj.world_setting = world_setting
+
+    await db.commit()
+    await db.refresh(proj)
+    log.info(
+        "Successfully extracted %d characters, %d locations, era='%s' for project %s",
+        len(characters), len(locations), world_setting.get("era"), project_id
+    )
+
+    return {
+        "success": True,
+        "characters": characters,
+        "locations": locations,
+        "world_setting": world_setting,
+    }
+

@@ -11,6 +11,7 @@ class StoryboardScriptGenerateRequest(BaseModel):
     preset_id: Optional[str] = None
     custom_instructions: Optional[str] = None
     language: Optional[str] = "id"  # id | en
+    reset_bible: Optional[bool] = False  # If True, regenerates fresh characters/locations instead of keeping old story
 
 
 class StoryboardItemResponse(BaseModel):
@@ -97,6 +98,10 @@ class StoryboardContinuityBibleUpdateRequest(BaseModel):
     characters: Optional[List[dict]] = None
     locations: Optional[List[dict]] = None
     world_setting: Optional[dict] = None
+
+
+class StoryboardContinuityBibleExtractRequest(BaseModel):
+    custom_instructions: Optional[str] = None
 
 
 class StoryboardSegmentItemUpdate(BaseModel):

@@ -1626,6 +1626,134 @@ async def test_continuity_bible_api_endpoints():
         assert "misty coastline with black volcanic sand" in items_data[0]["resolved_prompt"]
 
 
+@pytest.mark.asyncio
+async def test_extract_continuity_bible_from_script():
+    import json
+    from unittest.mock import AsyncMock, patch
+    from sqlalchemy import select
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.db import SessionLocal, engine
+    from app.models.project import Project
+    from app.models.narration import Narration
+    from app.models.storyboard import StoryboardItem
+
+    await engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with SessionLocal() as db_session:
+            proj = Project(
+                name="Aladdin Script Project",
+                aspect_ratio="16:9",
+                project_type="long_storyboard",
+                language="id",
+                characters=[],
+                locations=[],
+                world_setting={},
+            )
+            db_session.add(proj)
+            await db_session.commit()
+            await db_session.refresh(proj)
+
+            # Add narration and storyboard item
+            narration = Narration(
+                project_id=proj.id,
+                topic="Kisah Aladdin dan Lampu Wasiat",
+                raw_text="Aladdin menemukan lampu ajaib di dalam gua. Jin biru raksasa muncul dan membantunya memenangkan hati Putri Jasmine di Istana Agrabah.",
+                segments=[{"text": "Aladdin menemukan lampu ajaib di gua."}],
+                status="completed",
+            )
+            db_session.add(narration)
+
+            item = StoryboardItem(
+                project_id=proj.id,
+                order_index=1,
+                script_text="Aladdin menggosok lampu dan jin keluar.",
+                image_prompt="A dramatic shot of [char:aladin:muda] rubbing the lamp as [char:jin] emerges in [loc:gua_keajaiban].",
+                status="pending",
+            )
+            db_session.add(item)
+            await db_session.commit()
+
+        mock_payload = json.dumps({
+            "world_setting": {
+                "era": "Ancient Golden Age Arabia",
+                "time_setting": "Masa Lalu Fantasi Tradisional",
+                "atmosphere": "Warm golden desert sunset with mystical turquoise glow"
+            },
+            "characters": [
+                {
+                    "id": "aladin",
+                    "name": "Aladdin",
+                    "role": "Tokoh Utama",
+                    "visual_anchor": "a charming young Arab street youth with shaggy black hair and worn purple vest",
+                    "variants": [
+                        {
+                            "variant_id": "muda",
+                            "label": "Masa Miskin",
+                            "visual_anchor": "a scrappy agile Arab boy in patched linen clothes and crimson fez"
+                        }
+                    ]
+                },
+                {
+                    "id": "jin",
+                    "name": "Jin Lampu",
+                    "role": "Pendukung Sakti",
+                    "visual_anchor": "a colossal radiant azure-blue mythical genie with smoky lower body and golden wrist cuffs",
+                    "variants": []
+                },
+                {
+                    "id": "jasmine",
+                    "name": "Putri Jasmine",
+                    "role": "Putri Kerajaan",
+                    "visual_anchor": "an elegant Arabian princess with cascading raven hair, turquoise silk harem pantaloons and gold tiara",
+                    "variants": []
+                }
+            ],
+            "locations": [
+                {
+                    "id": "gua_keajaiban",
+                    "name": "Gua Keajaiban",
+                    "environment_anchor": "a cavernous underground chamber filled with shimmering mountains of gold treasure and glowing crystals"
+                }
+            ]
+        })
+
+        mock_adapter = AsyncMock()
+        mock_adapter.generate_chat.return_value = mock_payload
+
+        with patch("app.services.storyboard.get_active_llm_adapter", return_value=mock_adapter):
+            extract_res = await client.post(
+                f"/api/v1/projects/{proj.id}/storyboard/continuity-bible/extract",
+                json={"custom_instructions": "Prioritaskan tokoh utama dan jin"}
+            )
+            assert extract_res.status_code == 200, extract_res.text
+            data = extract_res.json()
+            assert data["success"] is True
+            assert len(data["characters"]) == 3
+            assert data["characters"][0]["id"] == "aladin"
+            assert data["characters"][1]["id"] == "jin"
+            assert data["characters"][2]["id"] == "jasmine"
+            assert len(data["locations"]) == 1
+            assert data["world_setting"]["era"] == "Ancient Golden Age Arabia"
+
+            # Check database persistence
+            async with SessionLocal() as db_session:
+                updated_proj = await db_session.get(Project, proj.id)
+                assert len(updated_proj.characters) == 3
+                assert len(updated_proj.locations) == 1
+
+                # Check StoryboardItem resolved_prompt is computed via API items endpoint
+            items_res = await client.get(f"/api/v1/projects/{proj.id}/storyboard/items")
+            assert items_res.status_code == 200
+            items_data = items_res.json()
+            assert len(items_data) == 1
+            it = items_data[0]
+            assert it["resolved_prompt"] is not None
+            assert "a scrappy agile Arab boy" in it["resolved_prompt"]
+            assert "azure-blue mythical genie" in it["resolved_prompt"]
+            assert "cavernous underground chamber" in it["resolved_prompt"]
+
+
 def test_strip_bars_and_ensure_16_9_letterbox():
     import cv2
     import numpy as np

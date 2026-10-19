@@ -23,6 +23,8 @@ import {
   X,
   MapPin,
   Compass,
+  RefreshCw,
+  MoreVertical,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -33,7 +35,17 @@ import {
   StoryboardLocation,
   StoryboardWorldSetting,
 } from "@/types";
-import { Button, Input, Textarea, Badge } from "@/components/ui";
+import {
+  Button,
+  Input,
+  Textarea,
+  Badge,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui";
 import { presetStorage, ScriptPreset } from "@/lib/presetStorage";
 
 interface StoryboardScriptTabProps {
@@ -245,6 +257,42 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
     },
   });
 
+  const extractBibleMutation = useMutation({
+    mutationFn: (data?: { custom_instructions?: string }) =>
+      api.extractStoryboardContinuityBible(project.id, data),
+    onSuccess: (res) => {
+      if (res?.characters) {
+        setCharactersList(res.characters);
+      }
+      if (res?.locations) {
+        setLocationsList(res.locations);
+      }
+      if (res?.world_setting) {
+        setWorldSetting(res.world_setting);
+      }
+      queryClient.setQueryData(["project", project.id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          characters: res.characters || [],
+          locations: res.locations || [],
+          world_setting: res.world_setting || {},
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      queryClient.invalidateQueries({ queryKey: ["storyboard-items", project.id] });
+      showToast(
+        `Berhasil mengekstrak ${res.characters?.length || 0} karakter & latar dari naskah!`,
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Gagal mengekstrak character sheet dari naskah", "error");
+    },
+  });
+
+  const [resetBibleOnGenerate, setResetBibleOnGenerate] = useState<boolean>(true);
+
   const narration = project.narration;
   const segments: any[] = narration?.segments || [];
   const items: StoryboardItem[] = project.storyboard_items || [];
@@ -343,8 +391,18 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
+      reset_bible?: boolean;
     }) => api.generateStoryboardScript(project.id, data),
     onSuccess: (data: any) => {
+      if (data?.characters) {
+        setCharactersList(data.characters);
+      }
+      if (data?.locations) {
+        setLocationsList(data.locations);
+      }
+      if (data?.world_setting) {
+        setWorldSetting(data.world_setting);
+      }
       if (data?.narration) {
         queryClient.setQueryData(["project", project.id], (old: any) => {
           if (!old) return old;
@@ -381,6 +439,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       preset_id: selectedPresetId || undefined,
       custom_instructions: customInstructions.trim() || undefined,
       language,
+      reset_bible: resetBibleOnGenerate,
     });
   };
 
@@ -430,9 +489,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       </div>
 
       {/* Top Grid: Form on Left (6 Cols), Stats & Karakter Terkunci on Right (6 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Form: Parameters (6 Cols) */}
-        <div className="lg:col-span-6 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-6 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 space-y-4 shadow-xl flex flex-col">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
               <Sparkles className="w-4 h-4" />
@@ -545,11 +604,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => handleLanguageSelect("id")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
-                    language === "id"
-                      ? "bg-violet-600 text-white font-semibold shadow-sm"
-                      : "text-slate-400 hover:text-white"
-                  }`}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${language === "id"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                    }`}
                 >
                   <span className="text-base">🇮🇩</span>
                   <span>Bahasa Indonesia</span>
@@ -557,11 +615,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => handleLanguageSelect("en")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
-                    language === "en"
-                      ? "bg-violet-600 text-white font-semibold shadow-sm"
-                      : "text-slate-400 hover:text-white"
-                  }`}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${language === "en"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                    }`}
                 >
                   <span className="text-base">🇬🇧</span>
                   <span>English Explainer</span>
@@ -613,8 +670,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                     type="button"
                     onClick={() => setTone(t.id)}
                     className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${tone === t.id
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
+                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
                       }`}
                   >
                     {t.label}
@@ -677,8 +734,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                     type="button"
                     onClick={() => setImagesPerSegment(opt.count)}
                     className={`p-2.5 rounded-xl border text-center transition ${imagesPerSegment === opt.count
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
                       }`}
                   >
                     <div className="text-xs font-bold">{opt.label}</div>
@@ -702,6 +759,25 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               />
             </div>
 
+            {/* Reset Bible Checkbox when regenerating */}
+            {segments.length > 0 && (
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-black/40 border border-[#2E2E2E]">
+                <input
+                  type="checkbox"
+                  id="resetBibleCheck"
+                  checked={resetBibleOnGenerate}
+                  onChange={(e) => setResetBibleOnGenerate(e.target.checked)}
+                  className="rounded border-[#333] text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="resetBibleCheck" className="text-[11px] text-slate-300 cursor-pointer select-none">
+                  <span className="font-semibold text-white block">Perbarui Character Sheet untuk Cerita Baru</span>
+                  <span className="text-[10px] text-muted-foreground block">
+                    Centang agar karakter & latar lama diganti dengan karakter cerita baru ini
+                  </span>
+                </label>
+              </div>
+            )}
+
             <Button
               type="submit"
               disabled={generateScriptMutation.isPending}
@@ -723,7 +799,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         </div>
 
         {/* Right Column: Stats (Top) & Karakter Terkunci (Bottom) (6 Cols) */}
-        <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
+        <div className="lg:col-span-6 flex flex-col gap-5">
           {/* Top Right Card: Metrik Video (durasi, panjang karakter, estimasi ilustrasi) */}
           <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 shadow-xl space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-[#2A2A2A]">
@@ -781,18 +857,16 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           </div>
 
           {/* Bottom Right Card: Story Continuity Bible (Characters & Variants, Locations, World Setting) */}
-          <div className="rounded-2xl border border-violet-500/30 bg-[#161616] p-5 shadow-xl flex-1 flex flex-col justify-between space-y-4">
+          <div className="rounded-2xl border border-violet-500/30 bg-[#161616] p-5 shadow-xl flex flex-col">
             {/* Bible Header & Sub-tabs */}
-            <div className="space-y-3 pb-3 border-b border-[#2A2A2A]">
+            <div className="space-y-3 pb-3 border-b border-[#2A2A2A] shrink-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-violet-400" />
                   <div>
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       Story Continuity Bible
-                      <span className="text-[9px] text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full font-mono normal-case">
-                        Sistem Variabel AI
-                      </span>
+
                     </h4>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Penguncian konsistensi karakter & varian wujud, latar tempat, dan era waktu
@@ -801,34 +875,92 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {bibleTab === "characters" && (
-                    <button
-                      type="button"
-                      onClick={handleAddCharacter}
-                      className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Tambah Karakter</span>
-                    </button>
+                  {editingBible && (
+                    <span className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-medium">
+                      Mode Edit Aktif
+                    </span>
                   )}
-                  {bibleTab === "locations" && (
-                    <button
-                      type="button"
-                      onClick={handleAddLocation}
-                      className="px-2.5 py-1 text-xs rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/30 text-sky-300 hover:text-white transition flex items-center gap-1 font-medium"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Tambah Tempat</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditingBible(!editingBible)}
-                    className="px-2.5 py-1 text-xs rounded-lg border border-[#333] hover:border-violet-500/50 text-slate-300 hover:text-white transition flex items-center gap-1 font-medium"
-                  >
-                    <Edit2 className="w-3 h-3 text-violet-400" />
-                    <span>{editingBible ? "Selesai" : "Edit"}</span>
-                  </button>
+
+                  {/* 3 Dots Popup Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg border border-[#333] hover:border-violet-500/50 bg-[#141414] hover:bg-[#202020] text-slate-300 hover:text-white transition flex items-center justify-center focus:outline-none"
+                        title="Opsi Story Continuity Bible"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-[#161616] border border-[#2E2E2E] text-slate-200 shadow-2xl p-1 z-50">
+                      <DropdownMenuItem
+                        onClick={() => extractBibleMutation.mutate({})}
+                        disabled={extractBibleMutation.isPending}
+                        className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-violet-600/20 hover:text-violet-200 transition focus:bg-violet-600/20 focus:text-violet-200"
+                      >
+                        {extractBibleMutation.isPending ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-violet-400 shrink-0" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-white">Ekstrak dari Naskah</span>
+                          <span className="text-[10px] text-slate-400">Analisis naskah untuk sinkron profil</span>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator className="bg-[#262626] my-1" />
+
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setBibleTab("characters");
+                          handleAddCharacter();
+                        }}
+                        className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-violet-600/20 hover:text-violet-200 transition focus:bg-violet-600/20 focus:text-violet-200"
+                      >
+                        <Users className="w-4 h-4 text-violet-400 shrink-0" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-white">Tambah Karakter</span>
+                          <span className="text-[10px] text-slate-400">Tambah profil tokoh & varian wujud</span>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setBibleTab("locations");
+                          handleAddLocation();
+                        }}
+                        className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-sky-600/20 hover:text-sky-200 transition focus:bg-sky-600/20 focus:text-sky-200"
+                      >
+                        <MapPin className="w-4 h-4 text-sky-400 shrink-0" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-white">Tambah Tempat</span>
+                          <span className="text-[10px] text-slate-400">Kunci konsistensi latar arsitektur</span>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator className="bg-[#262626] my-1" />
+
+                      <DropdownMenuItem
+                        onClick={() => setEditingBible(!editingBible)}
+                        className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-white/10 hover:text-white transition focus:bg-white/10 focus:text-white"
+                      >
+                        {editingBible ? (
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Edit2 className="w-4 h-4 text-violet-400 shrink-0" />
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-white">
+                            {editingBible ? "Selesai Edit Bible" : "Edit Bible Manual"}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {editingBible ? "Tutup formulir edit" : "Edit teks deskripsi & slug ID"}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -837,11 +969,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("characters")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-                    bibleTab === "characters"
-                      ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "characters"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Karakter & Varian</span>
@@ -853,11 +984,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("locations")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-                    bibleTab === "locations"
-                      ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "locations"
+                    ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>Latar Tempat</span>
@@ -869,11 +999,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("world")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-                    bibleTab === "world"
-                      ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "world"
+                    ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
                 >
                   <Compass className="w-3.5 h-3.5" />
                   <span>Era & Atmosfer</span>
@@ -886,9 +1015,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* TAB CONTENT 1: Karakter & Varian */}
             {bibleTab === "characters" && (
-              <div className="space-y-3">
+              <div className="flex flex-col space-y-3 mt-3.5">
                 {charactersList && charactersList.length > 0 ? (
-                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
                     <div className="space-y-3">
                       {charactersList.map((char, cIdx) => (
                         <div
@@ -1115,9 +1244,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* TAB CONTENT 2: Latar Tempat (Locations) */}
             {bibleTab === "locations" && (
-              <div className="space-y-3">
+              <div className="flex flex-col space-y-3 mt-3.5">
                 {locationsList && locationsList.length > 0 ? (
-                  <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                  <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-1 space-y-2.5">
                     {locationsList.map((loc, lIdx) => (
                       <div
                         key={lIdx}
@@ -1210,7 +1339,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* TAB CONTENT 3: Era & Atmosfer (World Setting) */}
             {bibleTab === "world" && (
-              <div className="space-y-3">
+              <div className="flex flex-col space-y-3 mt-3.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
                 <div className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] space-y-3">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -1281,7 +1410,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* Bottom Actions for Story Continuity Bible */}
             {editingBible && (
-              <div className="flex items-center justify-between pt-2 border-t border-[#262626]">
+              <div className="flex items-center justify-between pt-3 border-t border-[#262626] shrink-0 mt-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1373,11 +1502,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 return (
                   <div
                     key={seg.id || idx}
-                    className={`p-5 rounded-xl border transition space-y-3.5 ${
-                      isEditing
-                        ? "border-violet-500/80 bg-[#161616] ring-1 ring-violet-500/30 shadow-lg shadow-violet-500/5"
-                        : "border-[#262626] bg-[#141414] hover:border-violet-500/40"
-                    }`}
+                    className={`p-5 rounded-xl border transition space-y-3.5 ${isEditing
+                      ? "border-violet-500/80 bg-[#161616] ring-1 ring-violet-500/30 shadow-lg shadow-violet-500/5"
+                      : "border-[#262626] bg-[#141414] hover:border-violet-500/40"
+                      }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#222] pb-2.5">
                       <div className="flex items-center gap-2 flex-1">
@@ -1487,11 +1615,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                           {segItems.map((item, iIdx) => (
                             <div
                               key={item.id}
-                              className={`flex items-start gap-2.5 text-[11px] text-slate-300 p-2.5 rounded-lg border leading-relaxed font-mono ${
-                                isEditing
-                                  ? "bg-[#111] border-[#333]"
-                                  : "bg-surface/60 border-surface-border"
-                              }`}
+                              className={`flex items-start gap-2.5 text-[11px] text-slate-300 p-2.5 rounded-lg border leading-relaxed font-mono ${isEditing
+                                ? "bg-[#111] border-[#333]"
+                                : "bg-surface/60 border-surface-border"
+                                }`}
                             >
                               <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 font-bold shrink-0 mt-1">
                                 #{iIdx + 1}

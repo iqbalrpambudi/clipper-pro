@@ -405,6 +405,7 @@ export const api = {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
+      reset_bible?: boolean;
     }
   ) =>
     request<{
@@ -447,6 +448,19 @@ export const api = {
     }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  extractStoryboardContinuityBible: (
+    projectId: string,
+    data?: { custom_instructions?: string }
+  ) =>
+    request<{
+      success: boolean;
+      characters: StoryboardCharacter[];
+      locations: StoryboardLocation[];
+      world_setting: StoryboardWorldSetting;
+    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible/extract`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
     }),
   updateStoryboardSegment: (
     projectId: string,

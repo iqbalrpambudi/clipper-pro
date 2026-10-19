@@ -25,6 +25,7 @@ from app.schemas.storyboard import (
     YouTubeMetadataUpdateRequest,
     StoryboardCharactersUpdateRequest,
     StoryboardContinuityBibleUpdateRequest,
+    StoryboardContinuityBibleExtractRequest,
     StoryboardSegmentUpdateRequest,
 )
 from app.services.storyboard import (
@@ -32,6 +33,7 @@ from app.services.storyboard import (
     sync_storyboard_timing_from_alignment,
     resolve_prompt_variables,
     clean_narration_for_tts,
+    extract_storyboard_continuity_bible_from_script,
 )
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
@@ -110,6 +112,7 @@ async def generate_script(
             preset_id=payload.preset_id,
             custom_instructions=payload.custom_instructions,
             language=lang,
+            reset_bible=bool(payload.reset_bible),
         )
         proj = await db.get(Project, project_id)
         active_preset = await get_active_image_preset(db)
@@ -178,6 +181,28 @@ async def update_storyboard_continuity_bible(
         "locations": getattr(proj, "locations", []) or [],
         "world_setting": getattr(proj, "world_setting", {}) or {},
     }
+
+
+@router.post("/continuity-bible/extract")
+async def extract_storyboard_continuity_bible(
+    project_id: str,
+    payload: Optional[StoryboardContinuityBibleExtractRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyze the existing story script/narration and extract fresh characters, locations, and world setting."""
+    try:
+        custom_inst = payload.custom_instructions if payload else None
+        res = await extract_storyboard_continuity_bible_from_script(
+            db=db,
+            project_id=project_id,
+            custom_instructions=custom_inst,
+        )
+        return res
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        log.exception("Error extracting continuity bible for project %s: %s", project_id, e)
+        raise HTTPException(status_code=500, detail=f"Gagal mengekstrak character sheet dari naskah: {str(e)}")
 
 
 @router.put("/characters")

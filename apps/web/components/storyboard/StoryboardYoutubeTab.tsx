@@ -810,17 +810,15 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     style={{
                       left: `${posX}%`,
                       top: `${posY}%`,
-                      transform: `translate(${
-                        textAlign === "center" ? "-50%" : textAlign === "right" ? "-100%" : "0%"
-                      }, ${posY > 65 ? "-100%" : posY > 35 ? "-50%" : "0%"}) rotate(${
-                        overlay.rotation
-                      }deg)`,
+                      transform: `translate(${textAlign === "center" ? "-50%" : textAlign === "right" ? "-100%" : "0%"
+                        }, ${posY > 65 ? "-100%" : posY > 35 ? "-50%" : "0%"}) rotate(${overlay.rotation
+                        }deg)`,
                       transformOrigin:
                         textAlign === "right"
                           ? "top right"
                           : textAlign === "center"
-                          ? "center"
-                          : "top left",
+                            ? "center"
+                            : "top left",
                       textAlign: textAlign,
                     }}
                   >
@@ -896,9 +894,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      overlay.enabled ? "bg-emerald-400" : "bg-slate-500"
-                    }`}
+                    className={`w-1.5 h-1.5 rounded-full ${overlay.enabled ? "bg-emerald-400" : "bg-slate-500"
+                      }`}
                   ></span>
                   <span>Teks: {overlay.enabled ? "Aktif" : "Mati"}</span>
                 </span>
@@ -934,11 +931,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       setThumbnailPrompt(item.prompt);
                       showToast("Thumbnail aktif diperbarui dari riwayat.", "info");
                     }}
-                    className={`relative aspect-video rounded-lg overflow-hidden border transition-all ${
-                      thumbnailUrl === item.url
-                        ? "border-red-500 ring-2 ring-red-500/20 scale-[1.02]"
-                        : "border-[#2E2E2E] hover:border-slate-400 opacity-70 hover:opacity-100"
-                    }`}
+                    className={`relative aspect-video rounded-lg overflow-hidden border transition-all ${thumbnailUrl === item.url
+                      ? "border-red-500 ring-2 ring-red-500/20 scale-[1.02]"
+                      : "border-[#2E2E2E] hover:border-slate-400 opacity-70 hover:opacity-100"
+                      }`}
                     title={item.prompt}
                   >
                     <img
@@ -966,11 +962,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <button
                 type="button"
                 onClick={() => setActiveSettingsTab("typography")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "typography"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSettingsTab === "typography"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
                 <Type className="w-3.5 h-3.5" />
                 <span>Tipografi & Teks</span>
@@ -979,11 +974,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <button
                 type="button"
                 onClick={() => setActiveSettingsTab("position")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "position"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSettingsTab === "position"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
                 <Move className="w-3.5 h-3.5" />
                 <span>Posisi & Rotasi</span>
@@ -992,11 +986,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <button
                 type="button"
                 onClick={() => setActiveSettingsTab("effects")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "effects"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSettingsTab === "effects"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
                 <Palette className="w-3.5 h-3.5" />
                 <span>Outline & Blur</span>
@@ -1005,11 +998,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <button
                 type="button"
                 onClick={() => setActiveSettingsTab("generator")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "generator"
-                    ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSettingsTab === "generator"
+                  ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Formula & AI Prompt</span>
@@ -1018,11 +1010,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               <button
                 type="button"
                 onClick={() => setActiveSettingsTab("metadata")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "metadata"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSettingsTab === "metadata"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Metadata YouTube</span>
@@ -1067,7 +1058,6 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         onChange={(e) =>
                           setOverlay((prev) => ({ ...prev, line1: e.target.value.toUpperCase() }))
                         }
-                        placeholder="JAWA 610 M"
                         className="bg-black/40 border-[#2E2E2E] text-xs font-bold uppercase tracking-wide focus:border-amber-500/50"
                       />
                     </div>
@@ -1081,7 +1071,6 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         onChange={(e) =>
                           setOverlay((prev) => ({ ...prev, line2: e.target.value.toUpperCase() }))
                         }
-                        placeholder="TANPA SAMBAL?!"
                         className="bg-black/40 border-[#2E2E2E] text-xs font-bold uppercase tracking-wide focus:border-amber-500/50"
                       />
                     </div>
@@ -1102,11 +1091,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           key={f.id}
                           type="button"
                           onClick={() => setOverlay((prev) => ({ ...prev, font_family: f.id }))}
-                          className={`p-2 rounded-lg border text-left transition-all ${
-                            fontFamily === f.id
-                              ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30"
-                              : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525] hover:border-slate-500"
-                          }`}
+                          className={`p-2 rounded-lg border text-left transition-all ${fontFamily === f.id
+                            ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30"
+                            : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525] hover:border-slate-500"
+                            }`}
                         >
                           <div
                             className="text-xs font-black truncate"
@@ -1152,11 +1140,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           key={preset.val}
                           type="button"
                           onClick={() => setOverlay((prev) => ({ ...prev, font_size: preset.val }))}
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${
-                            overlay.font_size === preset.val
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                              : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${overlay.font_size === preset.val
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
+                            }`}
                         >
                           {preset.label}
                         </button>
@@ -1190,11 +1177,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                             onClick={() =>
                               setOverlay((prev) => ({ ...prev, color1: cp.c1, color2: cp.c2 }))
                             }
-                            className={`p-2 rounded-lg text-left border transition-all flex flex-col gap-1 ${
-                              isMatch
-                                ? "bg-amber-500/15 border-amber-500/50 ring-1 ring-amber-500/30 text-white"
-                                : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
-                            }`}
+                            className={`p-2 rounded-lg text-left border transition-all flex flex-col gap-1 ${isMatch
+                              ? "bg-amber-500/15 border-amber-500/50 ring-1 ring-amber-500/30 text-white"
+                              : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
+                              }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <span
@@ -1300,11 +1286,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                               position: "custom",
                             }))
                           }
-                          className={`py-1.5 px-2 rounded-lg text-[11px] border text-center transition-all ${
-                            posX === anchor.x && posY === anchor.y
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold"
-                              : "bg-[#1E1E1E] text-slate-300 border-[#2A2A2A] hover:bg-[#252525]"
-                          }`}
+                          className={`py-1.5 px-2 rounded-lg text-[11px] border text-center transition-all ${posX === anchor.x && posY === anchor.y
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold"
+                            : "bg-[#1E1E1E] text-slate-300 border-[#2A2A2A] hover:bg-[#252525]"
+                            }`}
                         >
                           {anchor.label}
                         </button>
@@ -1358,11 +1343,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       <button
                         type="button"
                         onClick={() => setOverlay((prev) => ({ ...prev, text_align: "left" }))}
-                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                          textAlign === "left"
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                            : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
-                        }`}
+                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${textAlign === "left"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
+                          }`}
                       >
                         <AlignLeft className="w-3.5 h-3.5" />
                         <span>Rata Kiri</span>
@@ -1371,11 +1355,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       <button
                         type="button"
                         onClick={() => setOverlay((prev) => ({ ...prev, text_align: "center" }))}
-                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                          textAlign === "center"
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                            : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
-                        }`}
+                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${textAlign === "center"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
+                          }`}
                       >
                         <AlignCenter className="w-3.5 h-3.5" />
                         <span>Rata Tengah</span>
@@ -1384,11 +1367,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       <button
                         type="button"
                         onClick={() => setOverlay((prev) => ({ ...prev, text_align: "right" }))}
-                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                          textAlign === "right"
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                            : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
-                        }`}
+                        className={`flex-1 py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${textAlign === "right"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-[#1E1E1E] text-slate-400 border-[#2A2A2A] hover:bg-[#252525]"
+                          }`}
                       >
                         <AlignRight className="w-3.5 h-3.5" />
                         <span>Rata Kanan</span>
@@ -1444,11 +1426,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           key={preset.val}
                           type="button"
                           onClick={() => setOverlay((prev) => ({ ...prev, rotation: preset.val }))}
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${
-                            overlay.rotation === preset.val
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                              : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${overlay.rotation === preset.val
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
+                            }`}
                         >
                           {preset.label}
                         </button>
@@ -1482,11 +1463,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           key={preset.id}
                           type="button"
                           onClick={preset.apply}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            overlay.style_preset === preset.id
-                              ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30"
-                              : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525] hover:border-slate-500"
-                          }`}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${overlay.style_preset === preset.id
+                            ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30"
+                            : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525] hover:border-slate-500"
+                            }`}
                         >
                           <div className="text-xs font-bold text-amber-300">{preset.label}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
@@ -1521,11 +1501,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                                 style_preset: "custom",
                               }))
                             }
-                            className={`p-2 rounded-lg text-left border transition-all ${
-                              isSelected
-                                ? "bg-amber-500/20 border-amber-500/50 text-white font-semibold ring-1 ring-amber-500/30"
-                                : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
-                            }`}
+                            className={`p-2 rounded-lg text-left border transition-all ${isSelected
+                              ? "bg-amber-500/20 border-amber-500/50 text-white font-semibold ring-1 ring-amber-500/30"
+                              : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
+                              }`}
                           >
                             <div className="text-xs font-bold text-slate-200">{item.label}</div>
                             <div className="text-[9px] text-muted-foreground mt-0.5 truncate">
@@ -1600,11 +1579,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                                   style_preset: "custom",
                                 }))
                               }
-                              className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${
-                                spread === p.val
-                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                  : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
-                              }`}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${spread === p.val
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
+                                }`}
                             >
                               {p.label}
                             </button>
@@ -1677,11 +1655,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                                   style_preset: "custom",
                                 }))
                               }
-                              className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${
-                                blur === p.val
-                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                  : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
-                              }`}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${blur === p.val
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                : "bg-[#202020] hover:bg-[#282828] text-slate-400 border-[#333]"
+                                }`}
                             >
                               {p.label}
                             </button>
@@ -1763,11 +1740,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                             key={f.id}
                             type="button"
                             onClick={() => applyFormulaPrompt(f.id)}
-                            className={`p-3 rounded-xl border text-left transition-all relative ${
-                              isSelected
-                                ? "bg-red-500/15 border-red-500 ring-2 ring-red-500/30 text-white shadow-lg"
-                                : "bg-black/40 border-[#2E2E2E] text-slate-300 hover:bg-[#202020] hover:border-slate-500"
-                            }`}
+                            className={`p-3 rounded-xl border text-left transition-all relative ${isSelected
+                              ? "bg-red-500/15 border-red-500 ring-2 ring-red-500/30 text-white shadow-lg"
+                              : "bg-black/40 border-[#2E2E2E] text-slate-300 hover:bg-[#202020] hover:border-slate-500"
+                              }`}
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold text-red-300">{f.name}</span>
@@ -1979,11 +1955,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                               setTitle(opt);
                               showToast(`Judul diterapkan: "${opt}"`, "info");
                             }}
-                            className={`p-2 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between group ${
-                              title === opt
-                                ? "bg-red-500/10 border-red-500/30 text-white"
-                                : "bg-black/30 border-[#262626] text-slate-300 hover:bg-[#222] hover:border-slate-500"
-                            }`}
+                            className={`p-2 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between group ${title === opt
+                              ? "bg-red-500/10 border-red-500/30 text-white"
+                              : "bg-black/30 border-[#262626] text-slate-300 hover:bg-[#222] hover:border-slate-500"
+                              }`}
                           >
                             <span className="line-clamp-1 font-medium">{opt}</span>
                             <ArrowRight className="w-3 h-3 text-red-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
