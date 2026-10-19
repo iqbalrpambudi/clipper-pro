@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Settings as SettingsIcon,
-  Sparkles,
   Edit3,
   Check,
   X,
@@ -48,7 +47,7 @@ export function StudioLayout({
   tabs,
   onRenameProject,
   isRenaming = false,
-  onRenderClick,
+  onRenderClick: _onRenderClick,
   children,
 }: StudioLayoutProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -173,16 +172,6 @@ export function StudioLayout({
                 <span className="hidden md:inline">Settings</span>
               </Button>
             </Link>
-
-            <Button
-              onClick={onRenderClick || (() => onTabChange("render"))}
-              variant="supabase"
-              size="sm"
-              className="gap-1.5 text-xs h-8 shadow-sm shadow-[#3ECF8E]/20"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Render Short Video</span>
-            </Button>
           </div>
         </div>
 

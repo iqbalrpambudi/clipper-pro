@@ -132,6 +132,52 @@ async def generate_youtube_metadata(
 
     chapter_text_lines = "\n".join(f"{cm['timestamp']} - {cm['title']}" for cm in chapter_milestones[:8])
 
+    # Extract Continuity Bible Sheets (Characters, Locations, World Setting)
+    characters = proj.characters or []
+    locations = proj.locations or []
+    world_setting = proj.world_setting or {}
+
+    main_char_token = ""
+    main_char_name = ""
+    main_char_desc = ""
+    char_summary_lines: List[str] = []
+    if characters:
+        first_c = characters[0]
+        main_char_name = first_c.get("name") or "Main Protagonist"
+        first_v = (first_c.get("variants") or [{}])[0].get("id") or ""
+        main_char_token = f"[char:{first_c.get('id')}:{first_v}]" if first_v else f"[char:{first_c.get('id')}]"
+        main_char_desc = f"{first_c.get('name')} ({first_c.get('visual_anchor') or ''})"
+
+        for c in characters:
+            c_id = c.get("id", "")
+            c_name = c.get("name", "")
+            c_anchor = c.get("visual_anchor", "")
+            variants = c.get("variants") or []
+            v_desc = ", ".join(f"`[char:{c_id}:{v['id']}]` ({v.get('name', '')}: {v.get('description', '')})" for v in variants)
+            char_summary_lines.append(f"- Character {c_name} (`[char:{c_id}]`): {c_anchor}. Variants: {v_desc or 'Standard'}")
+
+    main_loc_token = ""
+    loc_summary_lines: List[str] = []
+    if locations:
+        first_l = locations[0]
+        main_loc_token = f"[loc:{first_l.get('id')}]"
+        for l in locations:
+            loc_summary_lines.append(f"- Location {l.get('name', '')} (`[loc:{l.get('id', '')}]`): {l.get('visual_anchor', '')}")
+
+    era = world_setting.get("era") or ""
+    atmo = world_setting.get("atmosphere") or ""
+
+    bible_summary = ""
+    if char_summary_lines or loc_summary_lines or era:
+        bible_summary = "\n=== STORY CONTINUITY BIBLE (CHARACTERS, LOCATIONS, ERA) ===\n"
+        if char_summary_lines:
+            bible_summary += "Characters Sheet:\n" + "\n".join(char_summary_lines) + "\n"
+        if loc_summary_lines:
+            bible_summary += "Locations Sheet:\n" + "\n".join(loc_summary_lines) + "\n"
+        if era or atmo:
+            bible_summary += f"Story Era: {era}. Atmosphere: {atmo}.\n"
+        bible_summary += "\n"
+
     # Build Angle Instruction
     angle_instruction = ""
     if target_lang == "en":
@@ -176,10 +222,13 @@ async def generate_youtube_metadata(
             "   - Thumbnail visual concept explanation in English (1-2 sentences on character emotion, contrast, visual hooks).\n\n"
             "8. `thumbnail_prompt`:\n"
             "   - Detailed visual prompt in ENGLISH for AI Image Generator (16:9 widescreen landscape).\n"
-            "   - COMPOSITION: In one foreground side (left or right 1/3), expressive illustrated character looking at the viewer. "
-            "In background, rich cinematic setting with high contrast. "
-            "Leave clean negative space on the opposite side for typography. "
-            f"Apply aesthetic preset '{preset_name}'. NO TEXT or letters inside the image itself!\n\n"
+            "   - COMPOSITION & STORY CONTINUITY (CRITICAL - MUST FEATURE THE ACTUAL STORY CHARACTERS & SETTING):\n"
+            f"     * In one foreground side (left or right 1/3 of frame), prominently feature the MAIN PROTAGONIST character from the Continuity Bible: {main_char_desc or 'the story protagonist'} using token `{main_char_token or '[char:protagonist]'}` with intense, captivating facial expression (shock, intense determination, astonishment, or holding a story relic) facing towards the viewer.\n"
+            "     * NEVER depict a generic stickman, bald white head, or unrelated generic figure unless the character sheet specifically calls for it! The thumbnail character MUST match the hero of the video.\n"
+            f"     * In the background, depict the iconic story setting {main_loc_token or 'the story setting'} reflecting the story timeline/era ({era or 'the story era'}).\n"
+            "     * Leave clean, open negative space on the opposite side of the character for bold typography overlay.\n"
+            f"     * Apply preset token `[preset:style]` ({preset_name}).\n"
+            "     * STRICTLY NO TEXT, WORDS, OR LETTERS inside the image itself!\n\n"
             "=== OUTPUT FORMAT (PURE JSON ONLY) ===\n"
             "Return ONLY valid JSON matching this schema:\n"
             "{\n"
@@ -233,11 +282,12 @@ async def generate_youtube_metadata(
             "   - Penjelasan konsep visual thumbnail dalam 1-2 kalimat Bahasa Indonesia (fokus emosi karakter, kontras warna, elemen visual hook).\n\n"
             "8. `thumbnail_prompt`:\n"
             "   - Prompt visual detail dalam BAHASA INGGRIS untuk AI Image Generator (16:9 widescreen landscape).\n"
-            "   - KOMPOSISI CATCHY VIRAL YOUTUBE (SANGAT PENTING - SEPERTI YOUTUBE EDUKASI/STORYTELLING VIRAL):\n"
-            "     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan karakter ilustrasi ekspresif yang menonjol (close-up atau mid-shot, kepala putih bersih/komik ekspresif, pose dinamis berekspresi kaget/heran atau memegang benda kunci cerita seperti piring makanan, naskah kuno, kompas, dll) langsung menghadap penonton.\n"
-            "     * Di latar belakang (background), pemandangan atau setting lingkungan yang kaya, hidup, dan kontras tinggi (misal pantai tropis dengan kapal kuno dan gunung bersinar matahari terbit yang megah, atau jalanan kota bersejarah yang dramatis).\n"
+            "   - KOMPOSISI & KONSISTENSI TOKOH BIBLE SHEET (SANGAT PENTING - WAJIB KONSISTEN DENGAN ISI VIDEO):\n"
+            f"     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan TOKOH UTAMA dari Character Bible Sheet: {main_char_desc or 'tokoh utama cerita'} menggunakan token `{main_char_token or '[char:id]'}` dengan ekspresi wajah dramatis dan memikat (kaget, heran, takjub, atau memegang benda pusaka/kunci cerita) menghadap penonton.\n"
+            "     * DILARANG KERAS memunculkan karakter stickman botak atau kepala putih generik! Tokoh di thumbnail HARUS sama persis dengan tokoh utama di dalam naskah/storyboard.\n"
+            f"     * Di latar belakang, hadirkan pemandangan ikonik dari Location Sheet: {main_loc_token or 'latar tempat utama cerita'} dengan atmosfer era ({era or 'era cerita'}).\n"
             "     * Sisakan ruang kosong (negative space) yang bersih di sisi berlawanan untuk penempatan teks tebal (bold typography overlay).\n"
-            f"     * Terapkan estetika preset visual '{preset_name}' ({preset_master[:80] if preset_master else ''}).\n"
+            f"     * Sisipkan token gaya visual `[preset:style]` ({preset_name}).\n"
             "     * DILARANG MEMUAT TEKS, TULISAN, KATA, HURUF, ANGKA, ATAU WATERMARK DI DALAM GAMBAR KARENA TEKS AKAN DILAPISKAN SECARA TERPISAH!\n\n"
             "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
             "Kembalikan HANYA JSON valid dengan kunci:\n"
@@ -259,6 +309,7 @@ async def generate_youtube_metadata(
             f"Video Topic / Project Title: {proj.name}\n"
             f"Active Visual Preset: {preset_name}\n"
             f"Target Language: ENGLISH\n"
+            f"{bible_summary}"
         )
         if angle_instruction:
             user_prompt += f"{angle_instruction}\n"
@@ -275,6 +326,7 @@ async def generate_youtube_metadata(
             f"Topik Video / Judul Project: {proj.name}\n"
             f"Gaya Visual Aktif: {preset_name}\n"
             f"Bahasa Sasaran: BAHASA INDONESIA\n"
+            f"{bible_summary}"
         )
         if angle_instruction:
             user_prompt += f"{angle_instruction}\n"
@@ -309,6 +361,10 @@ async def generate_youtube_metadata(
             except Exception:
                 pass
 
+    char_token_fallback = main_char_token or "the main protagonist"
+    loc_token_fallback = main_location_token or f"the scenic landscape of {proj.name}"
+    era_fallback = f"in {era}" if era else "in the story era"
+
     if not parsed or not isinstance(parsed, dict):
         words = proj.name.upper().split()
         if target_lang == "en":
@@ -321,8 +377,8 @@ async def generate_youtube_metadata(
                 "tags": [proj.name, "documentary", "story", "explainer", "history"],
                 "thumbnail_hook_line1": hook1,
                 "thumbnail_hook_line2": hook2,
-                "thumbnail_concept": "Expressive character in foreground gesturing towards viewer with scenic high-contrast background.",
-                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
+                "thumbnail_concept": f"Dramatic shot of {main_char_name or 'the main protagonist'} in the foreground facing viewer with scenic high-contrast background.",
+                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an intense dramatic shot of {char_token_fallback} with vivid facial expression looking at the viewer. In the background, breathtaking scenery of {loc_token_fallback} {era_fallback}, golden cinematic lighting, high contrast, clean negative space on left side for bold text overlay, rendered in [preset:style], no text in image.",
             }
         else:
             hook1 = " ".join(words[:2]) if words else "MISTERI NYATA"
@@ -334,8 +390,8 @@ async def generate_youtube_metadata(
                 "tags": [proj.name, "dokumenter", "cerita", "edukasi"],
                 "thumbnail_hook_line1": hook1,
                 "thumbnail_hook_line2": hook2,
-                "thumbnail_concept": "Karakter ekspresif di foreground kanan memegang objek cerita dengan latar belakang pemandangan megah dan kontras tinggi.",
-                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an expressive illustrated character with white minimalist head, dynamic pose gesturing towards viewer. In the background, breathtaking scenic landscape of {proj.name}, golden sunlight, lush contrast, clear space on left side for text overlay, no text.",
+                "thumbnail_concept": f"Karakter utama {main_char_name or 'cerita'} di foreground kanan dengan ekspresi dramatis dan latar belakang pemandangan megah kontras tinggi.",
+                "thumbnail_prompt": f"A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an intense dramatic shot of {char_token_fallback} with vivid facial expression looking at the viewer. In the background, breathtaking scenery of {loc_token_fallback} {era_fallback}, golden cinematic lighting, high contrast, clean negative space on left side for bold text overlay, rendered in [preset:style], no text in image.",
             }
 
     # Merge into existing project youtube_metadata
@@ -364,15 +420,16 @@ async def generate_youtube_metadata(
             "pos_x": 6,
             "pos_y": 8,
             "text_align": "left",
-            "font_family": "Bebas Neue",
-            "font_size": 48,
-            "rotation": -3,
-            "outline_spread": 1.5,
-            "outline_blur": 6,
+            "font_family": "Anton",
+            "font_size": 56,
+            "rotation": -2,
+            "outline_spread": 2.0,
+            "outline_blur": 4,
             "outline_color": "#000000",
             "outline_enabled": True,
             "blur_enabled": True,
-            "style_preset": "modern",
+            "shadow_style": "subtle",
+            "style_preset": "viral",
         }
     else:
         ov = dict(existing_overlay)
@@ -421,15 +478,54 @@ async def generate_youtube_thumbnail(
 
     effective_style = style_prompt or (preset.master_prompt if preset else (cfg.image_system_prompt if cfg else None))
 
+    # 1. Sanitize any legacy doodle phrases if project has real characters
+    chars = getattr(proj, "characters", None) or []
+    locs = getattr(proj, "locations", None) or []
+    world = getattr(proj, "world_setting", None) or {}
+
+    active_prompt = clean_prompt
+    if chars:
+        main_c = chars[0]
+        c_anchor = main_c.get("visual_anchor") or main_c.get("name") or "main protagonist"
+        active_prompt = re.sub(
+            r"(?:an?\s+)?expressive illustrated character with (?:clean )?white minimalist head(?:\s*,\s*large expressive dot eyes)?(?:\s*,\s*spiky hair)?",
+            f"an expressive dramatic shot of {main_c.get('name', 'the protagonist')} ({c_anchor})",
+            active_prompt,
+            flags=re.IGNORECASE,
+        )
+        active_prompt = re.sub(
+            r"minimalist stick-figure character with large,? smooth,? perfectly round bald white head",
+            f"{main_c.get('name', 'the protagonist')} ({c_anchor})",
+            active_prompt,
+            flags=re.IGNORECASE,
+        )
+        active_prompt = re.sub(
+            r"an? illustrated minimalist character",
+            f"an expressive shot of {main_c.get('name', 'the protagonist')} ({c_anchor})",
+            active_prompt,
+            flags=re.IGNORECASE,
+        )
+
+    # 2. Resolve Continuity Bible Tokens ([char:aladin:muda], [loc:agrabah], [preset:style])
+    from app.services.storyboard import resolve_prompt_variables
+    resolved_prompt = resolve_prompt_variables(
+        active_prompt,
+        characters=chars,
+        locations=locs,
+        world_setting=world,
+        preset_master_prompt=effective_style,
+    )
+
     item_id = f"yt_{uuid.uuid4().hex[:6]}"
     file_path, _ = await generate_single_image(
-        prompt=clean_prompt,
+        prompt=resolved_prompt,
         project_id=project_id,
         item_id=item_id,
         base_url=base_url,
         api_key=api_key,
         model=model,
         style_prompt=effective_style,
+        negative_prompt=getattr(preset, "negative_prompt", None) if preset else None,
         size="1792x1024",
     )
 

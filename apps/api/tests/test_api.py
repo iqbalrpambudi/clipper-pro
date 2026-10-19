@@ -1470,6 +1470,72 @@ async def test_story_continuity_bible_variable_resolution():
     assert "rocky Indonesian tropical coast" in resolved_2
 
 
+def test_clean_narration_for_tts_and_punctuation():
+    from app.services.storyboard import clean_narration_for_tts
+
+    characters = [
+        {
+            "id": "aladin",
+            "name": "Aladin",
+            "role": "Protagonis",
+            "variants": [
+                {"variant_id": "muda", "label": "Aladin Muda"},
+            ],
+        },
+        {
+            "id": "penyihir",
+            "name": "Penyihir",
+            "role": "Antagonis",
+        },
+    ]
+
+    locations = [
+        {"id": "pesisir_pantai", "name": "Pesisir Pantai Air Manis"},
+    ]
+
+    # 1. Exact case reported by user:
+    raw_user_narration = (
+        "“Bagi [char:aladin:muda], lampu itu adalah jalan keluar dari kemiskinan; "
+        "bagi [char:penyihir], ia adalah kunci menuju kekuatan yang tak terbatas dan tak terkendali.”"
+    )
+    cleaned = clean_narration_for_tts(raw_user_narration, characters=characters)
+
+    assert "[char:" not in cleaned
+    assert "[char:aladin:muda]" not in cleaned
+    assert "[char:penyihir]" not in cleaned
+    assert ";" not in cleaned
+    assert ":" not in cleaned
+    assert "Aladin" in cleaned
+    assert "Penyihir" in cleaned
+    assert "kemiskinan, bagi Penyihir" in cleaned
+
+    # 2. Case without characters list (fallback regex name inference):
+    cleaned_fallback = clean_narration_for_tts(raw_user_narration)
+    assert "[char:" not in cleaned_fallback
+    assert ";" not in cleaned_fallback
+    assert ":" not in cleaned_fallback
+    assert "Aladin" in cleaned_fallback
+    assert "Penyihir" in cleaned_fallback
+
+    # 3. Colon and timestamp cleaning
+    colon_text = "Fakta penting: pada pukul 10:00 malam, keajaiban dimulai; lampu itu bersinar."
+    cleaned_colon = clean_narration_for_tts(colon_text)
+    assert ";" not in cleaned_colon
+    assert ":" not in cleaned_colon
+    assert "10.00" in cleaned_colon
+    assert "Fakta penting, pada pukul" in cleaned_colon
+    assert "dimulai, lampu itu bersinar." in cleaned_colon
+
+    # 4. Stray preset and location token leak cleaning
+    leaked_preset = "Di [loc:pesisir_pantai], sang pemuda [preset:style] bersujud [era]."
+    cleaned_leak = clean_narration_for_tts(leaked_preset, locations=locations)
+    assert "[loc:" not in cleaned_leak
+    assert "[preset:" not in cleaned_leak
+    assert "[era]" not in cleaned_leak
+    assert "Pesisir Pantai Air Manis" in cleaned_leak
+    assert "sang pemuda bersujud" in cleaned_leak
+
+
 @pytest.mark.asyncio
 async def test_continuity_bible_api_endpoints():
     from httpx import AsyncClient, ASGITransport
@@ -1558,6 +1624,72 @@ async def test_continuity_bible_api_endpoints():
         assert items_data[0]["resolved_prompt"] is not None
         assert "cursed granite stone statue" in items_data[0]["resolved_prompt"]
         assert "misty coastline with black volcanic sand" in items_data[0]["resolved_prompt"]
+
+
+def test_strip_bars_and_ensure_16_9_letterbox():
+    import cv2
+    import numpy as np
+    from app.services.image_gen import strip_bars_and_ensure_16_9
+
+    # Image with black letterbox bars top and bottom
+    img = np.random.randint(60, 200, (1080, 1920, 3), dtype=np.uint8)
+    img[:80, :] = 0
+    img[-80:, :] = 0
+    _, enc = cv2.imencode(".png", img)
+    out_bytes = strip_bars_and_ensure_16_9(enc.tobytes())
+    res = cv2.imdecode(np.frombuffer(out_bytes, np.uint8), cv2.IMREAD_COLOR)
+    assert res.shape == (1080, 1920, 3)
+    assert np.mean(res[:10, :]) > 40
+    assert np.mean(res[-10:, :]) > 40
+
+
+def test_strip_bars_and_ensure_16_9_white_bars():
+    import cv2
+    import numpy as np
+    from app.services.image_gen import strip_bars_and_ensure_16_9
+
+    # Image with white bars top and bottom
+    img = np.random.randint(60, 200, (1080, 1920, 3), dtype=np.uint8)
+    img[:60, :] = 255
+    img[-60:, :] = 255
+    _, enc = cv2.imencode(".png", img)
+    out_bytes = strip_bars_and_ensure_16_9(enc.tobytes())
+    res = cv2.imdecode(np.frombuffer(out_bytes, np.uint8), cv2.IMREAD_COLOR)
+    assert res.shape == (1080, 1920, 3)
+    assert np.mean(res[:10, :]) < 220
+    assert np.mean(res[-10:, :]) < 220
+
+
+def test_strip_bars_and_ensure_16_9_square_crop():
+    import cv2
+    import numpy as np
+    from app.services.image_gen import strip_bars_and_ensure_16_9
+
+    # Square image 1024x1024
+    img = np.random.randint(60, 200, (1024, 1024, 3), dtype=np.uint8)
+    _, enc = cv2.imencode(".png", img)
+    out_bytes = strip_bars_and_ensure_16_9(enc.tobytes())
+    res = cv2.imdecode(np.frombuffer(out_bytes, np.uint8), cv2.IMREAD_COLOR)
+    assert res.shape == (1080, 1920, 3)
+    assert np.mean(res[:10, :]) > 40
+    assert np.mean(res[:, :10]) > 40
+
+
+def test_strip_bars_and_ensure_16_9_pillarbox():
+    import cv2
+    import numpy as np
+    from app.services.image_gen import strip_bars_and_ensure_16_9
+
+    # Pillarbox (black bars on left and right)
+    img = np.random.randint(60, 200, (1080, 1920, 3), dtype=np.uint8)
+    img[:, :120] = 0
+    img[:, -120:] = 0
+    _, enc = cv2.imencode(".png", img)
+    out_bytes = strip_bars_and_ensure_16_9(enc.tobytes())
+    res = cv2.imdecode(np.frombuffer(out_bytes, np.uint8), cv2.IMREAD_COLOR)
+    assert res.shape == (1080, 1920, 3)
+    assert np.mean(res[:, :10]) > 40
+    assert np.mean(res[:, -10:]) > 40
 
 
 

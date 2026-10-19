@@ -30,6 +30,9 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   const isStoryboard = project.project_type === "long_storyboard";
+  const projectUrl = isStoryboard
+    ? `/project/storyboard/${project.id}`
+    : `/project/short/${project.id}`;
 
   const formattedDate = React.useMemo(() => {
     if (!project.created_at) return null;
@@ -110,7 +113,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
         </div>
 
         {/* Project Name */}
-        <Link href={`/projects/${project.id}`}>
+        <Link href={projectUrl}>
           <CardTitle
             className={`text-base font-bold text-white transition leading-snug line-clamp-1 ${
               isStoryboard ? "group-hover:text-violet-400" : "group-hover:text-[#3ECF8E]"
@@ -169,7 +172,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
         </div>
 
         <Link
-          href={`/projects/${project.id}`}
+          href={projectUrl}
           className={`flex items-center gap-1 font-semibold group-hover:translate-x-0.5 transition ${
             isStoryboard ? "text-violet-400" : "text-[#3ECF8E]"
           }`}

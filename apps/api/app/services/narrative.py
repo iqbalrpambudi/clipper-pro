@@ -67,7 +67,8 @@ def build_master_scriptwriting_directive(
                 "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
                 "   - DO NOT include conversational AI greetings like 'Sure! Here is the script:'.\n"
                 "   - DO NOT include stage directions/SFX in brackets like [Dramatic Music] or (Laughs).\n"
-                "   - DO NOT include scene labels or headings like 'ACT 1:', 'HOOK:', 'CONCLUSION:'."
+                "   - DO NOT include scene labels or headings like 'ACT 1:', 'HOOK:', 'CONCLUSION:'.\n"
+                "   - DO NOT use semicolons (;) or colons (:). Use commas (,) or periods (.) instead so TTS voice synthesis flows smoothly."
             )
 
         return (
@@ -104,7 +105,8 @@ def build_master_scriptwriting_directive(
             "\n"
             "6. CLEAN TTS-READY OUTPUT:\n"
             "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
-            "   - NO greetings, NO stage directions in brackets, NO headings like 'HOOK:' or 'SCENE 1:'."
+            "   - NO greetings, NO stage directions in brackets, NO headings like 'HOOK:' or 'SCENE 1:'.\n"
+            "   - NO semicolons (;) or colons (:). Use commas (,) or periods (.) instead."
         )
 
     if target_duration >= 180:
@@ -152,7 +154,8 @@ def build_master_scriptwriting_directive(
             "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
             "   - DILARANG menyertakan salam pembuka/penutup AI seperti 'Tentu, ini naskahnya:'.\n"
             "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Misterius] atau (Tertawa).\n"
-            "   - DILARANG menyertakan label babak atau heading seperti 'BABAK 1:', 'HOOK:', 'PENUTUP:'."
+            "   - DILARANG menyertakan label babak atau heading seperti 'BABAK 1:', 'HOOK:', 'PENUTUP:'.\n"
+            "   - DILARANG menggunakan tanda titik dua (:) dan titik koma (;). Gunakan koma (,) atau titik (.) agar pembacaan suara TTS terdengar alami."
         )
 
     return (
@@ -206,7 +209,8 @@ def build_master_scriptwriting_directive(
         "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
         "   - DILARANG menyertakan kalimat sapaan AI seperti 'Tentu, ini naskahnya:'.\n"
         "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Tegang] atau (Tertawa).\n"
-        "   - DILARANG menyertakan label struktur seperti 'HOOK:', 'ISI:', 'LANGKAH 1:', 'PENUTUP:'."
+        "   - DILARANG menyertakan label struktur seperti 'HOOK:', 'ISI:', 'LANGKAH 1:', 'PENUTUP:'.\n"
+        "   - DILARANG menggunakan tanda titik dua (:) dan titik koma (;). Gunakan koma (,) atau titik (.) agar suara TTS mengalir alami."
     )
 
 
@@ -549,6 +553,12 @@ def split_into_sentence_segments(text: str, balance: bool = True) -> List[Dict[s
     Prevents hyper-fragmented 1-second cuts (< 3 words) and overly long 10-second visual freezes (> 22 words).
     """
     cleaned = re.sub(r"\[.*?\]", "", text).strip()
+    # Normalize colons and semicolons for natural TTS speech
+    cleaned = re.sub(r"(\d+):(\d+)", r"\1.\2", cleaned)
+    cleaned = re.sub(r"\s*;\s*", ", ", cleaned)
+    cleaned = re.sub(r"\s*:\s*", ", ", cleaned)
+    cleaned = re.sub(r",(\s*,)+", ",", cleaned)
+    cleaned = re.sub(r",\s*([.!?])", r"\1", cleaned)
     # Split by Indonesian sentence terminators (. ! ? or newline)
     raw_sentences = [s.strip() for s in re.split(r"(?<=[.!?\n])\s+", cleaned) if s.strip()]
 

@@ -17,6 +17,20 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/projects/short/:id",
+        destination: "/project/short/:id",
+        permanent: false,
+      },
+      {
+        source: "/projects/storyboard/:id",
+        destination: "/project/storyboard/:id",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1534,6 +1534,9 @@ async def generate_speech_audio(
     if not clean_text:
         raise ValueError("Teks narasi tidak boleh kosong.")
 
+    from app.services.storyboard import clean_narration_for_tts
+    clean_text = clean_narration_for_tts(clean_text)
+
     prov = provider.lower().strip()
 
     target_lang = (language or "id").strip().lower()

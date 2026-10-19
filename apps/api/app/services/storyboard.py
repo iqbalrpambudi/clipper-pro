@@ -177,6 +177,153 @@ def resolve_prompt_variables(
     return resolved.strip()
 
 
+# Alias for backward and forward compatibility
+resolve_prompt_tokens = resolve_prompt_variables
+
+
+def clean_narration_for_tts(
+    text: str,
+    characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    world_setting: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Clean and sanitize voiceover narration text for optimal TTS delivery.
+
+    1. Resolves leaked prompt tokens ([char:aladin:muda], [char:penyihir], [loc:pantai])
+       into plain, natural spoken entity names ('Aladin', 'Penyihir', 'Pantai').
+    2. Completely removes visual styling/preset tokens ([preset:style], [style], [era]).
+    3. Eliminates semicolons (;) by turning them into commas (,) for smooth TTS pauses.
+    4. Eliminates colons (:) by converting time formats (e.g. 10:00 -> 10.00) and replacing
+       other colons with commas (,) so voice synthesis never stumbles.
+    5. Normalizes consecutive commas, stray commas before sentence closers, and redundant whitespace.
+    """
+    if not text or not isinstance(text, str):
+        return ""
+
+    chars = characters or []
+    locs = locations or []
+    world = world_setting or {}
+
+    # Pre-index characters
+    char_map: Dict[str, str] = {}
+    for c in chars:
+        if not isinstance(c, dict):
+            continue
+        c_name = (c.get("name") or "").strip()
+        c_id = _normalize_key(c.get("id") or "")
+        c_norm_name = _normalize_key(c_name)
+        if c_name:
+            if c_id:
+                char_map[c_id] = c_name
+            if c_norm_name:
+                char_map[c_norm_name] = c_name
+
+    # Pre-index locations
+    loc_map: Dict[str, str] = {}
+    for l in locs:
+        if not isinstance(l, dict):
+            continue
+        l_name = (l.get("name") or "").strip()
+        l_id = _normalize_key(l.get("id") or l.get("location_id") or "")
+        l_norm_name = _normalize_key(l_name)
+        if l_name:
+            if l_id:
+                loc_map[l_id] = l_name
+            if l_norm_name:
+                loc_map[l_norm_name] = l_name
+
+    def _replace_narration_token(match: re.Match) -> str:
+        raw = match.group(1).strip()
+        lower = raw.lower()
+
+        # 1. Preset style / style tokens -> remove completely
+        if any(lower.startswith(p) for p in ["preset:", "style", "preset_style", "preset style"]):
+            return ""
+
+        # 2. Era / world setting tokens
+        if lower in ["era", "world:era", "world_setting:era"]:
+            return (world.get("era") or "").strip()
+        if lower.startswith("time:") or lower.startswith("mood:"):
+            return ""
+
+        # 3. Explicit character tokens [char:<id>:<variant>] or [char:<id>]
+        if lower.startswith("char:") or lower.startswith("character:"):
+            parts = raw.split(":", 2)
+            c_key = parts[1].strip()
+            norm_k = _normalize_key(c_key)
+            if norm_k in char_map:
+                return char_map[norm_k]
+            # Try partial matching in char_map
+            for k, name in char_map.items():
+                if norm_k in k or k in norm_k:
+                    return name
+            # Fallback to human readable name from the key itself
+            return c_key.replace("_", " ").replace("-", " ").title()
+
+        # 4. Explicit location tokens [loc:<id>] or [location:<id>]
+        if lower.startswith("loc:") or lower.startswith("location:"):
+            parts = raw.split(":", 1)
+            l_key = parts[1].strip()
+            norm_k = _normalize_key(l_key)
+            if norm_k in loc_map:
+                return loc_map[norm_k]
+            for k, name in loc_map.items():
+                if norm_k in k or k in norm_k:
+                    return name
+            return l_key.replace("_", " ").replace("-", " ").title()
+
+        # 5. Shorthand character variant [malinkundang:batu]
+        if ":" in raw and not lower.startswith("http"):
+            parts = raw.split(":", 1)
+            norm_cand = _normalize_key(parts[0].strip())
+            if norm_cand in char_map:
+                return char_map[norm_cand]
+
+        # 6. Shorthand single token match
+        norm_raw = _normalize_key(raw)
+        if norm_raw in char_map:
+            return char_map[norm_raw]
+        if norm_raw in loc_map:
+            return loc_map[norm_raw]
+
+        # 7. Unknown bracket tags / SFX -> strip
+        return ""
+
+    # Replace bracketed tokens: matches [token]
+    cleaned = re.sub(r"\[([a-zA-Z0-9_: -]+)\]", _replace_narration_token, text)
+
+    # Also strip any leftover bracketed annotations e.g. [Musik Tegang], [Laughs], etc.
+    cleaned = re.sub(r"\[.*?\]", "", cleaned)
+
+    # Punctuation cleaning:
+    # 1. Convert clock/timestamp formats (e.g. 10:00 -> 10.00, 14:30 -> 14.30)
+    cleaned = re.sub(r"(\d+):(\d+)", r"\1.\2", cleaned)
+
+    # 2. Replace semicolons (;) with commas (,)
+    cleaned = re.sub(r"\s*;\s*", ", ", cleaned)
+
+    # 3. Replace colons (:) with commas (,)
+    cleaned = re.sub(r"\s*:\s*", ", ", cleaned)
+
+    # 4. Clean up any resulting multiple commas, e.g. ",," or ", ," -> ","
+    cleaned = re.sub(r",(\s*,)+", ",", cleaned)
+
+    # 5. Clean up comma before period, exclamation, or question mark e.g. ",." -> "."
+    cleaned = re.sub(r",\s*([.!?])", r"\1", cleaned)
+
+    # 6. Replace comma at end of string or before closing quote with period
+    cleaned = re.sub(r",\s*(['”\"’])$", r".\1", cleaned)
+    cleaned = re.sub(r",\s*$", ".", cleaned)
+
+    # 7. Clean up comma at start of sentence or after opening quote
+    cleaned = re.sub(r'(^|["“\'‘])\s*,\s*', r'\1', cleaned)
+
+    # 8. Clean up multiple spaces
+    cleaned = re.sub(r"[ \t]+", " ", cleaned)
+
+    return cleaned.strip()
+
+
 def _build_visual_guidelines(preset: Optional[Any]) -> Tuple[str, str, str, str]:
     """Helper to extract consistent visual guidelines and example prompts from preset."""
     if preset:
@@ -527,10 +674,14 @@ def _format_continuity_bible_instructions(
             "- Insert character variant token: `[char:<char_id>:<variant_id>]` (or `[char:<char_id>]`).\n"
             "- Insert location token: `[loc:<loc_id>]`.\n"
             "- Insert visual preset token: `[preset:style]`.\n"
-            "- Describe the specific character action, emotion, 16:9 widescreen cinematic framing, and lighting vividly.\n"
+            "- Describe the specific character action, emotion, full-bleed 16:9 widescreen framing (edge-to-edge, NO letterbox, NO black bars, NO white border), and lighting vividly.\n"
             "Examples:\n"
-            "  * `A cinematic 16:9 shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards horizon under gentle morning sunlight.`\n"
-            "  * `A dramatic low-angle 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain and lightning strikes.`"
+            "  * `A full-bleed 16:9 widescreen shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards horizon under gentle morning sunlight.`\n"
+            "  * `A dramatic low-angle full-bleed 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain and lightning strikes.`\n\n"
+            "=== CRITICAL RULES FOR NARRATION_TEXT (VOICEOVER / TTS) ===\n"
+            "1. STRICTLY NO TOKENS IN NARRATION: Bracket tokens like `[char:...]`, `[loc:...]`, `[preset:...]` are EXCLUSIVELY for `image_prompt`!\n"
+            "   In `narration_text`, NEVER include bracket tokens. Always write the natural spoken character and location names (e.g. write 'Aladdin' or 'the Sorcerer', NEVER '[char:aladin:muda]' or '[char:penyihir]'). This narration will be read aloud by TTS.\n"
+            "2. NO COLONS OR SEMICOLONS: NEVER use semicolons (;) or colons (:) in `narration_text` as TTS voice synthesis glitches or stumbles on them. Use commas (,) for breath pauses and periods (.) for full stops."
         )
     else:
         lines.append(
@@ -539,10 +690,14 @@ def _format_continuity_bible_instructions(
             "- Sisipkan token karakter & varian: `[char:<char_id>:<variant_id>]` (contoh: `[char:malin:muda]`, `[char:malin:dewasa]`, `[char:malin:batu]`).\n"
             "- Sisipkan token latar tempat: `[loc:<loc_id>]` (contoh: `[loc:pesisir_air_manis]`, `[loc:kapal_saudagar]`).\n"
             "- Sisipkan token gaya visual preset: `[preset:style]`.\n"
-            "- Tuliskan aksi konkret tokoh, ekspresi emosi, framing kamera 16:9 widescreen, dan pencahayaan secara hidup.\n"
+            "- Tuliskan aksi konkret tokoh, ekspresi emosi, framing 16:9 widescreen full-bleed (penuh layar edge-to-edge, TANPA letterbox, TANPA bar hitam/putih, TANPA bingkai), dan pencahayaan secara hidup.\n"
             "Contoh format prompt yang WAJIB ditaati:\n"
-            "  * Adegan 1: `A cinematic 16:9 shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards the ocean with ambitious eyes under gentle morning sunlight.`\n"
-            "  * Adegan 2: `A dramatic low-angle 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain, lightning flashing in dark stormy sky.`"
+            "  * Adegan 1: `A full-bleed 16:9 widescreen shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards the ocean with ambitious eyes under gentle morning sunlight.`\n"
+            "  * Adegan 2: `A dramatic low-angle full-bleed 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain, lightning flashing in dark stormy sky.`\n\n"
+            "=== ATURAN MUTLAK NARRATION_TEXT (NASKAHPENYUARAAN TTS) ===\n"
+            "1. DILARANG KERAS MENGGUNAKAN TOKEN PADA NARASI: Token variabel seperti `[char:...]`, `[loc:...]`, `[preset:...]` HANYA untuk `image_prompt`!\n"
+            "   Pada `narration_text`, DILARANG menuliskan token kurung siku. Selalu tulis nama asli tokoh/tempat secara alami (contoh: tulis 'Aladin', 'Penyihir', BUKAN '[char:aladin:muda]' atau '[char:penyihir]'). Naskah narasi ini akan langsung dibacakan oleh mesin suara (TTS).\n"
+            "2. HILANGKAN TANDA TITIK DUA (:) DAN TITIK KOMA (;): DILARANG menggunakan tanda baca titik dua (:) dan titik koma (;) pada `narration_text`. Mesin TTS tersendat atau salah membaca tanda baca ini. Gunakan tanda koma (,) untuk jeda pendek atau titik (.) untuk jeda antar kalimat."
         )
 
     return "\n".join(lines) + "\n\n"
@@ -593,7 +748,7 @@ def build_chapter_expansion_prompt(
             f"   - This chapter MUST contain exactly {target_segments} segments.\n"
             f"   - Each segment MUST have exactly {images_per_segment} scenes -> Exactly {total_chapter_scenes} scenes total for this chapter.\n"
             "   - Each scene has directly coupled `narration_text` and `image_prompt`.\n"
-            "   - `narration_text`: 1–2 complete, expressive, descriptive narration sentences in ENGLISH (18–25 words per scene). DO NOT make sentences too short!\n"
+            "   - `narration_text`: 1–2 complete, expressive, descriptive narration sentences in ENGLISH (18–25 words per scene). DO NOT make sentences too short! NEVER include bracket tokens (e.g. [char:...]), semicolons (;), or colons (:).\n"
             "   - `image_prompt`: Concise, tokenized visual prompt in English (16:9 widescreen) using Continuity tokens.\n\n"
             f"{continuity_instruction}"
             f"{visual_guidelines}"
@@ -634,7 +789,7 @@ def build_chapter_expansion_prompt(
             f"   - Babak ini WAJIB berisi tepat {target_segments} segmen.\n"
             f"   - Setiap segmen WAJIB memiliki tepat {images_per_segment} adegan (scenes) -> Total tepat {total_chapter_scenes} scenes untuk babak ini.\n"
             "   - Setiap scene memiliki `narration_text` dan `image_prompt` yang berpasangan langsung.\n"
-            "   - `narration_text`: 1–2 kalimat narasi utuh yang bernas, deskriptif, dan ekspresif (18–25 kata per scene). JANGAN membuat narasi terlalu pendek!\n"
+            "   - `narration_text`: 1–2 kalimat narasi utuh yang bernas, deskriptif, dan ekspresif (18–25 kata per scene). JANGAN membuat narasi terlalu pendek! DILARANG KERAS menyertakan token kurung siku (seperti [char:...]), tanda titik dua (:), atau tanda titik koma (;).\n"
             "   - `image_prompt`: Prompt visual ringkas berbasis token variabel ([char:...], [loc:...], [preset:style]) yang secara konkret merepresentasikan kalimat narasi.\n\n"
             f"{continuity_instruction}"
             f"{visual_guidelines}"
@@ -709,7 +864,7 @@ def build_chapter_expansion_prompt(
 
         user_prompt += (
             f"\nWrite the complete script for Chapter {chapter_index} now in pure JSON format in ENGLISH.\n"
-            f"CRITICAL: Ensure the narration connects fluidly with the roadmap above and meets the minimum {min_chapter_words} words!"
+            f"CRITICAL: Ensure the narration connects fluidly with the roadmap above, meets the minimum {min_chapter_words} words, is FREE of bracket tokens (plain names only), and contains NO colons or semicolons!"
         )
     else:
         user_prompt = (
@@ -734,7 +889,7 @@ def build_chapter_expansion_prompt(
 
         user_prompt += (
             f"\nTuliskan naskah lengkap Babak {chapter_index} sekarang dalam format JSON murni.\n"
-            f"PENTING: Pastikan alur cerita menyambung secara alami dengan roadmap di atas dan memenuhi minimal {min_chapter_words} kata!"
+            f"PENTING: Pastikan alur cerita menyambung secara alami dengan roadmap di atas, memenuhi minimal {min_chapter_words} kata, BEBAS token variabel pada teks narasi (tulis nama asli tokoh biasa), dan TANPA tanda titik dua (:) atau titik koma (;)."
         )
     return system_prompt, user_prompt
 
@@ -783,7 +938,7 @@ def build_storyboard_prompt(
             "=== AUDIO-VISUAL COUPLING (1-TO-1) ===\n"
             f"1. Exactly {images_per_segment} scenes per segment.\n"
             "2. Each scene has paired `narration_text` and `image_prompt`.\n"
-            "3. `narration_text`: 1–2 complete, expressive sentences in ENGLISH (18–25 words per scene).\n"
+            "3. `narration_text`: 1–2 complete, expressive sentences in ENGLISH (18–25 words per scene). NEVER include bracket tokens ([char:...]), semicolons (;), or colons (:).\n"
             "4. `image_prompt`: Concise English illustration prompt using variable tokens (`[preset:style]`, `[char:id:variant]`, `[loc:id]`).\n\n"
             f"{visual_guidelines}"
             "4. TARGET WORD COUNT & STORY STRUCTURE:\n"
@@ -862,7 +1017,7 @@ def build_storyboard_prompt(
             "1. KOPLING 1-TO-1 (1 Adegan = Tepat 1 Kalimat Narasi & 1 Prompt Visual):\n"
             f"   - Setiap segmen dipecah menjadi tepat sejumlah adegan (scenes) sesuai parameter `Jumlah Gambar per Segmen` ({images_per_segment} scene per segmen).\n"
             "   - Setiap adegan (scene) WAJIB memiliki `narration_text` dan `image_prompt` yang berpasangan secara langsung.\n"
-            "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene). JANGAN membuat kalimat terlalu pendek!\n"
+            "   - `narration_text`: 1–2 kalimat narasi utuh yang tuntas, mendalam, dan alami (panjang 16–22 kata per scene). JANGAN membuat kalimat terlalu pendek! DILARANG KERAS menyertakan token variabel kurung siku (seperti [char:...]), titik dua (:), atau titik koma (;).\n"
             "   - `image_prompt`: Prompt visual ringkas (Bahasa Inggris) yang menyematkan token variabel `[preset:style]`, `[char:id:variant]`, dan `[loc:id]` secara tepat.\n\n"
             f"{visual_guidelines}"
             "4. TARGET PANJANG KATA & STRUKTUR CERITA:\n"
@@ -951,7 +1106,8 @@ def build_storyboard_prompt(
         f"- Target durasi bicara adalah {duration_mins} menit penuh.\n"
         f"- Total kata narasi WAJIB mencapai minimal {min_words} kata (target ideal ~{target_words} kata).\n"
         f"- Kembangkan setiap scene menjadi 2 kalimat narasi yang padat, ekspresif, dan mendalam (18–25 kata per scene).\n"
-        f"- Gunakan token variabel [preset:style], [char:id:variant], dan [loc:id] pada setiap image_prompt secara konsisten."
+        f"- Gunakan token variabel [preset:style], [char:id:variant], dan [loc:id] pada setiap image_prompt secara konsisten.\n"
+        f"- DILARANG KERAS menyertakan token kurung siku (seperti [char:...]), titik dua (:), atau titik koma (;) pada narration_text!"
     )
     return system_prompt, user_prompt
 
@@ -1164,6 +1320,23 @@ async def generate_storyboard_script(
                                 ch_res = extract_json_payload(raw_ch)
                                 if not ch_res.get("chapter_title"):
                                     ch_res["chapter_title"] = ch_title
+                                for s_seg in ch_res.get("segments", []):
+                                    if isinstance(s_seg.get("scenes"), list):
+                                        for sc in s_seg["scenes"]:
+                                            if sc.get("narration_text"):
+                                                sc["narration_text"] = clean_narration_for_tts(
+                                                    sc["narration_text"],
+                                                    characters=detected_characters,
+                                                    locations=detected_locations,
+                                                    world_setting=detected_world_setting,
+                                                )
+                                    elif s_seg.get("narration_text"):
+                                        s_seg["narration_text"] = clean_narration_for_tts(
+                                            s_seg["narration_text"],
+                                            characters=detected_characters,
+                                            locations=detected_locations,
+                                            world_setting=detected_world_setting,
+                                        )
                                 return ch_res
                             except Exception as err:
                                 last_err = err
@@ -1218,6 +1391,25 @@ async def generate_storyboard_script(
             detected_world_setting = data.get("world_setting", {}) or {}
             log.info("Detected world setting from single-shot: %s", detected_world_setting.get("era"))
 
+        for ch in chapters:
+            for s_seg in ch.get("segments", []):
+                if isinstance(s_seg.get("scenes"), list):
+                    for sc in s_seg["scenes"]:
+                        if sc.get("narration_text"):
+                            sc["narration_text"] = clean_narration_for_tts(
+                                sc["narration_text"],
+                                characters=detected_characters,
+                                locations=detected_locations,
+                                world_setting=detected_world_setting,
+                            )
+                elif s_seg.get("narration_text"):
+                    s_seg["narration_text"] = clean_narration_for_tts(
+                        s_seg["narration_text"],
+                        characters=detected_characters,
+                        locations=detected_locations,
+                        world_setting=detected_world_setting,
+                    )
+
     # Flatten segments for the Narration model
     all_segments: List[Dict[str, Any]] = []
     full_script_lines: List[str] = []
@@ -1235,7 +1427,12 @@ async def generate_storyboard_script(
             # PRIMARY FORMAT: 1-to-1 Discrete Scenes inside each segment
             if isinstance(scenes, list) and len(scenes) > 0:
                 for scene_idx, scene in enumerate(scenes):
-                    scene_text = (scene.get("narration_text") or "").strip()
+                    scene_text = clean_narration_for_tts(
+                        scene.get("narration_text") or "",
+                        characters=detected_characters,
+                        locations=detected_locations,
+                        world_setting=detected_world_setting,
+                    ).strip()
                     scene_prompt = (scene.get("image_prompt") or "").strip()
                     if not scene_text and not scene_prompt:
                         continue
@@ -1276,7 +1473,12 @@ async def generate_storyboard_script(
                 continue
 
             # SECONDARY / FALLBACK FORMAT: segment with narration_text and image_prompts list
-            seg_text = (seg.get("narration_text") or "").strip()
+            seg_text = clean_narration_for_tts(
+                seg.get("narration_text") or "",
+                characters=detected_characters,
+                locations=detected_locations,
+                world_setting=detected_world_setting,
+            ).strip()
             if not seg_text:
                 continue
 
@@ -1288,16 +1490,22 @@ async def generate_storyboard_script(
             if len(img_prompts) > 1:
                 sub_texts = _split_text_into_subsegments(seg_text, len(img_prompts))
                 for sub_idx, (sub_text, prompt) in enumerate(zip(sub_texts, img_prompts)):
+                    clean_sub = clean_narration_for_tts(
+                        sub_text,
+                        characters=detected_characters,
+                        locations=detected_locations,
+                        world_setting=detected_world_setting,
+                    ).strip()
                     sub_seg_id = f"seg-{seg_counter}_{sub_idx + 1}"
                     all_segments.append({
                         "id": sub_seg_id,
                         "chapter": chap_title,
-                        "text": sub_text,
+                        "text": clean_sub,
                         "image_count": 1,
                         "start_ms": 0,
                         "end_ms": 0,
                     })
-                    full_script_lines.append(sub_text)
+                    full_script_lines.append(clean_sub)
 
                     motion = motion_cycle[global_img_order % len(motion_cycle)]
                     item = StoryboardItem(
@@ -1305,7 +1513,7 @@ async def generate_storyboard_script(
                         chapter_title=chap_title,
                         segment_id=sub_seg_id,
                         order_index=global_img_order,
-                        script_text=sub_text,
+                        script_text=clean_sub,
                         image_prompt=str(prompt).strip(),
                         motion_effect=motion,
                         status="pending",

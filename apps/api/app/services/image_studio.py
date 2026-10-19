@@ -18,7 +18,7 @@ from app.services.image_gen import generate_image_to_path
 log = logging.getLogger(__name__)
 
 DEFAULT_DOODLE_STYLE_PROMPT = (
-    "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). "
+    "Full bleed edge-to-edge widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, completely filling the frame without letterbox, without black bars, without white borders or frames, NOT square, NOT vertical). "
     "Educational explainer storyboard illustration in a distinctive hand-drawn cartoon doodle comic style. "
     "Features iconic minimalist stick-figure characters with large, smooth, perfectly round bald white heads (no hair), "
     "simple solid black dot eyes with expressive eyebrows, and thin black stick limbs. "
@@ -26,7 +26,7 @@ DEFAULT_DOODLE_STYLE_PROMPT = (
     "Clean, confident black ink linework with subtle sketchy hatching and expressive gestures. "
     "Warm vintage parchment and tea-stained paper background texture with aged cream, sandy beige, and warm desert sepia watercolor washes. "
     "Hand-painted watercolor fills with earthy tones (ochre, terracotta, warm sand, muted tan, subtle olive accents) and soft pigment bleeding. "
-    "Diagrammatic storytelling elements, clean visual metaphors, subtle rough hand-drawn border vignette, ample negative space. "
+    "Diagrammatic storytelling elements, clean visual metaphors, full bleed edge-to-edge 16:9 widescreen composition without any black bars, letterbox, white border, or frames, ample negative space. "
     "No 3D CGI, no photorealism, no glossy gradients, no clutter, no digital text artifacts."
 )
 
@@ -36,7 +36,7 @@ DEFAULT_DOODLE_PRESET = {
     "description": "Gaya sketsa stickman berkepala bulat botak di atas kertas parchment kuno, tinta hitam ekspresif, dan sapuan cat air hangat sepia.",
     "category": "doodle",
     "master_prompt": DEFAULT_DOODLE_STYLE_PROMPT,
-    "negative_prompt": "No 3D CGI, no photorealism, no modern digital glossy gradients, no clutter, no digital text artifacts, no blurry details, no photorealistic humans.",
+    "negative_prompt": "No 3D CGI, no photorealism, no modern digital glossy gradients, no clutter, no digital text artifacts, no blurry details, no photorealistic humans, black bars, letterbox, pillarbox, white borders, borders, frame, margins, padding, split screen.",
     "reference_image_url": "/storage/presets/doodle_ref.png",
     "preview_image_url": "/storage/presets/doodle_preview.png",
     "user_text_input": "Doodle stickman hitam putih vintage parchment watercolor",
@@ -52,7 +52,7 @@ DEFAULT_DOODLE_PRESET = {
         ],
         "lighting": "Soft warm vintage parchment ambient illumination",
         "character_style": "Minimalist stick-figure, smooth round bald white head without hair, expressive solid black dot eyes, draped robes and fabric folds",
-        "composition": "Widescreen 16:9 landscape aspect ratio, diagrammatic storytelling, ample negative space, subtle vignette"
+        "composition": "Full bleed widescreen 16:9 landscape aspect ratio, edge-to-edge composition, diagrammatic storytelling, ample negative space, no letterbox, no black bars"
     },
     "is_builtin": True,
     "is_active": True,
@@ -91,8 +91,12 @@ async def seed_default_image_presets(db: AsyncSession) -> None:
                 preset.reference_image_url = DEFAULT_DOODLE_PRESET["reference_image_url"]
             if not preset.preview_image_url:
                 preset.preview_image_url = DEFAULT_DOODLE_PRESET["preview_image_url"]
-            if not preset.style_attributes:
+            if not preset.style_attributes or "border vignette" in str(preset.style_attributes):
                 preset.style_attributes = DEFAULT_DOODLE_PRESET["style_attributes"]
+            if "border vignette" in (preset.master_prompt or ""):
+                preset.master_prompt = DEFAULT_DOODLE_PRESET["master_prompt"]
+            if "letterbox" not in (preset.negative_prompt or ""):
+                preset.negative_prompt = DEFAULT_DOODLE_PRESET["negative_prompt"]
             await db.commit()
 
 

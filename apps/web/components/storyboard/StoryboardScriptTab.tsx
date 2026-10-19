@@ -1459,13 +1459,18 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                           )}
                         </div>
                         {isEditing ? (
-                          <Textarea
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            rows={6}
-                            placeholder="Tuliskan naskah narasi voiceover untuk segmen ini..."
-                            className="w-full text-xs text-white leading-relaxed font-sans bg-[#111] border-violet-500/40 focus:border-violet-400 p-3 rounded-xl resize-y"
-                          />
+                          <>
+                            <Textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              rows={6}
+                              placeholder="Tuliskan naskah narasi voiceover untuk segmen ini..."
+                              className="w-full text-xs text-white leading-relaxed font-sans bg-[#111] border-violet-500/40 focus:border-violet-400 p-3 rounded-xl resize-y"
+                            />
+                            <p className="text-[10px] text-slate-500 leading-normal">
+                              💡 Teks narasi dibacakan oleh TTS: gunakan koma (,) atau titik (.), hindari tanda titik dua (:) dan titik koma (;), serta tanpa token variabel.
+                            </p>
+                          </>
                         ) : (
                           <div className="text-xs text-white leading-relaxed font-sans bg-black/40 p-3.5 rounded-xl border border-[#222]">
                             &ldquo;{seg.text}&rdquo;

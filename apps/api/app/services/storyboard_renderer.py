@@ -69,8 +69,8 @@ def _build_zoompan_filter(
         y_expr = "max(0,ih/2-(ih/zoom/2))"
 
     vf = (
-        f"scale={scale_w}:{scale_h}:force_original_aspect_ratio=decrease,"
-        f"pad={scale_w}:{scale_h}:(ow-iw)/2:(oh-ih)/2:color=white,"
+        f"scale={scale_w}:{scale_h}:force_original_aspect_ratio=increase,"
+        f"crop={scale_w}:{scale_h},"
         f"zoompan=z='{zoom_expr}':x='{x_expr}':y='{y_expr}':d=1:s={w}x{h}:fps={fps}"
     )
     return vf
@@ -100,6 +100,10 @@ async def render_slide_subpixel_motion(
     img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
     if img is None:
         raise ValueError(f"Tidak dapat membaca file gambar adegan: {img_path}")
+
+    # Strip any baked-in letterbox/pillarbox/white bars and conform to 16:9 full bleed
+    from app.services.image_gen import strip_bars_from_cv2_image
+    img = strip_bars_from_cv2_image(img)
 
     # Aspect ratio cover (object-cover origin-center) to target canvas (w, h)
     ih, iw = img.shape[:2]

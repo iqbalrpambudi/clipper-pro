@@ -34,8 +34,8 @@ export function useCreateProject() {
     mutationFn: api.createProject,
     onSuccess: (newProj) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
-      showToast("Project baru berhasil dibuat!", "success");
-      router.push(`/projects/${newProj.id}`);
+      const mode = newProj.project_type === "long_storyboard" ? "storyboard" : "short";
+      router.push(`/project/${mode}/${newProj.id}`);
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal membuat project", "error");

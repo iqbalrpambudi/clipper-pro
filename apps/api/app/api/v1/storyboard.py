@@ -31,6 +31,7 @@ from app.services.storyboard import (
     generate_storyboard_script,
     sync_storyboard_timing_from_alignment,
     resolve_prompt_variables,
+    clean_narration_for_tts,
 )
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
@@ -259,10 +260,17 @@ async def update_storyboard_segment(
     current_seg = dict(updated_segments[target_idx])
     actual_seg_id = str(current_seg.get("id") or current_seg.get("segment_id") or segment_id)
 
+    clean_text = None
     if payload.chapter is not None:
         current_seg["chapter"] = payload.chapter
     if payload.text is not None:
-        current_seg["text"] = payload.text
+        clean_text = clean_narration_for_tts(
+            payload.text,
+            characters=proj.characters if proj else None,
+            locations=proj.locations if proj else None,
+            world_setting=proj.world_setting if proj else None,
+        )
+        current_seg["text"] = clean_text
     updated_segments[target_idx] = current_seg
     narration.segments = updated_segments
     flag_modified(narration, "segments")
@@ -290,8 +298,8 @@ async def update_storyboard_segment(
                 target_it.image_prompt = upd_item.image_prompt
                 if payload.chapter:
                     target_it.chapter_title = payload.chapter
-                if payload.text:
-                    target_it.script_text = payload.text
+                if clean_text is not None:
+                    target_it.script_text = clean_text
                 target_it.updated_at = datetime.utcnow()
 
     # Also update script_text & chapter_title on items belonging strictly to this segment
@@ -299,8 +307,8 @@ async def update_storyboard_segment(
         if str(it.segment_id) == str(segment_id) or str(it.segment_id) == actual_seg_id:
             if payload.chapter:
                 it.chapter_title = payload.chapter
-            if payload.text:
-                it.script_text = payload.text
+            if clean_text is not None:
+                it.script_text = clean_text
             it.updated_at = datetime.utcnow()
 
     await db.commit()
@@ -365,10 +373,17 @@ async def update_storyboard_item(
     if not item or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="Storyboard item tidak ditemukan")
 
+    proj = await db.get(Project, project_id)
+
     if payload.chapter_title is not None:
         item.chapter_title = payload.chapter_title
     if payload.script_text is not None:
-        item.script_text = payload.script_text
+        item.script_text = clean_narration_for_tts(
+            payload.script_text,
+            characters=getattr(proj, "characters", None) if proj else None,
+            locations=getattr(proj, "locations", None) if proj else None,
+            world_setting=getattr(proj, "world_setting", None) if proj else None,
+        )
     if payload.image_prompt is not None:
         item.image_prompt = payload.image_prompt
     if payload.motion_effect is not None:
@@ -382,7 +397,6 @@ async def update_storyboard_item(
 
     await db.commit()
     await db.refresh(item)
-    proj = await db.get(Project, project_id)
     preset = await get_active_image_preset(db)
     preset_style = preset.master_prompt if preset else None
     return _item_to_response(item, project=proj, preset_style=preset_style)

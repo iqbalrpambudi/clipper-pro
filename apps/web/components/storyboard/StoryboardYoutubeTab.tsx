@@ -43,14 +43,14 @@ interface StoryboardYoutubeTabProps {
 }
 
 const AVAILABLE_FONTS = [
-  { id: "Bebas Neue", name: "Bebas Neue", desc: "Standar YouTube viral, jangkung & tegas" },
-  { id: "Montserrat", name: "Montserrat", desc: "Modern, sleek & minimalis dokumenter" },
-  { id: "Anton", name: "Anton", desc: "Ekstra tebal, punchy & berdampak tinggi" },
-  { id: "Poppins", name: "Poppins", desc: "Geometris ramah, modern & seimbang" },
-  { id: "Oswald", name: "Oswald", desc: "Kondensasi rapi, gaya jurnalisme modern" },
-  { id: "Inter", name: "Inter", desc: "Ultra-bersih gaya editorial & infografis" },
-  { id: "Impact", name: "Impact", desc: "Klasik komik punchy & meme" },
-  { id: "Roboto", name: "Roboto", desc: "Netral, bersih & sangat mudah dibaca" },
+  { id: "Anton", name: "Anton (Sangat Direkomendasikan)", desc: "Tebal, lebar, punchy, standar thumbnail YouTube modern" },
+  { id: "Montserrat", name: "Montserrat Black", desc: "Elegan, modern, seimbang ala Vox & dokumenter" },
+  { id: "Poppins", name: "Poppins Bold", desc: "Geometris bersih, kekinian & eye-catching" },
+  { id: "Bebas Neue", name: "Bebas Neue", desc: "Jangkung & tegas dengan tracking rapi" },
+  { id: "Inter", name: "Inter ExtraBold", desc: "Ultra-bersih gaya infografis & tech" },
+  { id: "Oswald", name: "Oswald Bold", desc: "Kondensasi rapi gaya editorial" },
+  { id: "Impact", name: "Impact", desc: "Klasik viral & komik punchy" },
+  { id: "Roboto", name: "Roboto Bold", desc: "Netral, bersih & sangat mudah dibaca" },
 ];
 
 export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
@@ -78,15 +78,16 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     pos_x: 6,
     pos_y: 8,
     text_align: "left",
-    font_family: "Bebas Neue",
-    font_size: 48,
-    rotation: -3,
-    outline_spread: 1.5,
-    outline_blur: 6,
+    font_family: "Anton",
+    font_size: 56,
+    rotation: -2,
+    outline_spread: 2.0,
+    outline_blur: 4,
     outline_color: "#000000",
     outline_enabled: true,
     blur_enabled: true,
-    style_preset: "modern",
+    shadow_style: "subtle",
+    style_preset: "viral",
   });
 
   // Settings Panel Tab Navigation & Active Formula
@@ -287,71 +288,89 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     }
   };
 
-  // Preset Formulas for Viral Thumbnails
+  // Continuity Bible Context for Character, Location & Era Consistency
+  const characters = (project as any).characters || [];
+  const mainChar = characters[0];
+  const mainCharToken = mainChar ? `[char:${mainChar.id}]` : "the main character";
+  const mainCharName = mainChar?.name || (project.name || "Protagonist");
+
+  const locations = (project as any).locations || [];
+  const mainLoc = locations[0];
+  const mainLocToken = mainLoc ? `[loc:${mainLoc.id}]` : "the iconic story location";
+
+  const worldSetting = (project as any).world_setting || {};
+  const era = worldSetting.era || "";
+  const eraStr = era ? `in the era of ${era}` : "";
+
+  // Preset Formulas for Viral Thumbnails with Strict Character & Story Continuity
   const VIRAL_FORMULAS = [
     {
       id: "comic_reaction",
-      name: "🌟 Komik Reaksi & Budaya",
-      shortDesc: "Karakter ekspresif di kanan + makanan/objek + panorama alam + ruang teks kiri",
-      hook1: (project.name || "JAWA KUNO").toUpperCase().slice(0, 14),
-      hook2: "TANPA SAMBAL?!",
+      name: "🌟 Reaksi Emosional Tokoh Utama",
+      shortDesc: `Close-up ekspresif tokoh ${mainCharName} di foreground + latar ${mainLoc?.name || 'cerita'}`,
+      hook1: mainCharName.toUpperCase().slice(0, 14),
+      hook2: "KENAPA BUKAN DIA?!",
       color1: "#FFFFFF",
       color2: "#FFE600",
-      font: "Bebas Neue",
-      spread: 1.5,
-      blur: 6,
-      rotation: -3,
-      presetStyle: "modern" as const,
-      getPrompt: (topic: string, styleRef: string) =>
-        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground (one-third of frame), an expressive illustrated character with clean white minimalist head, large expressive dot eyes, spiky hair, wearing traditional attire, holding a plate of local food and gesturing outwards towards viewer with a friendly welcoming reaction. In the background, a breathtaking vibrant panoramic landscape of ${topic}, coastline, mountains with golden sunrise, palm trees, leaving clear open negative space on the left side for bold text overlay. Rich vibrant colors, high contrast, clean modern linework, warm cinematic lighting, ${styleRef}, no text in image.`,
+      font: "Anton",
+      spread: 2.0,
+      blur: 4,
+      rotation: -2,
+      shadowStyle: "subtle" as const,
+      presetStyle: "viral" as const,
+      getPrompt: (_topic: string, _styleRef: string) =>
+        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground (one-third of frame), an intense, dramatic shot of ${mainCharToken} facing towards the viewer with an astonished, wide-eyed reaction. In the background, breathtaking panoramic setting of ${mainLocToken} ${eraStr}, golden sunrise, high visual contrast, leaving clear open negative space on the left side for bold text overlay. Rich vibrant colors, sharp cinematic lighting, [preset:style], no text in image.`,
     },
     {
       id: "peeking_pov",
-      name: "🕵️ Mengintip Tegang & Sejarah",
-      shortDesc: "Karakter cemas mengintip di tepi + suasana sejarah tegang + ruang teks kontras",
+      name: "🕵️ Mengintip Tegang & Misteri",
+      shortDesc: `Tokoh ${mainCharName} cemas mengintip di tepi + atmosfer tegang masa ${era || 'cerita'}`,
       hook1: "TERNYATA",
-      hook2: "BUKAN DURHAKA?!",
+      hook2: "BUKAN DIA?!",
       color1: "#FFFFFF",
       color2: "#FFE600",
-      font: "Bebas Neue",
-      spread: 1.5,
-      blur: 8,
-      rotation: -3,
-      presetStyle: "modern" as const,
-      getPrompt: (topic: string, styleRef: string) =>
-        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right edge foreground, an expressive illustrated character with clean white minimalist head nervously peeking into frame with wide shocked sweating eyes. In the background, a moody cinematic historical street with vintage architecture and an iconic monument relating to ${topic} under a dramatic stormy sky. High contrast, atmospheric chiaroscuro lighting, deep tension, leaving clear open space on left side for typography, ${styleRef}, no text in image.`,
+      font: "Anton",
+      spread: 2.0,
+      blur: 4,
+      rotation: -2,
+      shadowStyle: "subtle" as const,
+      presetStyle: "viral" as const,
+      getPrompt: (_topic: string, _styleRef: string) =>
+        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right edge foreground, an intense dramatic close-up of ${mainCharToken} looking with shocked, suspenseful eyes towards the viewer. In the background, a moody cinematic setting of ${mainLocToken} ${eraStr} under dramatic stormy atmosphere. High contrast, atmospheric cinematic lighting, deep tension, leaving clear open space on left side for typography, [preset:style], no text in image.`,
     },
     {
       id: "mystery_relic",
-      name: "⚡ Misteri Kuno & Plot Twist",
-      shortDesc: "Karakter syok pegang kepala + objek kuno raksasa bercahaya menembus awan",
+      name: "⚡ Benda Pusaka & Plot Twist",
+      shortDesc: `Tokoh ${mainCharName} syok memegang benda kunci cerita + pancaran cahaya megah`,
       hook1: "MISTERI NYATA",
       hook2: "HILANG TOTAL?!",
       color1: "#FFFFFF",
-      color2: "#FF3B30",
+      color2: "#FF3838",
       font: "Anton",
-      spread: 2,
-      blur: 8,
-      rotation: -4,
+      spread: 2.5,
+      blur: 0,
+      rotation: -3,
+      shadowStyle: "3d_pop" as const,
       presetStyle: "viral" as const,
-      getPrompt: (topic: string, styleRef: string) =>
-        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an illustrated minimalist character looking at camera in utter disbelief with hands on head. In the background, a mysterious ancient colossal stone relic relating to ${topic} illuminated by a dramatic golden ray of light breaking through thick clouds, leaving left third open for big bold text overlay, rich saturated colors, high contrast, ${styleRef}, no text in image.`,
+      getPrompt: (_topic: string, _styleRef: string) =>
+        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the right foreground, an intense dramatic shot of ${mainCharToken} reacting in utter disbelief, holding a glowing mysterious relic or key artifact. In the background, majestic colossal scenery of ${mainLocToken} ${eraStr} illuminated by dramatic golden rays of light breaking through thick clouds, leaving left third open for big bold text overlay, rich saturated colors, high contrast, [preset:style], no text in image.`,
     },
     {
       id: "contrast_vs",
-      name: "💥 Fakta Mengejutkan & Kontras",
-      shortDesc: "Karakter menunjuk objek raksasa tak terduga + tipografi minimalis modern",
+      name: "💥 Fakta Mengejutkan & Skala Epik",
+      shortDesc: `Tokoh ${mainCharName} menunjuk fenomena luar biasa + tipografi modern bersih`,
       hook1: "FAKTA GILA",
       hook2: "1000 TAHUN LALU?!",
-      color1: "#00F2FE",
+      color1: "#00F0FF",
       color2: "#FFE600",
       font: "Montserrat",
-      spread: 0,
-      blur: 8,
+      spread: 1.5,
+      blur: 3,
       rotation: 0,
-      presetStyle: "minimal" as const,
-      getPrompt: (topic: string, styleRef: string) =>
-        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the foreground, an expressive minimalist illustrated character pointing dramatically at an astonishing gigantic visual phenomenon in the center related to ${topic}. Cinematic scale, striking color contrast, bright vibrant lighting with dark atmospheric edges, wide open clean negative space on the upper portion for typography, modern cinematic documentary look, ${styleRef}, no text in image.`,
+      shadowStyle: "subtle" as const,
+      presetStyle: "modern" as const,
+      getPrompt: (_topic: string, _styleRef: string) =>
+        `A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape). In the foreground, an expressive dramatic shot of ${mainCharToken} gesturing with shock at an astonishing gigantic visual phenomenon in ${mainLocToken} ${eraStr}. Cinematic scale, striking color contrast, bright vibrant lighting with dark atmospheric edges, wide open clean negative space on the upper portion for typography, modern cinematic documentary look, [preset:style], no text in image.`,
     },
   ];
 
@@ -364,7 +383,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     const topic = project.name || "Nusantara Kuno";
     const styleRef = activePreset?.master_prompt
       ? `in ${activePreset.name} visual style (${activePreset.master_prompt.slice(0, 100)})`
-      : "vibrant Indonesian comic illustration style";
+      : "vibrant cinematic illustration style";
 
     const promptText = f.getPrompt(topic, styleRef);
     setThumbnailPrompt(promptText);
@@ -377,89 +396,107 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       color1: f.color1,
       color2: f.color2,
       font_family: f.font,
+      font_size: f.font === "Anton" ? 56 : 52,
       outline_spread: f.spread,
       outline_blur: f.blur,
       rotation: f.rotation,
       outline_enabled: f.spread > 0,
       blur_enabled: f.blur > 0,
+      shadow_style: f.shadowStyle,
       style_preset: f.presetStyle,
     }));
 
-    showToast(`Komposisi '${f.name}' aktif & diterapkan ke prompt serta overlay!`, "info");
+    showToast(`Komposisi '${f.name}' aktif untuk ${mainCharName}!`, "info");
   };
 
-  // Modern Styles Presets
+  // Modern Styles Presets - Clean, Punchy, No Muddy Black Smudge
   const STYLE_PRESETS = [
     {
-      id: "minimal",
-      label: "✨ Minimalis Modern",
-      desc: "Tanpa outline tebal, bayangan lembut, font Montserrat",
+      id: "viral",
+      label: "🔥 YouTube Viral Bold (Rekomendasi)",
+      desc: "Font Anton tebal & punchy, outline hitam tajam, bayangan bersih tanpa smudge",
       apply: () => {
         setOverlay((prev) => ({
           ...prev,
-          style_preset: "minimal",
-          outline_enabled: false,
-          outline_spread: 0,
+          style_preset: "viral",
+          font_family: "Anton",
+          font_size: 56,
+          outline_enabled: true,
+          outline_spread: 2.0,
           blur_enabled: true,
-          outline_blur: 8,
-          font_family: "Montserrat",
-          rotation: 0,
+          outline_blur: 4,
+          shadow_style: "subtle",
+          rotation: -2,
+          color1: "#FFFFFF",
+          color2: "#FFE600",
         }));
-        showToast("Gaya 'Minimalis Modern' diterapkan.", "info");
+        showToast("Gaya 'YouTube Viral Bold' diterapkan.", "info");
       },
     },
     {
       id: "modern",
-      label: "🎬 Dokumenter Premium",
-      desc: "Border 1px halus, bayangan natural, font Bebas Neue",
+      label: "🎬 Dokumenter Premium (Vox / Netflix)",
+      desc: "Font Montserrat modern seimbang, outline 1.5px halus, bayangan natural",
       apply: () => {
         setOverlay((prev) => ({
           ...prev,
           style_preset: "modern",
+          font_family: "Montserrat",
+          font_size: 52,
           outline_enabled: true,
-          outline_spread: 1.25,
+          outline_spread: 1.5,
           blur_enabled: true,
-          outline_blur: 6,
-          font_family: "Bebas Neue",
+          outline_blur: 3,
+          shadow_style: "subtle",
           rotation: 0,
+          color1: "#FFFFFF",
+          color2: "#00F0FF",
         }));
         showToast("Gaya 'Dokumenter Premium' diterapkan.", "info");
       },
     },
     {
-      id: "viral",
-      label: "⚡ YouTube Viral",
-      desc: "Stroke 2px tegas, bayangan punchy, kemiringan dinamis",
-      apply: () => {
-        setOverlay((prev) => ({
-          ...prev,
-          style_preset: "viral",
-          outline_enabled: true,
-          outline_spread: 2,
-          blur_enabled: true,
-          outline_blur: 6,
-          font_family: "Bebas Neue",
-          rotation: -3,
-        }));
-        showToast("Gaya 'YouTube Viral' diterapkan.", "info");
-      },
-    },
-    {
       id: "comic",
-      label: "💥 Komik Punchy",
-      desc: "Stroke 3.5px solid cut ala cover komik",
+      label: "💥 Punchy 3D Pop (MrBeast Style)",
+      desc: "Stroke tegas 2.5px dengan bayangan solid 3D tanpa blur kabur",
       apply: () => {
         setOverlay((prev) => ({
           ...prev,
           style_preset: "comic",
+          font_family: "Anton",
+          font_size: 60,
           outline_enabled: true,
-          outline_spread: 3.5,
+          outline_spread: 2.5,
+          blur_enabled: true,
+          outline_blur: 0,
+          shadow_style: "3d_pop",
+          rotation: -3,
+          color1: "#FFE600",
+          color2: "#FFFFFF",
+        }));
+        showToast("Gaya 'Punchy 3D Pop' diterapkan.", "info");
+      },
+    },
+    {
+      id: "minimal",
+      label: "✨ Clean Minimalist",
+      desc: "Teks putih bersih, outline tipis 1px, tanpa efek bayangan",
+      apply: () => {
+        setOverlay((prev) => ({
+          ...prev,
+          style_preset: "minimal",
+          font_family: "Poppins",
+          font_size: 48,
+          outline_enabled: true,
+          outline_spread: 1.0,
           blur_enabled: false,
           outline_blur: 0,
-          font_family: "Impact",
-          rotation: -4,
+          shadow_style: "none",
+          rotation: 0,
+          color1: "#FFFFFF",
+          color2: "#FFFFFF",
         }));
-        showToast("Gaya 'Komik Punchy' diterapkan.", "info");
+        showToast("Gaya 'Clean Minimalist' diterapkan.", "info");
       },
     },
   ];
@@ -467,20 +504,29 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   // Calculated styling values
   const outlineEnabled = overlay.outline_enabled ?? true;
   const blurEnabled = overlay.blur_enabled ?? true;
-  const spread = outlineEnabled ? overlay.outline_spread ?? 1.5 : 0;
-  const blur = blurEnabled ? overlay.outline_blur ?? 6 : 0;
+  const spread = outlineEnabled ? overlay.outline_spread ?? 2.0 : 0;
+  const blur = blurEnabled ? overlay.outline_blur ?? 4 : 0;
   const strokeColor = overlay.outline_color || "#000000";
-  const fontFamily = overlay.font_family || "Bebas Neue";
+  const fontFamily = overlay.font_family || "Anton";
   const posX = overlay.pos_x ?? 6;
   const posY = overlay.pos_y ?? 8;
   const textAlign = overlay.text_align || "left";
 
-  // Build clean, modern, directional drop shadow (NOT a bloated 8-way black blob)
-  const buildModernShadow = (b: number) => {
-    if (b <= 0) return "none";
-    return `0 2px 4px rgba(0,0,0,0.85), 0 5px ${b}px rgba(0,0,0,0.7), 0 10px ${Math.round(
-      b * 1.6
-    )}px rgba(0,0,0,0.5)`;
+  // Build clean, modern YouTube drop shadow (Strictly avoids muddy, dirty black smog)
+  const buildModernShadow = (b: number, shadowStyle?: string) => {
+    if (!blurEnabled) return "none";
+    if (shadowStyle === "3d_pop") {
+      return "2.5px 2.5px 0px rgba(0,0,0,0.95)";
+    }
+    if (shadowStyle === "none" || b <= 0) {
+      return "none";
+    }
+    if (shadowStyle === "glow") {
+      return "0 0 6px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.7)";
+    }
+    // Clean, tight YouTube shadow - strictly capped to 5px max to prevent dark messy smudge
+    const cleanBlur = Math.min(5, b);
+    return `0 2px 4px rgba(0,0,0,0.65), 0 3px ${cleanBlur}px rgba(0,0,0,0.35)`;
   };
 
   // Click on thumbnail to position text interactively
@@ -497,7 +543,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     showToast(`Posisi teks dipindahkan ke (X: ${x}%, Y: ${y}%)`, "info");
   };
 
-  // Canvas High-Res Download (Burns Text Overlay into PNG directly)
+  // Canvas High-Res Download (Burns Text Overlay into PNG directly with clean crisp outlines)
   const handleDownloadThumbnail = async () => {
     if (!thumbnailUrl) return;
 
@@ -531,7 +577,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       ctx.save();
 
       // Configure font scaling
-      const baseFontSize = Math.round((overlay.font_size / 48) * 104);
+      const baseFontSize = Math.round((overlay.font_size / 48) * 110);
       try {
         await document.fonts.load(`900 ${baseFontSize}px '${fontFamily}'`);
       } catch {
@@ -552,16 +598,17 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       ctx.rotate((overlay.rotation * Math.PI) / 180);
 
       // Scaled spread & blur for 1792x1024 canvas
-      const scaleFactor = baseFontSize / 104;
-      const canvasSpread = Math.round(scaleFactor * spread * 2.2);
-      const canvasBlur = Math.round(scaleFactor * blur * 2.2);
-      const shadowOffsetX = Math.round(canvasBlur * 0.2);
-      const shadowOffsetY = Math.round(canvasBlur * 0.4);
+      const scaleFactor = baseFontSize / 110;
+      const canvasSpread = Math.round(scaleFactor * spread * 2.0);
+      const is3d = overlay.shadow_style === "3d_pop";
+      const canvasBlur = is3d ? 0 : Math.min(8, Math.round(scaleFactor * blur * 0.8));
+      const shadowOffsetX = is3d ? 4 : 1;
+      const shadowOffsetY = is3d ? 4 : 3;
 
       // Line 1
       if (overlay.line1) {
-        if (canvasBlur > 0) {
-          ctx.shadowColor = "rgba(0,0,0,0.85)";
+        if (blurEnabled && (canvasBlur > 0 || is3d)) {
+          ctx.shadowColor = is3d ? "rgba(0,0,0,0.95)" : "rgba(0,0,0,0.55)";
           ctx.shadowBlur = canvasBlur;
           ctx.shadowOffsetX = shadowOffsetX;
           ctx.shadowOffsetY = shadowOffsetY;
@@ -580,16 +627,18 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
 
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
         ctx.fillStyle = overlay.color1 || "#FFFFFF";
         ctx.fillText(overlay.line1, 0, 0);
       }
 
       // Line 2
       if (overlay.line2) {
-        const line2Y = Math.round(baseFontSize * 0.96);
+        const line2Y = Math.round(baseFontSize * 0.98);
 
-        if (canvasBlur > 0) {
-          ctx.shadowColor = "rgba(0,0,0,0.85)";
+        if (blurEnabled && (canvasBlur > 0 || is3d)) {
+          ctx.shadowColor = is3d ? "rgba(0,0,0,0.95)" : "rgba(0,0,0,0.55)";
           ctx.shadowBlur = canvasBlur;
           ctx.shadowOffsetX = shadowOffsetX;
           ctx.shadowOffsetY = shadowOffsetY;
@@ -608,6 +657,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
 
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
         ctx.fillStyle = overlay.color2 || "#FFE600";
         ctx.fillText(overlay.line2, 0, line2Y);
       }
@@ -775,14 +826,16 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   >
                     {overlay.line1 && (
                       <div
-                        className="font-black uppercase tracking-tight leading-[0.88]"
+                        className="font-black uppercase tracking-normal leading-[0.88]"
                         style={{
                           fontSize: `${Math.round(overlay.font_size * 0.68)}px`,
                           color: overlay.color1,
                           WebkitTextStroke:
-                            spread > 0 ? `${spread * 0.7}px ${strokeColor}` : "0px transparent",
-                          textShadow: buildModernShadow(blur),
+                            spread > 0 ? `${spread * 0.75}px ${strokeColor}` : "0px transparent",
+                          paintOrder: "stroke fill",
+                          textShadow: buildModernShadow(blur, overlay.shadow_style),
                           fontFamily: `'${fontFamily}', 'Montserrat', 'Arial Black', sans-serif`,
+                          letterSpacing: "0.02em",
                         }}
                       >
                         {overlay.line1}
@@ -790,14 +843,16 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     )}
                     {overlay.line2 && (
                       <div
-                        className="font-black uppercase tracking-tight leading-[0.88] mt-0.5"
+                        className="font-black uppercase tracking-normal leading-[0.88] mt-0.5"
                         style={{
                           fontSize: `${Math.round(overlay.font_size * 0.68)}px`,
                           color: overlay.color2,
                           WebkitTextStroke:
-                            spread > 0 ? `${spread * 0.7}px ${strokeColor}` : "0px transparent",
-                          textShadow: buildModernShadow(blur),
+                            spread > 0 ? `${spread * 0.75}px ${strokeColor}` : "0px transparent",
+                          paintOrder: "stroke fill",
+                          textShadow: buildModernShadow(blur, overlay.shadow_style),
                           fontFamily: `'${fontFamily}', 'Montserrat', 'Arial Black', sans-serif`,
+                          letterSpacing: "0.02em",
                         }}
                       >
                         {overlay.line2}
@@ -1110,57 +1165,93 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   </div>
 
                   {/* Color Palette Presets */}
-                  <div className="space-y-2 p-3 rounded-xl bg-black/40 border border-[#2E2E2E]">
-                    <span className="text-[11px] font-semibold text-slate-300 block">
-                      Kombinasi Warna Teks Hook:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOverlay((prev) => ({ ...prev, color1: "#FFFFFF", color2: "#FFE600" }))
-                        }
-                        className="px-2.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#2a2a2a] text-xs text-white flex items-center gap-1.5 border border-[#333]"
-                      >
-                        <span className="w-3 h-3 rounded-full bg-white inline-block border border-black/30"></span>
-                        <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block border border-black/30"></span>
-                        <span>Putih - Kuning (Standar YouTube)</span>
-                      </button>
+                  <div className="space-y-3 p-3 rounded-xl bg-black/40 border border-[#2E2E2E]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-slate-300 block">
+                        Kombinasi Warna Viral YouTube:
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Kontras tinggi & nyaman dipandang</span>
+                    </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOverlay((prev) => ({ ...prev, color1: "#FFFFFF", color2: "#FF3B30" }))
-                        }
-                        className="px-2.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#2a2a2a] text-xs text-white flex items-center gap-1.5 border border-[#333]"
-                      >
-                        <span className="w-3 h-3 rounded-full bg-white inline-block border border-black/30"></span>
-                        <span className="w-3 h-3 rounded-full bg-red-500 inline-block border border-black/30"></span>
-                        <span>Putih - Merah (Misteri/Dramatis)</span>
-                      </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { label: "Putih + Kuning", c1: "#FFFFFF", c2: "#FFE600", desc: "Standar Viral YouTube" },
+                        { label: "Kuning + Putih", c1: "#FFE600", c2: "#FFFFFF", desc: "Inverted High Pop" },
+                        { label: "Putih + Cyan Neon", c1: "#FFFFFF", c2: "#00F0FF", desc: "Dokumenter & Misteri" },
+                        { label: "Putih + Merah Api", c1: "#FFFFFF", c2: "#FF3838", desc: "Dramatis & Bahaya" },
+                        { label: "Putih + Hijau Neon", c1: "#FFFFFF", c2: "#00FFA3", desc: "Finansial & Fresh" },
+                        { label: "Putih Solid", c1: "#FFFFFF", c2: "#FFFFFF", desc: "Clean Minimalis" },
+                      ].map((cp) => {
+                        const isMatch = overlay.color1 === cp.c1 && overlay.color2 === cp.c2;
+                        return (
+                          <button
+                            key={cp.label}
+                            type="button"
+                            onClick={() =>
+                              setOverlay((prev) => ({ ...prev, color1: cp.c1, color2: cp.c2 }))
+                            }
+                            className={`p-2 rounded-lg text-left border transition-all flex flex-col gap-1 ${
+                              isMatch
+                                ? "bg-amber-500/15 border-amber-500/50 ring-1 ring-amber-500/30 text-white"
+                                : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className="w-3.5 h-3.5 rounded-full inline-block border border-black/40 shrink-0"
+                                style={{ backgroundColor: cp.c1 }}
+                              />
+                              <span
+                                className="w-3.5 h-3.5 rounded-full inline-block border border-black/40 shrink-0"
+                                style={{ backgroundColor: cp.c2 }}
+                              />
+                              <span className="text-xs font-bold truncate">{cp.label}</span>
+                            </div>
+                            <span className="text-[9px] text-muted-foreground truncate">{cp.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOverlay((prev) => ({ ...prev, color1: "#00F2FE", color2: "#FFE600" }))
-                        }
-                        className="px-2.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#2a2a2a] text-xs text-white flex items-center gap-1.5 border border-[#333]"
-                      >
-                        <span className="w-3 h-3 rounded-full bg-cyan-400 inline-block border border-black/30"></span>
-                        <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block border border-black/30"></span>
-                        <span>Cyan - Kuning (Sains/Edukasi)</span>
-                      </button>
+                    {/* Custom Hex Color Pickers */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#262626]">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={overlay.color1 || "#FFFFFF"}
+                          onChange={(e) => setOverlay((prev) => ({ ...prev, color1: e.target.value }))}
+                          className="w-7 h-7 rounded border border-[#333] cursor-pointer bg-transparent"
+                          title="Pilih Warna Baris 1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <label className="text-[10px] text-slate-400 block">Warna Baris 1</label>
+                          <input
+                            type="text"
+                            value={overlay.color1 || "#FFFFFF"}
+                            onChange={(e) => setOverlay((prev) => ({ ...prev, color1: e.target.value }))}
+                            className="w-full bg-[#1A1A1A] text-xs font-mono px-2 py-0.5 rounded border border-[#333] text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOverlay((prev) => ({ ...prev, color1: "#FFFFFF", color2: "#FFFFFF" }))
-                        }
-                        className="px-2.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#2a2a2a] text-xs text-white flex items-center gap-1.5 border border-[#333]"
-                      >
-                        <span className="w-3 h-3 rounded-full bg-white inline-block border border-black/30"></span>
-                        <span>Putih Solid (Minimalis)</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={overlay.color2 || "#FFE600"}
+                          onChange={(e) => setOverlay((prev) => ({ ...prev, color2: e.target.value }))}
+                          className="w-7 h-7 rounded border border-[#333] cursor-pointer bg-transparent"
+                          title="Pilih Warna Baris 2"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <label className="text-[10px] text-slate-400 block">Warna Baris 2</label>
+                          <input
+                            type="text"
+                            value={overlay.color2 || "#FFE600"}
+                            onChange={(e) => setOverlay((prev) => ({ ...prev, color2: e.target.value }))}
+                            className="w-full bg-[#1A1A1A] text-xs font-mono px-2 py-0.5 rounded border border-[#333] text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1373,11 +1464,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   <div className="pb-2 border-b border-[#262626]">
                     <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                       <Palette className="w-4 h-4 text-amber-400" />
-                      <span>Gaya Modern: Outline & Bayangan (Blur)</span>
+                      <span>Gaya Modern: Outline & Bayangan (Clean Drop Shadow)</span>
                     </h4>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Pilih preset minimalis modern atau atur stroke dan soft drop shadow secara
-                      independen
+                      Pilih preset YouTube bersih atau atur ketebalan garis tepi dan gaya bayangan tanpa efek buram berlebihan
                     </p>
                   </div>
 
@@ -1407,6 +1497,46 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     </div>
                   </div>
 
+                  {/* Shadow Style Selector */}
+                  <div className="space-y-2 p-3 rounded-xl bg-black/40 border border-[#2E2E2E]">
+                    <span className="text-[11px] font-semibold text-slate-300 block">
+                      Tipe Bayangan (Shadow Style):
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: "subtle" as const, label: "Soft Shadow", desc: "Halus & Rapi (Standar)" },
+                        { id: "3d_pop" as const, label: "3D Pop Solid", desc: "Tegas Tanpa Blur (MrBeast)" },
+                        { id: "glow" as const, label: "Glow Halus", desc: "Cahaya Lembut" },
+                        { id: "none" as const, label: "Tanpa Bayangan", desc: "Super Clean Flat" },
+                      ].map((item) => {
+                        const isSelected = (overlay.shadow_style || "subtle") === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setOverlay((prev) => ({
+                                ...prev,
+                                shadow_style: item.id,
+                                style_preset: "custom",
+                              }))
+                            }
+                            className={`p-2 rounded-lg text-left border transition-all ${
+                              isSelected
+                                ? "bg-amber-500/20 border-amber-500/50 text-white font-semibold ring-1 ring-amber-500/30"
+                                : "bg-[#1E1E1E] border-[#2A2A2A] hover:bg-[#252525] text-slate-300"
+                            }`}
+                          >
+                            <div className="text-xs font-bold text-slate-200">{item.label}</div>
+                            <div className="text-[9px] text-muted-foreground mt-0.5 truncate">
+                              {item.desc}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Outline / Stroke Control */}
                   <div className="space-y-2 p-3 rounded-xl bg-black/40 border border-[#2E2E2E]">
                     <div className="flex items-center justify-between text-xs">
@@ -1415,7 +1545,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           Garis Tepi (Outline Stroke)
                         </span>
                         <p className="text-[10px] text-muted-foreground">
-                          Border pemisah huruf agar tidak tenggelam di latar belakang
+                          Outline tipis-sedang yang rapi (paint-order: stroke fill)
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1440,7 +1570,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         <Slider
                           value={[spread]}
                           min={0}
-                          max={6}
+                          max={5}
                           step={0.25}
                           onValueChange={([val]) =>
                             setOverlay((prev) => ({
@@ -1455,10 +1585,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                           {[
                             { label: "0px (Tanpa Outline)", val: 0 },
-                            { label: "1px (Halus Minimalis)", val: 1 },
-                            { label: "1.5px (Standar Modern)", val: 1.5 },
-                            { label: "2.5px (Tegas)", val: 2.5 },
-                            { label: "4px (Tebal)", val: 4 },
+                            { label: "1px (Halus Tipis)", val: 1 },
+                            { label: "1.5px (Sedang Rapi)", val: 1.5 },
+                            { label: "2px (Standar YouTube)", val: 2 },
+                            { label: "3px (Tegas Bold)", val: 3 },
                           ].map((p) => (
                             <button
                               key={p.val}
@@ -1492,7 +1622,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                           Kelembutan Bayangan (Blur Depth)
                         </span>
                         <p className="text-[10px] text-muted-foreground">
-                          Efek bayangan arah jatuh modern (clean drop-shadow)
+                          Efek bayangan arah jatuh bersih (dibatasi agar tidak menimbulkan bercak hitam kotor)
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1517,7 +1647,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         <Slider
                           value={[blur]}
                           min={0}
-                          max={24}
+                          max={12}
                           step={1}
                           onValueChange={([val]) =>
                             setOverlay((prev) => ({
@@ -1532,10 +1662,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                           {[
                             { label: "0px (Solid Cut)", val: 0 },
-                            { label: "4px (Halus)", val: 4 },
-                            { label: "6px (Modern Depth)", val: 6 },
-                            { label: "10px (Dramatis)", val: 10 },
-                            { label: "16px (Cinematic Glow)", val: 16 },
+                            { label: "2px (Sangat Tipis)", val: 2 },
+                            { label: "4px (Standar YouTube)", val: 4 },
+                            { label: "6px (Tegas Bersih)", val: 6 },
+                            { label: "8px (Maksimal)", val: 8 },
                           ].map((p) => (
                             <button
                               key={p.val}
@@ -1574,6 +1704,49 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       Pilih format visual terbukti ber-CTR tinggi; klik untuk menerapkan prompt dan
                       teks hook seketika
+                    </p>
+                  </div>
+
+                  {/* Continuity Bible Anchor Card */}
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-red-500/10 via-amber-500/5 to-transparent border border-red-500/25 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Story Continuity Bible: Karakter & Latar Terkunci</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        100% Selaras Storyboard
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="bg-black/50 p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Tokoh Utama:</span>
+                        <span className="font-bold text-amber-300 truncate block">
+                          {mainCharName}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-400">{mainCharToken}</span>
+                      </div>
+
+                      <div className="bg-black/50 p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Latar Tempat:</span>
+                        <span className="font-bold text-cyan-300 truncate block">
+                          {mainLoc?.name || "Latar Ikonik Cerita"}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-400">{mainLocToken}</span>
+                      </div>
+
+                      <div className="bg-black/50 p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Era / Lini Masa:</span>
+                        <span className="font-bold text-violet-300 truncate block">
+                          {era || "Sesuai Naskah Cerita"}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-400">16:9 Landscape Full</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      AI otomatis menyubstitusi token karakter dan lokasi dengan deskripsi visual dari sheet karakter proyek. Tidak ada lagi karakter stickman/doodle; thumbnail akan menampilkan wajah, kostum, dan latar yang sama dengan storyboard.
                     </p>
                   </div>
 

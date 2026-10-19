@@ -363,6 +363,7 @@ export interface ThumbnailOverlayConfig {
   outline_color?: string;
   outline_enabled?: boolean;
   blur_enabled?: boolean;
+  shadow_style?: "subtle" | "3d_pop" | "glow" | "none";
   style_preset?: "minimal" | "modern" | "viral" | "comic" | "custom";
 }
 
