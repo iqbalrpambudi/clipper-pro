@@ -126,11 +126,14 @@ async def generate_youtube_metadata(
                 {"timestamp": "02:45", "title": "Titik Balik & Analisis"},
                 {"timestamp": "04:10", "title": "Kesimpulan & Pelajaran"},
             ]
-    elif chapter_milestones[0]["timestamp"] != "00:00":
+    elif chapter_milestones and chapter_milestones[0].get("timestamp") != "00:00":
         # YouTube requires first chapter to be 00:00
         chapter_milestones[0]["timestamp"] = "00:00"
 
-    chapter_text_lines = "\n".join(f"{cm['timestamp']} - {cm['title']}" for cm in chapter_milestones[:8])
+    chapter_text_lines = "\n".join(
+        f"{cm.get('timestamp', '00:00')} - {cm.get('title', 'Chapter')}"
+        for cm in chapter_milestones[:8]
+    )
 
     # Extract Continuity Bible Sheets (Characters, Locations, World Setting)
     characters = proj.characters or []
@@ -144,7 +147,10 @@ async def generate_youtube_metadata(
     if characters:
         first_c = characters[0]
         main_char_name = first_c.get("name") or "Main Protagonist"
-        first_v = (first_c.get("variants") or [{}])[0].get("id") or ""
+        first_variants = first_c.get("variants")
+        first_v = ""
+        if isinstance(first_variants, list) and len(first_variants) > 0 and isinstance(first_variants[0], dict):
+            first_v = first_variants[0].get("variant_id") or first_variants[0].get("id") or ""
         main_char_token = f"[char:{first_c.get('id')}:{first_v}]" if first_v else f"[char:{first_c.get('id')}]"
         main_char_desc = f"{first_c.get('name')} ({first_c.get('visual_anchor') or ''})"
 
@@ -153,7 +159,17 @@ async def generate_youtube_metadata(
             c_name = c.get("name", "")
             c_anchor = c.get("visual_anchor", "")
             variants = c.get("variants") or []
-            v_desc = ", ".join(f"`[char:{c_id}:{v['id']}]` ({v.get('name', '')}: {v.get('description', '')})" for v in variants)
+            v_items = []
+            if isinstance(variants, list):
+                for v in variants:
+                    if isinstance(v, dict):
+                        v_id = v.get("variant_id") or v.get("id") or v.get("label") or "var"
+                        v_name = v.get("label") or v.get("name") or v_id
+                        v_detail = v.get("visual_anchor") or v.get("description") or ""
+                        v_items.append(f"`[char:{c_id}:{v_id}]` ({v_name}: {v_detail})" if v_detail else f"`[char:{c_id}:{v_id}]` ({v_name})")
+                    elif isinstance(v, str):
+                        v_items.append(f"`[char:{c_id}:{v}]` ({v})")
+            v_desc = ", ".join(v_items)
             char_summary_lines.append(f"- Character {c_name} (`[char:{c_id}]`): {c_anchor}. Variants: {v_desc or 'Standard'}")
 
     main_loc_token = ""
@@ -178,6 +194,24 @@ async def generate_youtube_metadata(
             bible_summary += f"Story Era: {era}. Atmosphere: {atmo}.\n"
         bible_summary += "\n"
 
+    # 1. Determine the true active topic from narration topic or main character
+    narration_topic = (narration.topic if narration and getattr(narration, "topic", None) else "").strip()
+    true_topic = narration_topic or (f"Kisah {main_char_name}" if main_char_name else (proj.name or "Cerita"))
+
+    # Collect valid character tokens for strict prompt rules
+    valid_char_tokens = []
+    if characters:
+        for c in characters:
+            c_id = c.get("id", "")
+            if c_id:
+                valid_char_tokens.append(f"`[char:{c_id}]`")
+                for v in (c.get("variants") or []):
+                    if isinstance(v, dict):
+                        v_id = v.get("variant_id") or v.get("id") or ""
+                        if v_id:
+                            valid_char_tokens.append(f"`[char:{c_id}:{v_id}]`")
+    valid_tokens_str = ", ".join(valid_char_tokens) if valid_char_tokens else f"`{main_char_token}`"
+
     # Build Angle Instruction
     angle_instruction = ""
     if target_lang == "en":
@@ -194,8 +228,10 @@ async def generate_youtube_metadata(
             "You are a world-class YouTube Strategist, Packaging Expert & Creative Director (specializing in viral high-CTR videos "
             "like Veritasium, Lemmino, Kurzgesagt, Big Think, Vox, and top storytelling documentary channels).\n"
             "Your task is to craft a comprehensive YouTube release package in ENGLISH that maximizes Click-Through Rate (CTR) and viewer retention.\n\n"
-            "=== CRITICAL LANGUAGE INSTRUCTION ===\n"
-            "All titles, descriptions, chapters, tags, and hook lines MUST be in natural, compelling ENGLISH.\n\n"
+            "=== CRITICAL LANGUAGE & TOPIC INSTRUCTION ===\n"
+            "All titles, descriptions, chapters, tags, and hook lines MUST be in natural, compelling ENGLISH.\n"
+            f"The true story and protagonist of this video is strictly based on the Narration Script: '{true_topic}' featuring '{main_char_name}'.\n"
+            "DO NOT mention or invent unrelated topics or characters from previous workspace names!\n\n"
             "=== STRICT OUTPUT STANDARDS ===\n"
             "1. `title` (Main Title):\n"
             "   - Under 70 characters (avoids being cut off on YouTube mobile).\n"
@@ -224,7 +260,7 @@ async def generate_youtube_metadata(
             "   - Detailed visual prompt in ENGLISH for AI Image Generator (16:9 widescreen landscape).\n"
             "   - COMPOSITION & STORY CONTINUITY (CRITICAL - MUST FEATURE THE ACTUAL STORY CHARACTERS & SETTING):\n"
             f"     * In one foreground side (left or right 1/3 of frame), prominently feature the MAIN PROTAGONIST character from the Continuity Bible: {main_char_desc or 'the story protagonist'} using token `{main_char_token or '[char:protagonist]'}` with intense, captivating facial expression (shock, intense determination, astonishment, or holding a story relic) facing towards the viewer.\n"
-            "     * NEVER depict a generic stickman, bald white head, or unrelated generic figure unless the character sheet specifically calls for it! The thumbnail character MUST match the hero of the video.\n"
+            f"     * FORBIDDEN TO INVENT NEW CHARACTER TOKENS. You may ONLY choose tokens from: {valid_tokens_str}.\n"
             f"     * In the background, depict the iconic story setting {main_loc_token or 'the story setting'} reflecting the story timeline/era ({era or 'the story era'}).\n"
             "     * Leave clean, open negative space on the opposite side of the character for bold typography overlay.\n"
             f"     * Apply preset token `[preset:style]` ({preset_name}).\n"
@@ -256,6 +292,10 @@ async def generate_youtube_metadata(
             "Anda adalah YouTube Strategist, Packaging Expert & Creative Director kelas dunia (spesialis video viral ber-CTR tinggi "
             "seperti Veritasium, Lemmino, Kurzgesagt, Big Think, Vox, dan channel storytelling dokumenter Indonesia).\n"
             "Tugas Anda adalah merancang paket publikasi YouTube lengkap yang memaksimalkan Click-Through Rate (CTR) dan retensi penonton.\n\n"
+            "=== ATURAN MUTLAK KONSISTENSI TOPIK & CERITA ===\n"
+            f"1. Topik, judul, deskripsi, tag, dan thumbnail WAJIB 100% SESUAI DENGAN NASKAH NARASI DAN TOKOH UTAMA ({main_char_name or true_topic}).\n"
+            "2. DILARANG KERAS memunculkan atau menyebut nama tokoh lain dari cerita/mitologi berbeda yang TIDAK ADA di naskah atau character sheet!\n"
+            f"3. Token karakter di prompt thumbnail HANYA boleh menggunakan token resmi: {valid_tokens_str}. DILARANG MENGARANG TOKEN TOKOH LAIN!\n\n"
             "=== STANDAR KELUARAN YANG WAJIB DIIKUTI ===\n"
             "1. `title` (Judul Utama):\n"
             "   - Panjang di bawah 70 karakter (agar tidak terpotong di YouTube mobile).\n"
@@ -284,7 +324,7 @@ async def generate_youtube_metadata(
             "   - Prompt visual detail dalam BAHASA INGGRIS untuk AI Image Generator (16:9 widescreen landscape).\n"
             "   - KOMPOSISI & KONSISTENSI TOKOH BIBLE SHEET (SANGAT PENTING - WAJIB KONSISTEN DENGAN ISI VIDEO):\n"
             f"     * Di salah satu sisi foreground (kanan atau kiri 1/3 frame), tampilkan TOKOH UTAMA dari Character Bible Sheet: {main_char_desc or 'tokoh utama cerita'} menggunakan token `{main_char_token or '[char:id]'}` dengan ekspresi wajah dramatis dan memikat (kaget, heran, takjub, atau memegang benda pusaka/kunci cerita) menghadap penonton.\n"
-            "     * DILARANG KERAS memunculkan karakter stickman botak atau kepala putih generik! Tokoh di thumbnail HARUS sama persis dengan tokoh utama di dalam naskah/storyboard.\n"
+            f"     * DILARANG KERAS memunculkan karakter stickman botak atau tokoh dari topik lain! Token karakter HANYA boleh dipilih dari daftar resmi: {valid_tokens_str}.\n"
             f"     * Di latar belakang, hadirkan pemandangan ikonik dari Location Sheet: {main_loc_token or 'latar tempat utama cerita'} dengan atmosfer era ({era or 'era cerita'}).\n"
             "     * Sisakan ruang kosong (negative space) yang bersih di sisi berlawanan untuk penempatan teks tebal (bold typography overlay).\n"
             f"     * Sisipkan token gaya visual `[preset:style]` ({preset_name}).\n"
@@ -306,7 +346,8 @@ async def generate_youtube_metadata(
     truncated_narration = narration_text[:3500] if narration_text else ("In-depth documentary explainer video." if target_lang == "en" else "Video dokumenter eksploratif mendalam.")
     if target_lang == "en":
         user_prompt = (
-            f"Video Topic / Project Title: {proj.name}\n"
+            f"Active Story Topic: {true_topic}\n"
+            f"Protagonist Character: {main_char_name} (token: `{main_char_token}`)\n"
             f"Active Visual Preset: {preset_name}\n"
             f"Target Language: ENGLISH\n"
             f"{bible_summary}"
@@ -317,13 +358,18 @@ async def generate_youtube_metadata(
             user_prompt += f"User Custom Instructions: {custom_prompt}\n"
 
         user_prompt += (
-            f"\nNarration / Video Script Summary:\n\"\"\"{truncated_narration}\"\"\"\n\n"
+            f"\nSTRICT STORY CONSISTENCY WARNING:\n"
+            f"The video content is 100% defined by the Narration Script and Characters Sheet about '{true_topic}' and protagonist '{main_char_name}'.\n"
+            f"NEVER refer to or include unrelated characters or legacy topics outside this provided script!\n"
+            f"Only use valid character tokens: {valid_tokens_str}.\n\n"
+            f"Narration / Video Script Summary:\n\"\"\"{truncated_narration}\"\"\"\n\n"
             f"Milestones / Video Timestamps:\n{chapter_text_lines}\n\n"
             "Generate the complete YouTube metadata package & thumbnail prompt now in pure JSON format!"
         )
     else:
         user_prompt = (
-            f"Topik Video / Judul Project: {proj.name}\n"
+            f"Topik Cerita Berdasarkan Naskah: {true_topic}\n"
+            f"Tokoh Protagonis Utama: {main_char_name} (token: `{main_char_token}`)\n"
             f"Gaya Visual Aktif: {preset_name}\n"
             f"Bahasa Sasaran: BAHASA INDONESIA\n"
             f"{bible_summary}"
@@ -334,7 +380,11 @@ async def generate_youtube_metadata(
             user_prompt += f"Instruksi Khusus dari Pengguna: {custom_prompt}\n"
 
         user_prompt += (
-            f"\nRingkasan / Naskah Narasi Video:\n\"\"\"{truncated_narration}\"\"\"\n\n"
+            f"\nPERINGATAN KONSISTENSI MUTLAK:\n"
+            f"Konten video ini 100% adalah naskah narasi tentang '{true_topic}' dan tokoh '{main_char_name}' di bawah ini.\n"
+            f"DILARANG KERAS membawa-bawa topik atau tokoh lain di luar naskah narasi dan Character Bible Sheet yang diberikan!\n"
+            f"Token karakter thumbnail HANYA boleh menggunakan: {valid_tokens_str}.\n\n"
+            f"Ringkasan / Naskah Narasi Video:\n\"\"\"{truncated_narration}\"\"\"\n\n"
             f"Daftar Milestone Bab / Timestamp Video:\n{chapter_text_lines}\n\n"
             "Buat paket metadata YouTube lengkap & thumbnail prompt sekarang dalam format JSON murni!"
         )
@@ -362,19 +412,19 @@ async def generate_youtube_metadata(
                 pass
 
     char_token_fallback = main_char_token or "the main protagonist"
-    loc_token_fallback = main_location_token or f"the scenic landscape of {proj.name}"
+    loc_token_fallback = main_loc_token or f"the scenic landscape of {true_topic}"
     era_fallback = f"in {era}" if era else "in the story era"
 
     if not parsed or not isinstance(parsed, dict):
-        words = proj.name.upper().split()
+        words = (true_topic or proj.name).upper().split()
         if target_lang == "en":
             hook1 = " ".join(words[:2]) if words else "REAL MYSTERY"
             hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "WHAT HAPPENED?!"
             parsed = {
-                "title": proj.name,
-                "title_options": [proj.name],
-                "description": f"Engaging documentary video exploring {proj.name}.\n\n{chapter_text_lines}\n\nDon't forget to Like & Subscribe!\n#Video #Documentary #Explainer",
-                "tags": [proj.name, "documentary", "story", "explainer", "history"],
+                "title": true_topic,
+                "title_options": [true_topic],
+                "description": f"Engaging documentary video exploring {true_topic}.\n\n{chapter_text_lines}\n\nDon't forget to Like & Subscribe!\n#Video #Documentary #Explainer",
+                "tags": [true_topic, main_char_name or "story", "documentary", "history"],
                 "thumbnail_hook_line1": hook1,
                 "thumbnail_hook_line2": hook2,
                 "thumbnail_concept": f"Dramatic shot of {main_char_name or 'the main protagonist'} in the foreground facing viewer with scenic high-contrast background.",
@@ -384,10 +434,10 @@ async def generate_youtube_metadata(
             hook1 = " ".join(words[:2]) if words else "MISTERI NYATA"
             hook2 = " ".join(words[2:]) + "?!" if len(words) > 2 else "TERNYATA BEGINI?!"
             parsed = {
-                "title": proj.name,
-                "title_options": [proj.name],
-                "description": f"Video dokumenter menarik mengenai {proj.name}.\n\n{chapter_text_lines}\n\nJangan lupa Like & Subscribe!\n#Video #Dokumenter",
-                "tags": [proj.name, "dokumenter", "cerita", "edukasi"],
+                "title": true_topic,
+                "title_options": [true_topic],
+                "description": f"Video dokumenter menarik mengenai {true_topic}.\n\n{chapter_text_lines}\n\nJangan lupa Like & Subscribe!\n#Video #Dokumenter",
+                "tags": [true_topic, main_char_name or "cerita", "dokumenter", "sejarah"],
                 "thumbnail_hook_line1": hook1,
                 "thumbnail_hook_line2": hook2,
                 "thumbnail_concept": f"Karakter utama {main_char_name or 'cerita'} di foreground kanan dengan ekspresi dramatis dan latar belakang pemandangan megah kontras tinggi.",
@@ -396,12 +446,16 @@ async def generate_youtube_metadata(
 
     # Merge into existing project youtube_metadata
     curr_meta = dict(proj.youtube_metadata or {})
-    curr_meta["title"] = parsed.get("title") or proj.name
-    curr_meta["title_options"] = parsed.get("title_options") or [curr_meta["title"]]
+    clean_title = (parsed.get("title") or true_topic or proj.name).strip()
+    curr_meta["title"] = clean_title
+    curr_meta["title_options"] = parsed.get("title_options") or [clean_title]
     curr_meta["description"] = parsed.get("description") or ""
     curr_meta["tags"] = parsed.get("tags") or []
     curr_meta["thumbnail_concept"] = parsed.get("thumbnail_concept") or ""
     curr_meta["thumbnail_prompt"] = parsed.get("thumbnail_prompt") or ""
+
+    # Synchronize project name to true story topic so workspace reflects the real story
+    proj.name = true_topic or clean_title
 
     hook1 = (parsed.get("thumbnail_hook_line1") or "MISTERI BESAR").strip().upper()
     hook2 = (parsed.get("thumbnail_hook_line2") or "TERNYATA BEGINI?!").strip().upper()
@@ -435,6 +489,13 @@ async def generate_youtube_metadata(
         ov = dict(existing_overlay)
         ov["line1"] = hook1
         ov["line2"] = hook2
+        if "layers" in ov and isinstance(ov["layers"], list):
+            layers_list = list(ov["layers"])
+            if len(layers_list) > 0 and isinstance(layers_list[0], dict):
+                layers_list[0]["text"] = hook1
+            if len(layers_list) > 1 and isinstance(layers_list[1], dict):
+                layers_list[1]["text"] = hook2
+            ov["layers"] = layers_list
         curr_meta["thumbnail_overlay"] = ov
 
     curr_meta["updated_at"] = datetime.utcnow().isoformat()

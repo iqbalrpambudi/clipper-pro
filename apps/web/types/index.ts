@@ -345,6 +345,48 @@ export interface YouTubeThumbnailHistory {
   created_at: string;
 }
 
+export interface ThumbnailTextLayer {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontFamily: string;
+  fill: string;
+  align?: "left" | "center" | "right";
+  fontStyle?: "normal" | "bold" | "italic" | "900";
+  rotation: number;
+  scaleX?: number;
+  scaleY?: number;
+  // Stroke / Outline
+  strokeEnabled?: boolean;
+  stroke?: string;
+  strokeWidth?: number;
+  // Background box / highlight pill
+  bgEnabled?: boolean;
+  bgFill?: string;
+  bgPaddingX?: number;
+  bgPaddingY?: number;
+  bgCornerRadius?: number;
+  bgOpacity?: number;
+  // Shadow / 3D pop / glow
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+}
+
+export interface ThumbnailPreset {
+  id: string;
+  name: string;
+  desc?: string;
+  previewColor?: string;
+  isCustom?: boolean;
+  layers: Array<Omit<ThumbnailTextLayer, "id" | "x" | "y"> & { x?: number; y?: number }>;
+}
+
 export interface ThumbnailOverlayConfig {
   enabled: boolean;
   line1: string;
@@ -365,6 +407,9 @@ export interface ThumbnailOverlayConfig {
   blur_enabled?: boolean;
   shadow_style?: "subtle" | "3d_pop" | "glow" | "none";
   style_preset?: "minimal" | "modern" | "viral" | "comic" | "custom";
+  // Multi-layer text support via react-konva
+  layers?: ThumbnailTextLayer[];
+  custom_presets?: ThumbnailPreset[];
 }
 
 export interface YouTubeMetadata {

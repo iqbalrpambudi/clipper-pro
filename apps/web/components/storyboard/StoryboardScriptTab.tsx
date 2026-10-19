@@ -408,11 +408,15 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           if (!old) return old;
           return {
             ...old,
-            characters: data.characters || old.characters || [],
-            locations: data.locations || old.locations || [],
-            world_setting: data.world_setting || old.world_setting || {},
+            name: data.project_name || data.narration?.topic || old.name,
+            characters: data.characters || [],
+            locations: data.locations || [],
+            world_setting: data.world_setting || {},
             narration: data.narration,
             storyboard_items: data.storyboard_items || [],
+            youtube_metadata: {},
+            audio: null,
+            audio_track: null,
           };
         });
       }

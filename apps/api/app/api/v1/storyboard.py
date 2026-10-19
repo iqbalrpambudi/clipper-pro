@@ -121,9 +121,11 @@ async def generate_script(
         return {
             "success": True,
             "project_id": project_id,
+            "project_name": proj.name,
             "characters": getattr(proj, "characters", []) or [],
             "locations": getattr(proj, "locations", []) or [],
             "world_setting": getattr(proj, "world_setting", {}) or {},
+            "youtube_metadata": getattr(proj, "youtube_metadata", {}) or {},
             "narration": {
                 "id": narration.id,
                 "topic": narration.topic,

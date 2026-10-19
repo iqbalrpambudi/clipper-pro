@@ -94,6 +94,9 @@ async def generate_narration(
     proj = await db.get(Project, project_id)
     if proj:
         proj.language = lang
+        if payload.topic and payload.topic.strip():
+            proj.name = payload.topic.strip()
+            proj.youtube_metadata = {}
         db.add(proj)
 
     narration = Narration(

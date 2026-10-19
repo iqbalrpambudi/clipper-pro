@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.models.project import Project
-from app.models.narration import Narration
+from app.models.narration import Narration, AudioTrack
 from app.models.storyboard import StoryboardItem
 from app.services.ai_adapters.factory import get_active_llm_adapter
 
@@ -1197,7 +1197,7 @@ async def generate_storyboard_script(
     preset_id: Optional[str] = None,
     custom_instructions: Optional[str] = None,
     language: str = "id",
-    reset_bible: bool = False,
+    reset_bible: bool = True,
 ) -> Tuple[Narration, List[StoryboardItem]]:
     """Generate long-form storyboard script and save Narration + StoryboardItem records."""
     proj = await db.get(Project, project_id)
@@ -1224,8 +1224,18 @@ async def generate_storyboard_script(
     scenes_per_chapter = max(images_per_segment * 2, int(round(words_per_chapter / 19)))
     segments_per_chapter = max(2, int(round(scenes_per_chapter / max(1, images_per_segment))))
 
+    # Check if the story topic changed compared to previous narration or project name
+    res_last_narration = await db.execute(
+        select(Narration).where(Narration.project_id == project_id).order_by(Narration.created_at.desc()).limit(1)
+    )
+    last_narration = res_last_narration.scalar_one_or_none()
+    last_topic = ((last_narration.topic if last_narration and last_narration.topic else proj.name) or "").strip().lower()
+    clean_topic = topic.strip()
+    topic_changed = bool(clean_topic and last_topic and clean_topic.lower() != last_topic)
+
     chapters: List[Dict[str, Any]] = []
-    if reset_bible:
+    if reset_bible or topic_changed:
+        log.info("Resetting Continuity Bible for project %s (reset_bible=%s, topic_changed=%s)", project_id, reset_bible, topic_changed)
         existing_characters = None
         existing_locations = None
         existing_world_setting = None
@@ -1268,13 +1278,13 @@ async def generate_storyboard_script(
             outline_chapters = outline_data.get("chapters", [])
             video_title = outline_data.get("title", topic)
             video_overview = outline_data.get("overview", f"Video explainer mengenai {topic}")
-            if not existing_characters and outline_data.get("characters"):
+            if outline_data.get("characters"):
                 detected_characters = outline_data.get("characters", []) or []
                 log.info("Detected %d locked characters from outline: %s", len(detected_characters), [c.get("name") for c in detected_characters])
-            if not existing_locations and outline_data.get("locations"):
+            if outline_data.get("locations"):
                 detected_locations = outline_data.get("locations", []) or []
                 log.info("Detected %d locations from outline: %s", len(detected_locations), [l.get("name") for l in detected_locations])
-            if not existing_world_setting and outline_data.get("world_setting"):
+            if outline_data.get("world_setting"):
                 detected_world_setting = outline_data.get("world_setting", {}) or {}
                 log.info("Detected world setting from outline: %s", detected_world_setting.get("era"))
 
@@ -1387,13 +1397,13 @@ async def generate_storyboard_script(
         chapters = data.get("chapters", [])
         if not chapters:
             raise ValueError("Respons AI tidak mengandung data chapters.")
-        if not existing_characters and data.get("characters"):
+        if data.get("characters"):
             detected_characters = data.get("characters", []) or []
             log.info("Detected %d locked characters from single-shot: %s", len(detected_characters), [c.get("name") for c in detected_characters])
-        if not existing_locations and data.get("locations"):
+        if data.get("locations"):
             detected_locations = data.get("locations", []) or []
             log.info("Detected %d locations from single-shot: %s", len(detected_locations), [l.get("name") for l in detected_locations])
-        if not existing_world_setting and data.get("world_setting"):
+        if data.get("world_setting"):
             detected_world_setting = data.get("world_setting", {}) or {}
             log.info("Detected world setting from single-shot: %s", detected_world_setting.get("era"))
 
@@ -1563,8 +1573,9 @@ async def generate_storyboard_script(
         word_count, actual_duration_seconds, actual_duration_seconds / 60, len(all_segments), len(storyboard_items)
     )
 
-    # Delete older narration and storyboard items for this project
+    # Delete older narration, storyboard items, and audio tracks for this project
     await db.execute(delete(StoryboardItem).where(StoryboardItem.project_id == project_id))
+    await db.execute(delete(AudioTrack).where(AudioTrack.project_id == project_id))
     await db.execute(delete(Narration).where(Narration.project_id == project_id))
 
     narration = Narration(
@@ -1583,6 +1594,11 @@ async def generate_storyboard_script(
     for item in storyboard_items:
         item.narration_id = narration.id
         db.add(item)
+
+    if clean_topic:
+        proj.name = clean_topic
+    # Clear stale YouTube metadata because script and story topic have been regenerated
+    proj.youtube_metadata = {}
 
     proj.characters = detected_characters
     proj.locations = detected_locations
@@ -1764,8 +1780,10 @@ async def extract_storyboard_continuity_bible_from_script(
         "}"
     )
 
+    script_topic = (narration.topic if narration and narration.topic else proj.name) or "Story Script"
+
     user_prompt = (
-        f"Topic / Story Title: {proj.name or 'Story Script'}\n\n"
+        f"Topic / Story Title: {script_topic}\n\n"
         f"Naskah Cerita Lengkap:\n"
         f"\"\"\"\n{full_story_text}\n\"\"\"\n\n"
         + (f"Instruksi Tambahan Pengguna:\n{custom_instructions}\n\n" if custom_instructions else "")
@@ -1789,6 +1807,10 @@ async def extract_storyboard_continuity_bible_from_script(
     proj.characters = characters
     proj.locations = locations
     proj.world_setting = world_setting
+    if narration and narration.topic and narration.topic.strip():
+        proj.name = narration.topic.strip()
+    # Reset stale YouTube metadata
+    proj.youtube_metadata = {}
 
     await db.commit()
     await db.refresh(proj)
