@@ -1,19 +1,21 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-import asyncio
+
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from app.core.config import get_settings
-from app.core.db import init_db, SessionLocal
-import app.models
-from app.models.project import Scene, SourceVideo
 from sqlalchemy import select, text
+
+import app.models
 from app.api.v1.router import api_router
 from app.api.v1.templates import seed_templates
+from app.core.config import get_settings
+from app.core.db import SessionLocal, init_db
+from app.models.project import Scene, SourceVideo
 
 logging.basicConfig(
     level=logging.INFO,

@@ -2,7 +2,7 @@ COMPOSE := docker compose -f infrastructure/docker/docker-compose.yml --env-file
 WEB_PORT ?= $(shell sed -n 's/^WEB_PORT=//p' .env 2>/dev/null | tail -1)
 API_PORT ?= $(shell sed -n 's/^API_PORT=//p' .env 2>/dev/null | tail -1)
 
-.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean lint format lint-web lint-api format-web format-api
+.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean lint format lint-web lint-api format-web format-api migrate migration
 
 up: .env
 	$(COMPOSE) up -d
@@ -40,6 +40,13 @@ format-api:
 	cd apps/api && ruff format . && ruff check --fix .
 
 format: format-web format-api
+
+migrate:
+	$(COMPOSE) exec api alembic upgrade head
+
+migration:
+	@read -p "Enter migration message: " msg; \
+	$(COMPOSE) exec api alembic revision --autogenerate -m "$$msg"
 
 test:
 	$(COMPOSE) exec api pytest -q
