@@ -5,3 +5,4 @@ export { StoryboardTimelineTab } from "./StoryboardTimelineTab";
 export { StoryboardWatermarkTab } from "./StoryboardWatermarkTab";
 export { StoryboardRenderTab } from "./StoryboardRenderTab";
 export { StoryboardYoutubeTab } from "./StoryboardYoutubeTab";
+export * from "./timeline";

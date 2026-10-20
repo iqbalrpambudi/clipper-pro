@@ -8,14 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 import app.models
 from app.api.v1.router import api_router
 from app.api.v1.templates import seed_templates
 from app.core.config import get_settings
 from app.core.db import SessionLocal, init_db
-from app.models.project import Scene, SourceVideo
+from app.services.scene_detector import resolve_or_extract_scene_thumbnail
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,64 +80,11 @@ app.add_middleware(
 # Dynamic Self-Healing Route for Scene Thumbnails (On-the-fly extraction if file is missing)
 @app.get("/storage/projects/{project_id}/scenes/{filename}")
 async def get_scene_thumbnail(project_id: str, filename: str):
-    storage_dir = Path(settings.STORAGE_PATH)
-    file_path = storage_dir / "projects" / project_id / "scenes" / filename
-
-    if file_path.exists() and file_path.stat().st_size > 0:
+    file_path = await resolve_or_extract_scene_thumbnail(
+        project_id, filename, settings.STORAGE_PATH, SessionLocal
+    )
+    if file_path:
         return FileResponse(file_path, media_type="image/jpeg")
-
-    # On-the-fly self-healing extraction from project source video
-    try:
-        async with SessionLocal() as db:
-            # 1. Try to find matching scene in DB
-            s_res = await db.execute(
-                select(Scene).where(
-                    Scene.project_id == project_id,
-                    Scene.thumbnail_path.like(f"%{filename}"),
-                )
-            )
-            scene = s_res.scalar_one_or_none()
-
-            video_path = None
-            timestamp_sec = 0.0
-
-            if scene:
-                timestamp_sec = scene.start_time + (scene.duration / 2.0)
-                if scene.source_video_id:
-                    v_res = await db.execute(
-                        select(SourceVideo).where(SourceVideo.id == scene.source_video_id)
-                    )
-                    vid = v_res.scalar_one_or_none()
-                    if vid and vid.file_path and Path(vid.file_path).exists():
-                        video_path = vid.file_path
-
-            # If not matched directly, parse filename e.g. thumb_0001_4000.jpg
-            if not video_path:
-                parts = filename.replace(".jpg", "").split("_")
-                if len(parts) >= 3 and parts[0] == "thumb" and parts[2].isdigit():
-                    timestamp_sec = float(parts[2]) / 1000.0
-
-                v_res = await db.execute(
-                    select(SourceVideo).where(SourceVideo.project_id == project_id)
-                )
-                vids = v_res.scalars().all()
-                for v in vids:
-                    if v.file_path and Path(v.file_path).exists():
-                        video_path = v.file_path
-                        break
-
-            if video_path:
-                from app.services.scene_detector import extract_frame
-                # extract_frame uses blocking subprocess.run -> run off the event loop
-                loop = asyncio.get_running_loop()
-                ok = await loop.run_in_executor(
-                    None, extract_frame, video_path, timestamp_sec, str(file_path)
-                )
-                if ok and file_path.exists() and file_path.stat().st_size > 0:
-                    return FileResponse(file_path, media_type="image/jpeg")
-    except Exception as e:
-        log.warning("On-the-fly self healing thumbnail extraction failed for %s: %s", filename, e)
-
     raise HTTPException(status_code=404, detail="Thumbnail not found")
 
 

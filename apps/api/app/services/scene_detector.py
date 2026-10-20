@@ -6,7 +6,7 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 from scenedetect import AdaptiveDetector, ContentDetector
@@ -494,3 +494,70 @@ async def detect_scenes(
             sc["thumbnail_path"] = pick_sharpest(cands, cands[0])
 
     return scenes_data
+
+
+async def resolve_or_extract_scene_thumbnail(
+    project_id: str,
+    filename: str,
+    storage_path: str,
+    session_factory,
+) -> Optional[Path]:
+    """Resolve an existing scene thumbnail or extract it on-the-fly from source video."""
+    storage_dir = Path(storage_path)
+    file_path = storage_dir / "projects" / project_id / "scenes" / filename
+
+    if file_path.exists() and file_path.stat().st_size > 0:
+        return file_path
+
+    from sqlalchemy import select
+
+    from app.models.project import Scene, SourceVideo
+
+    try:
+        async with session_factory() as db:
+            s_res = await db.execute(
+                select(Scene).where(
+                    Scene.project_id == project_id,
+                    Scene.thumbnail_path.like(f"%{filename}"),
+                )
+            )
+            scene = s_res.scalar_one_or_none()
+
+            video_path = None
+            timestamp_sec = 0.0
+
+            if scene:
+                timestamp_sec = scene.start_time + (scene.duration / 2.0)
+                if scene.source_video_id:
+                    v_res = await db.execute(
+                        select(SourceVideo).where(SourceVideo.id == scene.source_video_id)
+                    )
+                    vid = v_res.scalar_one_or_none()
+                    if vid and vid.file_path and Path(vid.file_path).exists():
+                        video_path = vid.file_path
+
+            if not video_path:
+                parts = filename.replace(".jpg", "").split("_")
+                if len(parts) >= 3 and parts[0] == "thumb" and parts[2].isdigit():
+                    timestamp_sec = float(parts[2]) / 1000.0
+
+                v_res = await db.execute(
+                    select(SourceVideo).where(SourceVideo.project_id == project_id)
+                )
+                vids = v_res.scalars().all()
+                for v in vids:
+                    if v.file_path and Path(v.file_path).exists():
+                        video_path = v.file_path
+                        break
+
+            if video_path:
+                loop = asyncio.get_running_loop()
+                ok = await loop.run_in_executor(
+                    None, extract_frame, video_path, timestamp_sec, str(file_path)
+                )
+                if ok and file_path.exists() and file_path.stat().st_size > 0:
+                    return file_path
+    except Exception as e:
+        log.warning("On-the-fly self healing thumbnail extraction failed for %s: %s", filename, e)
+
+    return None

@@ -1,23 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  ChevronLeft,
-  ChevronRight,
-  Volume2,
-  VolumeX,
-  Repeat,
-  Film,
-  Scissors,
-  RotateCcw,
-  RotateCw,
-  Maximize2,
-  Move,
-} from "lucide-react";
+import { Film } from "lucide-react";
 import { SentenceSegment, TimelineClip, SubtitleStyle, WatermarkConfig, JassubInstance, BackgroundFill } from "@/types";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 import { generateAssSubtitles } from "@/lib/assGenerator";
@@ -26,7 +10,8 @@ import {
   calculateKenBurnsZoom,
   COLOR_GRADING_CANVAS_FILTER,
 } from "@/lib/timeline/frameMath";
-import { formatTimecode } from "./timelineFormat";
+import { MonitorTransportToolbar } from "./monitor/MonitorTransportToolbar";
+import { FallbackSubtitleOverlay } from "./monitor/FallbackSubtitleOverlay";
 
 export function hexToRgba(hex: string, alpha: number = 1.0): string {
   const clean = hex.replace("#", "");
@@ -117,7 +102,6 @@ export function TimelineMonitor({
   const [isMuted, setIsMuted] = useState(false);
   const [frameDimensions, setFrameDimensions] = useState({ width: 360, height: 640 });
   const [isJassubReady, setIsJassubReady] = useState(false);
-  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
 
   const videoFrameRef = useRef<HTMLDivElement>(null);
 
@@ -130,20 +114,7 @@ export function TimelineMonitor({
   const cbRef = useRef({ onTimeChange, onPlayingChange });
   cbRef.current = { onTimeChange, onPlayingChange };
 
-  // Dragging state for subtitle position
-  const dragStartPos = useRef<{
-    x: number;
-    y: number;
-    initialOffsetX: number;
-    initialOffsetY: number;
-  }>({
-    x: 0,
-    y: 0,
-    initialOffsetX: 0,
-    initialOffsetY: 0,
-  });
-
-  // Preview resolution quality (default 540p for ultra-smooth 60fps playback, 4x fewer pixels)
+  // Preview resolution quality (default 540p for ultra-smooth 60fps playback)
   const [previewQuality, setPreviewQuality] = useState<"540p" | "720p" | "1080p">("540p");
 
   const { canvasWidth, canvasHeight } = useMemo(() => {
@@ -159,14 +130,13 @@ export function TimelineMonitor({
         canvasHeight: aspectRatio === "16:9" ? 720 : aspectRatio === "1:1" ? 720 : 1280,
       };
     }
-    // "540p" default - 4x fewer pixels than 1080p, ultra lightweight and smooth
     return {
       canvasWidth: aspectRatio === "16:9" ? 960 : 540,
       canvasHeight: aspectRatio === "16:9" ? 540 : aspectRatio === "1:1" ? 540 : 960,
     };
   }, [previewQuality, aspectRatio]);
 
-  // Measure actual preview container width & height for 100% pixel-perfect scaling
+  // Measure actual preview container width & height
   useEffect(() => {
     if (!videoFrameRef.current) return;
     const updateSize = () => {
@@ -220,7 +190,7 @@ export function TimelineMonitor({
     activeVideoSlot.current = 0;
   }, [clips]);
 
-  // Hardware-Accelerated 2D Canvas Compositor (identical to PreviewPlayer)
+  // Hardware-Accelerated 2D Canvas Compositor
   const renderCanvasFrame = useCallback(
     (timeSec: number) => {
       const canvas = canvasRef.current;
@@ -246,14 +216,10 @@ export function TimelineMonitor({
       const curClip = clips[activeIdx];
       const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
 
-      // Video is drawable if it has valid dimensions and metadata loaded (readyState >= 1).
-      // Even during an ongoing seek, readyState can be 1 while still holding the current frame buffer.
-      // Checking readyState >= 1 prevents falling back to the poster thumbnail, eliminating all flicker/blink!
       const isVideoReady = Boolean(
         activeVid && activeVid.videoWidth > 0 && activeVid.readyState >= 1
       );
 
-      // Always resolve and cache clip thumbnail for immediate poster rendering
       let thumbImg: HTMLImageElement | undefined = undefined;
       if (curClip?.thumbnail_url) {
         thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
@@ -273,9 +239,6 @@ export function TimelineMonitor({
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, cW, cH);
       } else if (fillMode === "blur" && isVideoReady && activeVid) {
-        // High-Performance Offscreen Background Blur:
-        // Processing a 1/3 scale buffer (e.g. 360x640) with 12px blur requires 9x fewer pixels
-        // than blurring 1080x1920 with 30px blur, yielding identical visual result with zero frame drops.
         if (!blurCanvasRef.current) {
           blurCanvasRef.current = document.createElement("canvas");
         }
@@ -469,8 +432,6 @@ export function TimelineMonitor({
         let activeVid = currentSlot === 0 ? videoRefA.current : videoRefB.current;
         let otherVid = currentSlot === 0 ? videoRefB.current : videoRefA.current;
 
-        // Smart slot swap: If the other video element already has this clip loaded (e.g. from preloading)
-        // and activeVid does not, swap slots instantly to avoid reloading!
         const seekUrl = seekClip.video_url || "";
         const isOtherReady = Boolean(
           otherVid &&
@@ -534,9 +495,7 @@ export function TimelineMonitor({
     [clips, canvasWidth, canvasHeight, isJassubReady, renderCanvasFrame]
   );
 
-  // Listen for video decoder 'seeked' and 'loadeddata' events
-  // When paused, as soon as the target frame finishes decoding in background,
-  // immediately repaint the canvas so the user sees the exact frame without lag or stale frame.
+  // Listen for video decoder seeked/loadeddata
   useEffect(() => {
     const handleFrameReady = (slot: 0 | 1) => () => {
       if (!playingRef.current && activeVideoSlot.current === slot) {
@@ -623,7 +582,6 @@ export function TimelineMonitor({
           lastAudioSyncTime = now;
           curTime = aTime;
         } else {
-          // Continuous micro-interpolation between OS audio buffer ticks (which only fire every 30-50ms)
           const audioDt = (now - lastAudioSyncTime) / 1000;
           curTime = Math.min(duration, lastAudioTime + audioDt);
         }
@@ -648,8 +606,6 @@ export function TimelineMonitor({
         return;
       }
 
-      // Publish time to parent React tree at 30 FPS (every 1/30s) during playback
-      // Matches composition framerate for real-time playhead tracking with zero delay.
       if (Math.abs(curTime - lastPub) >= 1 / 30) {
         lastPub = curTime;
         cbRef.current.onTimeChange(curTime);
@@ -707,7 +663,6 @@ export function TimelineMonitor({
             }
             const expectedVidTime =
               curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
-            // Relaxed drift threshold (0.25s) prevents video decoder pipeline stalls and micro-freezes
             if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.25) {
               activeVid.currentTime = expectedVidTime;
             }
@@ -755,7 +710,7 @@ export function TimelineMonitor({
     renderCanvasFrame,
   ]);
 
-  // JASSUB (libass) initialization for 100% exact ASS subtitle rendering identical to render tab
+  // JASSUB initialization
   useEffect(() => {
     let mounted = true;
     let canvasEl: HTMLCanvasElement | null = null;
@@ -844,7 +799,7 @@ export function TimelineMonitor({
       }
       if (canvasEl) canvasEl.remove();
     };
-  }, [canvasWidth, canvasHeight, segments, subtitleStyle]);
+  }, [canvasWidth, canvasHeight, segments, subtitleStyle, aspectRatio]);
 
   // Update JASSUB track live when subtitleStyle or segments change
   useEffect(() => {
@@ -871,7 +826,7 @@ export function TimelineMonitor({
     } catch (err) {
       console.error("Failed to update JASSUB track in timeline:", err);
     }
-  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight]);
+  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight, aspectRatio]);
 
   const handleToggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -882,107 +837,6 @@ export function TimelineMonitor({
     }
   };
 
-  // Fallback CSS Subtitle Calculations (anchored to 1080p authoring space)
-  const refAuthorW = aspectRatio === "16:9" ? 1920 : 1080;
-  const refAuthorH = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-  const scale = frameDimensions.width / refAuthorW;
-  const scaleY = frameDimensions.height / refAuthorH;
-
-  const fontBaseSize = subtitleStyle?.font_size || 56;
-  const scaledFontSize = Math.max(6, Number((fontBaseSize * scale).toFixed(2)));
-  const scaledOutlineWidth = Math.max(
-    0.5,
-    Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2))
-  );
-  const scaledOffsetY = Math.round((subtitleStyle?.offset_y || 0) * scaleY);
-  const scaledOffsetX = Math.round((subtitleStyle?.offset_x || 0) * scale);
-  const boxOpacity = subtitleStyle?.box_opacity ?? 0.0;
-  const isScaleAnim = subtitleStyle?.highlight_animation === "scale";
-  const isHighlightEnabled = subtitleStyle?.highlight_animation !== "none";
-  const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.15) : 1.0;
-
-  const curMs = time * 1000;
-  const activeSegment = segments.find((s) => curMs >= s.start_ms && curMs <= s.end_ms + 250);
-  const segWords = activeSegment?.words || [];
-  let activeWordIndex = -1;
-  if (segWords.length > 0) {
-    activeWordIndex = segWords.findIndex((w) => curMs >= w.start_ms && curMs <= w.end_ms + 180);
-    // Smooth hold across small inter-word pause within segment (up to 300ms pause)
-    if (
-      activeWordIndex === -1 &&
-      curMs >= segWords[0].start_ms &&
-      curMs <= segWords[segWords.length - 1].end_ms + 300
-    ) {
-      for (let i = segWords.length - 1; i >= 0; i--) {
-        if (curMs >= segWords[i].start_ms) {
-          const nextW = segWords[i + 1];
-          const gap = nextW ? nextW.start_ms - segWords[i].end_ms : 999;
-          if (curMs <= segWords[i].end_ms + (gap <= 350 ? gap : 200)) {
-            activeWordIndex = i;
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
-  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] =
-    [];
-  if (subtitleStyle?.display_mode === "burst" && segWords.length > 0) {
-    for (let i = 0; i < segWords.length; i += burstCount) {
-      const group = segWords.slice(i, i + burstCount);
-      const gStart = group[0].start_ms;
-      const gEnd = group[group.length - 1].end_ms;
-      const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd =
-        nextSlice.length > 0
-          ? Math.min(nextSlice[0].start_ms, gEnd + 350)
-          : Math.min(activeSegment?.end_ms ?? gEnd + 350, gEnd + 350);
-
-      if (curMs >= gStart && curMs <= maxGEnd) {
-        activeBurstGroup = group.map((item, localIdx) => ({
-          ...item,
-          isActive: isHighlightEnabled && i + localIdx === activeWordIndex,
-        }));
-        break;
-      }
-    }
-  }
-
-  // Pointer drag for subtitle positioning
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!onUpdateSubtitlePosition) return;
-    setIsDraggingSubtitle(true);
-    dragStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      initialOffsetX: subtitleStyle?.offset_x || 0,
-      initialOffsetY: subtitleStyle?.offset_y || 0,
-    };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingSubtitle || !onUpdateSubtitlePosition) return;
-    const deltaX = e.clientX - dragStartPos.current.x;
-    const deltaY = e.clientY - dragStartPos.current.y;
-    const newAssDeltaX = Math.round(deltaX / scale);
-    const newAssDeltaY = Math.round(deltaY / scaleY);
-    onUpdateSubtitlePosition({
-      offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
-      offset_y: dragStartPos.current.initialOffsetY + newAssDeltaY,
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDraggingSubtitle) return;
-    setIsDraggingSubtitle(false);
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
-  };
-
   const ratio = aspectRatio === "16:9" ? "16 / 9" : aspectRatio === "1:1" ? "1 / 1" : "9 / 16";
   const activeClipIdx = clips.findIndex((c) => time >= c.timeline_start && time < c.timeline_end);
   const activeClip = activeClipIdx !== -1 ? clips[activeClipIdx] : null;
@@ -990,7 +844,7 @@ export function TimelineMonitor({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-full rounded-xl border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-sm"
+      className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm"
     >
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" muted={isMuted} />}
 
@@ -1057,165 +911,16 @@ export function TimelineMonitor({
             containerHeight={frameDimensions.height}
           />
 
-          {/* Fallback CSS Subtitle Overlay (if WASM not yet ready) */}
-          {!isJassubReady && subtitleStyle?.enabled !== false && activeSegment && (
-            <div
-              className="absolute left-0 right-0 z-20 px-4 flex justify-center text-center select-none pointer-events-none"
-              style={{
-                top:
-                  subtitleStyle?.position === "top"
-                    ? "9.375%"
-                    : subtitleStyle?.position === "center"
-                      ? "50%"
-                      : undefined,
-                bottom:
-                  subtitleStyle?.position === "bottom" || !subtitleStyle?.position
-                    ? "11.45%"
-                    : undefined,
-                transform: `translate(${scaledOffsetX}px, ${
-                  subtitleStyle?.position === "center"
-                    ? `calc(-50% + ${scaledOffsetY}px)`
-                    : subtitleStyle?.position === "bottom"
-                      ? `${-scaledOffsetY}px`
-                      : `${scaledOffsetY}px`
-                })`,
-              }}
-            >
-              {subtitleStyle?.display_mode === "burst" ? (
-                activeBurstGroup.length > 0 ? (
-                  <div
-                    style={{
-                      fontSize: `${scaledFontSize}px`,
-                      fontFamily: `"${subtitleStyle?.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 600,
-                      color: subtitleStyle?.primary_color || "#FFFFFF",
-                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                      textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
-                      backgroundColor:
-                        boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
-                      padding: boxOpacity > 0.05 ? "2px 8px" : "0",
-                      borderRadius: "4px",
-                    }}
-                    className="flex items-center justify-center gap-1.5 uppercase tracking-wide"
-                  >
-                    {activeBurstGroup.map((w, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          color: w.isActive
-                            ? subtitleStyle?.highlight_color || "#FFE600"
-                            : subtitleStyle?.primary_color || "#FFFFFF",
-                          transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                          transition: "all 0.08s ease-out",
-                          display: "inline-block",
-                        }}
-                      >
-                        {w.word}
-                      </span>
-                    ))}
-                  </div>
-                ) : null
-              ) : subtitleStyle?.display_mode === "per_word" ? (
-                activeWordIndex !== -1 && segWords[activeWordIndex] ? (
-                  <div
-                    style={{
-                      fontSize: `${scaledFontSize}px`,
-                      fontFamily: `"${subtitleStyle?.font_family || "Poppins"}", sans-serif`,
-                      fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 600,
-                      color: isHighlightEnabled
-                        ? subtitleStyle?.highlight_color || "#FFE600"
-                        : subtitleStyle?.primary_color || "#FFFFFF",
-                      WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                      textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
-                      transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
-                      backgroundColor:
-                        boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
-                      padding: boxOpacity > 0.05 ? "2px 8px" : "0",
-                      borderRadius: "4px",
-                      display: "inline-block",
-                    }}
-                    className="uppercase tracking-wide"
-                  >
-                    {segWords[activeWordIndex].word}
-                  </div>
-                ) : null
-              ) : (
-                <div
-                  style={{
-                    fontSize: `${scaledFontSize}px`,
-                    fontFamily: `"${subtitleStyle?.font_family || "Poppins"}", sans-serif`,
-                    fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 600,
-                    color: subtitleStyle?.primary_color || "#FFFFFF",
-                    WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                    textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
-                    backgroundColor:
-                      boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
-                    padding: boxOpacity > 0.05 ? "2px 8px" : "0",
-                    borderRadius: "4px",
-                  }}
-                  className="inline-block uppercase tracking-wide leading-snug"
-                >
-                  {segWords.length
-                    ? segWords.map((w, i) => {
-                        const isActive = isHighlightEnabled && i === activeWordIndex;
-                        return (
-                          <span
-                            key={i}
-                            style={{
-                              color: isActive
-                                ? subtitleStyle?.highlight_color || "#FFE600"
-                                : subtitleStyle?.primary_color || "#FFFFFF",
-                              transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                              transition: "all 0.08s ease-out",
-                              display: "inline-block",
-                            }}
-                            className="mr-1.5"
-                          >
-                            {w.word}
-                          </span>
-                        );
-                      })
-                    : activeSegment.text}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Interactive Drag Handle for Subtitle Positioning */}
-          {onUpdateSubtitlePosition && subtitleStyle?.enabled !== false && (
-            <div
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              className="absolute left-4 right-4 z-30 flex justify-center text-center select-none cursor-move group"
-              style={{
-                top:
-                  subtitleStyle?.position === "top"
-                    ? "9.375%"
-                    : subtitleStyle?.position === "center"
-                      ? "50%"
-                      : undefined,
-                bottom:
-                  subtitleStyle?.position === "bottom" || !subtitleStyle?.position
-                    ? "11.45%"
-                    : undefined,
-                transform: `translate(${scaledOffsetX}px, ${
-                  subtitleStyle?.position === "center"
-                    ? `calc(-50% + ${scaledOffsetY}px)`
-                    : subtitleStyle?.position === "bottom"
-                      ? `${-scaledOffsetY}px`
-                      : `${scaledOffsetY}px`
-                })`,
-              }}
-            >
-              <div className="w-full max-w-[260px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-brand-400/60 transition-all flex items-center justify-center pointer-events-auto">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-brand-300 px-2 py-0.5 rounded font-mono flex items-center gap-1 shadow-lg pointer-events-none">
-                  <Move className="w-2.5 h-2.5" />
-                  <span>Geser Posisi Subtitle</span>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Fallback CSS Subtitle Overlay */}
+          <FallbackSubtitleOverlay
+            isJassubReady={isJassubReady}
+            subtitleStyle={subtitleStyle}
+            segments={segments}
+            time={time}
+            frameDimensions={frameDimensions}
+            aspectRatio={aspectRatio}
+            onUpdateSubtitlePosition={onUpdateSubtitlePosition}
+          />
 
           {/* Empty timeline state */}
           {clips.length === 0 && (
@@ -1253,160 +958,41 @@ export function TimelineMonitor({
           step={1 / 30}
           value={Math.min(time, duration)}
           onChange={(e) => onSeek(parseFloat(e.target.value))}
-          className="w-full h-1 bg-[#1E1E1E] accent-primary cursor-pointer"
+          className="w-full h-1 bg-surface accent-primary cursor-pointer"
           aria-label="Posisi playhead"
         />
       </div>
 
       {/* Integrated NLE Transport Toolbar */}
-      <div className="flex items-center justify-between gap-2 px-3.5 py-2 border-t border-[#2E2E2E] bg-[#181818] flex-wrap">
-        {/* Left actions: Undo, Redo, Cut/Split */}
-        <div className="flex items-center gap-1">
-          {onUndo && (
-            <TransportBtn title="Undo (Ctrl/Cmd + Z)" onClick={onUndo} disabled={!canUndo}>
-              <RotateCcw className="w-3.5 h-3.5" />
-            </TransportBtn>
-          )}
-          {onRedo && (
-            <TransportBtn title="Redo (Ctrl/Cmd + Shift + Z)" onClick={onRedo} disabled={!canRedo}>
-              <RotateCw className="w-3.5 h-3.5" />
-            </TransportBtn>
-          )}
-          {onSplit && (
-            <button
-              type="button"
-              onClick={onSplit}
-              disabled={!canSplit}
-              title="Potong klip di playhead (S)"
-              className="h-7 px-2 rounded-lg bg-[#141414] hover:bg-[#1E1E1E] border border-[#2E2E2E] hover:border-primary/50 text-foreground text-[11px] font-semibold flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Scissors className="w-3.5 h-3.5 text-primary" />
-              <span className="hidden sm:inline">Potong (S)</span>
-            </button>
-          )}
-        </div>
-
-        {/* Center: Playhead transport controls & Timecode */}
-        <div className="flex items-center gap-1.5">
-          {activeClip?.speed && Math.abs(activeClip.speed - 1) > 0.02 && (
-            <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 text-[10px] font-mono font-bold hidden sm:inline">
-              {activeClip.speed}x
-            </span>
-          )}
-
-          <TransportBtn title="Cut sebelumnya (↑)" onClick={() => onJumpCut(-1)}>
-            <SkipBack className="w-3.5 h-3.5" />
-          </TransportBtn>
-          <TransportBtn title="Mundur 1 frame (←)" onClick={() => onStep(-1)}>
-            <ChevronLeft className="w-4 h-4" />
-          </TransportBtn>
-
-          <button
-            type="button"
-            onClick={() => onPlayingChange(!isPlaying)}
-            disabled={clips.length === 0}
-            className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-40 text-black flex items-center justify-center shadow-xs transition active:scale-95 mx-0.5 font-semibold"
-            title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
-            id="timeline-monitor-play"
-          >
-            {isPlaying ? (
-              <Pause className="w-3.5 h-3.5 fill-current" />
-            ) : (
-              <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />
-            )}
-          </button>
-
-          <TransportBtn title="Maju 1 frame (→)" onClick={() => onStep(1)}>
-            <ChevronRight className="w-4 h-4" />
-          </TransportBtn>
-          <TransportBtn title="Cut berikutnya (↓)" onClick={() => onJumpCut(1)}>
-            <SkipForward className="w-3.5 h-3.5" />
-          </TransportBtn>
-
-          <div className="font-mono text-[11px] text-foreground tabular-nums ml-2 hidden sm:inline">
-            <span className="text-primary font-bold">{formatTimecode(time)}</span>
-            <span className="text-muted-foreground"> / {formatTimecode(duration)}</span>
-          </div>
-        </div>
-
-        {/* Right actions: Loop, Mute, Aspect ratio badge, Fullscreen */}
-        <div className="flex items-center gap-1">
-          <TransportBtn
-            title="Loop klip terpilih (L)"
-            onClick={onToggleLoop}
-            active={Boolean(loopRange)}
-            disabled={!canLoop && !loopRange}
-          >
-            <Repeat className="w-3.5 h-3.5" />
-          </TransportBtn>
-
-          <TransportBtn
-            title={isMuted ? "Unmute audio narasi" : "Mute audio narasi"}
-            onClick={() => setIsMuted((m) => !m)}
-          >
-            {isMuted ? (
-              <VolumeX className="w-3.5 h-3.5 text-destructive" />
-            ) : (
-              <Volume2 className="w-3.5 h-3.5" />
-            )}
-          </TransportBtn>
-
-          {/* Preview Resolution Quality Selector */}
-          <button
-            type="button"
-            onClick={() =>
-              setPreviewQuality((prev) =>
-                prev === "540p" ? "720p" : prev === "720p" ? "1080p" : "540p"
-              )
-            }
-            className="px-2 py-0.5 rounded-lg bg-[#141414] border border-[#2E2E2E] hover:border-primary/50 text-[10px] font-mono font-semibold transition flex items-center gap-1 text-foreground hover:text-primary cursor-pointer"
-            title="Klik untuk mengganti resolusi canvas preview (540p Cepat & Lancar / 720p / 1080p Penuh)"
-          >
-            <span className="text-primary font-bold">{previewQuality}</span>
-            <span className="text-[8px] text-muted-foreground uppercase font-sans">
-              {previewQuality === "540p" ? "Smooth" : previewQuality === "720p" ? "HD" : "Full"}
-            </span>
-          </button>
-
-          <span className="px-2 py-0.5 rounded-lg bg-[#141414] border border-[#2E2E2E] text-[10px] font-mono text-muted-foreground font-semibold hidden md:inline">
-            {aspectRatio}
-          </span>
-
-          <TransportBtn title="Layar Penuh" onClick={handleToggleFullscreen}>
-            <Maximize2 className="w-3.5 h-3.5" />
-          </TransportBtn>
-        </div>
-      </div>
+      <MonitorTransportToolbar
+        time={time}
+        duration={duration}
+        isPlaying={isPlaying}
+        isMuted={isMuted}
+        clips={clips}
+        activeClip={activeClip}
+        loopRange={loopRange}
+        canLoop={canLoop}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        canSplit={canSplit}
+        aspectRatio={aspectRatio}
+        previewQuality={previewQuality}
+        onPlayingChange={onPlayingChange}
+        onStep={onStep}
+        onJumpCut={onJumpCut}
+        onToggleLoop={onToggleLoop}
+        onToggleMute={() => setIsMuted((m) => !m)}
+        onToggleFullscreen={handleToggleFullscreen}
+        onCyclePreviewQuality={() =>
+          setPreviewQuality((prev) =>
+            prev === "540p" ? "720p" : prev === "720p" ? "1080p" : "540p"
+          )
+        }
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onSplit={onSplit}
+      />
     </div>
-  );
-}
-
-function TransportBtn({
-  children,
-  title,
-  onClick,
-  active,
-  disabled,
-}: {
-  children: React.ReactNode;
-  title: string;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-7 h-7 rounded-lg flex items-center justify-center transition disabled:opacity-25 disabled:cursor-not-allowed ${
-        active
-          ? "bg-primary text-black font-semibold shadow-xs"
-          : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-      }`}
-    >
-      {children}
-    </button>
   );
 }

@@ -1,0 +1,103 @@
+"use client";
+
+import React from "react";
+import { Clock, Check, Copy } from "lucide-react";
+
+interface VideoMetricsCardProps {
+  durationMins: number;
+  imagesPerSegment: number;
+  wordCount: number;
+  charCount: number;
+  resultDurationFormatted: string;
+  hasSegments: boolean;
+  hasCopiedNarration: boolean;
+  onCopyAllNarration: () => void;
+  itemsCount: number;
+}
+
+export function VideoMetricsCard({
+  durationMins,
+  imagesPerSegment,
+  wordCount,
+  charCount,
+  resultDurationFormatted,
+  hasSegments,
+  hasCopiedNarration,
+  onCopyAllNarration,
+  itemsCount,
+}: VideoMetricsCardProps) {
+  return (
+    <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 shadow-xl space-y-3">
+      <div className="flex items-center justify-between pb-2.5 border-b border-[#2A2A2A]">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-violet-400" />
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+            Ringkasan Metrik Video
+          </h4>
+        </div>
+        {hasSegments ? (
+          <button
+            type="button"
+            onClick={onCopyAllNarration}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-[#222] hover:bg-[#2B2B2B] border border-[#333] transition"
+            title="Salin seluruh teks narasi ke clipboard"
+          >
+            {hasCopiedNarration ? (
+              <Check className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <Copy className="w-3 h-3 text-violet-400" />
+            )}
+            <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
+          </button>
+        ) : (
+          <span className="text-[10px] text-slate-400 font-mono">Target Estimasi</span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-[#131313] border border-[#262626]">
+        {/* Metric 1: Durasi */}
+        <div className="text-center">
+          <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
+            Durasi Narasi
+          </span>
+          <div className="text-sm font-bold text-violet-400 mt-1 font-mono">
+            {resultDurationFormatted}
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+            {wordCount > 0
+              ? `~${(wordCount / 135).toFixed(1)} mnt (135 kpm)`
+              : `Target ${durationMins} mnt`}
+          </span>
+        </div>
+
+        {/* Metric 2: Panjang Karakter & Kata */}
+        <div className="text-center border-x border-[#262626]">
+          <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
+            Panjang Teks
+          </span>
+          <div className="text-sm font-bold text-white mt-1 font-mono">
+            {charCount > 0 ? `${charCount.toLocaleString()} Karakter` : "0 Karakter"}
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+            {wordCount > 0 ? `${wordCount.toLocaleString()} Kata` : "0 Kata"}
+          </span>
+        </div>
+
+        {/* Metric 3: Estimasi Ilustrasi */}
+        <div className="text-center">
+          <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
+            Estimasi Ilustrasi
+          </span>
+          <div className="text-sm font-bold text-emerald-400 mt-1 font-mono">
+            {itemsCount > 0
+              ? `${itemsCount} Slot Gambar`
+              : `${durationMins * 2 * imagesPerSegment} Estimasi Slot`}
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+            {imagesPerSegment} gambar / segmen
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}

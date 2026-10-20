@@ -25,6 +25,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/projects/:id",
+        destination: "/project/:id",
+        permanent: false,
+      },
+      {
         source: "/projects/short/:id",
         destination: "/project/short/:id",
         permanent: false,

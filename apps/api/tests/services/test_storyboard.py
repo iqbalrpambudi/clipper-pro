@@ -1,0 +1,221 @@
+import pytest
+
+from app.schemas.storyboard import StoryboardItemResponse
+from app.services.storyboard import (
+    build_chapter_expansion_prompt,
+    build_storyboard_outline_prompt,
+    build_storyboard_prompt,
+    clean_narration_for_tts,
+    resolve_prompt_variables,
+)
+
+
+def test_build_storyboard_prompt_scales_with_duration():
+    p1 = build_storyboard_prompt("Topik 1", duration_mins=2)
+    p5 = build_storyboard_prompt("Topik 1", duration_mins=5)
+    assert "2 menit" in p1
+    assert "5 menit" in p5
+
+
+def test_build_storyboard_outline_prompt_scales_correctly():
+    sys_p, usr_p = build_storyboard_outline_prompt(
+        topic="Asal Usul Danau Toba",
+        duration_mins=5,
+        tone="dramatis",
+        num_chapters=4,
+    )
+    assert "4 babak" in usr_p
+    assert "Danau Toba" in usr_p
+    assert "dramatis" in usr_p
+
+
+def test_build_chapter_expansion_prompt_targets():
+    sys_p, usr_p = build_chapter_expansion_prompt(
+        video_title="Legenda Nusantara",
+        video_overview="Kumpulan cerita rakyat",
+        chapter_index=1,
+        total_chapters=3,
+        chapter_title="Babak 1: Sang Petani",
+        chapter_synopsis="Toba menangkap ikan mas ajaib",
+        chapter_key_points=["Pertemuan dengan ikan mas", "Janji rahasia"],
+        target_chapter_words=300,
+        target_segments=2,
+        images_per_segment=2,
+        tone="dramatis",
+        characters=[{"name": "Toba", "visual_anchor": "Pria tegap berpakaian tradisional"}],
+    )
+    assert "Babak 1" in usr_p
+    assert "Toba" in usr_p
+    assert "300 kata" in usr_p
+
+
+def test_storyboard_item_response_cache_busting():
+    item = StoryboardItemResponse(
+        id="item-123",
+        project_id="proj-abc",
+        order_index=1,
+        script_text="Intro",
+        image_prompt="Prompt image",
+        image_url="/storage/projects/proj-abc/storyboard/item-123.jpg",
+        status="completed",
+        updated_at=None,
+    )
+    assert item.image_url == "/storage/projects/proj-abc/storyboard/item-123.jpg"
+
+
+@pytest.mark.asyncio
+async def test_character_consistency_bible():
+    characters = [
+        {
+            "id": "char-1",
+            "name": "Budi",
+            "visual_anchor": "Seorang anak laki-laki berbaju merah dengan topi biru",
+        }
+    ]
+    prompt = "A shot of [char:char-1] walking in the forest."
+    resolved = resolve_prompt_variables(prompt, characters=characters)
+    assert "Seorang anak laki-laki berbaju merah" in resolved
+    assert "[char:char-1]" not in resolved
+
+
+def test_clean_narration_for_tts_and_punctuation():
+    characters = [
+        {
+            "id": "aladin",
+            "name": "Aladin",
+            "role": "Protagonis",
+            "variants": [
+                {"variant_id": "muda", "label": "Aladin Muda"},
+            ],
+        },
+        {
+            "id": "penyihir",
+            "name": "Penyihir",
+            "role": "Antagonis",
+        },
+    ]
+
+    locations = [
+        {"id": "pesisir_pantai", "name": "Pesisir Pantai Air Manis"},
+    ]
+
+    # 1. Exact case reported by user:
+    raw_user_narration = (
+        "“Bagi [char:aladin:muda], lampu itu adalah jalan keluar dari kemiskinan; "
+        "bagi [char:penyihir], ia adalah kunci menuju kekuatan yang tak terbatas dan tak terkendali.”"
+    )
+    cleaned = clean_narration_for_tts(raw_user_narration, characters=characters)
+
+    assert "[char:" not in cleaned
+    assert "[char:aladin:muda]" not in cleaned
+    assert "[char:penyihir]" not in cleaned
+    assert ";" not in cleaned
+    assert ":" not in cleaned
+    assert "Aladin" in cleaned
+    assert "Penyihir" in cleaned
+    assert "kemiskinan, bagi Penyihir" in cleaned
+
+    # 2. Case without characters list (fallback regex name inference):
+    cleaned_fallback = clean_narration_for_tts(raw_user_narration)
+    assert "[char:" not in cleaned_fallback
+    assert ";" not in cleaned_fallback
+    assert ":" not in cleaned_fallback
+    assert "Aladin" in cleaned_fallback
+    assert "Penyihir" in cleaned_fallback
+
+    # 3. Colon and timestamp cleaning
+    colon_text = "Fakta penting: pada pukul 10:00 malam, keajaiban dimulai; lampu itu bersinar."
+    cleaned_colon = clean_narration_for_tts(colon_text)
+    assert ";" not in cleaned_colon
+    assert ":" not in cleaned_colon
+    assert "10.00" in cleaned_colon
+    assert "Fakta penting, pada pukul" in cleaned_colon
+    assert "dimulai, lampu itu bersinar." in cleaned_colon
+
+    # 4. Stray preset and location token leak cleaning
+    leaked_preset = "Di [loc:pesisir_pantai], sang pemuda [preset:style] bersujud [era]."
+    cleaned_leak = clean_narration_for_tts(leaked_preset, locations=locations)
+    assert "[loc:" not in cleaned_leak
+    assert "[preset:" not in cleaned_leak
+    assert "[era]" not in cleaned_leak
+    assert "Pesisir Pantai Air Manis" in cleaned_leak
+    assert "sang pemuda bersujud" in cleaned_leak
+
+
+@pytest.mark.asyncio
+async def test_story_continuity_bible_variable_resolution():
+    characters = [
+        {
+            "id": "malin",
+            "name": "Malin Kundang",
+            "visual_anchor": "a lean Indonesian man with determined eyes",
+            "variants": [
+                {
+                    "variant_id": "muda",
+                    "label": "Masa Kecil",
+                    "visual_anchor": "a lean young Indonesian boy in crimson shirt and bare feet",
+                },
+                {
+                    "variant_id": "dewasa",
+                    "label": "Saudagar Sukses",
+                    "visual_anchor": "an opulent wealthy merchant in emerald green royal robe and golden keris",
+                },
+                {
+                    "variant_id": "batu",
+                    "label": "Patung Batu",
+                    "visual_anchor": "a weathered grey stone statue kneeling in prostration pose on the rocks",
+                },
+            ],
+        },
+        {
+            "id": "ibu",
+            "name": "Mande Rubayah",
+            "visual_anchor": "an elderly mother with wrinkled face and faded cream headscarf",
+        },
+    ]
+
+    locations = [
+        {
+            "id": "pesisir_pantai",
+            "name": "Pesisir Pantai Air Manis",
+            "environment_anchor": "a rocky Indonesian tropical coast with crashing ocean waves and palm trees",
+        }
+    ]
+
+    world_setting = {
+        "era": "14th Century Ancient Nusantara",
+        "time_setting": "Traditional Maritime Past",
+        "atmosphere": "Moody storm lighting and dramatic ocean spray",
+    }
+
+    preset_style = "Cinematic hand-drawn 2D animation, Studio Ghibli inspired, high quality"
+
+    # Test 1: Standard tags [preset:style], [char:malin:batu], [loc:pesisir_pantai]
+    raw_prompt_1 = "A cinematic [16:9] shot in [preset:style] of [char:malin:batu] crying on [loc:pesisir_pantai], in [era]."
+    resolved_1 = resolve_prompt_variables(
+        raw_prompt_1,
+        characters=characters,
+        locations=locations,
+        world_setting=world_setting,
+        preset_master_prompt=preset_style,
+    )
+
+    assert "[16:9]" in resolved_1  # Aspect ratio preserved!
+    assert "Cinematic hand-drawn 2D animation" in resolved_1
+    assert "weathered grey stone statue kneeling in prostration pose" in resolved_1
+    assert "rocky Indonesian tropical coast with crashing ocean waves" in resolved_1
+    assert "14th Century Ancient Nusantara" in resolved_1
+    assert "[char:" not in resolved_1
+    assert "[loc:" not in resolved_1
+
+    # Test 2: Shorthand user syntax like [malinkundang:batu] and [pesisirpantai]
+    raw_prompt_2 = "Close-up shot of [malinkundang:batu] kneeling, nearby [manderubayah] weeping at [pesisirpantai]."
+    resolved_2 = resolve_prompt_variables(
+        raw_prompt_2,
+        characters=characters,
+        locations=locations,
+        world_setting=world_setting,
+    )
+    assert "weathered grey stone statue" in resolved_2
+    assert "elderly mother with wrinkled face" in resolved_2
+    assert "rocky Indonesian tropical coast" in resolved_2
