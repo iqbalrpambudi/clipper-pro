@@ -103,16 +103,17 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   const activePreset = presets.find((p) => p.is_active);
 
   // Story identity tracking for auto-clearing stale data
-  const currentStoryKey = `${project.id}_${(project as any).narration?.id || ""}_${project.name || ""}`;
-  const lastStoryKeyRef = useRef<string>("");
+  const currentProjectId = project.id;
+  const lastProjectIdRef = useRef<string>("");
+  const layersInitializedRef = useRef<boolean>(false);
 
   // Sync initial metadata from project
   useEffect(() => {
     const meta: YouTubeMetadata = (project as any).youtube_metadata || {};
-    const storyChanged = lastStoryKeyRef.current !== "" && lastStoryKeyRef.current !== currentStoryKey;
+    const projectChanged = lastProjectIdRef.current !== "" && lastProjectIdRef.current !== currentProjectId;
     const isMetaEmpty = !meta.title && !meta.description && (!meta.tags || meta.tags.length === 0);
 
-    if (storyChanged || isMetaEmpty) {
+    if (projectChanged || isMetaEmpty) {
       setTitle(meta.title || "");
       setDescription(meta.description || "");
       setTagsInput(meta.tags ? meta.tags.join(", ") : "");
@@ -121,7 +122,20 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       setThumbnailHistory(meta.thumbnail_history || []);
       setTitleOptions(meta.title_options || []);
       setThumbnailConcept(meta.thumbnail_concept || "");
+    } else {
+      if (meta.title && !title) setTitle(meta.title);
+      if (meta.description && !description) setDescription(meta.description);
+      if (meta.tags && !tagsInput) setTagsInput(meta.tags.join(", "));
+      if (meta.thumbnail_prompt && !thumbnailPrompt) setThumbnailPrompt(meta.thumbnail_prompt);
+      if (meta.thumbnail_url && !thumbnailUrl) setThumbnailUrl(meta.thumbnail_url);
+      if (meta.thumbnail_history && thumbnailHistory.length === 0) setThumbnailHistory(meta.thumbnail_history);
+      if (meta.title_options && titleOptions.length === 0) setTitleOptions(meta.title_options);
+      if (meta.thumbnail_concept && !thumbnailConcept) setThumbnailConcept(meta.thumbnail_concept);
+    }
 
+    // Text Editor Layers sync: ONLY on first load or when switching to a different project
+    // NEVER overwrite layers if already initialized or edited by user
+    if (!layersInitializedRef.current || projectChanged) {
       const initialLayers = convertLegacyOverlayToLayers(
         meta.thumbnail_overlay,
         project.name || "MISTERI BESAR"
@@ -130,26 +144,9 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       if (initialLayers.length > 0) {
         setSelectedLayerId(initialLayers[0].id);
       }
-    } else {
-      if (meta.title && !title) setTitle(meta.title);
-      if (meta.description && !description) setDescription(meta.description);
-      if (meta.tags && !tagsInput) setTagsInput(meta.tags.join(", "));
-      if (meta.thumbnail_prompt && !thumbnailPrompt) setThumbnailPrompt(meta.thumbnail_prompt);
-      if (meta.thumbnail_url) setThumbnailUrl(meta.thumbnail_url);
-      if (meta.thumbnail_history) setThumbnailHistory(meta.thumbnail_history);
-      if (meta.title_options) setTitleOptions(meta.title_options);
-      if (meta.thumbnail_concept) setThumbnailConcept(meta.thumbnail_concept);
-
-      const initialLayers = convertLegacyOverlayToLayers(
-        meta.thumbnail_overlay,
-        project.name || "MISTERI BESAR"
-      );
-      setLayers(initialLayers);
-      if (initialLayers.length > 0 && !selectedLayerId) {
-        setSelectedLayerId(initialLayers[0].id);
-      }
+      layersInitializedRef.current = true;
     }
-    lastStoryKeyRef.current = currentStoryKey;
+    lastProjectIdRef.current = currentProjectId;
 
     // Load custom presets from project or localStorage
     const savedProjectPresets = meta.thumbnail_overlay?.custom_presets || [];
@@ -166,7 +163,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     } catch {
       setCustomPresets(savedProjectPresets);
     }
-  }, [project, currentStoryKey]);
+  }, [project.id]);
 
   // Continuity Context for Character, Location & Era Consistency
   const characters = (project as any).characters || [];
@@ -234,16 +231,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       : "vibrant cinematic illustration style";
 
     setThumbnailPrompt(f.getPrompt(topic, styleRef));
-
-    // Update first 2 layers hook text
-    setLayers((prev) => {
-      const copy = [...prev];
-      if (copy[0]) copy[0] = { ...copy[0], text: f.hook1 };
-      if (copy[1]) copy[1] = { ...copy[1], text: f.hook2 };
-      return copy;
-    });
-
-    showToast(`Formula '${f.name}' diterapkan ke prompt dan teks!`, "info");
+    showToast(`Formula '${f.name}' diterapkan ke prompt visual thumbnail!`, "info");
   };
 
   // Re-sync prompt with latest story continuity (characters, locations, title)
@@ -255,16 +243,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       : "vibrant cinematic illustration style";
 
     setThumbnailPrompt(f.getPrompt(topic, styleRef));
-
-    setLayers((prev) => {
-      const copy = [...prev];
-      if (copy[0]) copy[0] = { ...copy[0], text: f.hook1 };
-      if (copy[1]) copy[1] = { ...copy[1], text: f.hook2 };
-      return copy;
-    });
-
     showToast(
-      `Prompt & hook disinkronkan ke tokoh (${mainCharName}) dan latar (${mainLoc?.name || "cerita"}) terbaru!`,
+      `Prompt thumbnail disinkronkan ke tokoh (${mainCharName}) dan latar (${mainLoc?.name || "cerita"}) terbaru!`,
       "info"
     );
   };
@@ -287,17 +267,9 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       if (data.thumbnail_url) setThumbnailUrl(data.thumbnail_url);
       if (data.thumbnail_history) setThumbnailHistory(data.thumbnail_history);
 
-      if (data.thumbnail_hook_line1 || data.thumbnail_hook_line2) {
-        setLayers((prev) => {
-          const copy = [...prev];
-          if (copy[0] && data.thumbnail_hook_line1) copy[0] = { ...copy[0], text: data.thumbnail_hook_line1 };
-          if (copy[1] && data.thumbnail_hook_line2) copy[1] = { ...copy[1], text: data.thumbnail_hook_line2 };
-          return copy;
-        });
-      }
-
+      // Do NOT mutate layers or text editor state here. User edits and presets are preserved!
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast("Metadata YouTube & formula thumbnail berhasil digenerate!", "info");
+      showToast("Metadata YouTube (Judul, Deskripsi & Tag) berhasil digenerate!", "info");
     },
     onError: (err: any) => {
       showToast(err.message || "Gagal mengenerate metadata YouTube", "error");

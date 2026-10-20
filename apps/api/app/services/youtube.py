@@ -454,8 +454,9 @@ async def generate_youtube_metadata(
     curr_meta["thumbnail_concept"] = parsed.get("thumbnail_concept") or ""
     curr_meta["thumbnail_prompt"] = parsed.get("thumbnail_prompt") or ""
 
-    # Synchronize project name to true story topic so workspace reflects the real story
-    proj.name = true_topic or clean_title
+    # Only set project name if empty or generic
+    if not proj.name or proj.name.lower().startswith("untitled") or proj.name.lower() == "project":
+        proj.name = true_topic or clean_title
 
     hook1 = (parsed.get("thumbnail_hook_line1") or "MISTERI BESAR").strip().upper()
     hook2 = (parsed.get("thumbnail_hook_line2") or "TERNYATA BEGINI?!").strip().upper()
@@ -485,18 +486,7 @@ async def generate_youtube_metadata(
             "shadow_style": "subtle",
             "style_preset": "viral",
         }
-    else:
-        ov = dict(existing_overlay)
-        ov["line1"] = hook1
-        ov["line2"] = hook2
-        if "layers" in ov and isinstance(ov["layers"], list):
-            layers_list = list(ov["layers"])
-            if len(layers_list) > 0 and isinstance(layers_list[0], dict):
-                layers_list[0]["text"] = hook1
-            if len(layers_list) > 1 and isinstance(layers_list[1], dict):
-                layers_list[1]["text"] = hook2
-            ov["layers"] = layers_list
-        curr_meta["thumbnail_overlay"] = ov
+    # If existing_overlay already exists, do NOT alter the user's custom layers, text, or presets!
 
     curr_meta["updated_at"] = datetime.utcnow().isoformat()
 

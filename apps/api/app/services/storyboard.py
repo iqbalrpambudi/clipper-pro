@@ -372,6 +372,98 @@ def _build_visual_guidelines(preset: Optional[Any]) -> Tuple[str, str, str, str]
     return visual_guidelines, example_prompt_1, example_prompt_2, preset_label
 
 
+def _format_tone_storytelling_guidelines(tone: str, language: str = "id") -> str:
+    """Format high-AVD storytelling rules tailored to the selected tone.
+    Enforces integrated world-building (anti-lecture), rich sensory immersion,
+    strict linear chronology without time loops, high emotional stakes, and memorable philosophical punchlines.
+    """
+    clean_tone = (tone or "").strip().lower()
+    if clean_tone in ["dramatis", "dramatic"]:
+        if language == "en":
+            return (
+                "=== HIGH-RETENTION STANDARD: DRAMATIC & CINEMATIC TONE (MANDATORY) ===\n"
+                "1. INTEGRATED WORLD-BUILDING (SHOW, DON'T LECTURE):\n"
+                "   - NEVER interrupt the story with dry academic essays, textbook citations, or detached lectures mid-chapter.\n"
+                "   - Weave all folklore, cultural taboos, historical setting, and ancient warnings directly into character dialogue, mentor advice, and immediate obstacles.\n"
+                "2. RICH SENSORY IMMERSION:\n"
+                "   - Evoke intense sensory stimuli: freezing mountain mist, rustling nocturnal footsteps, pungent incense, hollow stares, and flickering lantern flames.\n"
+                "3. HIGH EMOTIONAL STAKES:\n"
+                "   - Characters must be driven by urgent, relatable human desperation (crushing debts, family survival, illicit ambition) pushing them past forbidden boundaries.\n"
+                "4. STRICT CHRONOLOGY & ANTI-LOOPING:\n"
+                "   - Enforce rigorous linear causality. NEVER duplicate morning/dawn transitions or wake-up scenes.\n"
+                "5. PSYCHOLOGICAL WEIGHT & FATAL TOLL:\n"
+                "   - The consequences of shortcuts must devastate what is truly irreplaceable: loss of identity, loved ones forgetting their name, existential void.\n"
+                "6. MEMORABLE PHILOSOPHICAL RESOLUTION:\n"
+                "   - Conclude with a striking philosophical truth: the cursed place or dark realm is merely a mirror reflecting human greed.\n\n"
+            )
+        return (
+            "=== PEDOMAN FORMULA DRAMATIS & SINEMATIK BERKUALITAS TINGGI (HIGH RETENTION AVD) ===\n"
+            "1. INTEGRASI LATAR KE DALAM AKSI (SHOW, DON'T LECTURE):\n"
+            "   - DILARANG KERAS memotong alur cerita dengan kuliah teori, kutipan buku antropologi/etnografi, atau esai akademis kaku (seperti 'Dalam catatan etnografi...', 'Berdasarkan kepercayaan animisme...').\n"
+            "   - Leburkan semua latar mitos, aturan adat, pantangan gaib, atau fakta sejarah langsung ke dalam adegan: melalui peringatan tokoh sesepuh, dialog tajam, desas-desus warga, atau rintangan konkret yang dihadapi karakter.\n"
+            "2. DETAIL SENSORIK PEKAT & PENGALAMAN IMERSIF:\n"
+            "   - Hadirkan detail yang merangsang panca indera pendengar: dinginnya kabut yang menusuk tulang, derit dahan pohon tua, aroma kemenyan yang menyengat, temaram lentera minyak bergoyang, serta tatapan mata kosong di balik kegelapan.\n"
+            "3. TARUHAN EMOSIONAL NYATA (HIGH STAKES):\n"
+            "   - Tokoh utama harus digerakkan oleh motif mendesak yang dapat dirasakan penonton (himpitan hutang, keselamatan keluarga, kutukan, keputusasaan, atau ambisi gelap) yang memaksanya menempuh jalan berbahaya.\n"
+            "4. KONTINUITAS WAKTU LINIER & BEBAS PLOT-HOLE (ANTI-LOOPING):\n"
+            "   - Jaga urutan waktu secara kronologis dan ketat. DILARANG mengulang waktu fajar/pagi hari atau adegan bangun tidur dua kali. Satu akibat, satu fajar, satu konklusi.\n"
+            "5. HOROR PSIKOLOGIS & KONSEKUENSI FATAL:\n"
+            "   - Jalan pintas selalu menuntut harga mengerikan: bukan sekadar kerugian materi, tetapi lenyapnya eksistensi diri, ingatan orang tercinta, atau kehancuran jiwa.\n"
+            "6. PUNCHLINE FILOSOFIS YANG MENAMPAR:\n"
+            "   - Tutup cerita dengan refleksi kearifan yang mendalam: bahwa tempat terkutuk, pasar gaib, atau misteri gelap sesungguhnya adalah cermin yang memantulkan keserakahan dan pilihan batin manusia.\n\n"
+        )
+    elif clean_tone in ["misterius", "mysterious"]:
+        if language == "en":
+            return (
+                "=== HIGH-RETENTION STANDARD: MYSTERIOUS & SUSPENSE TONE ===\n"
+                "1. GRADUAL SUSPENSE & DELAYED GRATIFICATION:\n"
+                "   - Hook viewer curiosity from second zero with strange anomalies without prematurely unraveling the core secret.\n"
+                "2. VIVID SENSORY STRANGENESS:\n"
+                "   - Detail abnormal occurrences, disembodied sounds, shifting shadows, and palpable dread.\n"
+                "3. PUNCHY TENSION CADENCE:\n"
+                "   - Alternate between creeping descriptive atmosphere and rapid-fire revelations when tension peaks.\n"
+                "4. THOUGHT-PROVOKING UNRESOLVED QUESTIONS:\n"
+                "   - Conclude with lingering puzzles that spark lively viewer debates in the comments.\n\n"
+            )
+        return (
+            "=== PEDOMAN FORMULA MISTERI & TEGANG (HIGH RETENTION AVD) ===\n"
+            "1. SUSPENSE BERTAHAP (DELAYED GRATIFICATION):\n"
+            "   - Bangun rasa penasaran dan kejanggalan sejak detik awal tanpa membongkar misteri terlalu cepat.\n"
+            "2. DETAIL ANOMALI & TEKSTUR HOROR:\n"
+            "   - Deskripsikan keanehan fisik, bayangan mencurigakan, suara tak berwujud, dan firasat buruk yang mengendap.\n"
+            "3. RITME MENGHENTAK:\n"
+            "   - Gunakan kalimat tajam dan lugas saat tensi meninggi untuk menaikkan detak jantung penonton.\n"
+            "4. KONKLUSI MENGGANTUNG / PERENUNGAN:\n"
+            "   - Sisakan ruang tanya atau teka-teki yang memancing penonton mendiskusikannya di kolom komentar.\n\n"
+        )
+    elif clean_tone in ["edukasi", "edukatif", "educational"]:
+        if language == "en":
+            return (
+                "=== HIGH-RETENTION STANDARD: ENGAGING & EDUCATIONAL TONE ===\n"
+                "1. VIVID ANALOGIES: Clarify profound ideas using accessible, intuitive everyday metaphors.\n"
+                "2. CRISP LOGICAL CAUSALITY: Connect premise, process, and outcome seamlessly without disjointed leaps.\n"
+                "3. MEMORABLE INSIGHT: Deliver clear, actionable takeaways that leave viewers enlightened.\n\n"
+            )
+        return (
+            "=== PEDOMAN PENCERITAAN EDUKATIF & BERBOBOT (HIGH RETENTION AVD) ===\n"
+            "1. ANALOGI HIDUP & RELEVAN: Sampaikan konsep mendalam dengan perumpamaan sehari-hari yang mudah dicerna dalam sekali dengar.\n"
+            "2. ALUR KAUSALITAS JELAS: Hubungkan sebab, proses, dan akibat secara runtut tanpa melompat-lompat.\n"
+            "3. KESIMPULAN BERBOBOT: Hadirkan nilai tambah baru yang membuat penonton merasa mendapatkan wawasan berharga.\n\n"
+        )
+    else:
+        if language == "en":
+            return (
+                "=== HIGH-RETENTION STANDARD: CONVERSATIONAL & DYNAMIC TONE ===\n"
+                "1. FLUID NARRATIVE FLOW: Natural transitions between scenes, avoiding stiff or robotic phrasing.\n"
+                "2. ACTIVE STORYTELLING: Keep viewers engaged with dynamic pacing and relatable, vivid observations.\n\n"
+            )
+        return (
+            "=== PEDOMAN PENCERITAAN SANTAI & MENGALIR (HIGH RETENTION AVD) ===\n"
+            "1. ALUR MENGALIR ALAMI: Gunakan frasa transisi yang luwes antar adegan, hindari bahasa buku yang kaku.\n"
+            "2. PENCERITAAN AKTIF: Buat penonton betah menyimak dengan ritme dinamis dan observasi yang segar.\n\n"
+        )
+
+
 def build_storyboard_outline_prompt(
     topic: str,
     duration_mins: int = 5,
@@ -386,8 +478,29 @@ def build_storyboard_outline_prompt(
     """Build prompts for Phase 1: High-level Master Storyboard Outline + Story Continuity Bible (Characters with variants, locations, world setting)."""
     target_words = max(400, int(duration_mins * 135))
     words_per_chapter = int(round(target_words / max(1, num_chapters)))
+    tone_clean = (tone or "").strip().lower()
+    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
 
     if language == "en":
+        if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]:
+            narrative_arc_en = (
+                "- Narrative Arc Must Follow Cinematic High-Retention Storytelling:\n"
+                "  1. Opening Chapter (Cold Open & Urgent Hook): High-stakes anomaly, emotional desperation, or gripping atmosphere hooking viewers from second zero.\n"
+                "  2. Escalation & Integrated Lore Chapter: Weave historical context, folklore, and mentor warnings directly into active conflict (NEVER make an isolated textbook essay chapter).\n"
+                "  3. Point of No Return & Confrontation Chapter: Breaching forbidden grounds, direct encounter with the uncanny, and making an irreversible bargain.\n"
+                "  4. Tragic Toll & Psychological Shock Chapter: The unraveling of illusions and severe irreversible consequences (strict linear chronology, no duplicated dawn/wake-up scenes).\n"
+                "  5. Resolution & Philosophical Truth: Deep moral resonance, reckoning with mentors, and a memorable philosophical takeaway.\n\n"
+            )
+        else:
+            narrative_arc_en = (
+                "- Narrative Arc Must Follow Dramatic Pacing:\n"
+                "  1. Opening Chapter: Intriguing hook, paradox, or compelling question driving viewer curiosity.\n"
+                "  2. Exploration Chapter: Delving into root causes, historical context, data, or underlying mechanisms.\n"
+                "  3. Climax / Complication Chapter: Presenting conflict, critical challenges, or surprising twists.\n"
+                "  4. Breakthrough / Solution Chapter: Explaining the turning point, major discovery, or new perspective.\n"
+                "  5. Concluding Reflection: Philosophical insights, future impact, and a memorable takeaway.\n\n"
+            )
+
         system_prompt = (
             "You are a world-class YouTube Master Storyteller & Executive Producer for high-retention documentary/explainer videos "
             "(in the style of MinutePhysics, Kurzgesagt, Big Think, Vox, or Veritasium).\n"
@@ -395,15 +508,11 @@ def build_storyboard_outline_prompt(
             "AND formulate a complete 'Story World & Continuity Bible' (characters with age/form variants, recurring locations, and historical/era setting) "
             "so that visuals remain 100% consistent across all scenes.\n\n"
             "CRITICAL LANGUAGE RULE: Write the entire outline ('title', 'overview', 'chapter_title', 'synopsis', 'key_points') in fluent, compelling spoken ENGLISH.\n\n"
+            f"{tone_guidelines}"
             "=== OUTLINE STRUCTURE GUIDELINES ===\n"
             f"- Target Total Speech Duration: {duration_mins} Minutes (~{target_words} total words).\n"
             f"- Number of Chapters: Exactly {num_chapters} chapters, each developed into ~{words_per_chapter} words of in-depth narrative.\n"
-            "- Narrative Arc Must Follow Dramatic Pacing:\n"
-            "  1. Opening Chapter: Intriguing hook, paradox, or compelling question driving viewer curiosity.\n"
-            "  2. Exploration Chapter: Delving into root causes, historical context, data, or underlying mechanisms.\n"
-            "  3. Climax / Complication Chapter: Presenting conflict, critical challenges, or surprising twists.\n"
-            "  4. Breakthrough / Solution Chapter: Explaining the turning point, major discovery, or new perspective.\n"
-            "  5. Concluding Reflection: Philosophical insights, future impact, and a memorable takeaway.\n\n"
+            f"{narrative_arc_en}"
             "=== STORY CONTINUITY BIBLE (CHARACTERS, VARIANTS, LOCATIONS, ERA) ===\n"
             "1. World Setting (`world_setting`):\n"
             "   - `era`: Historical, contemporary, or futuristic era (e.g. '14th Century Ancient Nusantara Maritime Kingdom (pre-modern, no modern tech)').\n"
@@ -490,6 +599,25 @@ def build_storyboard_outline_prompt(
         )
         return system_prompt, user_prompt
 
+    if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]:
+        narrative_arc_id = (
+            "- Alur Narasi Wajib Mengikuti Ritme Sinematik & Dramaturgi Berbobot (Retensi Tinggi):\n"
+            "  1. Babak Pembuka (Cold Open & Tensi Awal): Hook atmosferik, situasi mendesak, atau anomali yang langsung mengikat emosi penonton sejak detik pertama.\n"
+            "  2. Babak Eskalasi & Lore Terintegrasi: Hadirkan latar mitos/budaya/sejarah melalui konflik nyata karakter atau peringatan tokoh sesepuh (DILARANG membuat babak kuliah/makalah teori terpisah).\n"
+            "  3. Babak Titik Kritis & Menembus Batas: Karakter melangkah ke wilayah terlarang, konfrontasi langsung dengan misteri, dan keputusan krusial tanpa jalan kembali (point of no return).\n"
+            "  4. Babak Konsekuensi Tragis & Horor Psikologis: Dampak nyata dari pilihan karakter, runtuhnya ilusi, atau twist emosional yang memukul (jaga kontinuitas waktu linier, jangan ada pengulangan waktu fajar/bangun tidur).\n"
+            "  5. Babak Resolusi & Refleksi Luhur: Penutup bermakna mendalam, dialog/perenungan bersama sesepuh, dan kesimpulan filosofis yang membekas kuat di ingatan penonton.\n\n"
+        )
+    else:
+        narrative_arc_id = (
+            "- Alur Narasi Wajib Mengikuti Ritme Dramatis:\n"
+            "  1. Babak Pembuka: Hook menarik, paradoks, atau pertanyaan besar yang memicu rasa ingin tahu penonton.\n"
+            "  2. Babak Penjelajahan: Menyelami akar masalah, sejarah, data, atau mekanisme di balik fenomena.\n"
+            "  3. Babak Puncak / Komplikasi: Menghadirkan konflik, krisis, tantangan kritis, atau plot twist tak terduga.\n"
+            "  4. Babak Solusi / Terobosan: Menjelaskan jalan keluar, penemuan penting, atau pemahaman baru.\n"
+            "  5. Babak Penutup: Refleksi filosofis, dampak masa depan, dan kesimpulan yang membekas di pikiran penonton.\n\n"
+        )
+
     system_prompt = (
         "Anda adalah Master Storyteller & Produser Eksekutif naskah video YouTube explainer/dokumenter "
         "(gaya MinutePhysics, Kurzgesagt, Big Think, Vox, atau Veritasium).\n"
@@ -497,15 +625,11 @@ def build_storyboard_outline_prompt(
         "memikat, dan memiliki ritme penceritaan dramatis yang kuat dari awal hingga akhir, "
         "SERTA menyusun 'Story World & Continuity Bible' (penguncian identitas karakter dengan varian bentuk/usia, latar tempat utama, dan era waktu kejadian) "
         "agar seluruh ilustrasi visual tetap 100% konsisten antar adegan.\n\n"
+        f"{tone_guidelines}"
         "=== PANDUAN STRUKTUR OUTLINE ===\n"
         f"- Target Total Durasi Bicara: {duration_mins} Menit (~{target_words} kata total narasi).\n"
         f"- Jumlah Babak (Chapters): Tepat {num_chapters} babak, di mana setiap babak akan dikembangkan menjadi ~{words_per_chapter} kata narasi mendalam.\n"
-        "- Alur Narasi Wajib Mengikuti Ritme Dramatis:\n"
-        "  1. Babak Pembuka: Hook menarik, paradoks, atau pertanyaan besar yang memicu rasa ingin tahu penonton.\n"
-        "  2. Babak Penjelajahan: Menyelami akar masalah, sejarah, data, atau mekanisme di balik fenomena.\n"
-        "  3. Babak Puncak / Komplikasi: Menghadirkan konflik, krisis, tantangan kritis, atau plot twist tak terduga.\n"
-        "  4. Babak Solusi / Terobosan: Menjelaskan jalan keluar, penemuan penting, atau pemahaman baru.\n"
-        "  5. Babak Penutup: Refleksi filosofis, dampak masa depan, dan kesimpulan yang membekas di pikiran penonton.\n\n"
+        f"{narrative_arc_id}"
         "=== DETEKSI & PENGUNCIAN STORY CONTINUITY & CHARACTER BIBLE ===\n"
         "1. Latar Waktu & Era (`world_setting`):\n"
         "   - `era`: Periode sejarah / masa (misal: 'Zaman Kerajaan Maritim Nusantara Abad ke-14 (Pra-modern, tanpa teknologi mesin/listrik)').\n"
@@ -727,6 +851,7 @@ def build_chapter_expansion_prompt(
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
     min_chapter_words = int(round(target_chapter_words * 0.90))
     total_chapter_scenes = target_segments * images_per_segment
+    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
 
     continuity_instruction = _format_continuity_bible_instructions(
         characters=characters,
@@ -743,6 +868,7 @@ def build_chapter_expansion_prompt(
             "=== CRITICAL LANGUAGE RULE ===\n"
             "All `narration_text` MUST be written in natural, engaging, fluent spoken ENGLISH (18–25 words per scene). "
             "Under NO circumstances should any Indonesian words appear in the narration.\n\n"
+            f"{tone_guidelines}"
             "=== KEY NARRATION & VISUAL RULES ===\n"
             "1. 1-TO-1 COUPLING (1 Scene = 1 Narration Sentence & 1 Visual Prompt):\n"
             f"   - This chapter MUST contain exactly {target_segments} segments.\n"
@@ -784,6 +910,7 @@ def build_chapter_expansion_prompt(
             "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter YouTube.\n"
             f"Tugas Anda adalah menulis naskah narasi LENGKAP untuk Babak {chapter_index} dari {total_chapters} babak video, "
             "terstruktur ke dalam segmen dan adegan visual (scenes) dengan kopling 1-to-1 antara kalimat narasi dan prompt gambar.\n\n"
+            f"{tone_guidelines}"
             "=== ATURAN KUNCI NARASI & VISUAL ===\n"
             "1. KOPLING 1-TO-1 (1 Adegan = 1 Kalimat Narasi & 1 Prompt Visual):\n"
             f"   - Babak ini WAJIB berisi tepat {target_segments} segmen.\n"
@@ -918,6 +1045,7 @@ def build_storyboard_prompt(
     num_chapters = max(3, min(6, int(round(duration_mins * 0.7))))
 
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
+    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
     continuity_instruction = _format_continuity_bible_instructions(
         characters=existing_characters,
         locations=existing_locations,
@@ -934,6 +1062,7 @@ def build_storyboard_prompt(
             "=== CRITICAL LANGUAGE INSTRUCTION ===\n"
             "All narration text (`narration_text`), titles, and overview MUST be written in natural, engaging spoken ENGLISH. "
             "Under NO circumstances should Indonesian be used in the narration text.\n\n"
+            f"{tone_guidelines}"
             f"{continuity_instruction}"
             "=== AUDIO-VISUAL COUPLING (1-TO-1) ===\n"
             f"1. Exactly {images_per_segment} scenes per segment.\n"
@@ -1008,10 +1137,11 @@ def build_storyboard_prompt(
     else:
         system_prompt = (
             "Anda adalah Master Storyteller, Sutradara Visual & Scriptwriter kelas dunia untuk video dokumenter/explainer YouTube "
-            "(gaya MinutePhysics, Kurzgesagt, Big Think, atau channel storytelling sejarah & sains populer).\n"
+            "(gaya penceritaan sinematik mendalam, memikat emosi penonton, dan berbobot).\n"
             "Tugas Anda adalah menulis naskah narasi video panjang (landscape 16:9) yang mendalam, memikat, dan terstruktur "
             "ke dalam adegan-adegan visual (scenes) dengan sinkronisasi 1-to-1 yang SEMPURNA antara kalimat narasi dan prompt gambar,\n"
             "SERTA menyusun Story Continuity Bible (varian bentuk/usia karakter, latar tempat, dan era waktu kejadian) menggunakan prompt berbasis token variabel.\n\n"
+            f"{tone_guidelines}"
             f"{continuity_instruction}"
             "=== PRINSIP KEKUATAN AUDIO-VISUAL (SINKRON & TIDAK AMBIGU) ===\n"
             "1. KOPLING 1-TO-1 (1 Adegan = Tepat 1 Kalimat Narasi & 1 Prompt Visual):\n"
