@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, Check, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy, FileText } from "lucide-react";
 import { Project } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { StoryboardTabHeader } from "./StoryboardTabHeader";
 import {
   ScriptParametersForm,
   VideoMetricsCard,
@@ -20,59 +21,51 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const state = useStoryboardScriptState(project);
 
   return (
-    <div className="space-y-6 max-w-8xl mx-auto pb-16">
-      {/* Step Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 1 dari 6
-            </span>
-            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Dokumenter / Explainer 16:9
-            </Badge>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Ide Konten & Naskah Narasi Panjang (4–8 Menit)
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Tentukan ide cerita. LLM akan merancang alur terstruktur (Hook, Inti Cerita, Penutup)
-            dan prompt gambar sketsa untuk setiap adegan.
-          </p>
-        </div>
+    <div className="flex flex-col w-full pb-16">
+      {/* Step Header - Menempel pada Header Stepper */}
+      <StoryboardTabHeader
+        icon={FileText}
+        title="Ide Konten & Naskah Narasi (4–8 Menit)"
+        badge="Langkah 1 • Naskah"
+        secondaryBadge="16:9 Storyboard"
+        description="Tentukan ide cerita. LLM akan merancang alur terstruktur dan prompt visual setiap adegan."
+        actions={
+          state.segments.length > 0 ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={state.handleCopyAllNarration}
+                className="h-8 text-xs font-semibold gap-1.5 border-[#333] bg-[#202020] hover:bg-[#2A2A2A] text-slate-200 hover:text-white transition shadow-sm"
+                title="Salin seluruh teks narasi ke clipboard"
+              >
+                {state.hasCopiedNarration ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-violet-400" />
+                )}
+                <span>{state.hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
+              </Button>
 
-        {state.segments.length > 0 && (
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={state.handleCopyAllNarration}
-              className="h-9 text-xs font-semibold gap-1.5 border-[#333] bg-[#202020] hover:bg-[#2A2A2A] text-slate-200 hover:text-white transition shadow-sm"
-              title="Salin seluruh teks narasi ke clipboard"
-            >
-              {state.hasCopiedNarration ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-violet-400" />
-              )}
-              <span>{state.hasCopiedNarration ? "Tersalin!" : "Salin Semua Narasi"}</span>
-            </Button>
+              <Button
+                size="sm"
+                onClick={() => state.setActiveTab("storyboard_voice")}
+                className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+              >
+                <span>Lanjut ke Suara & Sync</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
-            <Button
-              onClick={() => state.setActiveTab("storyboard_voice")}
-              className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
-            >
-              <span>Lanjut ke Suara & Sync</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Top Grid: Form on Left (6 Cols), Stats & Karakter Terkunci on Right (6 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Form: Parameters (6 Cols) */}
-        <ScriptParametersForm
+      {/* Main Tab Content */}
+      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+        {/* Top Grid: Form on Left (6 Cols), Stats & Karakter Terkunci on Right (6 Cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Form: Parameters (6 Cols) */}
+          <ScriptParametersForm
           topic={state.topic}
           setTopic={state.setTopic}
           language={state.language}
@@ -168,6 +161,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         onSaveEditSegment={state.handleSaveEditSegment}
         isUpdatingSegment={state.updateSegmentMutation.isPending}
       />
+      </div>
     </div>
   );
 }

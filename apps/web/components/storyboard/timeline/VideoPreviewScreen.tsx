@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Image as ImageIcon, Move } from "lucide-react";
-import { StoryboardItem, SentenceSegment, SubtitleStyle, WordTimestamp } from "@/types";
+import { StoryboardItem, SentenceSegment, SubtitleStyle, WordTimestamp, WatermarkConfig } from "@/types";
+import { WatermarkOverlay } from "@/components/watermark/WatermarkOverlay";
 import { hexToRgba } from "./constants";
 import { BurstGroupItem } from "./hooks/useStoryboardTimelineState";
 
@@ -31,6 +32,13 @@ interface VideoPreviewScreenProps {
   currentTime: number;
   duration: number;
   formatTime: (secs: number) => string;
+  className?: string;
+  style?: React.CSSProperties;
+  showSafeZones?: boolean;
+  watermark?: WatermarkConfig | null;
+  isWatermarkDraggable?: boolean;
+  onCustomWatermarkPositionChange?: (pos: { custom_x: number; custom_y: number }) => void;
+  onWatermarkDragEnd?: () => void;
 }
 
 export function VideoPreviewScreen({
@@ -58,11 +66,37 @@ export function VideoPreviewScreen({
   currentTime,
   duration,
   formatTime,
+  className,
+  style,
+  showSafeZones,
+  watermark,
+  isWatermarkDraggable,
+  onCustomWatermarkPositionChange,
+  onWatermarkDragEnd,
 }: VideoPreviewScreenProps) {
+  const [containerWidth, setContainerWidth] = React.useState(640);
+
+  React.useEffect(() => {
+    if (!videoFrameRef.current) return;
+    const update = () => {
+      if (videoFrameRef.current) {
+        setContainerWidth(videoFrameRef.current.clientWidth || 640);
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(videoFrameRef.current);
+    return () => ro.disconnect();
+  }, [videoFrameRef]);
+
   return (
     <div
       ref={videoFrameRef}
-      className="relative aspect-video rounded-2xl bg-black border border-[#2E2E2E] overflow-hidden shadow-2xl flex items-center justify-center select-none"
+      className={
+        className ||
+        "relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
+      }
+      style={style}
     >
       {activeItem && activeItem.image_url ? (
         <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
@@ -267,6 +301,35 @@ export function VideoPreviewScreen({
           </span>
         )}
       </div>
+
+      {/* Optional Safe Area Guides Overlay (YouTube Safe Zones) */}
+      {showSafeZones && (
+        <div className="absolute inset-0 pointer-events-none z-30">
+          {/* Action safe 5% */}
+          <div className="absolute inset-[5%] border border-dashed border-amber-400/40 rounded-lg flex items-start justify-end p-2">
+            <span className="text-[9px] font-mono text-amber-300/80 bg-black/60 px-1 rounded">
+              Action Safe 90%
+            </span>
+          </div>
+          {/* Title safe 10% */}
+          <div className="absolute inset-[10%] border border-dotted border-emerald-400/40 rounded-lg flex items-end justify-start p-2">
+            <span className="text-[9px] font-mono text-emerald-300/80 bg-black/60 px-1 rounded">
+              Title Safe 80% (Batas Subtitle)
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Live Draggable Watermark Overlay */}
+      {watermark && watermark.enabled && (
+        <WatermarkOverlay
+          watermark={watermark}
+          containerWidth={containerWidth}
+          isDraggable={isWatermarkDraggable}
+          onCustomPositionChange={onCustomWatermarkPositionChange}
+          onDragEnd={onWatermarkDragEnd}
+        />
+      )}
     </div>
   );
 }

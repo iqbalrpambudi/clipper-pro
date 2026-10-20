@@ -11,6 +11,7 @@ import {
   SubtitleStyle,
   SentenceSegment,
   WordTimestamp,
+  WatermarkConfig,
 } from "@/types";
 import { presetStorage, SubtitleCustomPreset } from "@/lib/presetStorage";
 import { DEFAULT_SUBTITLE_STYLE } from "../constants";
@@ -38,8 +39,58 @@ export function useStoryboardTimelineState(project: Project) {
   const [duration, setDuration] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
 
-  // Inspector tab: "motion" vs "subtitles"
-  const [activeRightTab, setActiveRightTab] = useState<"motion" | "subtitles">("subtitles");
+  // Inspector tab: "subtitles" vs "motion" vs "watermark" vs "bgm"
+  const [activeRightTab, setActiveRightTab] = useState<
+    "subtitles" | "motion" | "watermark" | "bgm"
+  >("subtitles");
+
+  // Watermark Live State (synchronized to project.watermark)
+  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(
+    project.watermark || null
+  );
+
+  useEffect(() => {
+    if (project.watermark) {
+      setLiveWatermark(project.watermark);
+    }
+  }, [project.watermark]);
+
+  const handleCustomWatermarkPositionChange = (pos: { custom_x: number; custom_y: number }) => {
+    if (!liveWatermark) return;
+    const next: WatermarkConfig = {
+      ...liveWatermark,
+      position: "custom",
+      custom_x: pos.custom_x,
+      custom_y: pos.custom_y,
+      enabled: true,
+    };
+    setLiveWatermark(next);
+  };
+
+  const handleWatermarkDragEnd = async () => {
+    if (!liveWatermark) return;
+    try {
+      await api.updateProject(project.id, { watermark: liveWatermark });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleWatermarkChange = async (newWm: WatermarkConfig) => {
+    setLiveWatermark(newWm);
+    try {
+      await api.updateProject(project.id, { watermark: newWm });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    } catch {
+      // ignore
+    }
+  };
+
+  // Background Music (BGM) state
+  const [selectedBgm, setSelectedBgm] = useState<string>("cinematic");
+  const [bgmVolume, setBgmVolume] = useState<number>(15);
+  const [autoDucking, setAutoDucking] = useState<boolean>(true);
 
   // Subtitle Style State (WYSIWYG 16:9 canvas)
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(() => {
@@ -431,6 +482,19 @@ export function useStoryboardTimelineState(project: Project) {
     handlePointerUp,
     // Motion animation classes
     getMotionAnimationClass,
+    // Watermark state & handlers
+    liveWatermark,
+    setLiveWatermark,
+    handleCustomWatermarkPositionChange,
+    handleWatermarkDragEnd,
+    handleWatermarkChange,
+    // Background Music (BGM) state
+    selectedBgm,
+    setSelectedBgm,
+    bgmVolume,
+    setBgmVolume,
+    autoDucking,
+    setAutoDucking,
   };
 }
 

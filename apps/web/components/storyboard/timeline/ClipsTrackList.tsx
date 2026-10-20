@@ -1,82 +1,79 @@
 "use client";
 
 import React from "react";
-import { Clock, Image as ImageIcon } from "lucide-react";
 import { StoryboardItem } from "@/types";
 
 interface ClipsTrackListProps {
   items: StoryboardItem[];
   activeItemId?: string;
   onSeek: (timeSecs: number) => void;
-  formatTime: (secs: number) => string;
+  formatTime?: (secs: number) => string;
 }
 
 export function ClipsTrackList({
   items,
   activeItemId,
   onSeek,
-  formatTime,
 }: ClipsTrackListProps) {
+  if (!items || items.length === 0) return null;
+
   return (
-    <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-[#2E2E2E]">
+    <div className="shrink-0 mt-2.5 pt-2 border-t border-[#1F1F1F]">
+      <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-violet-400" />
-          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-            Urutan Timeline Adegan Gambar ({items.length} Klip)
-          </h4>
+          <span className="text-xs font-semibold text-foreground">
+            Daftar Adegan & Durasi Timeline
+          </span>
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">
+            (Klik adegan untuk melompat ke slot & inspeksi motion)
+          </span>
         </div>
-        <span className="text-[11px] text-muted-foreground font-mono">
-          Klik kartu untuk melompat ke detik tersebut
+        <span className="text-[10px] text-muted-foreground font-mono">
+          {items.length} Slot Adegan
         </span>
       </div>
 
-      <div className="flex items-stretch gap-3 overflow-x-auto pb-4 pt-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
         {items.map((item, idx) => {
-          const isCurrent = activeItemId === item.id;
-
+          const isSelected = activeItemId === item.id;
           return (
-            <div
-              key={item.id}
-              onClick={() => onSeek(item.start_time)}
-              className={`min-w-[200px] max-w-[220px] rounded-xl border p-2.5 cursor-pointer transition flex flex-col justify-between shrink-0 ${
-                isCurrent
-                  ? "border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500/30"
-                  : "border-[#2E2E2E] bg-[#141414] hover:border-violet-500/40"
+            <button
+              key={item.id || idx}
+              type="button"
+              onClick={() => onSeek(item.start_time || 0)}
+              className={`group relative shrink-0 w-24 aspect-[16/9] rounded-lg overflow-hidden border transition text-left ${
+                isSelected
+                  ? "border-violet-500 ring-2 ring-violet-500/40 scale-[1.03]"
+                  : "border-[#2E2E2E] hover:border-[#444] opacity-70 hover:opacity-100"
               }`}
             >
-              {/* Thumbnail */}
-              <div className="relative aspect-video rounded-lg bg-black overflow-hidden mb-2 border border-[#262626]">
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.image_prompt}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-600">
-                    <ImageIcon className="w-6 h-6" />
-                  </div>
-                )}
-
-                <span className="absolute top-1 left-1 text-[9px] font-mono px-1 py-0.5 rounded bg-black/80 text-white font-bold">
-                  #{idx + 1}
-                </span>
-              </div>
-
-              {/* Timing Badge */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                  <span className="font-bold text-violet-300">
-                    {formatTime(item.start_time)} - {formatTime(item.end_time)}
-                  </span>
-                  <span>{item.duration > 0 ? `${item.duration}s` : ""}</span>
+              {item.image_url ? (
+                <img
+                  src={item.image_url}
+                  alt={item.chapter_title || `Scene ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#181818] flex items-center justify-center text-[10px] text-muted-foreground">
+                  Slot #{idx + 1}
                 </div>
-                <p className="text-[10px] text-slate-300 line-clamp-2 leading-snug">
-                  {item.script_text}
-                </p>
+              )}
+
+              {/* Top Badge: Slot # & Duration */}
+              <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-xs px-1 py-0.2 rounded text-[8px] font-mono text-white font-bold">
+                #{idx + 1} {item.duration ? `${item.duration.toFixed(1)}s` : ""}
               </div>
-            </div>
+
+              {/* Bottom Caption: Chapter Title & Motion */}
+              <div className="absolute inset-x-0 bottom-0 bg-black/85 px-1 py-0.5 text-[8.5px] text-white truncate font-medium flex items-center justify-between">
+                <span className="truncate">{item.chapter_title || `Scene ${idx + 1}`}</span>
+                {item.motion_effect && (
+                  <span className="text-[7.5px] text-violet-300 font-mono shrink-0 ml-1">
+                    {item.motion_effect}
+                  </span>
+                )}
+              </div>
+            </button>
           );
         })}
       </div>

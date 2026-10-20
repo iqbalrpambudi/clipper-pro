@@ -1,15 +1,18 @@
 "use client";
 
-import React from "react";
-import { Layers, Type } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Eye, Layers, Type, Stamp, Music2 } from "lucide-react";
 import { Project } from "@/types";
 import { useStudioStore } from "@/lib/store";
+import { Button, Badge } from "@/components/ui";
+import { WatermarkCustomizePanel } from "@/components/watermark/WatermarkCustomizePanel";
 import {
   TimelineStepHeader,
   VideoPreviewScreen,
   VideoPlayerControls,
   SubtitleStudioPanel,
   MotionInspectorPanel,
+  BgmCustomizePanel,
   ClipsTrackList,
   useStoryboardTimelineState,
 } from "./timeline";
@@ -21,13 +24,35 @@ export interface StoryboardTimelineTabProps {
 export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const { showToast } = useStudioStore();
   const state = useStoryboardTimelineState(project);
+  const [showSafeZones, setShowSafeZones] = useState(false);
+
+  // Active scene index based on playback / current active item
+  const activeItemIndex = useMemo(() => {
+    if (!state.activeItem || !state.items.length) return 0;
+    const idx = state.items.findIndex((it) => it.id === state.activeItem?.id);
+    return idx >= 0 ? idx : 0;
+  }, [state.items, state.activeItem]);
+
+  const handlePrevScene = () => {
+    if (activeItemIndex > 0) {
+      const prev = state.items[activeItemIndex - 1];
+      state.handleSeek(prev.start_time || 0);
+    }
+  };
+
+  const handleNextScene = () => {
+    if (activeItemIndex < state.items.length - 1) {
+      const next = state.items[activeItemIndex + 1];
+      state.handleSeek(next.start_time || 0);
+    }
+  };
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto pb-16">
-      {/* 1. Step Navigation Header */}
+    <div className="flex-1 min-h-0 flex flex-col w-full overflow-hidden bg-[#0A0A0A] text-white">
+      {/* 1. Step Navigation Header - Menempel pada Header Stepper */}
       <TimelineStepHeader
         onNavigateImages={() => state.setActiveTab("storyboard_images")}
-        onNavigateWatermark={() => state.setActiveTab("storyboard_watermark")}
+        onNavigateRender={() => state.setActiveTab("storyboard_render")}
       />
 
       {/* 2. Hidden Audio Element for Playback Sync */}
@@ -41,127 +66,273 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
         />
       )}
 
-      {/* 3. Main Preview Player & Inspector Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: 16:9 Landscape Video Screen & Controls (7 Cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <VideoPreviewScreen
-            videoFrameRef={state.videoFrameRef}
-            activeItem={state.activeItem}
-            itemsLength={state.items.length}
-            isPlaying={state.isPlaying}
-            getMotionAnimationClass={state.getMotionAnimationClass}
-            subtitleStyle={state.subtitleStyle}
-            activeSegment={state.activeSegment}
-            scaledOffsetX={state.scaledOffsetX}
-            scaledOffsetY={state.scaledOffsetY}
-            scaledFontSize={state.scaledFontSize}
-            scaledOutlineWidth={state.scaledOutlineWidth}
-            fontWeightValue={state.fontWeightValue}
-            zoomScale={state.zoomScale}
-            isScaleAnim={state.isScaleAnim}
-            isHighlightEnabled={state.isHighlightEnabled}
-            segWords={state.segWords}
-            activeWordIndex={state.activeWordIndex}
-            activeBurstGroup={state.activeBurstGroup}
-            handlePointerDown={state.handlePointerDown}
-            handlePointerMove={state.handlePointerMove}
-            handlePointerUp={state.handlePointerUp}
-            currentTime={state.currentTime}
-            duration={state.duration || state.audio?.duration || 0}
-            formatTime={state.formatTime}
-          />
+      {/* 3. Main Split View: Left Studio Panel (Media Player + Bottom Scenes) + Right Inner-Scrollable Option Configuration */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+        {/* Left Column: Media Player in Panel & Bottom Scenes Filmstrip */}
+        <div className="flex-1 min-h-0 flex flex-col border-r border-[#222] bg-[#0A0A0A] p-4 overflow-hidden">
+          {/* Top Preview Toolbar */}
+          <div className="shrink-0 flex items-center justify-between mb-3 bg-[#141414] px-3.5 py-2 rounded-xl border border-[#222]">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevScene}
+                disabled={activeItemIndex <= 0}
+                className="h-7 w-7 p-0 border-[#2E2E2E]"
+                title="Adegan Sebelumnya"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
 
-          <VideoPlayerControls
-            isPlaying={state.isPlaying}
-            togglePlay={state.togglePlay}
-            currentTime={state.currentTime}
-            duration={state.duration || state.audio?.duration || 0}
-            handleSeek={state.handleSeek}
-            isMuted={state.isMuted}
-            toggleMute={() => {
-              if (state.audioRef.current) {
-                state.audioRef.current.muted = !state.isMuted;
-                state.setIsMuted(!state.isMuted);
-              }
-            }}
-            subtitleEnabled={state.subtitleStyle.enabled !== false}
-            onToggleSubtitle={() => {
-              const newEnabled = state.subtitleStyle.enabled === false;
-              const updated = { ...state.subtitleStyle, enabled: newEnabled };
-              state.setSubtitleStyle(updated);
-              state.updateStyleMutation.mutate(updated);
-              showToast(
-                newEnabled ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih).",
-                "info"
-              );
-            }}
-            formatTime={state.formatTime}
-          />
-        </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeItemIndex}
+                  onChange={(e) => {
+                    const target = state.items[Number(e.target.value)];
+                    if (target) state.handleSeek(target.start_time || 0);
+                  }}
+                  className="bg-[#1C1C1C] border border-[#333] text-xs rounded-lg px-2.5 py-1 text-foreground focus:outline-none focus:border-violet-500 max-w-[260px] sm:max-w-[340px] truncate"
+                >
+                  {state.items.length > 0 ? (
+                    state.items.map((it, idx) => (
+                      <option key={it.id || idx} value={idx}>
+                        Slot #{idx + 1}: {it.chapter_title || `Scene ${idx + 1}`} (
+                        {it.duration ? `${it.duration.toFixed(1)}s` : "0s"})
+                      </option>
+                    ))
+                  ) : (
+                    <option value={0}>Simulasi Canvas 16:9 (Tanpa Adegan)</option>
+                  )}
+                </select>
+              </div>
 
-        {/* Right Column: Tabbed Inspector (Motion vs Subtitle Studio) (5 Cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 space-y-5 shadow-xl">
-          {/* Tab Switcher */}
-          <div className="flex items-center gap-2 p-1 bg-[#121212] rounded-xl border border-[#2E2E2E]">
-            <button
-              type="button"
-              onClick={() => state.setActiveRightTab("subtitles")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
-                state.activeRightTab === "subtitles"
-                  ? "bg-violet-600 text-white font-semibold shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Type className="w-3.5 h-3.5" />
-              <span>Studio Subtitle</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => state.setActiveRightTab("motion")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
-                state.activeRightTab === "motion"
-                  ? "bg-violet-600 text-white font-semibold shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Adegan & Motion</span>
-            </button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextScene}
+                disabled={activeItemIndex >= state.items.length - 1}
+                className="h-7 w-7 p-0 border-[#2E2E2E]"
+                title="Adegan Berikutnya"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            {/* View options: Safe Zones and Drag Badge */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSafeZones(!showSafeZones)}
+                className={`h-7 text-xs gap-1.5 border-[#2E2E2E] ${
+                  showSafeZones
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "text-muted-foreground"
+                }`}
+                title="Batas aman YouTube player & border (Title & Action Safe)"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Batas Aman</span>
+              </Button>
+
+              <Badge
+                variant="outline"
+                className="text-[10px] text-muted-foreground border-[#333] hidden sm:inline-flex"
+              >
+                {state.activeRightTab === "watermark" ? "Drag Watermark Bebas" : "Drag Subtitle Bebas"}
+              </Badge>
+            </div>
           </div>
 
-          {state.activeRightTab === "subtitles" ? (
-            <SubtitleStudioPanel
-              subtitleStyle={state.subtitleStyle}
-              setSubtitleStyle={state.setSubtitleStyle}
-              updateStyleMutation={state.updateStyleMutation}
-              customSubtitlePresets={state.customSubtitlePresets}
-              selectedSubtitlePresetId={state.selectedSubtitlePresetId}
-              handleLoadSubtitlePreset={state.handleLoadSubtitlePreset}
-              handleDeleteSubtitlePreset={state.handleDeleteSubtitlePreset}
-              showSaveSubtitleModal={state.showSaveSubtitleModal}
-              setShowSaveSubtitleModal={state.setShowSaveSubtitleModal}
-              newSubtitlePresetName={state.newSubtitlePresetName}
-              setNewSubtitlePresetName={state.setNewSubtitlePresetName}
-              handleSaveSubtitlePreset={state.handleSaveSubtitlePreset}
-              showToast={showToast}
-            />
-          ) : (
-            <MotionInspectorPanel
-              activeItem={state.activeItem}
-              updateItemMutation={state.updateItemMutation}
-            />
-          )}
+          {/* 16:9 Video Canvas Frame & Controls inside Panel */}
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-1 relative overflow-hidden gap-2">
+            {/* Dedicated 16:9 Video Screen Wrapper */}
+            <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+              <VideoPreviewScreen
+                videoFrameRef={state.videoFrameRef}
+                activeItem={state.activeItem}
+                itemsLength={state.items.length}
+                isPlaying={state.isPlaying}
+                getMotionAnimationClass={state.getMotionAnimationClass}
+                subtitleStyle={state.subtitleStyle}
+                activeSegment={state.activeSegment}
+                scaledOffsetX={state.scaledOffsetX}
+                scaledOffsetY={state.scaledOffsetY}
+                scaledFontSize={state.scaledFontSize}
+                scaledOutlineWidth={state.scaledOutlineWidth}
+                fontWeightValue={state.fontWeightValue}
+                zoomScale={state.zoomScale}
+                isScaleAnim={state.isScaleAnim}
+                isHighlightEnabled={state.isHighlightEnabled}
+                segWords={state.segWords}
+                activeWordIndex={state.activeWordIndex}
+                activeBurstGroup={state.activeBurstGroup}
+                handlePointerDown={state.handlePointerDown}
+                handlePointerMove={state.handlePointerMove}
+                handlePointerUp={state.handlePointerUp}
+                currentTime={state.currentTime}
+                duration={state.duration || state.audio?.duration || 0}
+                formatTime={state.formatTime}
+                showSafeZones={showSafeZones}
+                watermark={state.liveWatermark}
+                isWatermarkDraggable={state.activeRightTab === "watermark"}
+                onCustomWatermarkPositionChange={state.handleCustomWatermarkPositionChange}
+                onWatermarkDragEnd={state.handleWatermarkDragEnd}
+                className="relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
+              />
+            </div>
+
+            {/* Video Player Controls Deck */}
+            <div className="w-full shrink-0 max-w-3xl">
+              <VideoPlayerControls
+                isPlaying={state.isPlaying}
+                togglePlay={state.togglePlay}
+                currentTime={state.currentTime}
+                duration={state.duration || state.audio?.duration || 0}
+                handleSeek={state.handleSeek}
+                isMuted={state.isMuted}
+                toggleMute={() => {
+                  if (state.audioRef.current) {
+                    state.audioRef.current.muted = !state.isMuted;
+                    state.setIsMuted(!state.isMuted);
+                  }
+                }}
+                subtitleEnabled={state.subtitleStyle.enabled !== false}
+                onToggleSubtitle={() => {
+                  const newEnabled = state.subtitleStyle.enabled === false;
+                  const updated = { ...state.subtitleStyle, enabled: newEnabled };
+                  state.setSubtitleStyle(updated);
+                  state.updateStyleMutation.mutate(updated);
+                  showToast(
+                    newEnabled ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih).",
+                    "info"
+                  );
+                }}
+                formatTime={state.formatTime}
+              />
+            </div>
+          </div>
+
+          {/* Bottom: Daftar Scene Berada di Bawah (Carousel Strip) */}
+          <ClipsTrackList
+            items={state.items}
+            activeItemId={state.activeItem?.id}
+            onSeek={state.handleSeek}
+            formatTime={state.formatTime}
+          />
+        </div>
+
+        {/* Right Column: Option Configuration Berada di Kanan Innerscroll (4 Tabs: Subtitle, Motion, Watermark, BGM) */}
+        <div className="w-full lg:w-[420px] xl:w-[460px] 2xl:w-[500px] shrink-0 h-full min-h-0 bg-[#121212] flex flex-col border-t lg:border-t-0 border-[#222]">
+          {/* Pinned Tab Switcher Header */}
+          <div className="p-2.5 border-b border-[#222] bg-[#161616] shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+              <button
+                type="button"
+                onClick={() => state.setActiveRightTab("subtitles")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
+                  state.activeRightTab === "subtitles"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+                title="Pengaturan Subtitle & Karaoke"
+              >
+                <Type className="w-3.5 h-3.5" />
+                <span>Subtitle</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => state.setActiveRightTab("motion")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
+                  state.activeRightTab === "motion"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+                title="Pengaturan Efek Ken Burns Motion"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Motion</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => state.setActiveRightTab("watermark")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
+                  state.activeRightTab === "watermark"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+                title="Watermark & Branding"
+              >
+                <Stamp className="w-3.5 h-3.5" />
+                <span>Watermark</span>
+                {state.liveWatermark?.enabled && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => state.setActiveRightTab("bgm")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
+                  state.activeRightTab === "bgm"
+                    ? "bg-violet-600 text-white font-semibold shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+                title="Musik Latar (BGM) & Auto-Ducking"
+              >
+                <Music2 className="w-3.5 h-3.5" />
+                <span>Audio BGM</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Inner Scrollable Option Configuration */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-5 space-y-4 scrollbar-thin scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
+            {state.activeRightTab === "subtitles" && (
+              <SubtitleStudioPanel
+                subtitleStyle={state.subtitleStyle}
+                setSubtitleStyle={state.setSubtitleStyle}
+                updateStyleMutation={state.updateStyleMutation}
+                customSubtitlePresets={state.customSubtitlePresets}
+                selectedSubtitlePresetId={state.selectedSubtitlePresetId}
+                handleLoadSubtitlePreset={state.handleLoadSubtitlePreset}
+                handleDeleteSubtitlePreset={state.handleDeleteSubtitlePreset}
+                showSaveSubtitleModal={state.showSaveSubtitleModal}
+                setShowSaveSubtitleModal={state.setShowSaveSubtitleModal}
+                newSubtitlePresetName={state.newSubtitlePresetName}
+                setNewSubtitlePresetName={state.setNewSubtitlePresetName}
+                handleSaveSubtitlePreset={state.handleSaveSubtitlePreset}
+                showToast={showToast}
+              />
+            )}
+
+            {state.activeRightTab === "motion" && (
+              <MotionInspectorPanel
+                activeItem={state.activeItem}
+                updateItemMutation={state.updateItemMutation}
+              />
+            )}
+
+            {state.activeRightTab === "watermark" && (
+              <WatermarkCustomizePanel
+                project={{ ...project, watermark: state.liveWatermark }}
+                onWatermarkChange={state.handleWatermarkChange}
+              />
+            )}
+
+            {state.activeRightTab === "bgm" && (
+              <BgmCustomizePanel
+                selectedBgm={state.selectedBgm}
+                setSelectedBgm={state.setSelectedBgm}
+                bgmVolume={state.bgmVolume}
+                setBgmVolume={state.setBgmVolume}
+                autoDucking={state.autoDucking}
+                setAutoDucking={state.setAutoDucking}
+                showToast={showToast}
+              />
+            )}
+          </div>
         </div>
       </div>
-
-      {/* 4. Horizontal Storyboard Track List */}
-      <ClipsTrackList
-        items={state.items}
-        activeItemId={state.activeItem?.id}
-        onSeek={state.handleSeek}
-        formatTime={state.formatTime}
-      />
     </div>
   );
 }

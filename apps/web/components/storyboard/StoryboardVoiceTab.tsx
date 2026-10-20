@@ -24,6 +24,7 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, StoryboardItem, SentenceSegment } from "@/types";
 import { Button, Badge, Input } from "@/components/ui";
+import { StoryboardTabHeader } from "./StoryboardTabHeader";
 import { presetStorage, VoicePreset } from "@/lib/presetStorage";
 import {
   GEMINI_TTS_MODELS,
@@ -409,56 +410,48 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
   const hasTimingSynced = items.some((it) => it.end_time > 0);
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto pb-16">
-      {/* Step Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 2 dari 6
-            </span>
-            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Sintesis Vokal & Audio Alignment
-            </Badge>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Voiceover TTS & Sinkronisasi Narasi Audio
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Pilih model vokal AI untuk membaca naskah video Anda. Mesin Whisper akan memetakan
-            durasi kata demi kata ke tiap gambar ilustrasi.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setActiveTab("storyboard_script")}
-            className="border-[#2E2E2E] text-xs"
-          >
-            Kembali ke Naskah
-          </Button>
-
-          {audio && (
+    <div className="flex flex-col w-full pb-16">
+      {/* Step Header - Menempel pada Header Stepper */}
+      <StoryboardTabHeader
+        icon={Volume2}
+        title="Voiceover TTS & Sinkronisasi Narasi"
+        badge="Langkah 2 • Suara"
+        secondaryBadge="Whisper Alignment"
+        description="Pilih provider dan model vokal AI untuk membaca naskah. Whisper memetakan durasi tiap segmen ke gambar."
+        actions={
+          <>
             <Button
-              onClick={() => setActiveTab("storyboard_images")}
-              className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("storyboard_script")}
+              className="h-8 border-[#2E2E2E] text-xs"
             >
-              <span>Lanjut ke Ilustrasi AI</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Kembali ke Naskah
             </Button>
-          )}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Voiceover Controls (5 Cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-xl">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <Mic className="w-4 h-4" />
-            </div>
+            {audio && (
+              <Button
+                size="sm"
+                onClick={() => setActiveTab("storyboard_images")}
+                className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+              >
+                <span>Lanjut ke Ilustrasi AI</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      {/* Main Tab Content */}
+      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Voiceover Controls (5 Cols) */}
+          <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-xl">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                <Mic className="w-4 h-4" />
+              </div>
             <div>
               <h3 className="text-sm font-bold text-white">Pengaturan Suara Narasi</h3>
               <p className="text-[11px] text-muted-foreground">Pilih provider dan karakter suara</p>
@@ -1161,6 +1154,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

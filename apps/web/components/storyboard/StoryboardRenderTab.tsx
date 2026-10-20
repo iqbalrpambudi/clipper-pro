@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, RenderJob, StoryboardItem } from "@/types";
 import { Button, Badge } from "@/components/ui";
+import { StoryboardTabHeader } from "./StoryboardTabHeader";
 
 interface StoryboardRenderTabProps {
   project: Project;
@@ -113,50 +114,40 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
       (activeTask.status === "progress" || activeTask.status === "queued"));
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col w-full">
       {/* Step Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 5 dari 6
-            </span>
-            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Final Export Landscape 16:9
-            </Badge>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Render & Export Video Storyboard 16:9
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Susun gambar ilustrasi dengan efek Ken Burns dinamis, padukan dengan audio narasi suara
-            dan subtitle ASS, lalu export ke MP4 Full HD.
-          </p>
-        </div>
+      <StoryboardTabHeader
+        icon={Download}
+        title="Render & Export Video 16:9"
+        badge="Langkah 5 • Render"
+        secondaryBadge="Full HD 1080p"
+        description="Susun gambar ilustrasi dengan Ken Burns dinamis, audio narasi, dan subtitle ASS ke MP4 Full HD."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("storyboard_timeline")}
+              className="h-8 border-[#2E2E2E] text-xs"
+            >
+              Kembali ke Timeline Studio
+            </Button>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setActiveTab("storyboard_watermark")}
-            className="border-[#2E2E2E] text-xs"
-          >
-            Kembali ke Watermark & Audio
-          </Button>
+            <Button
+              size="sm"
+              onClick={() => setActiveTab("storyboard_youtube")}
+              className="h-8 bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5 font-semibold shadow-md shadow-red-600/20"
+            >
+              <Youtube className="w-3.5 h-3.5 fill-current" />
+              <span>Lanjut ke YouTube & Thumbnail</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+            </Button>
+          </>
+        }
+      />
 
-          <Button
-            size="sm"
-            onClick={() => setActiveTab("storyboard_youtube")}
-            className="bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5 font-semibold shadow-md shadow-red-600/20"
-          >
-            <Youtube className="w-3.5 h-3.5 fill-current" />
-            <span>Lanjut ke YouTube & Thumbnail</span>
-            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Render Settings & CTA (5 Cols) */}
         <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xl">
           <div className="flex items-center gap-2">
@@ -522,6 +513,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

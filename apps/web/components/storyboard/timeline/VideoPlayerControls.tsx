@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Type } from "lucide-react";
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Type } from "lucide-react";
 
 interface VideoPlayerControlsProps {
   isPlaying: boolean;
@@ -29,28 +29,38 @@ export function VideoPlayerControls({
   formatTime,
 }: VideoPlayerControlsProps) {
   return (
-    <div className="p-4 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="px-3.5 py-2 rounded-xl bg-[#141414] border border-[#222] space-y-1.5 shadow-md">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={togglePlay}
-            className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 transition"
+            className="w-8 h-8 rounded-lg bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center shadow-md shadow-violet-500/20 transition shrink-0"
+            title={isPlaying ? "Jeda" : "Putar"}
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
           </button>
 
           <button
             type="button"
             onClick={() => handleSeek(Math.max(0, currentTime - 5))}
-            className="p-2 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition"
+            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
             title="Mundur 5 detik"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSeek(Math.min(duration, currentTime + 5))}
+            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
+            title="Maju 5 detik"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onToggleSubtitle}
@@ -61,8 +71,8 @@ export function VideoPlayerControls({
             }`}
             title={subtitleEnabled ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
           >
-            <Type className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold">
+            <Type className="w-3 h-3" />
+            <span className="text-[10px] font-bold hidden sm:inline">
               {subtitleEnabled ? "SUBTITLE ON" : "SUBTITLE OFF"}
             </span>
           </button>
@@ -70,16 +80,17 @@ export function VideoPlayerControls({
           <button
             type="button"
             onClick={toggleMute}
-            className="p-2 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition"
+            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
+            title={isMuted ? "Unmute Audio" : "Mute Audio"}
           >
             {isMuted ? (
-              <VolumeX className="w-4 h-4 text-rose-400" />
+              <VolumeX className="w-3.5 h-3.5 text-rose-400" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="w-3.5 h-3.5" />
             )}
           </button>
 
-          <span className="text-xs font-mono font-bold text-violet-400">
+          <span className="text-xs font-mono font-bold text-violet-400 shrink-0">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
         </div>
@@ -93,7 +104,7 @@ export function VideoPlayerControls({
         step={0.1}
         value={currentTime}
         onChange={(e) => handleSeek(Number(e.target.value))}
-        className="w-full accent-violet-500 cursor-pointer h-2 bg-[#2A2A2A] rounded-lg"
+        className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg block"
       />
     </div>
   );

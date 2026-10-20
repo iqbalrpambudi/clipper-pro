@@ -151,69 +151,71 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
   const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
 
   return (
-    <div className="h-[calc(100vh-120px)] min-h-[620px] max-h-[960px] flex-1 flex flex-col rounded-2xl border border-[#222222] overflow-hidden bg-[#0F0F0F] text-white shadow-xl">
+    <div className="flex-1 min-h-0 flex flex-col w-full overflow-hidden bg-[#0F0F0F] text-white">
       {/* Top Header Bar */}
-      <div className="h-14 px-5 border-b border-[#222222] flex items-center justify-between shrink-0 bg-[#141414]/90 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
-            <Stamp className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-white tracking-tight">
-                Watermark & Audio Enhancer
-              </h1>
-              <Badge
-                variant="outline"
-                className="text-[10px] bg-violet-500/10 text-violet-300 border-violet-500/30"
-              >
-                16:9 Storyboard
-              </Badge>
+      <div className="h-14 border-b border-[#222222] shrink-0 bg-[#141414]/95 backdrop-blur-md w-full">
+        <div className="max-w-[1920px] w-full mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+              <Stamp className="w-4 h-4" />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Atur watermark branding dan musik latar sebelum melanjutkan ke tahap Render Final
-            </p>
-          </div>
-        </div>
-
-        {/* Sub-tab navigation */}
-        <div className="flex items-center gap-3">
-          <div className="flex bg-[#1E1E1E] p-1 rounded-xl border border-[#2E2E2E]">
-            <button
-              onClick={() => setActiveSubTab("watermark")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
-                activeSubTab === "watermark"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-white"
-              }`}
-            >
-              <Stamp className="w-3.5 h-3.5" />
-              <span>Watermark & Branding</span>
-              {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
-            </button>
-            <button
-              onClick={() => setActiveSubTab("bgm")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
-                activeSubTab === "bgm"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-white"
-              }`}
-            >
-              <Music2 className="w-3.5 h-3.5" />
-              <span>Musik Latar (BGM)</span>
-              <span className="px-1.5 py-0.2 text-[9px] rounded bg-violet-500/20 text-violet-300 border border-violet-500/30 font-semibold">
-                Baru
-              </span>
-            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-bold text-white tracking-tight">
+                  Watermark & Audio Enhancer
+                </h1>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-violet-500/10 text-violet-300 border-violet-500/30"
+                >
+                  16:9 Storyboard
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Atur watermark branding dan musik latar sebelum melanjutkan ke tahap Render Final
+              </p>
+            </div>
           </div>
 
-          <Button
-            onClick={() => setActiveTab("storyboard_render")}
-            className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 h-8"
-          >
-            <span>Lanjut ke Render 16:9</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+          {/* Sub-tab navigation */}
+          <div className="flex items-center gap-3">
+            <div className="flex bg-[#1E1E1E] p-1 rounded-xl border border-[#2E2E2E]">
+              <button
+                onClick={() => setActiveSubTab("watermark")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
+                  activeSubTab === "watermark"
+                    ? "bg-violet-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                <Stamp className="w-3.5 h-3.5" />
+                <span>Watermark & Branding</span>
+                {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+              </button>
+              <button
+                onClick={() => setActiveSubTab("bgm")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
+                  activeSubTab === "bgm"
+                    ? "bg-violet-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                <Music2 className="w-3.5 h-3.5" />
+                <span>Musik Latar (BGM)</span>
+                <span className="px-1.5 py-0.2 text-[9px] rounded bg-violet-500/20 text-violet-300 border border-violet-500/30 font-semibold">
+                  Baru
+                </span>
+              </button>
+            </div>
+
+            <Button
+              onClick={() => setActiveTab("storyboard_render")}
+              className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 h-8"
+            >
+              <span>Lanjut ke Render 16:9</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -294,14 +296,10 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             </div>
 
             {/* 16:9 Video Canvas Frame - Automatically fits visible screen space */}
-            <div className="flex-1 min-h-0 flex items-center justify-center p-1 relative">
+            <div className="flex-1 min-h-0 flex items-center justify-center p-1 relative overflow-hidden">
               <div
                 ref={previewRef}
-                className="relative aspect-video max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group"
-                style={{
-                  width: "min(100%, calc((100vh - 350px) * 16 / 9))",
-                  maxHeight: "calc(100vh - 350px)",
-                }}
+                className="relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
               >
                 {/* AI Scene Image or Artistic Empty State */}
                 {currentScene?.image_url ? (

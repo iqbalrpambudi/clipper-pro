@@ -23,6 +23,7 @@ export interface TaskEvent {
     | "scene_detect"
     | "scene_retag"
     | "scene_transcribe"
+    | "narration_generate"
     | "tts_align"
     | "render"
     | "storyboard_images";

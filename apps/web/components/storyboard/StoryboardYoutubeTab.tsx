@@ -24,7 +24,8 @@ import {
   ThumbnailTextLayer,
   ThumbnailPreset,
 } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { StoryboardTabHeader } from "./StoryboardTabHeader";
 
 import { convertLegacyOverlayToLayers, createDefaultTextLayer } from "./thumbnail/thumbnailPresets";
 import { TextLayerInspector } from "./thumbnail/TextLayerInspector";
@@ -480,55 +481,48 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   const isSaving = saveMetadataMutation.isPending;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300 pb-12">
+    <div className="flex-1 flex flex-col w-full animate-in fade-in duration-300">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-semibold flex items-center gap-1.5">
-              <Youtube className="w-3.5 h-3.5 text-red-500 fill-current" />
-              Langkah 6 dari 6
-            </span>
-            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Studio Thumbnail & Packaging YouTube
-            </Badge>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            YouTube Video & Thumbnail Canvas Studio
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Editor teks kanvas bebas ala Photoshop: atur teks layer, jenis font, outline, box
-            highlight, rotasi, dan preset viral.
-          </p>
-        </div>
+      <StoryboardTabHeader
+        icon={Youtube}
+        iconColor="text-red-500"
+        iconBg="bg-red-500/10 border-red-500/20"
+        title="YouTube Packaging & Thumbnail Studio"
+        badge="Langkah 6 • Packaging"
+        badgeColor="bg-red-500/10 text-red-400 border-red-500/30"
+        secondaryBadge="Kanvas Bebas"
+        description="Editor teks thumbnail kanvas grafis bebas ala Photoshop dan generator paket metadata YouTube."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("storyboard_render")}
+              className="h-8 border-[#2E2E2E] text-xs"
+            >
+              Kembali ke Render
+            </Button>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setActiveTab("storyboard_render")}
-            className="border-[#2E2E2E] text-xs"
-          >
-            Kembali ke Render
-          </Button>
+            <Button
+              size="sm"
+              onClick={() => saveMetadataMutation.mutate()}
+              disabled={isSaving}
+              className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20"
+            >
+              {isSaving ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              <span>Simpan Perubahan</span>
+            </Button>
+          </>
+        }
+      />
 
-          <Button
-            onClick={() => saveMetadataMutation.mutate()}
-            disabled={isSaving}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20"
-          >
-            {isSaving ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
-            ) : (
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            <span>Simpan Perubahan</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Main 2-Column Split: STICKY CANVAS (Left 6 Cols) + CLEAN CONTROLS (Right 6 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6 pb-16">
+        {/* Main 2-Column Split: STICKY CANVAS (Left 6 Cols) + CLEAN CONTROLS (Right 6 Cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Sticky React-Konva Canvas & Real-time Mockup (6 Cols) */}
         <div className="lg:col-span-6 space-y-4 lg:sticky lg:top-4 self-start">
           <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-4 space-y-3.5 shadow-xl">
@@ -783,6 +777,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

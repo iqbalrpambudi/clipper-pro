@@ -343,7 +343,7 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Main Studio Content: Two-Column Split */}
-      <main className="max-w-8xl mx-auto px-6 py-8 w-full flex-1">
+      <main className="max-w-[1920px] mx-auto px-6 py-8 w-full flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* LEFT COLUMN: Input & AI Synthesizer */}
           <div className="lg:col-span-5">

@@ -32,7 +32,8 @@ import {
   StoryboardCharacterVariant,
   StoryboardLocation,
 } from "@/types";
-import { Button, Textarea, Badge } from "@/components/ui";
+import { Button, Textarea } from "@/components/ui";
+import { StoryboardTabHeader } from "./StoryboardTabHeader";
 
 function renderTokenizedPrompt(promptText: string) {
   if (!promptText) return null;
@@ -239,52 +240,44 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
   const failedCount = items.filter((it) => it.status === "failed").length;
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto pb-16">
-      {/* Step Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E2E] pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-semibold">
-              Langkah 3 dari 6
-            </span>
-            <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[11px]">
-              Studio Ilustrasi AI Hand-drawn
-            </Badge>
-          </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Galeri Gambar Ilustrasi Sketsa Storyboard
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Generate gambar AI untuk setiap adegan naskah secara batch atau satu per satu. Edit
-            prompt visual bila ingin menyesuaikan komposisi gambar.
-          </p>
-        </div>
+    <div className="flex flex-col w-full pb-16">
+      {/* Step Header - Menempel pada Header Stepper */}
+      <StoryboardTabHeader
+        icon={ImageIcon}
+        title="Galeri Ilustrasi AI Storyboard"
+        badge="Langkah 3 • Ilustrasi"
+        secondaryBadge="16:9 Landscape"
+        description="Generate gambar AI untuk setiap adegan naskah secara batch atau satu per satu dengan konsistensi visual."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("storyboard_voice")}
+              className="h-8 border-[#2E2E2E] text-xs"
+            >
+              Kembali ke Suara
+            </Button>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setActiveTab("storyboard_voice")}
-            className="border-[#2E2E2E] text-xs"
-          >
-            Kembali ke Suara
-          </Button>
+            <Button
+              size="sm"
+              onClick={() => setActiveTab("storyboard_timeline")}
+              className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+            >
+              <span>Lanjut ke Timeline & Motion</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        }
+      />
 
-          <Button
-            onClick={() => setActiveTab("storyboard_timeline")}
-            className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20"
-          >
-            <span>Lanjut ke Timeline & Motion</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Preset Indicator Ribbon */}
-      <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-[#181818] to-[#181818] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <Palette className="w-4 h-4 text-violet-400" />
-          <span className="text-slate-400">Preset Gaya Visual:</span>
+      {/* Main Tab Content */}
+      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+        {/* Preset Indicator Ribbon */}
+        <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-[#181818] to-[#181818] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Palette className="w-4 h-4 text-violet-400" />
+            <span className="text-slate-400">Preset Gaya Visual:</span>
           <select
             value={activePreset?.id || ""}
             onChange={(e) => activatePresetMutation.mutate(e.target.value)}
@@ -315,72 +308,72 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
       {((project.characters && project.characters.length > 0) ||
         (project.locations && project.locations.length > 0) ||
         project.world_setting?.era) && (
-        <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-black/40 to-black/40 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 text-violet-300 font-semibold shrink-0">
-              <Users className="w-4 h-4 text-violet-400" />
-              <span>Continuity Bible:</span>
+          <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-black/40 to-black/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 text-violet-300 font-semibold shrink-0">
+                <Users className="w-4 h-4 text-violet-400" />
+                <span>Continuity Bible:</span>
+              </div>
+
+              {/* Characters */}
+              {project.characters?.map((char: StoryboardCharacter, i: number) => {
+                const charId = char.id || char.name?.toLowerCase().replace(/\s+/g, "");
+                const hasVariants = Array.isArray(char.variants) && char.variants.length > 0;
+                return (
+                  <span
+                    key={`char-${i}`}
+                    className="px-2.5 py-1 rounded-lg bg-black/50 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                    title={char.visual_anchor}
+                  >
+                    <span className="font-bold text-violet-300">👤 {char.name}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300">
+                      [char:{charId}]
+                    </span>
+                    {hasVariants && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
+                        +{char.variants?.length} varian
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+
+              {/* Locations */}
+              {project.locations?.map((loc: StoryboardLocation, i: number) => {
+                const locId = loc.id || loc.name?.toLowerCase().replace(/\s+/g, "");
+                return (
+                  <span
+                    key={`loc-${i}`}
+                    className="px-2.5 py-1 rounded-lg bg-black/50 border border-sky-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                    title={loc.environment_anchor}
+                  >
+                    <span className="font-bold text-sky-300">🗺️ {loc.name}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300">
+                      [loc:{locId}]
+                    </span>
+                  </span>
+                );
+              })}
+
+              {/* World Setting Era */}
+              {project.world_setting?.era && (
+                <span
+                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-emerald-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                  title={project.world_setting.atmosphere}
+                >
+                  <span className="font-bold text-emerald-300">⏳ {project.world_setting.era}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
+                    [era]
+                  </span>
+                </span>
+              )}
             </div>
 
-            {/* Characters */}
-            {project.characters?.map((char: StoryboardCharacter, i: number) => {
-              const charId = char.id || char.name?.toLowerCase().replace(/\s+/g, "");
-              const hasVariants = Array.isArray(char.variants) && char.variants.length > 0;
-              return (
-                <span
-                  key={`char-${i}`}
-                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
-                  title={char.visual_anchor}
-                >
-                  <span className="font-bold text-violet-300">👤 {char.name}</span>
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300">
-                    [char:{charId}]
-                  </span>
-                  {hasVariants && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
-                      +{char.variants?.length} varian
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-
-            {/* Locations */}
-            {project.locations?.map((loc: StoryboardLocation, i: number) => {
-              const locId = loc.id || loc.name?.toLowerCase().replace(/\s+/g, "");
-              return (
-                <span
-                  key={`loc-${i}`}
-                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-sky-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
-                  title={loc.environment_anchor}
-                >
-                  <span className="font-bold text-sky-300">🗺️ {loc.name}</span>
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300">
-                    [loc:{locId}]
-                  </span>
-                </span>
-              );
-            })}
-
-            {/* World Setting Era */}
-            {project.world_setting?.era && (
-              <span
-                className="px-2.5 py-1 rounded-lg bg-black/50 border border-emerald-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
-                title={project.world_setting.atmosphere}
-              >
-                <span className="font-bold text-emerald-300">⏳ {project.world_setting.era}</span>
-                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
-                  [era]
-                </span>
-              </span>
-            )}
+            <span className="text-[11px] text-slate-400 italic">
+              Deskripsi visual disinkronkan otomatis saat generate
+            </span>
           </div>
-
-          <span className="text-[11px] text-slate-400 italic">
-            Deskripsi visual disinkronkan otomatis saat generate
-          </span>
-        </div>
-      )}
+        )}
 
       {/* Top Banner Action Bar */}
       <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-gradient-to-r from-[#181818] via-[#1C1824] to-[#181818] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
@@ -422,11 +415,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             <button
               type="button"
               onClick={() => setShowCompiledPrompt(false)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
-                !showCompiledPrompt
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${!showCompiledPrompt
                   ? "bg-violet-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
+                }`}
             >
               <Code className="w-3.5 h-3.5" />
               <span>Prompt Variabel</span>
@@ -434,11 +426,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             <button
               type="button"
               onClick={() => setShowCompiledPrompt(true)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
-                showCompiledPrompt
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${showCompiledPrompt
                   ? "bg-violet-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
+                }`}
             >
               <Eye className="w-3.5 h-3.5" />
               <span>Preview Lengkap (Compiled)</span>
@@ -781,11 +772,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               onClick={() => handleGenerateSingle(item)}
                               disabled={isGeneratingThis || batchGenerateMutation.isPending}
                               variant={item.status === "ready" ? "outline" : "supabase"}
-                              className={`w-full text-xs h-8 gap-1.5 ${
-                                item.status === "ready"
+                              className={`w-full text-xs h-8 gap-1.5 ${item.status === "ready"
                                   ? "border-[#2E2E2E] hover:border-violet-500 hover:text-violet-300"
                                   : "bg-violet-600 hover:bg-violet-500 text-white"
-                              }`}
+                                }`}
                             >
                               {isGeneratingThis ? (
                                 <>
@@ -861,6 +851,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

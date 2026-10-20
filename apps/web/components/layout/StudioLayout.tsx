@@ -60,8 +60,17 @@ export function StudioLayout({
     setIsEditingTitle(false);
   };
 
+  const isFullHeightTab =
+    activeTab === "timeline" ||
+    activeTab === "storyboard_timeline" ||
+    activeTab === "storyboard_watermark";
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#121212] text-foreground">
+    <div
+      className={`flex flex-col bg-[#121212] text-foreground ${
+        isFullHeightTab ? "h-screen overflow-hidden" : "min-h-screen"
+      }`}
+    >
       {/* ========================================================================= */}
       {/* 1. SUPABASE STUDIO TOP HEADER                                              */}
       {/* ========================================================================= */}
@@ -186,11 +195,10 @@ export function StudioLayout({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
-                  isActive
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${isActive
                     ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm font-semibold"
                     : "text-muted-foreground hover:text-white hover:bg-white/5"
-                }`}
+                  }`}
               >
                 <Icon
                   className={`w-3.5 h-3.5 ${isActive ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
@@ -216,9 +224,9 @@ export function StudioLayout({
       {/* Main Studio Body Canvas */}
       <main
         className={
-          activeTab === "timeline"
-            ? "w-full max-w-[1920px] mx-auto flex-1 flex flex-col min-h-0"
-            : "max-w-8xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full"
+          isFullHeightTab
+            ? "w-full flex-1 flex flex-col min-h-0 overflow-hidden"
+            : "w-full flex-1 flex flex-col min-h-0"
         }
       >
         {children}
