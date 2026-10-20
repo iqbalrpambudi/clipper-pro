@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Clock, Check, Copy } from "lucide-react";
+import { Clock, Check, Copy, Sparkles } from "lucide-react";
 
 interface VideoMetricsCardProps {
   durationMins: number;
@@ -12,6 +12,7 @@ interface VideoMetricsCardProps {
   hasSegments: boolean;
   hasCopiedNarration: boolean;
   onCopyAllNarration: () => void;
+  onOpenNarrationAnalysis?: () => void;
   itemsCount: number;
 }
 
@@ -24,6 +25,7 @@ export function VideoMetricsCard({
   hasSegments,
   hasCopiedNarration,
   onCopyAllNarration,
+  onOpenNarrationAnalysis,
   itemsCount,
 }: VideoMetricsCardProps) {
   return (
@@ -36,19 +38,32 @@ export function VideoMetricsCard({
           </h4>
         </div>
         {hasSegments ? (
-          <button
-            type="button"
-            onClick={onCopyAllNarration}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-[#222] hover:bg-[#2B2B2B] border border-[#333] transition"
-            title="Salin seluruh teks narasi ke clipboard"
-          >
-            {hasCopiedNarration ? (
-              <Check className="w-3 h-3 text-emerald-400" />
-            ) : (
-              <Copy className="w-3 h-3 text-violet-400" />
+          <div className="flex items-center gap-2">
+            {onOpenNarrationAnalysis && (
+              <button
+                type="button"
+                onClick={onOpenNarrationAnalysis}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-sm"
+                title="Analisis Skor Narasi untuk Retensi YouTube"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>Skor Narasi</span>
+              </button>
             )}
-            <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
-          </button>
+            <button
+              type="button"
+              onClick={onCopyAllNarration}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-[#222] hover:bg-[#2B2B2B] border border-[#333] transition"
+              title="Salin seluruh teks narasi ke clipboard"
+            >
+              {hasCopiedNarration ? (
+                <Check className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <Copy className="w-3 h-3 text-violet-400" />
+              )}
+              <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
+            </button>
+          </div>
         ) : (
           <span className="text-[10px] text-slate-400 font-mono">Target Estimasi</span>
         )}

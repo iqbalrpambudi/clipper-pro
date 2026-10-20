@@ -12,6 +12,8 @@ import {
   StoryboardLocation,
   StoryboardWorldSetting,
   SentenceSegment,
+  StoryboardNarrationAnalysisResponse,
+  NarrationSegmentImprovement,
 } from "@/types";
 import { presetStorage, ScriptPreset } from "@/lib/presetStorage";
 
@@ -220,6 +222,7 @@ export function useStoryboardScriptState(project: Project) {
         id: `lokasi_${idx}`,
         name: `Lokasi ${idx}`,
         environment_anchor: "",
+        focal_props: "",
       },
     ]);
     setBibleTab("locations");
@@ -509,6 +512,76 @@ export function useStoryboardScriptState(project: Project) {
   const estimatedSeconds = wordCount > 0 ? Math.round((wordCount / 135) * 60) : 0;
   const resultMinutes = Math.floor(estimatedSeconds / 60);
   const resultSeconds = estimatedSeconds % 60;
+  // Narration Score Analysis State & Mutations
+  const [showNarrationAnalysisModal, setShowNarrationAnalysisModal] = useState<boolean>(false);
+  const [analysisData, setAnalysisData] = useState<StoryboardNarrationAnalysisResponse | null>(null);
+
+  const analyzeNarrationMutation = useMutation({
+    mutationFn: (params?: { focusAspect?: string; customInstructions?: string }) =>
+      api.analyzeStoryboardNarration(project.id, {
+        focus_aspect: params?.focusAspect,
+        custom_instructions: params?.customInstructions,
+      }),
+    onSuccess: (data) => {
+      setAnalysisData(data);
+      showToast(
+        `Analisis selesai! Skor narasi: ${data.overall_score}/100 (Grade ${data.grade})`,
+        "success"
+      );
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Gagal menganalisis skor narasi", "error");
+    },
+  });
+
+  const applyImprovementsMutation = useMutation({
+    mutationFn: ({
+      segments: selectedSegments,
+      updateVisualPrompts = true,
+    }: {
+      segments: NarrationSegmentImprovement[];
+      updateVisualPrompts?: boolean;
+    }) =>
+      api.applyStoryboardNarrationImprovements(
+        project.id,
+        selectedSegments,
+        updateVisualPrompts
+      ),
+    onSuccess: (res) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
+        if (!old || !old.narration) return old;
+        return {
+          ...old,
+          narration: {
+            ...old.narration,
+            segments: res.segments || old.narration.segments,
+            raw_text: (res.segments || []).map((s: any) => s.text || "").join("\n\n"),
+          },
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      queryClient.invalidateQueries({ queryKey: ["storyboard-items", project.id] });
+      setShowNarrationAnalysisModal(false);
+      const visualMsg = res.updated_visual_count
+        ? ` & ${res.updated_visual_count} visual prompt disinkronkan!`
+        : "!";
+      showToast(
+        `Berhasil menerapkan perbaikan pada ${res.applied_count} segmen narasi${visualMsg}`,
+        "success"
+      );
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Gagal menerapkan perbaikan naskah", "error");
+    },
+  });
+
+  const handleOpenNarrationAnalysis = (focusAspect?: string) => {
+    setShowNarrationAnalysisModal(true);
+    if (!analysisData) {
+      analyzeNarrationMutation.mutate({ focusAspect: focusAspect || "youtube_retention" });
+    }
+  };
+
   const resultDurationFormatted =
     wordCount === 0
       ? "0 Menit"
@@ -517,6 +590,15 @@ export function useStoryboardScriptState(project: Project) {
         : `~${resultMinutes}m ${resultSeconds}s`;
 
   return {
+    // Narration Analysis
+    showNarrationAnalysisModal,
+    setShowNarrationAnalysisModal,
+    analysisData,
+    setAnalysisData,
+    analyzeNarrationMutation,
+    applyImprovementsMutation,
+    handleOpenNarrationAnalysis,
+
     // Presets
     presets,
     activePreset,

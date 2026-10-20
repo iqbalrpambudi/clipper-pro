@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, Check, Copy, FileText } from "lucide-react";
+import { ArrowRight, Check, Copy, FileText, Sparkles } from "lucide-react";
 import { Project } from "@/types";
 import { Button } from "@/components/ui";
 import { StoryboardTabHeader } from "./StoryboardTabHeader";
@@ -10,6 +10,7 @@ import {
   VideoMetricsCard,
   ContinuityBibleCard,
   SegmentsList,
+  NarrationAnalysisModal,
   useStoryboardScriptState,
 } from "./script";
 
@@ -32,6 +33,17 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         actions={
           state.segments.length > 0 ? (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => state.handleOpenNarrationAnalysis()}
+                className="h-8 text-xs font-semibold gap-1.5 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 transition shadow-sm"
+                title="Analisis Skor Narasi untuk Retensi YouTube"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Skor Narasi</span>
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -109,6 +121,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             hasSegments={state.segments.length > 0}
             hasCopiedNarration={state.hasCopiedNarration}
             onCopyAllNarration={state.handleCopyAllNarration}
+            onOpenNarrationAnalysis={state.handleOpenNarrationAnalysis}
             itemsCount={state.items.length}
           />
 
@@ -160,6 +173,24 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         onCancelEditSegment={state.handleCancelEditSegment}
         onSaveEditSegment={state.handleSaveEditSegment}
         isUpdatingSegment={state.updateSegmentMutation.isPending}
+      />
+
+      {/* Modal Analisis Skor Narasi YouTube */}
+      <NarrationAnalysisModal
+        isOpen={state.showNarrationAnalysisModal}
+        onClose={() => state.setShowNarrationAnalysisModal(false)}
+        analysisData={state.analysisData}
+        isLoading={state.analyzeNarrationMutation.isPending}
+        isApplying={state.applyImprovementsMutation.isPending}
+        onAnalyze={(focusAspect, customInstructions) =>
+          state.analyzeNarrationMutation.mutate({ focusAspect, customInstructions })
+        }
+        onApplyImprovements={(selectedSegments, updateVisualPrompts) =>
+          state.applyImprovementsMutation.mutate({
+            segments: selectedSegments,
+            updateVisualPrompts,
+          })
+        }
       />
       </div>
     </div>

@@ -122,11 +122,19 @@ def resolve_prompt_variables(
             return None
         if norm_q in loc_map:
             loc_item = loc_map[norm_q]
-            return loc_item.get("environment_anchor") or loc_item.get("description") or ""
+            anchor = loc_item.get("environment_anchor") or loc_item.get("description") or ""
+            props = (loc_item.get("focal_props") or loc_item.get("key_props") or "").strip()
+            if props and props.lower() not in anchor.lower():
+                return f"{anchor}, key anchor elements: {props}"
+            return anchor
         # Partial containment match
         for k, loc_item in loc_map.items():
             if norm_q in k or k in norm_q:
-                return loc_item.get("environment_anchor") or loc_item.get("description") or ""
+                anchor = loc_item.get("environment_anchor") or loc_item.get("description") or ""
+                props = (loc_item.get("focal_props") or loc_item.get("key_props") or "").strip()
+                if props and props.lower() not in anchor.lower():
+                    return f"{anchor}, key anchor elements: {props}"
+                return anchor
         return None
 
     def _token_replacer(match: re.Match) -> str:
@@ -522,15 +530,19 @@ def _format_continuity_bible_instructions(
     # 2. Locations
     if locations and len(locations) > 0:
         if language == "en":
-            lines.append("2. KEY RECURRING LOCATION TOKENS:")
+            lines.append("2. KEY RECURRING LOCATION TOKENS (MICRO-SETS):")
         else:
-            lines.append("2. TOKEN LATAR TEMPAT UTAMA (LOCATIONS):")
+            lines.append("2. TOKEN LATAR TEMPAT & MICRO-SET UTAMA (LOCATIONS):")
 
         for loc in locations:
             l_name = loc.get("name", "Location" if language == "en" else "Lokasi")
             l_id = loc.get("id") or loc.get("location_id") or _normalize_key(l_name)
             l_anchor = loc.get("environment_anchor", "")
-            lines.append(f"   • {l_name}: Use token `[loc:{l_id}]` (Environment: {l_anchor})")
+            focal_props = (loc.get("focal_props") or loc.get("key_props") or "").strip()
+            if focal_props:
+                lines.append(f"   • {l_name}: Use token `[loc:{l_id}]` (Micro-set: {l_anchor} | Anchor Props: {focal_props})")
+            else:
+                lines.append(f"   • {l_name}: Use token `[loc:{l_id}]` (Micro-set: {l_anchor})")
         lines.append("")
 
     # 3. World Setting
@@ -555,13 +567,19 @@ def _format_continuity_bible_instructions(
             "- Insert character variant token: `[char:<char_id>:<variant_id>]` (or `[char:<char_id>]`).\n"
             "- Insert location token: `[loc:<loc_id>]`.\n"
             "- Insert visual preset token: `[preset:style]`.\n"
-            "- Describe the specific character action, emotion, full-bleed 16:9 widescreen framing (edge-to-edge, NO letterbox, NO black bars, NO white border), and lighting vividly.\n"
+            "- Describe specific character action, emotion, full-bleed 16:9 widescreen framing (edge-to-edge, NO letterbox, NO black bars, NO white border), and lighting vividly.\n"
+            "- SEQUENTIAL SPATIAL CONTINUITY & ANTI-TELEPORTATION (MANDATORY):\n"
+            "  * If two or more consecutive scenes take place within the same location/interaction (e.g. buying at a market stall, conversing in a room):\n"
+            "    - You MUST maintain the exact same stall architecture, counter materials, and anchor props.\n"
+            "    - DO NOT randomly relocate characters (e.g. from a storefront to under an open tree) unless the script explicitly states they walked away.\n"
+            "    - Use continuity camera framing cues: 'Continuing in the exact same stall on [loc:...], medium two-shot...', 'Reverse-angle shot across the same wooden counter on [loc:...]', 'Close-up on [char:...] in the same setting...'.\n"
+            "    - 180-Degree Rule: Maintain consistent left/right relational screen positions for interacting characters across consecutive shots.\n"
             "Examples:\n"
             "  * `A full-bleed 16:9 widescreen shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards horizon under gentle morning sunlight.`\n"
             "  * `A dramatic low-angle full-bleed 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain and lightning strikes.`\n\n"
             "=== CRITICAL RULES FOR NARRATION_TEXT (VOICEOVER / TTS) ===\n"
             "1. STRICTLY NO TOKENS IN NARRATION: Bracket tokens like `[char:...]`, `[loc:...]`, `[preset:...]` are EXCLUSIVELY for `image_prompt`!\n"
-            "   In `narration_text`, NEVER include bracket tokens. Always write the natural spoken character and location names (e.g. write 'Aladdin' or 'the Sorcerer', NEVER '[char:aladin:muda]' or '[char:penyihir]'). This narration will be read aloud by TTS.\n"
+            "   In `narration_text`, NEVER include bracket tokens. Always write natural spoken character and location names (e.g. write 'Aladdin' or 'the Sorcerer', NEVER '[char:aladin:muda]' or '[char:penyihir]'). This narration will be read aloud by TTS.\n"
             "2. NO COLONS OR SEMICOLONS: NEVER use semicolons (;) or colons (:) in `narration_text` as TTS voice synthesis glitches or stumbles on them. Use commas (,) for breath pauses and periods (.) for full stops."
         )
     else:
@@ -572,6 +590,12 @@ def _format_continuity_bible_instructions(
             "- Sisipkan token latar tempat: `[loc:<loc_id>]` (contoh: `[loc:pesisir_air_manis]`, `[loc:kapal_saudagar]`).\n"
             "- Sisipkan token gaya visual preset: `[preset:style]`.\n"
             "- Tuliskan aksi konkret tokoh, ekspresi emosi, framing 16:9 widescreen full-bleed (penuh layar edge-to-edge, TANPA letterbox, TANPA bar hitam/putih, TANPA bingkai), dan pencahayaan secara hidup.\n"
+            "- KONTINUITAS SPASIAL & ANTI-TELEPORTASI LATAR BERURUTAN (MUTLAK):\n"
+            "  * Jika adegan berturut-turut berlangsung dalam satu interaksi/lokasi yang sama (misal tawar-menawar di kios pedagang pasar, percakapan dua tokoh, atau pertemuan di satu ruangan):\n"
+            "    - Anda WAJIB mempertahankan arsitektur latar, bentuk kios/meja, dan objek patokan (props) yang sama persis.\n"
+            "    - DILARANG KERAS memindahkan latar secara tiba-tiba (seperti dari depan kios mendadak pindah ke bawah pohon atau ke tepi jalan) KECUALI naskah menyatakan karakter melangkah pergi.\n"
+            "    - Gunakan frasa kontinuitas kamera: 'Continuing at the exact same stall setting on [loc:...], medium two-shot...', 'Reverse-angle shot across the same counter...', 'Close-up shot of [char:...] in the same setting...'.\n"
+            "    - Aturan 180 Derajat: Jaga konsistensi posisi tokoh (misal Tokoh A di kiri frame menghadap kanan, Pedagang/Lawan bicara di kanan di balik meja counter).\n"
             "Contoh format prompt yang WAJIB ditaati:\n"
             "  * Adegan 1: `A full-bleed 16:9 widescreen shot in [preset:style] of [char:malin:muda] repairing a fishing net on [loc:pesisir_air_manis], looking out towards the ocean with ambitious eyes under gentle morning sunlight.`\n"
             "  * Adegan 2: `A dramatic low-angle full-bleed 16:9 shot in [preset:style] of [char:malin:batu] weeping in despair on [loc:pesisir_air_manis], torrential rain, lightning flashing in dark stormy sky.`\n\n"

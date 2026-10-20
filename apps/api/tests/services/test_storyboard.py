@@ -1,6 +1,12 @@
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from app.schemas.storyboard import StoryboardItemResponse
+from app.schemas.storyboard import (
+    StoryboardItemResponse,
+    NarrationSegmentImprovement,
+    StoryboardNarrationAnalysisResponse,
+)
 from app.services.storyboard import (
     build_chapter_expansion_prompt,
     build_storyboard_outline_prompt,
@@ -8,13 +14,16 @@ from app.services.storyboard import (
     clean_narration_for_tts,
     resolve_prompt_variables,
 )
+from app.services.storyboard_analyzer import (
+    apply_narration_improvements_to_project,
+)
 
 
 def test_build_storyboard_prompt_scales_with_duration():
-    p1 = build_storyboard_prompt("Topik 1", duration_mins=2)
-    p5 = build_storyboard_prompt("Topik 1", duration_mins=5)
-    assert "2 menit" in p1
-    assert "5 menit" in p5
+    s1, u1 = build_storyboard_prompt("Topik 1", duration_mins=2)
+    s5, u5 = build_storyboard_prompt("Topik 1", duration_mins=5)
+    assert "2 menit" in u1
+    assert "5 menit" in u5
 
 
 def test_build_storyboard_outline_prompt_scales_correctly():
@@ -50,15 +59,18 @@ def test_build_chapter_expansion_prompt_targets():
 
 
 def test_storyboard_item_response_cache_busting():
+    now = datetime.now()
     item = StoryboardItemResponse(
         id="item-123",
         project_id="proj-abc",
+        segment_id="seg-1",
         order_index=1,
         script_text="Intro",
         image_prompt="Prompt image",
         image_url="/storage/projects/proj-abc/storyboard/item-123.jpg",
         status="completed",
-        updated_at=None,
+        created_at=now,
+        updated_at=now,
     )
     assert item.image_url == "/storage/projects/proj-abc/storyboard/item-123.jpg"
 
@@ -219,3 +231,86 @@ async def test_story_continuity_bible_variable_resolution():
     assert "weathered grey stone statue" in resolved_2
     assert "elderly mother with wrinkled face" in resolved_2
     assert "rocky Indonesian tropical coast" in resolved_2
+
+    # Test 3: Location with focal_props (Anchor Props)
+    locations_with_props = [
+        {
+            "id": "kios_pasar",
+            "name": "Kios Rempah",
+            "environment_anchor": "rustic bamboo stall with dark teak counter",
+            "focal_props": "olive canvas awning, hanging garlic braids, brass scale",
+        }
+    ]
+    raw_prompt_3 = "A shot in [preset:style] of [char:malin:muda] bargaining on [loc:kios_pasar]."
+    resolved_3 = resolve_prompt_variables(
+        raw_prompt_3,
+        characters=characters,
+        locations=locations_with_props,
+        preset_master_prompt=preset_style,
+    )
+    assert "rustic bamboo stall with dark teak counter" in resolved_3
+    assert "key anchor elements: olive canvas awning, hanging garlic braids, brass scale" in resolved_3
+
+
+@pytest.mark.asyncio
+async def test_apply_narration_improvements_to_project():
+    mock_db = AsyncMock()
+
+    proj = MagicMock()
+    proj.id = "proj-test"
+    proj.characters = []
+    proj.locations = []
+    proj.world_setting = {}
+
+    narration = MagicMock()
+    narration.project_id = "proj-test"
+    narration.segments = [
+        {"id": "seg-1", "chapter": "Babak 1", "text": "Teks lama yang datar."},
+        {"id": "seg-2", "chapter": "Babak 2", "text": "Teks segmen kedua."},
+    ]
+    narration.raw_text = "Teks lama yang datar.\n\nTeks segmen kedua."
+
+    mock_db.get.return_value = proj
+
+    mock_nar_res = MagicMock()
+    mock_nar_res.scalar_one_or_none.return_value = narration
+
+    mock_items_res = MagicMock()
+    item1 = MagicMock()
+    item1.segment_id = "seg-1"
+    item1.order_index = 0
+    item1.script_text = "Teks lama yang datar."
+    item1.image_prompt = "Old visual prompt of someone sitting."
+    item1.chapter_title = "Babak 1"
+
+    mock_items_res.scalars.return_value.all.return_value = [item1]
+
+    mock_db.execute.side_effect = [mock_nar_res, mock_items_res]
+
+    improvements = [
+        NarrationSegmentImprovement(
+            segment_id="seg-1",
+            segment_index=0,
+            chapter_title="Babak 1: Misteri",
+            original_text="Teks lama yang datar.",
+            improved_text="Teks baru yang jauh lebih dramatis dan memikat!",
+            change_summary="Meningkatkan hook dan ketegangan",
+            original_visual_prompt="Old visual prompt of someone sitting.",
+            improved_visual_prompt="Dramatic cinematic shot of [char:budi] running under dark stormy skies.",
+        )
+    ]
+
+    res = await apply_narration_improvements_to_project(
+        mock_db, "proj-test", improvements, update_visual_prompts=True
+    )
+
+    assert res["success"] is True
+    assert res["applied_count"] == 1
+    assert res["updated_visual_count"] == 1
+    assert "Teks baru yang jauh lebih dramatis" in narration.segments[0]["text"]
+    assert narration.segments[0]["chapter"] == "Babak 1: Misteri"
+    assert "Teks baru yang jauh lebih dramatis" in item1.script_text
+    assert item1.chapter_title == "Babak 1: Misteri"
+    assert "Dramatic cinematic shot of [char:budi]" in item1.image_prompt
+
+

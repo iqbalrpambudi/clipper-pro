@@ -16,12 +16,15 @@ from app.models.narration import Narration
 from app.models.project import Project
 from app.models.storyboard import StoryboardItem
 from app.schemas.storyboard import (
+    StoryboardApplyNarrationImprovementsRequest,
     StoryboardBatchGenerateRequest,
     StoryboardCharactersUpdateRequest,
     StoryboardContinuityBibleExtractRequest,
     StoryboardContinuityBibleUpdateRequest,
     StoryboardItemResponse,
     StoryboardItemUpdateRequest,
+    StoryboardNarrationAnalysisRequest,
+    StoryboardNarrationAnalysisResponse,
     StoryboardScriptGenerateRequest,
     StoryboardSegmentUpdateRequest,
     StoryboardSingleGenerateRequest,
@@ -37,6 +40,10 @@ from app.services.storyboard import (
     generate_storyboard_script,
     resolve_prompt_variables,
     sync_storyboard_timing_from_alignment,
+)
+from app.services.storyboard_analyzer import (
+    analyze_storyboard_narration,
+    apply_narration_improvements_to_project,
 )
 from app.services.youtube import (
     generate_youtube_metadata,
@@ -368,6 +375,52 @@ async def update_storyboard_segment(
         },
         "storyboard_items": [_item_to_response(it, project=proj, preset_style=preset_style) for it in all_items],
     }
+
+
+@router.post("/analyze-narration", response_model=StoryboardNarrationAnalysisResponse)
+async def analyze_narration_endpoint(
+    project_id: str,
+    payload: Optional[StoryboardNarrationAnalysisRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyze storyboard narration for YouTube retention, pacing, and viral hook."""
+    try:
+        focus = payload.focus_aspect if payload else "youtube_retention"
+        custom = payload.custom_instructions if payload else None
+        res = await analyze_storyboard_narration(
+            db=db,
+            project_id=project_id,
+            focus_aspect=focus,
+            custom_instructions=custom,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log.exception("Error analyzing narration: %s", e)
+        raise HTTPException(status_code=500, detail=f"Gagal menganalisis narasi: {str(e)}")
+
+
+@router.post("/apply-narration-improvements")
+async def apply_narration_improvements_endpoint(
+    project_id: str,
+    payload: StoryboardApplyNarrationImprovementsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Apply approved narration improvements to the project's segments and storyboard items."""
+    try:
+        res = await apply_narration_improvements_to_project(
+            db=db,
+            project_id=project_id,
+            improved_segments=payload.improved_segments,
+            update_visual_prompts=payload.update_visual_prompts,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log.exception("Error applying narration improvements: %s", e)
+        raise HTTPException(status_code=500, detail=f"Gagal menerapkan perbaikan naskah: {str(e)}")
 
 
 @router.get("/items", response_model=List[StoryboardItemResponse])

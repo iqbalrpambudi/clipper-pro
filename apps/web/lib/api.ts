@@ -19,6 +19,8 @@ import {
   StoryboardCharacter,
   StoryboardLocation,
   StoryboardWorldSetting,
+  StoryboardNarrationAnalysisResponse,
+  NarrationSegmentImprovement,
   ImagePreset,
   StudioAnalysisResult,
   YouTubeMetadata,
@@ -552,6 +554,35 @@ export const api = {
     }>(`/api/v1/projects/${projectId}/storyboard/segments/${segmentId}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  analyzeStoryboardNarration: (
+    projectId: string,
+    data?: { focus_aspect?: string; custom_instructions?: string }
+  ) =>
+    request<StoryboardNarrationAnalysisResponse>(
+      `/api/v1/projects/${projectId}/storyboard/analyze-narration`,
+      {
+        method: "POST",
+        body: JSON.stringify(data || {}),
+      }
+    ),
+  applyStoryboardNarrationImprovements: (
+    projectId: string,
+    improvedSegments: NarrationSegmentImprovement[],
+    updateVisualPrompts: boolean = true
+  ) =>
+    request<{
+      success: boolean;
+      applied_count: number;
+      updated_visual_count?: number;
+      total_segments: number;
+      segments: any[];
+    }>(`/api/v1/projects/${projectId}/storyboard/apply-narration-improvements`, {
+      method: "POST",
+      body: JSON.stringify({
+        improved_segments: improvedSegments,
+        update_visual_prompts: updateVisualPrompts,
+      }),
     }),
   getStoryboardItems: (projectId: string) =>
     request<StoryboardItem[]>(`/api/v1/projects/${projectId}/storyboard/items`),

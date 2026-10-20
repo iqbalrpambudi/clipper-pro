@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles } from "lucide-react";
 import { StoryboardCharacter } from "@/types";
 
 interface CharactersTabProps {
@@ -47,6 +47,16 @@ export function CharactersTab({
 
   return (
     <div className="flex flex-col space-y-3 mt-3.5">
+      {/* Tips Kontinuitas Karakter Interaksi */}
+      <div className="p-2.5 rounded-xl bg-violet-950/20 border border-violet-500/20 flex items-start gap-2.5">
+        <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+        <div className="space-y-0.5 text-[11px] text-violet-200/90 leading-relaxed">
+          <span className="font-semibold text-violet-300">Tips Kontinuitas Tokoh Interaksi:</span>{" "}
+          Jika tokoh utama berinteraksi dengan orang lain (seperti pedagang pasar, guru, atau pengawal),
+          pastikan tokoh tersebut didaftarkan juga di sini agar wujud wajah, busana, dan kiosnya konsisten antar adegan.
+        </div>
+      </div>
+
       <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
         <div className="space-y-3">
           {charactersList.map((char, cIdx) => (

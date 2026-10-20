@@ -68,12 +68,47 @@ export interface StoryboardLocation {
   id: string;
   name: string;
   environment_anchor: string;
+  focal_props?: string;
 }
 
 export interface StoryboardWorldSetting {
   era?: string;
   time_setting?: string;
   atmosphere?: string;
+}
+
+export interface NarrationDimensionScore {
+  score: number;
+  label: string;
+  status: "excellent" | "good" | "needs_improvement";
+  feedback: string;
+}
+
+export interface NarrationSegmentImprovement {
+  segment_id: string;
+  segment_index: number;
+  chapter_title?: string;
+  original_text: string;
+  improved_text: string;
+  change_summary: string;
+  original_visual_prompt?: string;
+  improved_visual_prompt?: string;
+}
+
+export interface StoryboardNarrationAnalysisResponse {
+  overall_score: number;
+  grade: string;
+  summary: string;
+  hook_score: NarrationDimensionScore;
+  retention_pacing_score: NarrationDimensionScore;
+  emotional_storytelling_score: NarrationDimensionScore;
+  clarity_delivery_score: NarrationDimensionScore;
+  call_to_action_score: NarrationDimensionScore;
+  strengths: string[];
+  weaknesses: string[];
+  actionable_recommendations: string[];
+  has_improvements: boolean;
+  improved_segments: NarrationSegmentImprovement[];
 }
 
 export interface WatermarkConfig {

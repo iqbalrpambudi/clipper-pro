@@ -116,3 +116,48 @@ class StoryboardSegmentUpdateRequest(BaseModel):
     segment_index: Optional[int] = None
     items: Optional[List[StoryboardSegmentItemUpdate]] = None
 
+
+class NarrationDimensionScore(BaseModel):
+    score: int
+    label: str
+    status: str = "good"  # excellent, good, needs_improvement
+    feedback: str = ""
+
+
+class NarrationSegmentImprovement(BaseModel):
+    segment_id: str
+    segment_index: int = 0
+    chapter_title: Optional[str] = None
+    original_text: str
+    improved_text: str
+    change_summary: str = ""
+    original_visual_prompt: Optional[str] = None
+    improved_visual_prompt: Optional[str] = None
+
+
+class StoryboardNarrationAnalysisRequest(BaseModel):
+    focus_aspect: Optional[str] = "youtube_retention"  # youtube_retention, viral_hook, documentary_depth, educational_clarity
+    custom_instructions: Optional[str] = None
+
+
+class StoryboardNarrationAnalysisResponse(BaseModel):
+    overall_score: int
+    grade: str  # S, A+, A, B, C, D
+    summary: str
+    hook_score: NarrationDimensionScore
+    retention_pacing_score: NarrationDimensionScore
+    emotional_storytelling_score: NarrationDimensionScore
+    clarity_delivery_score: NarrationDimensionScore
+    call_to_action_score: NarrationDimensionScore
+    strengths: List[str] = []
+    weaknesses: List[str] = []
+    actionable_recommendations: List[str] = []
+    has_improvements: bool = False
+    improved_segments: List[NarrationSegmentImprovement] = []
+
+
+class StoryboardApplyNarrationImprovementsRequest(BaseModel):
+    improved_segments: List[NarrationSegmentImprovement]
+    update_visual_prompts: bool = True
+
+
