@@ -41,15 +41,7 @@ import { Button } from "@/components/ui";
 const DEFAULT_IMAGE_STYLE_PROMPT =
   "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). Educational explainer storyboard illustration in a distinctive hand-drawn cartoon doodle comic style. Features iconic minimalist stick-figure characters with large, smooth, perfectly round bald white heads (no hair), simple solid black dot eyes with expressive eyebrows, and thin black stick limbs. Characters wear loose draped robes, tunics, or simple stylized fabric garments with fluid folds. Clean, confident black ink linework with subtle sketchy hatching and expressive gestures. Warm vintage parchment and tea-stained paper background texture with aged cream, sandy beige, and warm desert sepia watercolor washes. Hand-painted watercolor fills with earthy tones (ochre, terracotta, warm sand, muted tan, subtle olive accents) and soft pigment bleeding. Diagrammatic storytelling elements, clean visual metaphors, subtle rough hand-drawn border vignette, ample negative space. No 3D CGI, no photorealism, no glossy gradients, no clutter, no digital text artifacts.";
 
-const FONT_OPTIONS = [
-  "Montserrat",
-  "Bebas Neue",
-  "Inter",
-  "Poppins",
-  "Anton",
-  "Oswald",
-  "Roboto",
-];
+const FONT_OPTIONS = ["Montserrat", "Bebas Neue", "Inter", "Poppins", "Anton", "Oswald", "Roboto"];
 
 const COLOR_PILLS = [
   { label: "Kuning", color: "#FFE600" },
@@ -61,11 +53,33 @@ const COLOR_PILLS = [
   { label: "Oranye", color: "#FF8800" },
 ];
 
+interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  latency_ms?: number;
+}
+
+interface TestTtsResult {
+  success: boolean;
+  message: string;
+  latency_ms?: number;
+  provider_status?: string;
+}
+
+interface TestImageResult {
+  success: boolean;
+  message: string;
+  latency_ms?: number;
+  image_model_status?: string;
+}
+
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useStudioStore();
 
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"models" | "prompts" | "subtitles">("models");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"models" | "prompts" | "subtitles">(
+    "models"
+  );
 
   // ==========================================
   // TAB 1: MODEL & TTS CONFIG STATE
@@ -82,7 +96,7 @@ export default function SettingsPage() {
   const [elevenlabsModel, setElevenlabsModel] = useState("eleven_multilingual_v2");
   const [runwareApiKey, setRunwareApiKey] = useState("");
   const [runwareTtsModel, setRunwareTtsModel] = useState("fishaudio:s2.1@pro");
-  const [testTtsResult, setTestTtsResult] = useState<any>(null);
+  const [testTtsResult, setTestTtsResult] = useState<TestTtsResult | null>(null);
   const [isTestingTts, setIsTestingTts] = useState(false);
 
   // AI Image Generator State
@@ -91,7 +105,7 @@ export default function SettingsPage() {
   const [imageConcurrency, setImageConcurrency] = useState<number>(2);
   const [imageApiKey, setImageApiKey] = useState("");
   const [imageSystemPrompt, setImageSystemPrompt] = useState(DEFAULT_IMAGE_STYLE_PROMPT);
-  const [testImageResult, setTestImageResult] = useState<any>(null);
+  const [testImageResult, setTestImageResult] = useState<TestImageResult | null>(null);
   const [isTestingImage, setIsTestingImage] = useState(false);
   const [availableImageModels, setAvailableImageModels] = useState<string[]>([]);
   const [featuredImageModels, setFeaturedImageModels] = useState<string[]>([]);
@@ -101,17 +115,14 @@ export default function SettingsPage() {
   const [imageTabFilter, setImageTabFilter] = useState<"image_only" | "all">("image_only");
   const imageDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        imageDropdownRef.current &&
-        !imageDropdownRef.current.contains(event.target as Node)
-      ) {
+      if (imageDropdownRef.current && !imageDropdownRef.current.contains(event.target as Node)) {
         setIsImageDropdownOpen(false);
       }
     }
@@ -233,7 +244,11 @@ export default function SettingsPage() {
       setBaseUrl(config.base_url || "");
       setChatModel(config.chat_model || "gemini-2.5-flash");
       setVisionModel(config.vision_model || "gemini-2.5-flash");
-      if (config.tts_provider === "elevenlabs" || config.tts_provider === "runware" || config.tts_provider === "edge") {
+      if (
+        config.tts_provider === "elevenlabs" ||
+        config.tts_provider === "runware" ||
+        config.tts_provider === "edge"
+      ) {
         setTtsProvider(config.tts_provider);
       } else {
         setTtsProvider("gemini");
@@ -276,7 +291,8 @@ export default function SettingsPage() {
 
   // Sync selected subtitle preset into form
   useEffect(() => {
-    const current = subtitlePresets.find((p) => p.id === selectedSubtitlePresetId) || subtitlePresets[0];
+    const current =
+      subtitlePresets.find((p) => p.id === selectedSubtitlePresetId) || subtitlePresets[0];
     if (current) {
       setSubtitlePresetForm({
         ...current,
@@ -305,8 +321,8 @@ export default function SettingsPage() {
       } else {
         showToast("Tidak ada model yang ditemukan dari endpoint", "info");
       }
-    } catch (e: any) {
-      showToast(e.message || "Gagal mengambil daftar model", "error");
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "Gagal mengambil daftar model", "error");
     } finally {
       setIsFetchingModels(false);
     }
@@ -329,8 +345,8 @@ export default function SettingsPage() {
       } else {
         showToast("Tidak ada model yang ditemukan dari endpoint image", "info");
       }
-    } catch (e: any) {
-      showToast(e.message || "Gagal mengambil daftar model image", "error");
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : "Gagal mengambil daftar model image", "error");
     } finally {
       setIsFetchingImageModels(false);
     }
@@ -365,7 +381,7 @@ export default function SettingsPage() {
       setRunwareApiKey("");
       setImageApiKey("");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan konfigurasi", "error");
     },
   });
@@ -386,10 +402,10 @@ export default function SettingsPage() {
       } else {
         showToast(res.message, "error");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTestResult({
         success: false,
-        message: err.message || "Koneksi gagal",
+        message: err instanceof Error ? err.message : "Koneksi gagal",
       });
       showToast("Test koneksi gagal", "error");
     } finally {
@@ -424,10 +440,10 @@ export default function SettingsPage() {
       } else {
         showToast(res.message, "error");
       }
-    } catch (err: any) {
-      const failed = {
+    } catch (err: unknown) {
+      const failed: TestTtsResult = {
         success: false,
-        message: err.message || "Gagal tes koneksi TTS",
+        message: err instanceof Error ? err.message : "Gagal tes koneksi TTS",
         latency_ms: 0,
       };
       setTestTtsResult(failed);
@@ -452,10 +468,10 @@ export default function SettingsPage() {
       } else {
         showToast(res.message, "error");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTestImageResult({
         success: false,
-        message: err.message || "Test koneksi gambar gagal",
+        message: err instanceof Error ? err.message : "Test koneksi gambar gagal",
       });
       showToast("Test koneksi gambar gagal", "error");
     } finally {
@@ -489,13 +505,12 @@ export default function SettingsPage() {
   // MUTATIONS (TEMPLATES)
   // ==========================================
   const updateTemplateMutation = useMutation({
-    mutationFn: (data: Partial<NarrationTemplate>) =>
-      api.updateTemplate(selectedTemplateId, data),
+    mutationFn: (data: Partial<NarrationTemplate>) => api.updateTemplate(selectedTemplateId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       showToast("Preset template naskah berhasil diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan perubahan template", "error");
     },
   });
@@ -508,7 +523,7 @@ export default function SettingsPage() {
       setIsCreateModalOpen(false);
       showToast("Preset naskah baru berhasil ditambahkan!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membuat template baru", "error");
     },
   });
@@ -521,7 +536,7 @@ export default function SettingsPage() {
       setSelectedTemplateId(firstBuiltin);
       showToast("Preset naskah berhasil dihapus", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus template", "error");
     },
   });
@@ -541,7 +556,7 @@ export default function SettingsPage() {
       });
       showToast("Prompt preset berhasil di-reset ke default bawaan!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal me-reset template", "error");
     },
   });
@@ -556,7 +571,7 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["subtitle-presets"] });
       showToast("Preset gaya subtitle berhasil diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui preset subtitle", "error");
     },
   });
@@ -569,7 +584,7 @@ export default function SettingsPage() {
       setIsCreateSubtitleModalOpen(false);
       showToast("Preset subtitle baru berhasil ditambahkan!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membuat preset subtitle", "error");
     },
   });
@@ -582,7 +597,7 @@ export default function SettingsPage() {
       setSelectedSubtitlePresetId(firstBuiltin);
       showToast("Preset subtitle berhasil dihapus", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus preset subtitle", "error");
     },
   });
@@ -594,7 +609,7 @@ export default function SettingsPage() {
       setSubtitlePresetForm(updated);
       showToast("Preset subtitle berhasil di-reset ke setelan standar pabrik!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal me-reset preset subtitle", "error");
     },
   });
@@ -622,7 +637,10 @@ export default function SettingsPage() {
       showToast("ID dan Nama Preset wajib diisi", "error");
       return;
     }
-    const cleanId = newTemplateForm.id.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    const cleanId = newTemplateForm.id
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "_");
     createTemplateMutation.mutate({ ...newTemplateForm, id: cleanId });
   };
 
@@ -670,7 +688,9 @@ export default function SettingsPage() {
   };
 
   const currentSelectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-  const currentSelectedSubtitlePreset = subtitlePresets.find((p) => p.id === selectedSubtitlePresetId);
+  const currentSelectedSubtitlePreset = subtitlePresets.find(
+    (p) => p.id === selectedSubtitlePresetId
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#121212]">
@@ -692,7 +712,9 @@ export default function SettingsPage() {
                 <SettingsIcon className="w-4 h-4 text-[#3ECF8E]" />
                 Pengaturan Sistem & Preset
               </h1>
-              <p className="text-[11px] text-muted-foreground">Model AI, Preset Naskah Prompt & Kustomisasi Gaya Subtitle</p>
+              <p className="text-[11px] text-muted-foreground">
+                Model AI, Preset Naskah Prompt & Kustomisasi Gaya Subtitle
+              </p>
             </div>
           </div>
         </div>
@@ -705,34 +727,43 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setActiveSettingsTab("models")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "models"
-              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-              }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+              activeSettingsTab === "models"
+                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
           >
-            <Cpu className={`w-3.5 h-3.5 ${activeSettingsTab === "models" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
+            <Cpu
+              className={`w-3.5 h-3.5 ${activeSettingsTab === "models" ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
+            />
             <span>Model AI & API Keys</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSettingsTab("prompts")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "prompts"
-              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-              }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+              activeSettingsTab === "prompts"
+                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
           >
-            <FileText className={`w-3.5 h-3.5 ${activeSettingsTab === "prompts" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
+            <FileText
+              className={`w-3.5 h-3.5 ${activeSettingsTab === "prompts" ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
+            />
             <span>Prompt AI & Preset Naskah</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveSettingsTab("subtitles")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${activeSettingsTab === "subtitles"
-              ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-              }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+              activeSettingsTab === "subtitles"
+                ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
           >
-            <Palette className={`w-3.5 h-3.5 ${activeSettingsTab === "subtitles" ? "text-[#3ECF8E]" : "text-muted-foreground"}`} />
+            <Palette
+              className={`w-3.5 h-3.5 ${activeSettingsTab === "subtitles" ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
+            />
             <span>Preset Gaya Subtitle</span>
           </button>
         </div>
@@ -747,7 +778,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-brand-400" />
-                  <h3 className="text-sm font-bold text-white">1. Konfigurasi LLM & Vision Model</h3>
+                  <h3 className="text-sm font-bold text-white">
+                    1. Konfigurasi LLM & Vision Model
+                  </h3>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-300 font-mono">
                   OpenAI & Gemini Compatible
@@ -771,9 +804,7 @@ export default function SettingsPage() {
                 {/* Datalist for Available Models */}
                 <datalist id="available-models-list">
                   {availableModels.length > 0 ? (
-                    availableModels.map((m) => (
-                      <option key={m} value={m} />
-                    ))
+                    availableModels.map((m) => <option key={m} value={m} />)
                   ) : (
                     <>
                       <option value="gemini-2.5-flash" />
@@ -797,8 +828,16 @@ export default function SettingsPage() {
                         disabled={isFetchingModels}
                         className="text-[10px] text-brand-400 hover:text-brand-300 flex items-center gap-1 font-mono disabled:opacity-50"
                       >
-                        {isFetchingModels ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <RefreshCw className="w-2.5 h-2.5" />}
-                        <span>{availableModels.length > 0 ? `${availableModels.length} Model` : "Tarik Model"}</span>
+                        {isFetchingModels ? (
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-2.5 h-2.5" />
+                        )}
+                        <span>
+                          {availableModels.length > 0
+                            ? `${availableModels.length} Model`
+                            : "Tarik Model"}
+                        </span>
                       </button>
                     </div>
                     <input
@@ -835,9 +874,7 @@ export default function SettingsPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      API Key
-                    </label>
+                    <label className="block text-xs font-semibold text-slate-300">API Key</label>
                     {config?.has_api_key && (
                       <span className="text-[10px] text-emerald-400 font-mono">
                         Tersimpan: {config.api_key_masked}
@@ -846,7 +883,11 @@ export default function SettingsPage() {
                   </div>
                   <input
                     type="password"
-                    placeholder={config?.has_api_key ? "Ketik untuk mengganti API key..." : "Masukkan API key AI (opsional untuk 9Router)..."}
+                    placeholder={
+                      config?.has_api_key
+                        ? "Ketik untuk mengganti API key..."
+                        : "Masukkan API key AI (opsional untuk 9Router)..."
+                    }
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
@@ -862,14 +903,26 @@ export default function SettingsPage() {
                   disabled={isTesting}
                   className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
                 >
-                  {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />}
+                  {isTesting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
+                  )}
                   <span>Test Connection</span>
                 </button>
 
                 {testResult && (
-                  <div className={`text-xs font-mono flex items-center gap-1.5 ${testResult.success ? "text-emerald-400" : "text-rose-400"}`}>
-                    {testResult.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{testResult.message} ({testResult.latency_ms}ms)</span>
+                  <div
+                    className={`text-xs font-mono flex items-center gap-1.5 ${testResult.success ? "text-emerald-400" : "text-rose-400"}`}
+                  >
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    <span>
+                      {testResult.message} ({testResult.latency_ms}ms)
+                    </span>
                   </div>
                 )}
               </div>
@@ -880,7 +933,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
+                  <h3 className="text-sm font-bold text-white">
+                    2. Konfigurasi Text-to-Speech (TTS)
+                  </h3>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
@@ -900,8 +955,12 @@ export default function SettingsPage() {
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                   >
                     <option value="gemini">Gemini TTS (Google AI High-Fidelity)</option>
-                    <option value="elevenlabs">ElevenLabs TTS (Gold Standard — Zero Intonation Drift)</option>
-                    <option value="runware">Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)</option>
+                    <option value="elevenlabs">
+                      ElevenLabs TTS (Gold Standard — Zero Intonation Drift)
+                    </option>
+                    <option value="runware">
+                      Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)
+                    </option>
                     <option value="edge">Edge-TTS (Natural Indonesian Neural, Gratis)</option>
                   </select>
                 </div>
@@ -918,15 +977,28 @@ export default function SettingsPage() {
                         onChange={(e) => setTtsModel(e.target.value)}
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                       >
-                        <option value="gemini-2.5-flash-preview-tts">Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)</option>
-                        <option value="gemini-3.8-flash-lite-tts">Gemini 3.8 Flash-Lite TTS (cepat & hemat)</option>
-                        <option value="gemini-3.8-flash-tts">Gemini 3.8 Flash TTS (kualitas studio)</option>
-                        <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
-                        <option value="gemini-flash-latest">Gemini Flash Latest (auto versi terbaru)</option>
-                        <option value="gemini-2.5-pro-preview-tts">Gemini 2.5 Pro TTS Preview (high-res)</option>
+                        <option value="gemini-2.5-flash-preview-tts">
+                          Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)
+                        </option>
+                        <option value="gemini-3.8-flash-lite-tts">
+                          Gemini 3.8 Flash-Lite TTS (cepat & hemat)
+                        </option>
+                        <option value="gemini-3.8-flash-tts">
+                          Gemini 3.8 Flash TTS (kualitas studio)
+                        </option>
+                        <option value="gemini-3.1-flash-tts-preview">
+                          Gemini 3.1 Flash TTS Preview
+                        </option>
+                        <option value="gemini-flash-latest">
+                          Gemini Flash Latest (auto versi terbaru)
+                        </option>
+                        <option value="gemini-2.5-pro-preview-tts">
+                          Gemini 2.5 Pro TTS Preview (high-res)
+                        </option>
                       </select>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5 menit) untuk intonasi vokal seragam.
+                        Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5
+                        menit) untuk intonasi vokal seragam.
                       </p>
                     </div>
 
@@ -943,7 +1015,11 @@ export default function SettingsPage() {
                       </div>
                       <input
                         type="password"
-                        placeholder={config?.has_tts_api_key ? "Ketik untuk mengganti Gemini TTS key..." : "Gemini API Key khusus TTS (opsional jika sama dengan LLM)..."}
+                        placeholder={
+                          config?.has_tts_api_key
+                            ? "Ketik untuk mengganti Gemini TTS key..."
+                            : "Gemini API Key khusus TTS (opsional jika sama dengan LLM)..."
+                        }
                         value={ttsApiKey}
                         onChange={(e) => setTtsApiKey(e.target.value)}
                         className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
@@ -964,14 +1040,25 @@ export default function SettingsPage() {
                         onChange={(e) => setElevenlabsModel(e.target.value)}
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                       >
-                        <option value="eleven_v4_turbo">Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)</option>
-                        <option value="eleven_v4">Eleven v4 (Flagship — Kualitas Sinematik Tertinggi)</option>
-                        <option value="eleven_multilingual_v2">Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)</option>
-                        <option value="eleven_flash_v2_5">Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)</option>
-                        <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Generasi Sebelumnya)</option>
+                        <option value="eleven_v4_turbo">
+                          Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)
+                        </option>
+                        <option value="eleven_v4">
+                          Eleven v4 (Flagship — Kualitas Sinematik Tertinggi)
+                        </option>
+                        <option value="eleven_multilingual_v2">
+                          Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)
+                        </option>
+                        <option value="eleven_flash_v2_5">
+                          Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)
+                        </option>
+                        <option value="eleven_turbo_v2_5">
+                          Eleven Turbo v2.5 (Generasi Sebelumnya)
+                        </option>
                       </select>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal 100% konsisten dari awal hingga akhir.
+                        Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi
+                        vokal 100% konsisten dari awal hingga akhir.
                       </p>
                     </div>
 
@@ -988,7 +1075,11 @@ export default function SettingsPage() {
                       </div>
                       <input
                         type="password"
-                        placeholder={config?.has_elevenlabs_api_key ? "Ketik untuk mengganti ElevenLabs API key..." : "xi-api-key (dari elevenlabs.io)..."}
+                        placeholder={
+                          config?.has_elevenlabs_api_key
+                            ? "Ketik untuk mengganti ElevenLabs API key..."
+                            : "xi-api-key (dari elevenlabs.io)..."
+                        }
                         value={elevenlabsApiKey}
                         onChange={(e) => setElevenlabsApiKey(e.target.value)}
                         className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
@@ -1009,14 +1100,25 @@ export default function SettingsPage() {
                         onChange={(e) => setRunwareTtsModel(e.target.value)}
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                       >
-                        <option value="fishaudio:s2.1@pro">Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)</option>
-                        <option value="alibaba:qwen3-tts-1.7b-customvoice">Alibaba Qwen3-TTS 1.7B (Aksen Asia & Indonesia natural)</option>
-                        <option value="inworld:tts@2">Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)</option>
-                        <option value="xai:tts@0">xAI TTS Grok (Vokal ekspresif & speech tags)</option>
-                        <option value="minimax:speech@2.8">MiniMax Speech 2.8 (High-realism prosody & emosional)</option>
+                        <option value="fishaudio:s2.1@pro">
+                          Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)
+                        </option>
+                        <option value="alibaba:qwen3-tts-1.7b-customvoice">
+                          Alibaba Qwen3-TTS 1.7B (Aksen Asia & Indonesia natural)
+                        </option>
+                        <option value="inworld:tts@2">
+                          Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)
+                        </option>
+                        <option value="xai:tts@0">
+                          xAI TTS Grok (Vokal ekspresif & speech tags)
+                        </option>
+                        <option value="minimax:speech@2.8">
+                          MiniMax Speech 2.8 (High-realism prosody & emosional)
+                        </option>
                       </select>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik) dan latensi tinggi.
+                        Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik)
+                        dan latensi tinggi.
                       </p>
                     </div>
 
@@ -1027,7 +1129,8 @@ export default function SettingsPage() {
                         </label>
                         {(config?.has_runware_api_key || config?.has_image_api_key) && (
                           <span className="text-[10px] text-emerald-400 font-mono">
-                            Tersimpan: {config.runware_api_key_masked || config.image_api_key_masked}
+                            Tersimpan:{" "}
+                            {config.runware_api_key_masked || config.image_api_key_masked}
                           </span>
                         )}
                       </div>
@@ -1043,7 +1146,8 @@ export default function SettingsPage() {
                         className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
                       />
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware pada Section 3 di bawah.
+                        Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware
+                        pada Section 3 di bawah.
                       </p>
                     </div>
                   </>
@@ -1063,7 +1167,11 @@ export default function SettingsPage() {
                         Aktifkan Fallback Otomatis ke Edge-TTS saat Error / Limit Kuota
                       </span>
                       <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                        Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server timeout) pada model TTS utama akan otomatis dialihkan ke suara natural Edge-TTS sehingga audio tetap lengkap dan video tidak gagal. Jika dinonaktifkan, proses akan langsung berhenti dengan pesan error dan audio hanya tersimpan hingga bagian yang berhasil (terpotong).
+                        Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server
+                        timeout) pada model TTS utama akan otomatis dialihkan ke suara natural
+                        Edge-TTS sehingga audio tetap lengkap dan video tidak gagal. Jika
+                        dinonaktifkan, proses akan langsung berhenti dengan pesan error dan audio
+                        hanya tersimpan hingga bagian yang berhasil (terpotong).
                       </p>
                     </div>
                   </label>
@@ -1078,14 +1186,26 @@ export default function SettingsPage() {
                   disabled={isTestingTts}
                   className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
                 >
-                  {isTestingTts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-emerald-400" />}
+                  {isTestingTts ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  )}
                   <span>Test Koneksi TTS ({ttsProvider.toUpperCase()})</span>
                 </button>
 
                 {testTtsResult && (
-                  <div className={`text-xs font-mono flex items-center gap-1.5 ${testTtsResult.success ? "text-emerald-400" : "text-rose-400"}`}>
-                    {testTtsResult.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{testTtsResult.message} ({testTtsResult.latency_ms}ms)</span>
+                  <div
+                    className={`text-xs font-mono flex items-center gap-1.5 ${testTtsResult.success ? "text-emerald-400" : "text-rose-400"}`}
+                  >
+                    {testTtsResult.success ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    <span>
+                      {testTtsResult.message} ({testTtsResult.latency_ms}ms)
+                    </span>
                   </div>
                 )}
               </div>
@@ -1096,7 +1216,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-violet-400" />
-                  <h3 className="text-sm font-bold text-white">3. Konfigurasi AI Image Generator (Storyboard Explainer)</h3>
+                  <h3 className="text-sm font-bold text-white">
+                    3. Konfigurasi AI Image Generator (Storyboard Explainer)
+                  </h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
@@ -1175,8 +1297,9 @@ export default function SettingsPage() {
                         title="Tampilkan daftar model"
                       >
                         <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ${isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
-                            }`}
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
+                          }`}
                         />
                       </button>
                     </div>
@@ -1224,20 +1347,22 @@ export default function SettingsPage() {
                             <button
                               type="button"
                               onClick={() => setImageTabFilter("image_only")}
-                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${imageTabFilter === "image_only"
-                                ? "bg-violet-600 text-white font-semibold"
-                                : "bg-[#222226] text-slate-400 hover:text-white"
-                                }`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
+                                imageTabFilter === "image_only"
+                                  ? "bg-violet-600 text-white font-semibold"
+                                  : "bg-[#222226] text-slate-400 hover:text-white"
+                              }`}
                             >
                               Khusus Gambar ({featuredImageModels.length})
                             </button>
                             <button
                               type="button"
                               onClick={() => setImageTabFilter("all")}
-                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${imageTabFilter === "all"
-                                ? "bg-violet-600 text-white font-semibold"
-                                : "bg-[#222226] text-slate-400 hover:text-white"
-                                }`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
+                                imageTabFilter === "all"
+                                  ? "bg-violet-600 text-white font-semibold"
+                                  : "bg-[#222226] text-slate-400 hover:text-white"
+                              }`}
                             >
                               Semua Model ({availableImageModels.length})
                             </button>
@@ -1249,73 +1374,92 @@ export default function SettingsPage() {
                           {isFetchingImageModels ? (
                             <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400">
                               <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
-                              <span className="text-[11px] font-mono">Mengambil model dari endpoint...</span>
+                              <span className="text-[11px] font-mono">
+                                Mengambil model dari endpoint...
+                              </span>
                             </div>
-                          ) : (() => {
-                            const pool =
-                              imageTabFilter === "image_only" && featuredImageModels.length > 0
-                                ? featuredImageModels
-                                : availableImageModels.length > 0
-                                  ? availableImageModels
-                                  : ["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"];
-                            const filtered = pool.filter((m) =>
-                              imageModelSearch.trim() === ""
-                                ? true
-                                : m.toLowerCase().includes(imageModelSearch.toLowerCase())
-                            );
-
-                            if (filtered.length === 0) {
-                              return (
-                                <div className="py-5 text-center text-slate-500 text-xs px-2">
-                                  Tidak ada model yang cocok dengan pencarian. Anda tetap dapat mengetik nama model sendiri.
-                                </div>
+                          ) : (
+                            (() => {
+                              const pool =
+                                imageTabFilter === "image_only" && featuredImageModels.length > 0
+                                  ? featuredImageModels
+                                  : availableImageModels.length > 0
+                                    ? availableImageModels
+                                    : [
+                                        "runware:100@1",
+                                        "inferhub/cb/gemini-2.5-flash-image",
+                                        "dall-e-3",
+                                        "flux-schnell",
+                                      ];
+                              const filtered = pool.filter((m) =>
+                                imageModelSearch.trim() === ""
+                                  ? true
+                                  : m.toLowerCase().includes(imageModelSearch.toLowerCase())
                               );
-                            }
 
-                            return filtered.map((m) => {
-                              const isSelected = imageModel === m;
-                              const isImage = isImageModelName(m);
-                              return (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  onClick={() => {
-                                    setImageModel(m);
-                                    setIsImageDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${isSelected
-                                    ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
-                                    : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
-                                    }`}
-                                >
-                                  <span className="truncate">{m}</span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {isImage && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-950/80 text-violet-300 border border-violet-800/40 font-sans">
-                                        Gambar
-                                      </span>
-                                    )}
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-violet-400" />}
+                              if (filtered.length === 0) {
+                                return (
+                                  <div className="py-5 text-center text-slate-500 text-xs px-2">
+                                    Tidak ada model yang cocok dengan pencarian. Anda tetap dapat
+                                    mengetik nama model sendiri.
                                   </div>
-                                </button>
-                              );
-                            });
-                          })()}
+                                );
+                              }
+
+                              return filtered.map((m) => {
+                                const isSelected = imageModel === m;
+                                const isImage = isImageModelName(m);
+                                return (
+                                  <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => {
+                                      setImageModel(m);
+                                      setIsImageDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
+                                      isSelected
+                                        ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
+                                        : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
+                                    }`}
+                                  >
+                                    <span className="truncate">{m}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {isImage && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-950/80 text-violet-300 border border-violet-800/40 font-sans">
+                                          Gambar
+                                        </span>
+                                      )}
+                                      {isSelected && (
+                                        <Check className="w-3.5 h-3.5 text-violet-400" />
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              });
+                            })()
+                          )}
                         </div>
                       </div>
                     )}
 
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       <span className="text-[10px] text-slate-500">Preset:</span>
-                      {["runware:100@1", "inferhub/cb/gemini-2.5-flash-image", "dall-e-3", "flux-schnell"].map((preset) => (
+                      {[
+                        "runware:100@1",
+                        "inferhub/cb/gemini-2.5-flash-image",
+                        "dall-e-3",
+                        "flux-schnell",
+                      ].map((preset) => (
                         <button
                           key={preset}
                           type="button"
                           onClick={() => setImageModel(preset)}
-                          className={`text-[10px] px-2 py-0.5 rounded font-mono border transition ${imageModel === preset
-                            ? "bg-violet-500/20 border-violet-500/40 text-violet-300 font-semibold"
-                            : "bg-surface border-surface-border text-slate-400 hover:text-white"
-                            }`}
+                          className={`text-[10px] px-2 py-0.5 rounded font-mono border transition ${
+                            imageModel === preset
+                              ? "bg-violet-500/20 border-violet-500/40 text-violet-300 font-semibold"
+                              : "bg-surface border-surface-border text-slate-400 hover:text-white"
+                          }`}
                         >
                           {preset}
                         </button>
@@ -1336,7 +1480,11 @@ export default function SettingsPage() {
                     </div>
                     <input
                       type="password"
-                      placeholder={config?.has_image_api_key ? "Ketik untuk mengganti Image API key..." : "API key untuk image provider..."}
+                      placeholder={
+                        config?.has_image_api_key
+                          ? "Ketik untuk mengganti Image API key..."
+                          : "API key untuk image provider..."
+                      }
                       value={imageApiKey}
                       onChange={(e) => setImageApiKey(e.target.value)}
                       className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
@@ -1356,36 +1504,50 @@ export default function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { val: 1, label: "1x (Serial)", desc: "1 request per waktu (hemat resource / low-end GPU)" },
-                      { val: 2, label: "2x (Default)", desc: "2 request serentak (stabil & seimbang)" },
+                      {
+                        val: 1,
+                        label: "1x (Serial)",
+                        desc: "1 request per waktu (hemat resource / low-end GPU)",
+                      },
+                      {
+                        val: 2,
+                        label: "2x (Default)",
+                        desc: "2 request serentak (stabil & seimbang)",
+                      },
                       { val: 3, label: "3x (Cepat)", desc: "3 request serentak (performa tinggi)" },
-                      { val: 4, label: "4x (Maksimal)", desc: "4 request serentak (cloud / Runware)" },
+                      {
+                        val: 4,
+                        label: "4x (Maksimal)",
+                        desc: "4 request serentak (cloud / Runware)",
+                      },
                     ].map((opt) => (
                       <button
                         key={opt.val}
                         type="button"
                         onClick={() => setImageConcurrency(opt.val)}
-                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${imageConcurrency === opt.val
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
-                          : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
-                          }`}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                          imageConcurrency === opt.val
+                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
+                            : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
+                        }`}
                       >
                         <div className="flex items-center justify-between w-full mb-1">
-                          <span className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-emerald-300" : "text-slate-200"}`}>
+                          <span
+                            className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-emerald-300" : "text-slate-200"}`}
+                          >
                             {opt.label}
                           </span>
                           {imageConcurrency === opt.val && (
                             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-500 leading-tight">
-                          {opt.desc}
-                        </span>
+                        <span className="text-[10px] text-slate-500 leading-tight">{opt.desc}</span>
                       </button>
                     ))}
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1.5">
-                    Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch. Default adalah <strong>2</strong>.
+                    Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch.
+                    Default adalah <strong>2</strong>.
                   </p>
                 </div>
 
@@ -1420,7 +1582,11 @@ export default function SettingsPage() {
                     className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam, parchment tea-stained watercolor) dari awal sampai akhir. Gunakan <strong>AI Visual Image Studio</strong> untuk membuat preset baru dari gambar referensi.
+                    Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan
+                    gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta
+                    hitam, parchment tea-stained watercolor) dari awal sampai akhir. Gunakan{" "}
+                    <strong>AI Visual Image Studio</strong> untuk membuat preset baru dari gambar
+                    referensi.
                   </p>
                 </div>
               </div>
@@ -1433,14 +1599,26 @@ export default function SettingsPage() {
                   disabled={isTestingImage}
                   className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
                 >
-                  {isTestingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-violet-400" />}
+                  {isTestingImage ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  )}
                   <span>Test Image API Connection</span>
                 </button>
 
                 {testImageResult && (
-                  <div className={`text-xs font-mono flex items-center gap-1.5 ${testImageResult.success ? "text-emerald-400" : "text-rose-400"}`}>
-                    {testImageResult.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{testImageResult.message} ({testImageResult.latency_ms}ms)</span>
+                  <div
+                    className={`text-xs font-mono flex items-center gap-1.5 ${testImageResult.success ? "text-emerald-400" : "text-rose-400"}`}
+                  >
+                    {testImageResult.success ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4" />
+                    )}
+                    <span>
+                      {testImageResult.message} ({testImageResult.latency_ms}ms)
+                    </span>
                   </div>
                 )}
               </div>
@@ -1452,7 +1630,11 @@ export default function SettingsPage() {
                 disabled={saveMutation.isPending}
                 className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-black font-semibold text-xs shadow-xs transition flex items-center gap-2 disabled:opacity-50"
               >
-                {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {saveMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
                 <span>{saveMutation.isPending ? "Menyimpan..." : "Simpan Konfigurasi Model"}</span>
               </button>
             </div>
@@ -1491,27 +1673,43 @@ export default function SettingsPage() {
                     <div
                       key={tpl.id}
                       onClick={() => setSelectedTemplateId(tpl.id)}
-                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${isSelected
-                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                        : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
-                        }`}
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                      }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {tpl.category === "recap" && <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
-                            {tpl.category === "fakta" && <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />}
-                            {tpl.category === "edukasi" && <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
-                            {tpl.category === "showcase" && <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
-                            {tpl.category === "opini" && <MessageSquareQuote className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
-                            {!["recap", "fakta", "edukasi", "showcase", "opini"].includes(tpl.category) && (
-                              <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            {tpl.category === "recap" && (
+                              <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                             )}
-                            <span className="text-xs font-bold text-white truncate min-w-0" title={tpl.name}>
+                            {tpl.category === "fakta" && (
+                              <Lightbulb className="w-3.5 h-3.5 text-accent-yellow shrink-0" />
+                            )}
+                            {tpl.category === "edukasi" && (
+                              <BookOpen className="w-3.5 h-3.5 text-accent-blue shrink-0" />
+                            )}
+                            {tpl.category === "showcase" && (
+                              <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                            )}
+                            {tpl.category === "opini" && (
+                              <MessageSquareQuote className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            )}
+                            {!["recap", "fakta", "edukasi", "showcase", "opini"].includes(
+                              tpl.category
+                            ) && <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                            <span
+                              className="text-xs font-bold text-white truncate min-w-0"
+                              title={tpl.name}
+                            >
                               {tpl.name}
                             </span>
                           </div>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
+                          {isSelected && (
+                            <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
                           {tpl.description || "Tidak ada deskripsi"}
@@ -1519,14 +1717,24 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center gap-1.5">
-                        <span className="font-mono text-slate-400 truncate max-w-[100px]">{tpl.id}</span>
+                        <span className="font-mono text-slate-400 truncate max-w-[100px]">
+                          {tpl.id}
+                        </span>
                         {tpl.sub_category && (
-                          <span className="px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-slate-300 truncate max-w-[90px]" title={tpl.sub_category}>
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-slate-300 truncate max-w-[90px]"
+                            title={tpl.sub_category}
+                          >
                             {tpl.sub_category}
                           </span>
                         )}
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${tpl.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                          }`}>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
+                            tpl.is_builtin
+                              ? "bg-brand-500/20 text-brand-300"
+                              : "bg-emerald-500/20 text-emerald-300"
+                          }`}
+                        >
                           {tpl.is_builtin ? "Bawaan" : "Kustom"}
                         </span>
                       </div>
@@ -1538,20 +1746,33 @@ export default function SettingsPage() {
 
             {/* Prompt Editor Form */}
             {currentSelectedTemplate && (
-              <form onSubmit={(e) => { e.preventDefault(); updateTemplateMutation.mutate(templateForm); }} className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateTemplateMutation.mutate(templateForm);
+                }}
+                className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs"
+              >
                 <div className="flex items-center justify-between border-b border-surface-border pb-4 flex-wrap gap-2">
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
                       <Code className="w-4 h-4 text-accent-yellow shrink-0" />
-                      <span className="truncate">Editor Preset: {currentSelectedTemplate.name}</span>
+                      <span className="truncate">
+                        Editor Preset: {currentSelectedTemplate.name}
+                      </span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                       <span>ID Preset:</span>
                       <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                         {currentSelectedTemplate.id}
                       </code>
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${currentSelectedTemplate.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                        }`}>
+                      <span
+                        className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
+                          currentSelectedTemplate.is_builtin
+                            ? "bg-brand-500/20 text-brand-300"
+                            : "bg-emerald-500/20 text-emerald-300"
+                        }`}
+                      >
                         {currentSelectedTemplate.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
                       </span>
                     </p>
@@ -1562,7 +1783,9 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm("Reset prompt preset ini ke setelan standar bawaan pabrik?")) {
+                          if (
+                            confirm("Reset prompt preset ini ke setelan standar bawaan pabrik?")
+                          ) {
                             resetTemplateMutation.mutate();
                           }
                         }}
@@ -1581,7 +1804,11 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Hapus preset naskah "${currentSelectedTemplate.name}"? Tindakan ini tidak dapat dibatalkan.`)) {
+                          if (
+                            confirm(
+                              `Hapus preset naskah "${currentSelectedTemplate.name}"? Tindakan ini tidak dapat dibatalkan.`
+                            )
+                          ) {
                             deleteTemplateMutation.mutate(currentSelectedTemplate.id);
                           }
                         }}
@@ -1622,7 +1849,9 @@ export default function SettingsPage() {
                     </label>
                     <select
                       value={templateForm.default_tone}
-                      onChange={(e) => setTemplateForm({ ...templateForm, default_tone: e.target.value })}
+                      onChange={(e) =>
+                        setTemplateForm({ ...templateForm, default_tone: e.target.value })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
                       <option value="santai">Santai (Casual & Friendly)</option>
@@ -1642,7 +1871,9 @@ export default function SettingsPage() {
                     </label>
                     <select
                       value={templateForm.category}
-                      onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
+                      onChange={(e) =>
+                        setTemplateForm({ ...templateForm, category: e.target.value })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                     >
                       <option value="recap">Alur Cerita & Story</option>
@@ -1661,7 +1892,9 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       value={templateForm.sub_category}
-                      onChange={(e) => setTemplateForm({ ...templateForm, sub_category: e.target.value })}
+                      onChange={(e) =>
+                        setTemplateForm({ ...templateForm, sub_category: e.target.value })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       placeholder="Mis. Aksi, Komedi, POV Imersif, Bongkar Mitos..."
                     />
@@ -1674,7 +1907,9 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       value={templateForm.description}
-                      onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                      onChange={(e) =>
+                        setTemplateForm({ ...templateForm, description: e.target.value })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       placeholder="Contoh: Format naskah ringkas edukatif..."
                     />
@@ -1692,12 +1927,16 @@ export default function SettingsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata), struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan pertanyaan penutup (CTA).
+                    System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10
+                    kata), struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan
+                    pertanyaan penutup (CTA).
                   </p>
                   <textarea
                     rows={9}
                     value={templateForm.system_prompt}
-                    onChange={(e) => setTemplateForm({ ...templateForm, system_prompt: e.target.value })}
+                    onChange={(e) =>
+                      setTemplateForm({ ...templateForm, system_prompt: e.target.value })
+                    }
                     className="w-full p-4 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500 transition selection:bg-brand-500/30"
                     placeholder="Instruksi system prompt untuk AI..."
                     required
@@ -1715,10 +1954,17 @@ export default function SettingsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam prompt:
+                    Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam
+                    prompt:
                   </p>
                   <div className="flex flex-wrap gap-1.5 py-1">
-                    {["{topic}", "{tone}", "{target_duration}", "{word_count}", "{scene_context}"].map((token) => (
+                    {[
+                      "{topic}",
+                      "{tone}",
+                      "{target_duration}",
+                      "{word_count}",
+                      "{scene_context}",
+                    ].map((token) => (
                       <button
                         type="button"
                         key={token}
@@ -1738,7 +1984,9 @@ export default function SettingsPage() {
                   <textarea
                     rows={6}
                     value={templateForm.user_prompt_template}
-                    onChange={(e) => setTemplateForm({ ...templateForm, user_prompt_template: e.target.value })}
+                    onChange={(e) =>
+                      setTemplateForm({ ...templateForm, user_prompt_template: e.target.value })
+                    }
                     className="w-full p-4 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500 transition selection:bg-brand-500/30"
                     placeholder="Template prompt user..."
                     required
@@ -1758,7 +2006,9 @@ export default function SettingsPage() {
                       <Check className="w-4 h-4" />
                     )}
                     <span>
-                      {updateTemplateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Preset"}
+                      {updateTemplateMutation.isPending
+                        ? "Menyimpan..."
+                        : "Simpan Perubahan Preset"}
                     </span>
                   </button>
                 </div>
@@ -1800,20 +2050,26 @@ export default function SettingsPage() {
                     <div
                       key={preset.id}
                       onClick={() => setSelectedSubtitlePresetId(preset.id)}
-                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${isSelected
-                        ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                        : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
-                        }`}
+                      className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                          : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                      }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             <Palette className="w-3.5 h-3.5 text-accent-yellow shrink-0" />
-                            <span className="text-xs font-bold text-white truncate min-w-0" title={preset.name}>
+                            <span
+                              className="text-xs font-bold text-white truncate min-w-0"
+                              title={preset.name}
+                            >
                               {preset.name}
                             </span>
                           </div>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
+                          {isSelected && (
+                            <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
                           {preset.description || "Gaya subtitle kustom"}
@@ -1832,14 +2088,23 @@ export default function SettingsPage() {
                               style={{ backgroundColor: preset.highlight_color }}
                               title={`Highlight: ${preset.highlight_color}`}
                             />
-                            <span className="text-slate-400 font-mono text-[9px] uppercase">{preset.display_mode}</span>
+                            <span className="text-slate-400 font-mono text-[9px] uppercase">
+                              {preset.display_mode}
+                            </span>
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center text-[10px] text-slate-500">
-                          <span className="font-mono text-slate-400 truncate max-w-[120px]">{preset.id}</span>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${preset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                            }`}>
+                          <span className="font-mono text-slate-400 truncate max-w-[120px]">
+                            {preset.id}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
+                              preset.is_builtin
+                                ? "bg-brand-500/20 text-brand-300"
+                                : "bg-emerald-500/20 text-emerald-300"
+                            }`}
+                          >
                             {preset.is_builtin ? "Bawaan" : "Kustom"}
                           </span>
                         </div>
@@ -1864,16 +2129,25 @@ export default function SettingsPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
                       <Sliders className="w-4 h-4 text-accent-yellow shrink-0" />
-                      <span className="truncate">Editor Gaya Subtitle: {currentSelectedSubtitlePreset.name}</span>
+                      <span className="truncate">
+                        Editor Gaya Subtitle: {currentSelectedSubtitlePreset.name}
+                      </span>
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                       <span>ID Preset:</span>
                       <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                         {currentSelectedSubtitlePreset.id}
                       </code>
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${currentSelectedSubtitlePreset.is_builtin ? "bg-brand-500/20 text-brand-300" : "bg-emerald-500/20 text-emerald-300"
-                        }`}>
-                        {currentSelectedSubtitlePreset.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
+                      <span
+                        className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
+                          currentSelectedSubtitlePreset.is_builtin
+                            ? "bg-brand-500/20 text-brand-300"
+                            : "bg-emerald-500/20 text-emerald-300"
+                        }`}
+                      >
+                        {currentSelectedSubtitlePreset.is_builtin
+                          ? "Preset Bawaan"
+                          : "Preset Kustom"}
                       </span>
                     </p>
                   </div>
@@ -1883,7 +2157,11 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Reset preset subtitle "${currentSelectedSubtitlePreset.name}" ke setelan standar pabrik?`)) {
+                          if (
+                            confirm(
+                              `Reset preset subtitle "${currentSelectedSubtitlePreset.name}" ke setelan standar pabrik?`
+                            )
+                          ) {
                             resetSubtitlePresetMutation.mutate();
                           }
                         }}
@@ -1902,7 +2180,11 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Hapus preset subtitle "${currentSelectedSubtitlePreset.name}"? Tindakan ini tidak dapat dibatalkan.`)) {
+                          if (
+                            confirm(
+                              `Hapus preset subtitle "${currentSelectedSubtitlePreset.name}"? Tindakan ini tidak dapat dibatalkan.`
+                            )
+                          ) {
                             deleteSubtitlePresetMutation.mutate(currentSelectedSubtitlePreset.id);
                           }
                         }}
@@ -1939,12 +2221,13 @@ export default function SettingsPage() {
 
                     {/* Subtitle Positioning Container */}
                     <div
-                      className={`relative z-10 text-center transition-all duration-300 ${subtitlePresetForm.position === "top"
-                        ? "self-start pt-2"
-                        : subtitlePresetForm.position === "center"
-                          ? "self-center"
-                          : "self-end pb-2"
-                        }`}
+                      className={`relative z-10 text-center transition-all duration-300 ${
+                        subtitlePresetForm.position === "top"
+                          ? "self-start pt-2"
+                          : subtitlePresetForm.position === "center"
+                            ? "self-center"
+                            : "self-end pb-2"
+                      }`}
                       style={{
                         transform: `translate(${subtitlePresetForm.offset_x * 0.25}px, ${subtitlePresetForm.offset_y * 0.25}px)`,
                       }}
@@ -1953,24 +2236,38 @@ export default function SettingsPage() {
                       <div
                         className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-all"
                         style={{
-                          backgroundColor: subtitlePresetForm.box_opacity > 0
-                            ? `${subtitlePresetForm.box_color}${Math.round(subtitlePresetForm.box_opacity * 255).toString(16).padStart(2, "0")}`
-                            : "transparent",
+                          backgroundColor:
+                            subtitlePresetForm.box_opacity > 0
+                              ? `${subtitlePresetForm.box_color}${Math.round(
+                                  subtitlePresetForm.box_opacity * 255
+                                )
+                                  .toString(16)
+                                  .padStart(2, "0")}`
+                              : "transparent",
                         }}
                       >
                         {["RAHASIA", "BESAR", "DI BALIK", "DUNIA"].map((word, wIdx) => {
-                          const isHighlightEnabled = subtitlePresetForm.highlight_animation !== "none";
-                          const isHighlighted = isHighlightEnabled && (
-                            subtitlePresetForm.display_mode === "full_sentence"
+                          const isHighlightEnabled =
+                            subtitlePresetForm.highlight_animation !== "none";
+                          const isHighlighted =
+                            isHighlightEnabled &&
+                            (subtitlePresetForm.display_mode === "full_sentence"
                               ? true
                               : subtitlePresetForm.display_mode === "burst"
-                                ? (subtitlePresetForm.burst_word_count === 3 ? wIdx <= 2 : wIdx <= 1)
-                                : previewWordIndex === wIdx
-                          );
+                                ? subtitlePresetForm.burst_word_count === 3
+                                  ? wIdx <= 2
+                                  : wIdx <= 1
+                                : previewWordIndex === wIdx);
 
-                          const strokeWidth = Math.max(1, Math.round(subtitlePresetForm.outline_width * 0.5));
-                          const color = isHighlighted ? subtitlePresetForm.highlight_color : subtitlePresetForm.primary_color;
-                          const isScale = isHighlighted && subtitlePresetForm.highlight_animation === "scale";
+                          const strokeWidth = Math.max(
+                            1,
+                            Math.round(subtitlePresetForm.outline_width * 0.5)
+                          );
+                          const color = isHighlighted
+                            ? subtitlePresetForm.highlight_color
+                            : subtitlePresetForm.primary_color;
+                          const isScale =
+                            isHighlighted && subtitlePresetForm.highlight_animation === "scale";
 
                           return (
                             <span
@@ -1979,11 +2276,18 @@ export default function SettingsPage() {
                               style={{
                                 fontFamily: subtitlePresetForm.font_family,
                                 fontSize: `${Math.round(subtitlePresetForm.font_size * 0.45)}px`,
-                                fontWeight: subtitlePresetForm.font_weight === "ExtraBold" ? 800 : subtitlePresetForm.font_weight === "Bold" ? 700 : 500,
+                                fontWeight:
+                                  subtitlePresetForm.font_weight === "ExtraBold"
+                                    ? 800
+                                    : subtitlePresetForm.font_weight === "Bold"
+                                      ? 700
+                                      : 500,
                                 color: color,
                                 WebkitTextStroke: `${strokeWidth}px ${subtitlePresetForm.outline_color}`,
                                 paintOrder: "stroke fill",
-                                transform: isScale ? `scale(${subtitlePresetForm.scale_factor || 1.15})` : "scale(1)",
+                                transform: isScale
+                                  ? `scale(${subtitlePresetForm.scale_factor || 1.15})`
+                                  : "scale(1)",
                                 textShadow: `0 2px 8px ${subtitlePresetForm.outline_color}`,
                               }}
                             >
@@ -2005,7 +2309,9 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       value={subtitlePresetForm.name}
-                      onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, name: e.target.value })}
+                      onChange={(e) =>
+                        setSubtitlePresetForm({ ...subtitlePresetForm, name: e.target.value })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
                       placeholder="Contoh: Viral TikTok Neon"
                       required
@@ -2019,7 +2325,12 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       value={subtitlePresetForm.description || ""}
-                      onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, description: e.target.value })}
+                      onChange={(e) =>
+                        setSubtitlePresetForm({
+                          ...subtitlePresetForm,
+                          description: e.target.value,
+                        })
+                      }
                       className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       placeholder="Contoh: Gaya bold dengan outline hitam tebal..."
                     />
@@ -2040,7 +2351,12 @@ export default function SettingsPage() {
                       </label>
                       <select
                         value={subtitlePresetForm.font_family}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, font_family: e.target.value })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            font_family: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-sans"
                       >
                         {FONT_OPTIONS.map((font) => (
@@ -2053,7 +2369,9 @@ export default function SettingsPage() {
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Ukuran Font</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Ukuran Font
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {subtitlePresetForm.font_size}px
                         </span>
@@ -2064,7 +2382,12 @@ export default function SettingsPage() {
                         max={90}
                         step={2}
                         value={subtitlePresetForm.font_size}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, font_size: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            font_size: parseInt(e.target.value),
+                          })
+                        }
                         className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                       />
                     </div>
@@ -2075,7 +2398,12 @@ export default function SettingsPage() {
                       </label>
                       <select
                         value={subtitlePresetForm.font_weight}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, font_weight: e.target.value })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            font_weight: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       >
                         <option value="Normal">Normal</option>
@@ -2090,7 +2418,9 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
                   <div className="flex items-center gap-2">
                     <Palette className="w-4 h-4 text-accent-yellow" />
-                    <h4 className="text-xs font-bold text-white">2. Warna Teks, Highlight & Outline</h4>
+                    <h4 className="text-xs font-bold text-white">
+                      2. Warna Teks, Highlight & Outline
+                    </h4>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2103,13 +2433,23 @@ export default function SettingsPage() {
                         <input
                           type="color"
                           value={subtitlePresetForm.primary_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, primary_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              primary_color: e.target.value,
+                            })
+                          }
                           className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                         />
                         <input
                           type="text"
                           value={subtitlePresetForm.primary_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, primary_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              primary_color: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
                         />
                       </div>
@@ -2124,13 +2464,23 @@ export default function SettingsPage() {
                         <input
                           type="color"
                           value={subtitlePresetForm.highlight_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, highlight_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              highlight_color: e.target.value,
+                            })
+                          }
                           className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                         />
                         <input
                           type="text"
                           value={subtitlePresetForm.highlight_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, highlight_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              highlight_color: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
                         />
                       </div>
@@ -2140,7 +2490,12 @@ export default function SettingsPage() {
                           <button
                             type="button"
                             key={pill.color}
-                            onClick={() => setSubtitlePresetForm({ ...subtitlePresetForm, highlight_color: pill.color })}
+                            onClick={() =>
+                              setSubtitlePresetForm({
+                                ...subtitlePresetForm,
+                                highlight_color: pill.color,
+                              })
+                            }
                             className="w-4 h-4 rounded-full border border-black/50 transition transform hover:scale-125"
                             style={{ backgroundColor: pill.color }}
                             title={pill.label}
@@ -2152,7 +2507,9 @@ export default function SettingsPage() {
                     {/* Outline Color & Width */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Warna & Lebar Outline</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Warna & Lebar Outline
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {subtitlePresetForm.outline_width}px
                         </span>
@@ -2161,7 +2518,12 @@ export default function SettingsPage() {
                         <input
                           type="color"
                           value={subtitlePresetForm.outline_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, outline_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              outline_color: e.target.value,
+                            })
+                          }
                           className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                         />
                         <input
@@ -2170,7 +2532,12 @@ export default function SettingsPage() {
                           max={10}
                           step={1}
                           value={subtitlePresetForm.outline_width}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, outline_width: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              outline_width: parseInt(e.target.value),
+                            })
+                          }
                           className="w-full h-2 bg-surface rounded-lg cursor-pointer"
                         />
                       </div>
@@ -2182,7 +2549,9 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4 text-indigo-400" />
-                    <h4 className="text-xs font-bold text-white">3. Mode Tampilan, Animasi & Kotak Background</h4>
+                    <h4 className="text-xs font-bold text-white">
+                      3. Mode Tampilan, Animasi & Kotak Background
+                    </h4>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2193,7 +2562,12 @@ export default function SettingsPage() {
                       </label>
                       <select
                         value={subtitlePresetForm.display_mode}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, display_mode: e.target.value as any })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            display_mode: e.target.value as SubtitlePreset["display_mode"],
+                          })
+                        }
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       >
                         <option value="per_word">Per Kata (Karaoke)</option>
@@ -2209,7 +2583,13 @@ export default function SettingsPage() {
                       </label>
                       <select
                         value={subtitlePresetForm.highlight_animation}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, highlight_animation: e.target.value as any })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            highlight_animation:
+                              e.target.value as SubtitlePreset["highlight_animation"],
+                          })
+                        }
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       >
                         <option value="color">Warna Glow (Halus)</option>
@@ -2222,7 +2602,9 @@ export default function SettingsPage() {
                     {/* Scale Factor */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Skala Pembesaran Kata</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Skala Pembesaran Kata
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {(subtitlePresetForm.scale_factor || 1.15).toFixed(2)}x
                         </span>
@@ -2233,7 +2615,12 @@ export default function SettingsPage() {
                         max={1.8}
                         step={0.05}
                         value={subtitlePresetForm.scale_factor || 1.15}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, scale_factor: parseFloat(e.target.value) })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            scale_factor: parseFloat(e.target.value),
+                          })
+                        }
                         className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                       />
                     </div>
@@ -2249,13 +2636,23 @@ export default function SettingsPage() {
                         <input
                           type="color"
                           value={subtitlePresetForm.box_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, box_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              box_color: e.target.value,
+                            })
+                          }
                           className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                         />
                         <input
                           type="text"
                           value={subtitlePresetForm.box_color}
-                          onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, box_color: e.target.value })}
+                          onChange={(e) =>
+                            setSubtitlePresetForm({
+                              ...subtitlePresetForm,
+                              box_color: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
                         />
                       </div>
@@ -2264,7 +2661,9 @@ export default function SettingsPage() {
                     {/* Box Opacity */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Opasitas Kotak Background</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Opasitas Kotak Background
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {Math.round(subtitlePresetForm.box_opacity * 100)}%
                         </span>
@@ -2275,7 +2674,12 @@ export default function SettingsPage() {
                         max={1}
                         step={0.05}
                         value={subtitlePresetForm.box_opacity}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, box_opacity: parseFloat(e.target.value) })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            box_opacity: parseFloat(e.target.value),
+                          })
+                        }
                         className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                       />
                     </div>
@@ -2286,7 +2690,9 @@ export default function SettingsPage() {
                 <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
                   <div className="flex items-center gap-2">
                     <Move className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-xs font-bold text-white">4. Posisi Layar & Offset Presisi</h4>
+                    <h4 className="text-xs font-bold text-white">
+                      4. Posisi Layar & Offset Presisi
+                    </h4>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2296,7 +2702,12 @@ export default function SettingsPage() {
                       </label>
                       <select
                         value={subtitlePresetForm.position}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, position: e.target.value as any })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            position: e.target.value as SubtitlePreset["position"],
+                          })
+                        }
                         className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                       >
                         <option value="bottom">Bawah Layar (Bottom)</option>
@@ -2307,7 +2718,9 @@ export default function SettingsPage() {
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Offset Y (Vertikal)</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Offset Y (Vertikal)
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {subtitlePresetForm.offset_y}px
                         </span>
@@ -2318,14 +2731,21 @@ export default function SettingsPage() {
                         max={250}
                         step={5}
                         value={subtitlePresetForm.offset_y}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, offset_y: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            offset_y: parseInt(e.target.value),
+                          })
+                        }
                         className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                       />
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-slate-300">Offset X (Horizontal)</label>
+                        <label className="text-[11px] font-semibold text-slate-300">
+                          Offset X (Horizontal)
+                        </label>
                         <span className="text-[10px] font-mono text-brand-400 font-bold">
                           {subtitlePresetForm.offset_x}px
                         </span>
@@ -2336,7 +2756,12 @@ export default function SettingsPage() {
                         max={150}
                         step={5}
                         value={subtitlePresetForm.offset_x}
-                        onChange={(e) => setSubtitlePresetForm({ ...subtitlePresetForm, offset_x: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setSubtitlePresetForm({
+                            ...subtitlePresetForm,
+                            offset_x: parseInt(e.target.value),
+                          })
+                        }
                         className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                       />
                     </div>
@@ -2356,7 +2781,9 @@ export default function SettingsPage() {
                       <Check className="w-4 h-4" />
                     )}
                     <span>
-                      {updateSubtitlePresetMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Gaya Subtitle"}
+                      {updateSubtitlePresetMutation.isPending
+                        ? "Menyimpan..."
+                        : "Simpan Perubahan Gaya Subtitle"}
                     </span>
                   </button>
                 </div>
@@ -2379,7 +2806,9 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Buat Preset Naskah Baru</h3>
-                  <p className="text-[11px] text-slate-400">Tambahkan struktur dan formula prompt khusus untuk video Anda</p>
+                  <p className="text-[11px] text-slate-400">
+                    Tambahkan struktur dan formula prompt khusus untuk video Anda
+                  </p>
                 </div>
               </div>
               <button
@@ -2391,7 +2820,10 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTemplateSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form
+              onSubmit={handleCreateTemplateSubmit}
+              className="p-6 overflow-y-auto space-y-4 flex-1"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -2445,7 +2877,9 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newTemplateForm.default_tone}
-                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, default_tone: e.target.value })}
+                    onChange={(e) =>
+                      setNewTemplateForm({ ...newTemplateForm, default_tone: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="santai">Santai (Casual & Friendly)</option>
@@ -2467,7 +2901,9 @@ export default function SettingsPage() {
                     type="text"
                     placeholder="Contoh: Format naskah khusus affiliate dan unboxing"
                     value={newTemplateForm.description}
-                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, description: e.target.value })}
+                    onChange={(e) =>
+                      setNewTemplateForm({ ...newTemplateForm, description: e.target.value })
+                    }
                     className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   />
                 </div>
@@ -2480,7 +2916,9 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newTemplateForm.category}
-                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, category: e.target.value })}
+                    onChange={(e) =>
+                      setNewTemplateForm({ ...newTemplateForm, category: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="custom">Kustom</option>
@@ -2500,7 +2938,9 @@ export default function SettingsPage() {
                     type="text"
                     placeholder="Mis. Aksi, POV Imersif, Bongkar Mitos..."
                     value={newTemplateForm.sub_category}
-                    onChange={(e) => setNewTemplateForm({ ...newTemplateForm, sub_category: e.target.value })}
+                    onChange={(e) =>
+                      setNewTemplateForm({ ...newTemplateForm, sub_category: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   />
                 </div>
@@ -2508,13 +2948,16 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  1. System Prompt (Instruksi Persona & Struktur Naskah) <span className="text-rose-400">*</span>
+                  1. System Prompt (Instruksi Persona & Struktur Naskah){" "}
+                  <span className="text-rose-400">*</span>
                 </label>
                 <textarea
                   rows={5}
                   required
                   value={newTemplateForm.system_prompt}
-                  onChange={(e) => setNewTemplateForm({ ...newTemplateForm, system_prompt: e.target.value })}
+                  onChange={(e) =>
+                    setNewTemplateForm({ ...newTemplateForm, system_prompt: e.target.value })
+                  }
                   placeholder="Instruksi sistem persona dan format naskah..."
                   className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
                 />
@@ -2526,7 +2969,13 @@ export default function SettingsPage() {
                     2. User Prompt Template (Format Input) <span className="text-rose-400">*</span>
                   </label>
                   <div className="flex flex-wrap gap-1">
-                    {["{topic}", "{tone}", "{target_duration}", "{word_count}", "{scene_context}"].map((token) => (
+                    {[
+                      "{topic}",
+                      "{tone}",
+                      "{target_duration}",
+                      "{word_count}",
+                      "{scene_context}",
+                    ].map((token) => (
                       <button
                         type="button"
                         key={token}
@@ -2547,7 +2996,9 @@ export default function SettingsPage() {
                   rows={4}
                   required
                   value={newTemplateForm.user_prompt_template}
-                  onChange={(e) => setNewTemplateForm({ ...newTemplateForm, user_prompt_template: e.target.value })}
+                  onChange={(e) =>
+                    setNewTemplateForm({ ...newTemplateForm, user_prompt_template: e.target.value })
+                  }
                   placeholder="Template format variabel..."
                   className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
                 />
@@ -2571,7 +3022,9 @@ export default function SettingsPage() {
                   ) : (
                     <Check className="w-3.5 h-3.5" />
                   )}
-                  <span>{createTemplateMutation.isPending ? "Menyimpan..." : "Buat Preset Naskah"}</span>
+                  <span>
+                    {createTemplateMutation.isPending ? "Menyimpan..." : "Buat Preset Naskah"}
+                  </span>
                 </button>
               </div>
             </form>
@@ -2592,7 +3045,9 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Buat Preset Gaya Subtitle Baru</h3>
-                  <p className="text-[11px] text-slate-400">Rancang kombinasi font, warna, animasi, dan layout subtitle kustom</p>
+                  <p className="text-[11px] text-slate-400">
+                    Rancang kombinasi font, warna, animasi, dan layout subtitle kustom
+                  </p>
                 </div>
               </div>
               <button
@@ -2604,7 +3059,10 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubtitleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form
+              onSubmit={handleCreateSubtitleSubmit}
+              className="p-6 overflow-y-auto space-y-4 flex-1"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -2659,7 +3117,12 @@ export default function SettingsPage() {
                   type="text"
                   placeholder="Contoh: Gaya teks tebal warna kuning neon dengan outline pekat..."
                   value={newSubtitlePresetForm.description}
-                  onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setNewSubtitlePresetForm({
+                      ...newSubtitlePresetForm,
+                      description: e.target.value,
+                    })
+                  }
                   className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                 />
               </div>
@@ -2671,11 +3134,18 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newSubtitlePresetForm.font_family}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, font_family: e.target.value })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        font_family: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     {FONT_OPTIONS.map((f) => (
-                      <option key={f} value={f}>{f}</option>
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -2690,7 +3160,12 @@ export default function SettingsPage() {
                     max={84}
                     step={2}
                     value={newSubtitlePresetForm.font_size}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, font_size: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        font_size: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
                   />
                 </div>
@@ -2701,7 +3176,12 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newSubtitlePresetForm.font_weight}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, font_weight: e.target.value })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        font_weight: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="Normal">Normal</option>
@@ -2720,13 +3200,23 @@ export default function SettingsPage() {
                     <input
                       type="color"
                       value={newSubtitlePresetForm.primary_color}
-                      onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, primary_color: e.target.value })}
+                      onChange={(e) =>
+                        setNewSubtitlePresetForm({
+                          ...newSubtitlePresetForm,
+                          primary_color: e.target.value,
+                        })
+                      }
                       className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                     />
                     <input
                       type="text"
                       value={newSubtitlePresetForm.primary_color}
-                      onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, primary_color: e.target.value })}
+                      onChange={(e) =>
+                        setNewSubtitlePresetForm({
+                          ...newSubtitlePresetForm,
+                          primary_color: e.target.value,
+                        })
+                      }
                       className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
                     />
                   </div>
@@ -2740,13 +3230,23 @@ export default function SettingsPage() {
                     <input
                       type="color"
                       value={newSubtitlePresetForm.highlight_color}
-                      onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, highlight_color: e.target.value })}
+                      onChange={(e) =>
+                        setNewSubtitlePresetForm({
+                          ...newSubtitlePresetForm,
+                          highlight_color: e.target.value,
+                        })
+                      }
                       className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                     />
                     <input
                       type="text"
                       value={newSubtitlePresetForm.highlight_color}
-                      onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, highlight_color: e.target.value })}
+                      onChange={(e) =>
+                        setNewSubtitlePresetForm({
+                          ...newSubtitlePresetForm,
+                          highlight_color: e.target.value,
+                        })
+                      }
                       className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
                     />
                   </div>
@@ -2758,7 +3258,12 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newSubtitlePresetForm.display_mode}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, display_mode: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        display_mode: e.target.value as "per_word" | "burst" | "full_sentence",
+                      })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="per_word">Per Kata (Karaoke)</option>
@@ -2775,7 +3280,12 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newSubtitlePresetForm.highlight_animation}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, highlight_animation: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        highlight_animation: e.target.value as "scale" | "color" | "box" | "none",
+                      })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="color">Warna Glow (Halus)</option>
@@ -2791,7 +3301,12 @@ export default function SettingsPage() {
                   </label>
                   <select
                     value={newSubtitlePresetForm.position}
-                    onChange={(e) => setNewSubtitlePresetForm({ ...newSubtitlePresetForm, position: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewSubtitlePresetForm({
+                        ...newSubtitlePresetForm,
+                        position: e.target.value as "bottom" | "center" | "top",
+                      })
+                    }
                     className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="bottom">Bawah Layar (Bottom)</option>
@@ -2819,7 +3334,11 @@ export default function SettingsPage() {
                   ) : (
                     <Check className="w-3.5 h-3.5" />
                   )}
-                  <span>{createSubtitlePresetMutation.isPending ? "Menyimpan..." : "Buat Preset Subtitle"}</span>
+                  <span>
+                    {createSubtitlePresetMutation.isPending
+                      ? "Menyimpan..."
+                      : "Buat Preset Subtitle"}
+                  </span>
                 </button>
               </div>
             </form>

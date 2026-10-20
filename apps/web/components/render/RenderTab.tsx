@@ -22,7 +22,15 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle, RenderJob, WatermarkConfig } from "@/types";
+import {
+  Project,
+  TimelineClip,
+  Narration,
+  AudioTrack,
+  SubtitleStyle,
+  RenderJob,
+  WatermarkConfig,
+} from "@/types";
 import { PreviewPlayer } from "./PreviewPlayer";
 import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { Button } from "@/components/ui/button";
@@ -52,13 +60,21 @@ export function RenderTab({ project }: RenderTabProps) {
   const { showToast, activeTask, setActiveTask } = useStudioStore();
 
   const [resolution, setResolution] = useState(project.resolution || "1080p");
-  const [antiCopyright, setAntiCopyright] = useState(project.background_fill?.anti_copyright ?? true);
+  const [antiCopyright, setAntiCopyright] = useState(
+    project.background_fill?.anti_copyright ?? true
+  );
   const [dynamicZoom, setDynamicZoom] = useState(project.background_fill?.dynamic_zoom ?? true);
   const [colorGrading, setColorGrading] = useState(project.background_fill?.color_grading ?? true);
 
-  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(project.watermark || null);
+  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(
+    project.watermark || null
+  );
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
-  const [previewModalVideo, setPreviewModalVideo] = useState<{ url: string; title: string; poster?: string | null } | null>(null);
+  const [previewModalVideo, setPreviewModalVideo] = useState<{
+    url: string;
+    title: string;
+    poster?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (project.watermark) {
@@ -76,13 +92,11 @@ export function RenderTab({ project }: RenderTabProps) {
     refetchOnWindowFocus: true,
   });
 
-  const totalStorageBytes = renderJobs.reduce(
-    (acc, j) => acc + (j.file_size_bytes || 0),
-    0
-  );
+  const totalStorageBytes = renderJobs.reduce((acc, j) => acc + (j.file_size_bytes || 0), 0);
 
   const updateProjectMutation = useMutation({
-    mutationFn: (data: any) => api.updateProject(project.id, data),
+    mutationFn: (data: Parameters<typeof api.updateProject>[1]) =>
+      api.updateProject(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     },
@@ -95,7 +109,7 @@ export function RenderTab({ project }: RenderTabProps) {
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast("Job render final dimulai di background!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memulai render", "error");
     },
   });
@@ -107,7 +121,7 @@ export function RenderTab({ project }: RenderTabProps) {
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast("Job preview cepat dimulai di background!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memulai preview render", "error");
     },
   });
@@ -121,7 +135,7 @@ export function RenderTab({ project }: RenderTabProps) {
       showToast(`Riwayat render berhasil dihapus${freed}`, "success");
       setConfirmDeleteJobId(null);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus riwayat render", "error");
     },
   });
@@ -135,7 +149,7 @@ export function RenderTab({ project }: RenderTabProps) {
       showToast(`${data.count || 0} riwayat render berhasil dibersihkan${freed}`, "success");
       setConfirmClearAll(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membersihkan riwayat render", "error");
     },
   });
@@ -148,16 +162,18 @@ export function RenderTab({ project }: RenderTabProps) {
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
       showToast(data.message || "Rendering video berhasil dibatalkan", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membatalkan rendering", "error");
     },
   });
 
-  const updateAntiCopyrightSettings = (updates: Partial<{
-    anti_copyright: boolean;
-    dynamic_zoom: boolean;
-    color_grading: boolean;
-  }>) => {
+  const updateAntiCopyrightSettings = (
+    updates: Partial<{
+      anti_copyright: boolean;
+      dynamic_zoom: boolean;
+      color_grading: boolean;
+    }>
+  ) => {
     const newAnti = updates.anti_copyright !== undefined ? updates.anti_copyright : antiCopyright;
     const newZoom = updates.dynamic_zoom !== undefined ? updates.dynamic_zoom : dynamicZoom;
     const newColor = updates.color_grading !== undefined ? updates.color_grading : colorGrading;
@@ -201,7 +217,10 @@ export function RenderTab({ project }: RenderTabProps) {
               Live Preview Player ({project.aspect_ratio || "9:16"})
             </h3>
           </div>
-          <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]">
+          <Badge
+            variant="outline"
+            className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]"
+          >
             Compositor Live
           </Badge>
         </div>
@@ -240,14 +259,17 @@ export function RenderTab({ project }: RenderTabProps) {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold text-foreground">Proteksi Hak Cipta & Transformative Editing</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    Proteksi Hak Cipta & Transformative Editing
+                  </span>
                 </div>
                 <Badge variant="outline" className="border-primary/30 text-primary text-[10px]">
                   Aman Upload Platform
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Menerapkan modifikasi visual dinamis saat render FFmpeg agar tayangan tidak terdeteksi duplikat oleh algoritma Content ID platform.
+                Menerapkan modifikasi visual dinamis saat render FFmpeg agar tayangan tidak
+                terdeteksi duplikat oleh algoritma Content ID platform.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -255,12 +277,18 @@ export function RenderTab({ project }: RenderTabProps) {
                   <input
                     type="checkbox"
                     checked={dynamicZoom}
-                    onChange={(e) => updateAntiCopyrightSettings({ dynamic_zoom: e.target.checked })}
+                    onChange={(e) =>
+                      updateAntiCopyrightSettings({ dynamic_zoom: e.target.checked })
+                    }
                     className="mt-0.5 rounded border-[#2E2E2E] text-primary focus:ring-primary/30"
                   />
                   <div>
-                    <div className="text-xs font-semibold text-foreground">Dynamic Ken Burns Zoom</div>
-                    <div className="text-[10px] text-muted-foreground">Zoom halus bergantian (1.05x) mematahkan spatial hash pencocokan video.</div>
+                    <div className="text-xs font-semibold text-foreground">
+                      Dynamic Ken Burns Zoom
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Zoom halus bergantian (1.05x) mematahkan spatial hash pencocokan video.
+                    </div>
                   </div>
                 </label>
 
@@ -268,12 +296,16 @@ export function RenderTab({ project }: RenderTabProps) {
                   <input
                     type="checkbox"
                     checked={colorGrading}
-                    onChange={(e) => updateAntiCopyrightSettings({ color_grading: e.target.checked })}
+                    onChange={(e) =>
+                      updateAntiCopyrightSettings({ color_grading: e.target.checked })
+                    }
                     className="mt-0.5 rounded border-[#2E2E2E] text-primary focus:ring-primary/30"
                   />
                   <div>
                     <div className="text-xs font-semibold text-foreground">Micro Color Grading</div>
-                    <div className="text-[10px] text-muted-foreground">Penyesuaian kontras & saturasi mikro (+3%) mengubah signature digital piksel.</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Penyesuaian kontras & saturasi mikro (+3%) mengubah signature digital piksel.
+                    </div>
                   </div>
                 </label>
               </div>
@@ -284,20 +316,29 @@ export function RenderTab({ project }: RenderTabProps) {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Stamp className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold text-foreground">Watermark Video (Teks Overlay)</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    Watermark Video (Teks Overlay)
+                  </span>
                 </div>
                 {liveWatermark?.enabled ? (
-                  <Badge variant="default" className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <Badge
+                    variant="default"
+                    className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                  >
                     Aktif: {liveWatermark.text || "@watermark"}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] text-muted-foreground border-[#333]">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-muted-foreground border-[#333]"
+                  >
                     Nonaktif
                   </Badge>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Menyematkan teks overlay transparan dengan font dan posisi kustom langsung ke hasil render video.
+                Menyematkan teks overlay transparan dengan font dan posisi kustom langsung ke hasil
+                render video.
               </p>
 
               <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
@@ -308,7 +349,9 @@ export function RenderTab({ project }: RenderTabProps) {
                   className="text-xs flex items-center gap-1.5 h-8 border-[#333] hover:border-primary/50 text-foreground"
                 >
                   <Stamp className="w-3.5 h-3.5 text-primary" />
-                  <span>{showWatermarkModal ? "Tutup Pengaturan Watermark" : "Sesuaikan Font & Posisi"}</span>
+                  <span>
+                    {showWatermarkModal ? "Tutup Pengaturan Watermark" : "Sesuaikan Font & Posisi"}
+                  </span>
                 </Button>
 
                 <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
@@ -387,7 +430,10 @@ export function RenderTab({ project }: RenderTabProps) {
           icon={<Film className="w-4 h-4 text-primary" />}
           badge={
             totalStorageBytes > 0 ? (
-              <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E] gap-1">
+              <Badge
+                variant="outline"
+                className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E] gap-1"
+              >
                 <HardDrive className="w-2.5 h-2.5 text-primary" />
                 {formatBytes(totalStorageBytes)}
               </Badge>
@@ -395,10 +441,12 @@ export function RenderTab({ project }: RenderTabProps) {
           }
           actions={
             <div className="flex items-center gap-2">
-              {renderJobs.length > 0 && (
-                confirmClearAll ? (
+              {renderJobs.length > 0 &&
+                (confirmClearAll ? (
                   <div className="flex items-center gap-1.5 bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded-lg">
-                    <span className="text-[11px] text-destructive font-medium">Hapus semua ({renderJobs.length})?</span>
+                    <span className="text-[11px] text-destructive font-medium">
+                      Hapus semua ({renderJobs.length})?
+                    </span>
                     <Button
                       variant="destructive"
                       size="xs"
@@ -406,7 +454,11 @@ export function RenderTab({ project }: RenderTabProps) {
                       disabled={clearAllJobsMutation.isPending}
                       className="h-5 px-1.5 text-[10px]"
                     >
-                      {clearAllJobsMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Ya"}
+                      {clearAllJobsMutation.isPending ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        "Ya"
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
@@ -428,8 +480,7 @@ export function RenderTab({ project }: RenderTabProps) {
                     <Trash2 className="w-3.5 h-3.5" />
                     <span className="text-[11px]">Bersihkan Riwayat</span>
                   </Button>
-                )
-              )}
+                ))}
 
               <Button
                 variant="ghost"
@@ -456,7 +507,10 @@ export function RenderTab({ project }: RenderTabProps) {
                 >
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-semibold uppercase tracking-wider text-[10px]">
+                      <Badge
+                        variant="outline"
+                        className="font-semibold uppercase tracking-wider text-[10px]"
+                      >
                         {job.render_type}
                       </Badge>
                       <span className="text-muted-foreground font-mono text-[10px]">
@@ -480,9 +534,13 @@ export function RenderTab({ project }: RenderTabProps) {
                         </Badge>
                       )}
                       {job.status === "rendering" && (
-                        <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px] gap-1 font-semibold">
+                        <Badge
+                          variant="outline"
+                          className="text-amber-400 border-amber-500/30 text-[10px] gap-1 font-semibold"
+                        >
                           <Loader2 className="w-3 h-3 animate-spin" />{" "}
-                          {activeTask?.task_type === "render" && (!activeTask.data?.job_id || activeTask.data?.job_id === job.id)
+                          {activeTask?.task_type === "render" &&
+                          (!activeTask.data?.job_id || activeTask.data?.job_id === job.id)
                             ? `${activeTask.progress}%`
                             : `${job.progress}%`}
                         </Badge>
@@ -504,7 +562,9 @@ export function RenderTab({ project }: RenderTabProps) {
                           variant="destructive"
                           size="sm"
                           onClick={() => cancelJobMutation.mutate(job.id)}
-                          disabled={cancelJobMutation.isPending && cancelJobMutation.variables === job.id}
+                          disabled={
+                            cancelJobMutation.isPending && cancelJobMutation.variables === job.id
+                          }
                           className="h-6 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1 px-2 shadow-sm"
                           title="Batalkan proses render video ini"
                         >
@@ -526,7 +586,8 @@ export function RenderTab({ project }: RenderTabProps) {
                             disabled={deleteJobMutation.isPending}
                             className="px-1.5 py-0.5 bg-destructive text-white rounded text-[9px] font-bold transition flex items-center gap-1 disabled:opacity-50"
                           >
-                            {deleteJobMutation.isPending && deleteJobMutation.variables === job.id ? (
+                            {deleteJobMutation.isPending &&
+                            deleteJobMutation.variables === job.id ? (
                               <Loader2 className="w-2.5 h-2.5 animate-spin" />
                             ) : (
                               "Ya"
@@ -685,7 +746,9 @@ export function RenderTab({ project }: RenderTabProps) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#2E2E2E] bg-[#181818]">
               <div className="flex items-center gap-2">
                 <Film className="w-4 h-4 text-primary" />
-                <h4 className="text-xs font-semibold text-foreground truncate">{previewModalVideo.title}</h4>
+                <h4 className="text-xs font-semibold text-foreground truncate">
+                  {previewModalVideo.title}
+                </h4>
               </div>
               <button
                 onClick={() => setPreviewModalVideo(null)}
@@ -713,12 +776,7 @@ export function RenderTab({ project }: RenderTabProps) {
               >
                 Tutup
               </Button>
-              <Button
-                variant="supabase"
-                size="sm"
-                asChild
-                className="text-xs h-8 gap-1.5"
-              >
+              <Button variant="supabase" size="sm" asChild className="text-xs h-8 gap-1.5">
                 <a href={previewModalVideo.url} download>
                   <Download className="w-3.5 h-3.5" />
                   <span>Download</span>

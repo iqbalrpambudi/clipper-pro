@@ -40,12 +40,30 @@ import {
 } from "@/components/ui";
 
 const QUICK_INSPIRATION_TAGS = [
-  { label: "Doodle Stickman Kuno", text: "Doodle stickman hitam putih vintage parchment watercolor" },
-  { label: "Parchment Sepia", text: "Vintage aged tea-stained parchment paper with sepia hand-drawn watercolor washes" },
-  { label: "Anime Watercolor", text: "Soft pastel anime watercolor storyboard illustration with delicate ink outlines" },
-  { label: "Cyberpunk Graphic Novel", text: "Stylized cyberpunk graphic novel comic illustration, gritty high contrast ink" },
-  { label: "Claymation 3D", text: "Warm handcrafted claymation stop-motion miniature scene with tactile clay texture" },
-  { label: "Pencil Sketch Blueprint", text: "Architectural blueprint pencil sketch with diagrammatic technical annotations" },
+  {
+    label: "Doodle Stickman Kuno",
+    text: "Doodle stickman hitam putih vintage parchment watercolor",
+  },
+  {
+    label: "Parchment Sepia",
+    text: "Vintage aged tea-stained parchment paper with sepia hand-drawn watercolor washes",
+  },
+  {
+    label: "Anime Watercolor",
+    text: "Soft pastel anime watercolor storyboard illustration with delicate ink outlines",
+  },
+  {
+    label: "Cyberpunk Graphic Novel",
+    text: "Stylized cyberpunk graphic novel comic illustration, gritty high contrast ink",
+  },
+  {
+    label: "Claymation 3D",
+    text: "Warm handcrafted claymation stop-motion miniature scene with tactile clay texture",
+  },
+  {
+    label: "Pencil Sketch Blueprint",
+    text: "Architectural blueprint pencil sketch with diagrammatic technical annotations",
+  },
 ];
 
 const SAMPLE_SCENES = [
@@ -62,8 +80,12 @@ export default function ImageStudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
-  const [userText, setUserText] = useState("Doodle stickman hitam putih vintage parchment watercolor");
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string>("/storage/presets/doodle_ref.png");
+  const [userText, setUserText] = useState(
+    "Doodle stickman hitam putih vintage parchment watercolor"
+  );
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string>(
+    "/storage/presets/doodle_ref.png"
+  );
   const [referenceImagePath, setReferenceImagePath] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
 
@@ -77,13 +99,17 @@ export default function ImageStudioPage() {
   const [negativePrompt, setNegativePrompt] = useState(
     "No 3D CGI, no photorealism, no modern digital glossy gradients, no clutter, no digital text artifacts, no blurry details, no photorealistic humans."
   );
-  const [styleAttributes, setStyleAttributes] = useState<StudioAnalysisResult["style_attributes"] | null>(null);
+  const [styleAttributes, setStyleAttributes] = useState<
+    StudioAnalysisResult["style_attributes"] | null
+  >(null);
 
   // Test Generator State
   const [scenePrompt, setScenePrompt] = useState(
     "Seorang kakek bijak menceritakan kisah kuno di samping lentera minyak di bawah pohon rindang"
   );
-  const [previewImageUrl, setPreviewImageUrl] = useState<string>("/storage/presets/doodle_preview.png");
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>(
+    "/storage/presets/doodle_preview.png"
+  );
   const [testImageHistory, setTestImageHistory] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -91,7 +117,9 @@ export default function ImageStudioPage() {
   const [isPresetListOpen, setIsPresetListOpen] = useState(false);
   const [selectedPresetForEdit, setSelectedPresetForEdit] = useState<ImagePreset | null>(null);
   const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
-  const [saveTarget, setSaveTarget] = useState<"doodle-ilustrasi" | "new" | "active_id">("doodle-ilustrasi");
+  const [saveTarget, setSaveTarget] = useState<"doodle-ilustrasi" | "new" | "active_id">(
+    "doodle-ilustrasi"
+  );
 
   // Query: Get all presets
   const { data: presets = [], isLoading: isLoadingPresets } = useQuery({
@@ -112,7 +140,7 @@ export default function ImageStudioPage() {
       if (activePreset.reference_image_url) setReferenceImageUrl(activePreset.reference_image_url);
       if (activePreset.preview_image_url) setPreviewImageUrl(activePreset.preview_image_url);
       if (activePreset.user_text_input) setUserText(activePreset.user_text_input);
-      if (activePreset.style_attributes) setStyleAttributes(activePreset.style_attributes as any);
+      if (activePreset.style_attributes) setStyleAttributes(activePreset.style_attributes);
     }
   }, [activePreset]);
 
@@ -124,7 +152,7 @@ export default function ImageStudioPage() {
       setReferenceImagePath(res.file_path);
       showToast("Gambar referensi berhasil diunggah!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengunggah gambar", "error");
     },
     onSettled: () => setIsUploading(false),
@@ -147,7 +175,7 @@ export default function ImageStudioPage() {
       setStyleAttributes(res.style_attributes);
       showToast("Master Prompt & gaya visual berhasil disintesis oleh AI!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menganalisis gaya visual", "error");
     },
   });
@@ -165,7 +193,7 @@ export default function ImageStudioPage() {
       setTestImageHistory((prev) => [res.image_url, ...prev.filter((u) => u !== res.image_url)]);
       showToast("Gambar uji coba 16:9 berhasil di-generate!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal generate gambar uji coba", "error");
     },
   });
@@ -201,7 +229,7 @@ export default function ImageStudioPage() {
         "success"
       );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan preset", "error");
     },
   });
@@ -213,7 +241,7 @@ export default function ImageStudioPage() {
       queryClient.invalidateQueries({ queryKey: ["image-presets"] });
       showToast(`Preset '${preset.name}' kini aktif untuk semua Ilustrasi AI!`, "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengaktifkan preset", "error");
     },
   });
@@ -225,7 +253,7 @@ export default function ImageStudioPage() {
       queryClient.invalidateQueries({ queryKey: ["image-presets"] });
       showToast("Preset berhasil dihapus", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus preset", "error");
     },
   });
@@ -256,7 +284,7 @@ export default function ImageStudioPage() {
     if (p.reference_image_url) setReferenceImageUrl(p.reference_image_url);
     if (p.preview_image_url) setPreviewImageUrl(p.preview_image_url);
     if (p.user_text_input) setUserText(p.user_text_input);
-    if (p.style_attributes) setStyleAttributes(p.style_attributes as any);
+    if (p.style_attributes) setStyleAttributes(p.style_attributes);
     setIsPresetListOpen(false);
     showToast(`Preset '${p.name}' dimuat ke Studio!`, "info");
   };
@@ -289,7 +317,10 @@ export default function ImageStudioPage() {
                 <span className="font-bold text-lg tracking-tight text-white font-sans">
                   AI Visual Image Studio
                 </span>
-                <Badge variant="supabase" className="text-[10px] uppercase font-mono tracking-wider">
+                <Badge
+                  variant="supabase"
+                  className="text-[10px] uppercase font-mono tracking-wider"
+                >
                   Preset Studio
                 </Badge>
               </div>
@@ -314,7 +345,11 @@ export default function ImageStudioPage() {
             </Button>
 
             <Link href="/settings">
-              <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E] text-slate-300">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs border-[#2E2E2E] text-slate-300"
+              >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Model Settings</span>
               </Button>
@@ -361,7 +396,9 @@ export default function ImageStudioPage() {
               <span>Muat Preset Doodle Ilustrasi</span>
             </button>
             <span className="text-slate-600">•</span>
-            <span className="text-slate-400">Master Prompt otomatis terpasang saat batch generate storyboard.</span>
+            <span className="text-slate-400">
+              Master Prompt otomatis terpasang saat batch generate storyboard.
+            </span>
           </div>
         </div>
       </div>
@@ -369,12 +406,10 @@ export default function ImageStudioPage() {
       {/* Main Studio Content: Two-Column Split */}
       <main className="max-w-8xl mx-auto px-6 py-8 w-full flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
           {/* ======================================================== */}
           {/* LEFT COLUMN: Input & AI Synthesizer (5 cols) */}
           {/* ======================================================== */}
           <div className="lg:col-span-5 space-y-6">
-
             {/* Step 1: Input Deskripsi Teks */}
             <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] shadow-lg space-y-3.5">
               <div className="flex items-center justify-between">
@@ -386,7 +421,10 @@ export default function ImageStudioPage() {
                     Konsep & Deskripsi Gaya Visual
                   </label>
                 </div>
-                <Badge variant="outline" className="text-[10px] text-muted-foreground border-[#2E2E2E]">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] text-muted-foreground border-[#2E2E2E]"
+                >
                   Teks Input
                 </Badge>
               </div>
@@ -446,7 +484,9 @@ export default function ImageStudioPage() {
               {referenceImageUrl ? (
                 <div className="relative rounded-xl border border-[#2E2E2E] bg-[#121212] p-3 flex items-center gap-4 group">
                   <div
-                    onClick={() => setZoomImage({ url: referenceImageUrl, title: "Gambar Referensi Visual" })}
+                    onClick={() =>
+                      setZoomImage({ url: referenceImageUrl, title: "Gambar Referensi Visual" })
+                    }
                     className="relative w-28 h-18 rounded-lg overflow-hidden border border-[#2E2E2E] bg-black/40 cursor-pointer shrink-0"
                   >
                     <img
@@ -506,7 +546,9 @@ export default function ImageStudioPage() {
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-white block">
-                      {isUploading ? "Mengunggah gambar..." : "Klik atau seret gambar referensi ke sini"}
+                      {isUploading
+                        ? "Mengunggah gambar..."
+                        : "Klik atau seret gambar referensi ke sini"}
                     </span>
                     <span className="text-[10px] text-slate-500">
                       Mendukung PNG, JPG, JPEG, WebP (Rasio 16:9 disarankan)
@@ -564,7 +606,11 @@ export default function ImageStudioPage() {
                   onClick={handleCopyPrompt}
                   className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono transition"
                 >
-                  {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {isCopied ? (
+                    <Check className="w-3 h-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
                   <span>{isCopied ? "Tersalin!" : "Salin Prompt"}</span>
                 </button>
               </div>
@@ -616,7 +662,8 @@ export default function ImageStudioPage() {
                   className="text-xs font-mono bg-[#121212] border-[#2E2E2E] text-slate-100 placeholder:text-slate-500 focus:border-violet-500 rounded-xl leading-relaxed"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Prompt ini menjadi acuan seragam saat generate setiap adegan naskah di tab <strong>Langkah 3. Ilustrasi AI</strong>.
+                  Prompt ini menjadi acuan seragam saat generate setiap adegan naskah di tab{" "}
+                  <strong>Langkah 3. Ilustrasi AI</strong>.
                 </p>
               </div>
 
@@ -663,20 +710,19 @@ export default function ImageStudioPage() {
                   )}
                   {styleAttributes.character_style && (
                     <div className="text-[10px] text-slate-400">
-                      <strong className="text-slate-300">Karakter:</strong> {styleAttributes.character_style}
+                      <strong className="text-slate-300">Karakter:</strong>{" "}
+                      {styleAttributes.character_style}
                     </div>
                   )}
                 </div>
               )}
             </div>
-
           </div>
 
           {/* ======================================================== */}
           {/* RIGHT COLUMN: Live Test Studio & Comparison (7 cols) */}
           {/* ======================================================== */}
           <div className="lg:col-span-7 space-y-6">
-
             {/* Visual Comparison: Reference vs AI Generated Preview */}
             <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] shadow-lg space-y-4">
               <div className="flex items-center justify-between">
@@ -690,7 +736,10 @@ export default function ImageStudioPage() {
                   </p>
                 </div>
 
-                <Badge variant="outline" className="border-[#2E2E2E] text-slate-400 text-[10px] font-mono">
+                <Badge
+                  variant="outline"
+                  className="border-[#2E2E2E] text-slate-400 text-[10px] font-mono"
+                >
                   16:9 Landscape
                 </Badge>
               </div>
@@ -714,7 +763,9 @@ export default function ImageStudioPage() {
                         />
                         <button
                           type="button"
-                          onClick={() => setZoomImage({ url: referenceImageUrl, title: "Gambar Referensi Asli" })}
+                          onClick={() =>
+                            setZoomImage({ url: referenceImageUrl, title: "Gambar Referensi Asli" })
+                          }
                           className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
                         >
                           <span className="px-3 py-1.5 rounded-lg bg-black/70 text-white text-xs font-medium flex items-center gap-1.5">
@@ -743,7 +794,9 @@ export default function ImageStudioPage() {
                     {testGenerateMutation.isPending ? (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-violet-950/20 text-violet-300 gap-2 p-4 text-center">
                         <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                        <span className="text-xs font-semibold">Menghasilkan Gambar Uji Coba 16:9...</span>
+                        <span className="text-xs font-semibold">
+                          Menghasilkan Gambar Uji Coba 16:9...
+                        </span>
                         <span className="text-[10px] text-slate-400 max-w-xs">
                           Menggunakan model gambar AI aktif dan format landscape widescreen
                         </span>
@@ -757,7 +810,12 @@ export default function ImageStudioPage() {
                         />
                         <button
                           type="button"
-                          onClick={() => setZoomImage({ url: previewImageUrl, title: "Preview Gambar AI (Preset Test)" })}
+                          onClick={() =>
+                            setZoomImage({
+                              url: previewImageUrl,
+                              title: "Preview Gambar AI (Preset Test)",
+                            })
+                          }
                           className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
                         >
                           <span className="px-3 py-1.5 rounded-lg bg-black/70 text-white text-xs font-medium flex items-center gap-1.5">
@@ -769,7 +827,9 @@ export default function ImageStudioPage() {
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-1.5 p-4 text-center">
                         <Wand2 className="w-8 h-8 text-violet-400/50" />
-                        <span className="text-xs">Klik 'Generate Gambar Uji Coba' untuk melihat hasil</span>
+                        <span className="text-xs">
+                          Klik 'Generate Gambar Uji Coba' untuk melihat hasil
+                        </span>
                       </div>
                     )}
                   </div>
@@ -787,10 +847,17 @@ export default function ImageStudioPage() {
                       <div
                         key={i}
                         onClick={() => setPreviewImageUrl(imgUrl)}
-                        className={`w-16 h-10 rounded-lg overflow-hidden border cursor-pointer shrink-0 transition ${previewImageUrl === imgUrl ? "border-violet-500 ring-2 ring-violet-500/40" : "border-[#2E2E2E] opacity-70 hover:opacity-100"
-                          }`}
+                        className={`w-16 h-10 rounded-lg overflow-hidden border cursor-pointer shrink-0 transition ${
+                          previewImageUrl === imgUrl
+                            ? "border-violet-500 ring-2 ring-violet-500/40"
+                            : "border-[#2E2E2E] opacity-70 hover:opacity-100"
+                        }`}
                       >
-                        <img src={imgUrl} alt={`Test ${i}`} className="w-full h-full object-cover" />
+                        <img
+                          src={imgUrl}
+                          alt={`Test ${i}`}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ))}
                   </div>
@@ -807,7 +874,8 @@ export default function ImageStudioPage() {
                     <span>Uji Coba Adegan Cerita (Test Generation)</span>
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Coba generate adegan naskah berbeda dengan Master Prompt di atas untuk menguji konsistensi gaya.
+                    Coba generate adegan naskah berbeda dengan Master Prompt di atas untuk menguji
+                    konsistensi gaya.
                   </p>
                 </div>
               </div>
@@ -868,7 +936,8 @@ export default function ImageStudioPage() {
                     <span>Simpan Preset ke Ilustrasi AI</span>
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Hasil sintesis ini akan tersimpan ke database dan dapat langsung diterapkan pada pembuatan video storyboard Anda.
+                    Hasil sintesis ini akan tersimpan ke database dan dapat langsung diterapkan pada
+                    pembuatan video storyboard Anda.
                   </p>
                 </div>
 
@@ -881,10 +950,11 @@ export default function ImageStudioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div
                   onClick={() => setSaveTarget("doodle-ilustrasi")}
-                  className={`p-3 rounded-xl border cursor-pointer transition ${saveTarget === "doodle-ilustrasi"
+                  className={`p-3 rounded-xl border cursor-pointer transition ${
+                    saveTarget === "doodle-ilustrasi"
                       ? "border-emerald-500 bg-emerald-500/10 text-white"
                       : "border-[#2E2E2E] bg-[#141414] text-slate-400 hover:text-white"
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold">Preset Doodle Ilustrasi</span>
@@ -899,10 +969,11 @@ export default function ImageStudioPage() {
 
                 <div
                   onClick={() => setSaveTarget("new")}
-                  className={`p-3 rounded-xl border cursor-pointer transition ${saveTarget === "new"
+                  className={`p-3 rounded-xl border cursor-pointer transition ${
+                    saveTarget === "new"
                       ? "border-emerald-500 bg-emerald-500/10 text-white"
                       : "border-[#2E2E2E] bg-[#141414] text-slate-400 hover:text-white"
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold">Simpan Preset Baru</span>
@@ -946,9 +1017,7 @@ export default function ImageStudioPage() {
                 </Button>
               </div>
             </div>
-
           </div>
-
         </div>
       </main>
 
@@ -963,7 +1032,8 @@ export default function ImageStudioPage() {
               <span>Daftar Preset Gaya Ilustrasi AI</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Kelola semua preset visual yang tersimpan. Anda dapat mengaktifkan, mengedit di studio, atau menghapus preset kustom.
+              Kelola semua preset visual yang tersimpan. Anda dapat mengaktifkan, mengedit di
+              studio, atau menghapus preset kustom.
             </DialogDescription>
           </DialogHeader>
 
@@ -981,31 +1051,37 @@ export default function ImageStudioPage() {
               presets.map((preset) => (
                 <div
                   key={preset.id}
-                  className={`p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${preset.is_active
+                  className={`p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                    preset.is_active
                       ? "bg-emerald-950/20 border-emerald-500/40"
                       : "bg-[#141414] border-[#2E2E2E] hover:border-surface-border"
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="w-16 h-12 rounded-lg overflow-hidden border border-[#2E2E2E] bg-black shrink-0">
                       <img
-                        src={preset.preview_image_url || preset.reference_image_url || "/storage/presets/doodle_preview.png"}
+                        src={
+                          preset.preview_image_url ||
+                          preset.reference_image_url ||
+                          "/storage/presets/doodle_preview.png"
+                        }
                         alt={preset.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white truncate">
-                          {preset.name}
-                        </span>
+                        <span className="font-bold text-sm text-white truncate">{preset.name}</span>
                         {preset.is_active && (
                           <Badge variant="supabase" className="text-[9px] px-1.5 py-0 font-mono">
                             Aktif
                           </Badge>
                         )}
                         {preset.is_builtin && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-violet-500/30 text-violet-300 font-mono">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] px-1.5 py-0 border-violet-500/30 text-violet-300 font-mono"
+                          >
                             Bawaan
                           </Badge>
                         )}

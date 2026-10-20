@@ -1,42 +1,43 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.db import get_db
-from app.core.storage import storage
 from app.core.security import decrypt_secret
-from app.models.project import Project
+from app.core.storage import storage
 from app.models.config import ModelConfig
-from app.models.storyboard import StoryboardItem
 from app.models.narration import Narration
+from app.models.project import Project
+from app.models.storyboard import StoryboardItem
 from app.schemas.storyboard import (
-    StoryboardScriptGenerateRequest,
+    StoryboardBatchGenerateRequest,
+    StoryboardCharactersUpdateRequest,
+    StoryboardContinuityBibleExtractRequest,
+    StoryboardContinuityBibleUpdateRequest,
     StoryboardItemResponse,
     StoryboardItemUpdateRequest,
-    StoryboardSingleGenerateRequest,
-    StoryboardBatchGenerateRequest,
-    YouTubeMetadataGenerateRequest,
-    YouTubeThumbnailGenerateRequest,
-    YouTubeMetadataUpdateRequest,
-    StoryboardCharactersUpdateRequest,
-    StoryboardContinuityBibleUpdateRequest,
-    StoryboardContinuityBibleExtractRequest,
+    StoryboardScriptGenerateRequest,
     StoryboardSegmentUpdateRequest,
-)
-from app.services.storyboard import (
-    generate_storyboard_script,
-    sync_storyboard_timing_from_alignment,
-    resolve_prompt_variables,
-    clean_narration_for_tts,
-    extract_storyboard_continuity_bible_from_script,
+    StoryboardSingleGenerateRequest,
+    YouTubeMetadataGenerateRequest,
+    YouTubeMetadataUpdateRequest,
+    YouTubeThumbnailGenerateRequest,
 )
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
+from app.services.storyboard import (
+    clean_narration_for_tts,
+    extract_storyboard_continuity_bible_from_script,
+    generate_storyboard_script,
+    resolve_prompt_variables,
+    sync_storyboard_timing_from_alignment,
+)
 from app.services.youtube import (
     generate_youtube_metadata,
     generate_youtube_thumbnail,
@@ -273,7 +274,7 @@ async def update_storyboard_segment(
 
     # Priority 3 (Fallback): Match positional f"seg-{idx+1}" only if no exact id match exists
     if target_idx == -1:
-        for idx, seg in enumerate(updated_segments):
+        for idx in range(len(updated_segments)):
             if f"seg-{idx+1}" == str(segment_id):
                 target_idx = idx
                 break
@@ -532,7 +533,7 @@ async def generate_all_storyboard_images(
         stmt = stmt.where(StoryboardItem.id.in_(payload.item_ids))
     else:
         # Default: process pending or failed or missing file
-        stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path == None))
+        stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path.is_(None)))
 
     stmt = stmt.order_by(StoryboardItem.order_index.asc())
     items_res = await db.execute(stmt)

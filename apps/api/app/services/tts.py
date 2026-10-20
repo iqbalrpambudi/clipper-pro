@@ -1,17 +1,18 @@
 import asyncio
 import base64
-import json
 import logging
 import re
 import time
 import uuid
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import edge_tts
 import httpx
+
 from app.core.config import get_settings
-from app.schemas.tts import VoiceInfo, CostEstimateResponse
-from app.services.scene_detector import get_video_metadata
+from app.schemas.tts import CostEstimateResponse, VoiceInfo
+
 
 async def get_audio_duration(file_path: str) -> float:
     """Accurately probe audio duration in seconds using ffprobe."""

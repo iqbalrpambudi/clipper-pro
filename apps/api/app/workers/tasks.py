@@ -1,38 +1,40 @@
 import asyncio
-import os
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-from sqlalchemy import select, delete
-from app.core.db import SessionLocal
-from app.core.storage import storage
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import delete, select
+
 from app.core.config import get_settings
-from app.models.project import Project, SourceVideo, Scene, RenderJob
-from app.models.narration import Narration, AudioTrack
-from app.models.timeline import Timeline, SubtitleStyle
-from app.models.storyboard import StoryboardItem
-from app.models.config import ModelConfig
-from app.core.security import decrypt_secret
+from app.core.db import SessionLocal
 from app.core.events import publish_project_event
-from app.services.ytdlp import download_video, get_video_info
-from app.services.scene_detector import detect_scenes, get_video_metadata
+from app.core.security import decrypt_secret
+from app.core.storage import storage
+from app.models.config import ModelConfig
+from app.models.narration import AudioTrack, Narration
+from app.models.project import Project, RenderJob, Scene, SourceVideo
+from app.models.storyboard import StoryboardItem
+from app.models.timeline import SubtitleStyle, Timeline
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
-from app.services.storyboard import sync_storyboard_timing_from_alignment, resolve_prompt_variables
-from app.services.image_gen import generate_single_image
-from app.services.vision_tagger import analyze_scenes_batch
-from app.services.tts import generate_speech_audio, estimate_tts_cost, get_audio_duration
 from app.services.alignment import align_audio_with_text
-from app.services.matching import match_scenes_to_segments
-from app.services.subtitle_ass import generate_ass_subtitles
-from app.services.renderer import render_timeline_video
-from app.services.storyboard_renderer import render_storyboard_video
 from app.services.cancellation import (
-    is_cancelled,
     TaskCancelledException,
     clear_cancellation,
+    is_cancelled,
     kill_all_matching_processes,
 )
+from app.services.image_gen import generate_single_image
+from app.services.matching import match_scenes_to_segments
+from app.services.renderer import render_timeline_video
+from app.services.scene_detector import detect_scenes, get_video_metadata
+from app.services.storyboard import resolve_prompt_variables, sync_storyboard_timing_from_alignment
+from app.services.storyboard_renderer import render_storyboard_video
+from app.services.subtitle_ass import generate_ass_subtitles
+from app.services.tts import estimate_tts_cost, generate_speech_audio, get_audio_duration
+from app.services.vision_tagger import analyze_scenes_batch
+from app.services.ytdlp import download_video, get_video_info
 
 log = logging.getLogger(__name__)
 
@@ -277,8 +279,8 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                     *[analyze_scenes_batch(adapter, batch_slice) for batch_slice in wave]
                 )
 
-                for batch_slice, batch_analysis in zip(wave, wave_results):
-                    for item, (description, tags, embedding, analysis) in zip(batch_slice, batch_analysis):
+                for batch_slice, batch_analysis in zip(wave, wave_results, strict=False):
+                    for item, (description, tags, embedding, analysis) in zip(batch_slice, batch_analysis, strict=False):
                         sc = Scene(
                             project_id=video.project_id,
                             source_video_id=video.id,
@@ -1180,7 +1182,7 @@ async def transcribe_scenes_job(
                         return_exceptions=True,
                     )
                     re_embedded = 0
-                    for s, emb in zip(updated, embeddings):
+                    for s, emb in zip(updated, embeddings, strict=False):
                         if isinstance(emb, Exception) or not emb:
                             continue
                         s.embedding = emb
@@ -1228,7 +1230,7 @@ async def generate_storyboard_images_job(
         if item_ids:
             stmt = stmt.where(StoryboardItem.id.in_(item_ids))
         else:
-            stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path == None))
+            stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path.is_(None)))
 
         stmt = stmt.order_by(StoryboardItem.order_index.asc())
         items_res = await db.execute(stmt)

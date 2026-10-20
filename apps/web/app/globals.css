@@ -93,7 +93,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2E2E2E;
+  background: #2e2e2e;
   border-radius: 4px;
 }
 
@@ -143,5 +143,5 @@ body {
 
 /* Range input styling with Supabase green */
 input[type="range"] {
-  accent-color: #3ECF8E;
+  accent-color: #3ecf8e;
 }

@@ -1,10 +1,11 @@
 import re
 import uuid
-import numpy as np
-from typing import List, Dict, Any, Optional
-from app.services.ai_adapters.base import BaseLLMAdapter
-from app.core.frame_math import snap_to_frame, sec_to_frame, frame_to_sec, COMPOSITION_FPS
+from typing import Any, Dict, List, Optional
 
+import numpy as np
+
+from app.core.frame_math import snap_to_frame
+from app.services.ai_adapters.base import BaseLLMAdapter
 
 STOPWORDS = {
     "dan", "di", "ke", "dari", "yang", "ini", "itu", "untuk", "pada", "adalah",
@@ -47,7 +48,7 @@ def build_visual_shot_windows(
     total_audio_duration_sec: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """Cluster or split narration sentence segments into continuous, balanced visual shot windows.
-    
+
     Guarantees:
     - 100% Continuous: Every window connects seamlessly to the next window (zero gap, zero audio-video drift).
     - Cuts on Pauses: Cuts between sentences happen at the pause midpoint between sentences.
@@ -97,7 +98,7 @@ def build_visual_shot_windows(
     curr_spans: List[Dict[str, Any]] = []
     w_start = 0.0
 
-    for idx, span in enumerate(seg_spans):
+    for span in seg_spans:
         dur = span["duration"]
 
         # If single sentence span is very long (> max_dur), flush current and split
@@ -309,8 +310,6 @@ async def match_scenes_to_segments(
             })
         else:
             # Scene lebih pendek dari window narasi:
-            diff = round(target_duration - safe_available_dur, 2)
-
             # Hanya bagi menjadi 2 scene jika window narasi panjang (>= 4.4s) DAN kedua potongan >= 2.2s.
             # Ini mencegah rapid micro-cuts (scene berganti terlalu cepat di tengah kalimat).
             should_split = (

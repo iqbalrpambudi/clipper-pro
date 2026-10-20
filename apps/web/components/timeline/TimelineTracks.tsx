@@ -18,9 +18,7 @@ import { Bounds, cutPoints, tlDur } from "@/lib/timeline/editOps";
 import { SCENE_DRAG_MIME, formatRuler, formatSec } from "./timelineFormat";
 
 export type SceneDropTarget =
-  | { type: "replace"; index: number }
-  | { type: "insert"; t: number }
-  | { type: "append" };
+  { type: "replace"; index: number } | { type: "insert"; t: number } | { type: "append" };
 
 interface TimelineTracksProps {
   clips: TimelineClip[];
@@ -90,10 +88,16 @@ export function TimelineTracks({
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapLine, setSnapLine] = useState<number | null>(null);
   const [dragEdge, setDragEdge] = useState<number | null>(null);
-  const [dropHover, setDropHover] = useState<{ index: number | "end"; t: number; insert: boolean } | null>(null);
+  const [dropHover, setDropHover] = useState<{
+    index: number | "end";
+    t: number;
+    insert: boolean;
+  } | null>(null);
   const [brokenThumbs, setBrokenThumbs] = useState<Record<string, boolean>>({});
   const scrubbingRef = useRef(false);
-  const dragRef = useRef<{ i: number; startX: number; orig: number; range: Bounds | null } | null>(null);
+  const dragRef = useRef<{ i: number; startX: number; orig: number; range: Bounds | null } | null>(
+    null
+  );
 
   const safeDuration = Math.max(1, duration);
   const fitPps = useCallback(
@@ -177,7 +181,6 @@ export function TimelineTracks({
     if (px < sLeft + 24 || px > sLeft + vW - 48) {
       el.scrollLeft = Math.max(0, px - (isPlaying ? 80 : vW / 3));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [time, scale, isPlaying, viewportW]);
 
   // Waveform rendering
@@ -289,7 +292,11 @@ export function TimelineTracks({
       if (snapped !== null) t = snapped;
     }
     if (d.range) t = Math.min(d.range.end, Math.max(d.range.start, t));
-    setSnapLine(snapped !== null && d.range && snapped >= d.range.start && snapped <= d.range.end ? snapped : null);
+    setSnapLine(
+      snapped !== null && d.range && snapped >= d.range.start && snapped <= d.range.end
+        ? snapped
+        : null
+    );
     onEdgeDrag(d.i, t);
   };
   const handleEdgeUp = (e: React.PointerEvent) => {
@@ -304,7 +311,8 @@ export function TimelineTracks({
   };
 
   // Scene drag & drop
-  const isSceneDrag = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes(SCENE_DRAG_MIME);
+  const isSceneDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types).includes(SCENE_DRAG_MIME);
   const handleClipDragOver = (e: React.DragEvent, index: number) => {
     if (!isSceneDrag(e)) return;
     e.preventDefault();
@@ -343,7 +351,8 @@ export function TimelineTracks({
             <Film className="w-3.5 h-3.5 text-primary" /> Tracks
           </span>
           <span className="text-[10px] text-muted-foreground hidden lg:inline">
-            Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret scene untuk ganti
+            Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret
+            scene untuk ganti
           </span>
         </div>
 
@@ -405,14 +414,23 @@ export function TimelineTracks({
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Track Headers (Left sidebar) */}
-        <div className="shrink-0 border-r border-[#2E2E2E] bg-[#161616]" style={{ width: HEADER_W }}>
+        <div
+          className="shrink-0 border-r border-[#2E2E2E] bg-[#161616]"
+          style={{ width: HEADER_W }}
+        >
           {/* Ruler header */}
-          <div style={{ height: RULER_H }} className="border-b border-[#2E2E2E] px-2 flex items-center">
+          <div
+            style={{ height: RULER_H }}
+            className="border-b border-[#2E2E2E] px-2 flex items-center"
+          >
             <span className="text-[9px] font-mono text-muted-foreground font-semibold">TIME</span>
           </div>
 
           {/* S1: Subtitle track header */}
-          <div style={{ height: S_H }} className="px-2 flex items-center justify-between border-b border-[#2E2E2E]">
+          <div
+            style={{ height: S_H }}
+            className="px-2 flex items-center justify-between border-b border-[#2E2E2E]"
+          >
             <div className="flex items-center gap-1.5">
               <Subtitles className="w-3.5 h-3.5 text-primary" />
               <span className="text-[11px] font-semibold text-foreground">S1</span>
@@ -450,7 +468,10 @@ export function TimelineTracks({
           />
 
           {/* A1: Audio track header */}
-          <div style={{ height: A_H }} className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]">
+          <div
+            style={{ height: A_H }}
+            className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]"
+          >
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
                 <Volume2 className="w-3.5 h-3.5 text-primary" /> A1
@@ -467,7 +488,7 @@ export function TimelineTracks({
               ) : null}
             </div>
             <span className="text-[9px] text-muted-foreground truncate">
-              {hasAudio && audioDuration > 0 ? (voice || "Narasi") : "Kosong"}
+              {hasAudio && audioDuration > 0 ? voice || "Narasi" : "Kosong"}
             </span>
           </div>
         </div>
@@ -484,7 +505,11 @@ export function TimelineTracks({
               onPointerUp={handleRulerUp}
             >
               {ticks.map(({ t, major }) => (
-                <div key={t} className="absolute bottom-0 pointer-events-none" style={{ left: x(t) }}>
+                <div
+                  key={t}
+                  className="absolute bottom-0 pointer-events-none"
+                  style={{ left: x(t) }}
+                >
                   <div className={`w-px ${major ? "h-2.5 bg-slate-500" : "h-1.5 bg-slate-700"}`} />
                   {major && (
                     <span className="absolute bottom-2.5 -translate-x-1/2 text-[9px] font-mono text-muted-foreground font-semibold whitespace-nowrap">
@@ -494,7 +519,10 @@ export function TimelineTracks({
                 </div>
               ))}
               {/* End of content boundary marker */}
-              <div className="absolute top-0 bottom-0 w-px bg-[#2E2E2E]" style={{ left: x(safeDuration) }} />
+              <div
+                className="absolute top-0 bottom-0 w-px bg-[#2E2E2E]"
+                style={{ left: x(safeDuration) }}
+              />
             </div>
 
             {/* S1: Subtitle karaoke track */}
@@ -521,7 +549,9 @@ export function TimelineTracks({
                       style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
                       title={seg.text}
                     >
-                      <span className="text-[9px] font-bold text-primary mr-1.5 shrink-0 font-mono">T</span>
+                      <span className="text-[9px] font-bold text-primary mr-1.5 shrink-0 font-mono">
+                        T
+                      </span>
                       <span className="text-[10px] font-medium truncate">{seg.text}</span>
                     </div>
                   );
@@ -561,7 +591,9 @@ export function TimelineTracks({
             >
               {clips.length === 0 && (
                 <div
-                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-center gap-2 text-xs transition px-4 py-2 text-center ${dropHover ? "border-brand-400 bg-brand-500/10 text-brand-200" : "border-surface-border text-slate-500"
+                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-center gap-2 text-xs transition px-4 py-2 text-center ${dropHover
+                      ? "border-brand-400 bg-brand-500/10 text-brand-200"
+                      : "border-surface-border text-slate-500"
                     }`}
                   style={{ maxWidth: Math.max(320, viewportW - 24) }}
                 >
@@ -646,7 +678,10 @@ export function TimelineTracks({
                           {idx + 1}
                         </span>
                         {isShort && width > 44 && (
-                          <AlertTriangle className="w-3 h-3 text-amber-400 drop-shadow" aria-label="Durasi pendek" />
+                          <AlertTriangle
+                            className="w-3 h-3 text-amber-400 drop-shadow"
+                            aria-label="Durasi pendek"
+                          />
                         )}
                         {sped && width > 54 && (
                           <span className="px-1 rounded bg-indigo-500/85 text-[8px] font-mono text-white flex items-center gap-0.5">
@@ -662,7 +697,9 @@ export function TimelineTracks({
                         <span className="text-[9px] text-slate-200 truncate leading-tight">
                           {width > 100 ? clip.text || "" : ""}
                         </span>
-                        <span className="text-[9px] font-mono text-white/90 shrink-0">{dur.toFixed(1)}s</span>
+                        <span className="text-[9px] font-mono text-white/90 shrink-0">
+                          {dur.toFixed(1)}s
+                        </span>
                       </div>
                     )}
 
@@ -688,7 +725,9 @@ export function TimelineTracks({
                           : "Seret untuk roll-edit titik potong"
                       }
                     >
-                      <div className={`w-1 h-7 rounded-full ${dragEdge === idx ? "bg-accent-yellow shadow-md" : "bg-white/80"}`} />
+                      <div
+                        className={`w-1 h-7 rounded-full ${dragEdge === idx ? "bg-accent-yellow shadow-md" : "bg-white/80"}`}
+                      />
                     </div>
                   </div>
                 );
@@ -725,7 +764,11 @@ export function TimelineTracks({
                   style={{ width: waveW }}
                 >
                   {peaks ? (
-                    <canvas ref={canvasRef} className="absolute inset-y-1 left-0 h-[calc(100%-8px)]" style={{ width: waveW }} />
+                    <canvas
+                      ref={canvasRef}
+                      className="absolute inset-y-1 left-0 h-[calc(100%-8px)]"
+                      style={{ width: waveW }}
+                    />
                   ) : (
                     <div className="absolute inset-0 flex items-center px-3 text-[10px] text-amber-400/70">
                       Memuat waveform audio…
@@ -782,7 +825,9 @@ export function TimelineTracks({
                 style={{ left: x(draggingClip.timeline_end), top: RULER_H + 2 }}
               >
                 #{(dragEdge ?? 0) + 1} {tlDur(draggingClip).toFixed(2)}s
-                {draggingNext ? ` | #${(dragEdge ?? 0) + 2} ${tlDur(draggingNext).toFixed(2)}s` : ""}
+                {draggingNext
+                  ? ` | #${(dragEdge ?? 0) + 2} ${tlDur(draggingNext).toFixed(2)}s`
+                  : ""}
                 {draggingClip.speed !== 1 ? ` • ${draggingClip.speed}x` : ""}
               </div>
             )}
@@ -817,7 +862,10 @@ function TrackHeader({
   sub: string;
 }) {
   return (
-    <div style={{ height }} className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]">
+    <div
+      style={{ height }}
+      className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]"
+    >
       <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
         {icon} {label}
       </span>

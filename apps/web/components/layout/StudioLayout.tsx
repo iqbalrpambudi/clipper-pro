@@ -186,14 +186,14 @@ export function StudioLayout({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${isActive
-                  ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm font-semibold"
-                  : "text-muted-foreground hover:text-white hover:bg-white/5"
-                  }`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+                  isActive
+                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+                }`}
               >
                 <Icon
-                  className={`w-3.5 h-3.5 ${isActive ? "text-[#3ECF8E]" : "text-muted-foreground"
-                    }`}
+                  className={`w-3.5 h-3.5 ${isActive ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
                 />
                 <span>{tab.label}</span>
                 {tab.badge && (

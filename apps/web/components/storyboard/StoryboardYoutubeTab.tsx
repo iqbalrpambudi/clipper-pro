@@ -19,7 +19,6 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import {
   Project,
-  StoryboardItem,
   YouTubeMetadata,
   YouTubeThumbnailHistory,
   ThumbnailTextLayer,
@@ -27,10 +26,7 @@ import {
 } from "@/types";
 import { Button, Badge } from "@/components/ui";
 
-import {
-  convertLegacyOverlayToLayers,
-  createDefaultTextLayer,
-} from "./thumbnail/thumbnailPresets";
+import { convertLegacyOverlayToLayers, createDefaultTextLayer } from "./thumbnail/thumbnailPresets";
 import { TextLayerInspector } from "./thumbnail/TextLayerInspector";
 import { PresetManager } from "./thumbnail/PresetManager";
 import { AiThumbnailGenerator } from "./thumbnail/AiThumbnailGenerator";
@@ -38,27 +34,20 @@ import { YoutubeMetadataForm } from "./thumbnail/YoutubeMetadataForm";
 import type { ThumbnailCanvasRef } from "./thumbnail/ThumbnailKonvaCanvas";
 
 // Load react-konva canvas with SSR disabled in Next.js
-const ThumbnailKonvaCanvas = dynamic(
-  () => import("./thumbnail/ThumbnailKonvaCanvas"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full aspect-video rounded-2xl bg-[#121212] border border-[#2A2A2A] flex items-center justify-center text-slate-500 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-          <span>Memuat Canvas Thumbnail...</span>
-        </div>
+const ThumbnailKonvaCanvas = dynamic(() => import("./thumbnail/ThumbnailKonvaCanvas"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full aspect-video rounded-2xl bg-[#121212] border border-[#2A2A2A] flex items-center justify-center text-slate-500 text-xs">
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+        <span>Memuat Canvas Thumbnail...</span>
       </div>
-    ),
-  }
-);
+    </div>
+  ),
+});
 
 interface StoryboardYoutubeTabProps {
-  project: Project & {
-    narration?: any;
-    audio?: any;
-    storyboard_items?: StoryboardItem[];
-  };
+  project: Project;
 }
 
 export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
@@ -109,8 +98,9 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
 
   // Sync initial metadata from project
   useEffect(() => {
-    const meta: YouTubeMetadata = (project as any).youtube_metadata || {};
-    const projectChanged = lastProjectIdRef.current !== "" && lastProjectIdRef.current !== currentProjectId;
+    const meta: YouTubeMetadata = project.youtube_metadata || {};
+    const projectChanged =
+      lastProjectIdRef.current !== "" && lastProjectIdRef.current !== currentProjectId;
     const isMetaEmpty = !meta.title && !meta.description && (!meta.tags || meta.tags.length === 0);
 
     if (projectChanged || isMetaEmpty) {
@@ -128,7 +118,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       if (meta.tags && !tagsInput) setTagsInput(meta.tags.join(", "));
       if (meta.thumbnail_prompt && !thumbnailPrompt) setThumbnailPrompt(meta.thumbnail_prompt);
       if (meta.thumbnail_url && !thumbnailUrl) setThumbnailUrl(meta.thumbnail_url);
-      if (meta.thumbnail_history && thumbnailHistory.length === 0) setThumbnailHistory(meta.thumbnail_history);
+      if (meta.thumbnail_history && thumbnailHistory.length === 0)
+        setThumbnailHistory(meta.thumbnail_history);
       if (meta.title_options && titleOptions.length === 0) setTitleOptions(meta.title_options);
       if (meta.thumbnail_concept && !thumbnailConcept) setThumbnailConcept(meta.thumbnail_concept);
     }
@@ -166,16 +157,16 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   }, [project.id]);
 
   // Continuity Context for Character, Location & Era Consistency
-  const characters = (project as any).characters || [];
+  const characters = project.characters || [];
   const mainChar = characters[0];
   const mainCharToken = mainChar ? `[char:${mainChar.id}]` : "the main character";
-  const mainCharName = mainChar?.name || (project.name || "Protagonist");
+  const mainCharName = mainChar?.name || project.name || "Protagonist";
 
-  const locations = (project as any).locations || [];
+  const locations = project.locations || [];
   const mainLoc = locations[0];
   const mainLocToken = mainLoc ? `[loc:${mainLoc.id}]` : "the iconic story location";
 
-  const worldSetting = (project as any).world_setting || {};
+  const worldSetting = project.world_setting || {};
   const era = worldSetting.era || "";
   const eraStr = era ? `in the era of ${era}` : "";
 
@@ -271,7 +262,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Metadata YouTube (Judul, Deskripsi & Tag) berhasil digenerate!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengenerate metadata YouTube", "error");
     },
   });
@@ -288,7 +279,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Thumbnail 16:9 viral berhasil dibuat!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengenerate gambar thumbnail", "error");
     },
   });
@@ -334,16 +325,14 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Perubahan thumbnail & metadata YouTube berhasil disimpan!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan metadata", "error");
     },
   });
 
   // Layer Operations
   const handleUpdateLayer = (layerId: string, updates: Partial<ThumbnailTextLayer>) => {
-    setLayers((prev) =>
-      prev.map((l) => (l.id === layerId ? { ...l, ...updates } : l))
-    );
+    setLayers((prev) => prev.map((l) => (l.id === layerId ? { ...l, ...updates } : l)));
   };
 
   const handleAddLayer = (newLayer: ThumbnailTextLayer) => {
@@ -477,7 +466,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   };
 
   // Video duration string for YouTube badge
-  const audio = (project as any).audio || (project as any).audio_track;
+  const audio = project.audio || project.audio_track;
   const durationSec = Math.round(audio?.duration || 0);
   const formatBadgeDuration = (sec: number) => {
     if (!sec) return "04:30";
@@ -508,7 +497,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
             YouTube Video & Thumbnail Canvas Studio
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Editor teks kanvas bebas ala Photoshop: atur teks layer, jenis font, outline, box highlight, rotasi, dan preset viral.
+            Editor teks kanvas bebas ala Photoshop: atur teks layer, jenis font, outline, box
+            highlight, rotasi, dan preset viral.
           </p>
         </div>
 
@@ -644,7 +634,9 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               </div>
 
               <div className="text-[10px] text-muted-foreground font-mono">
-                {selectedLayerId ? "🎯 Layer Terpilih Aktif" : "💡 Klik teks di kanvas untuk mengedit"}
+                {selectedLayerId
+                  ? "🎯 Layer Terpilih Aktif"
+                  : "💡 Klik teks di kanvas untuk mengedit"}
               </div>
             </div>
           </div>

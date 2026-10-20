@@ -37,7 +37,7 @@ export function useCreateProject() {
       const mode = newProj.project_type === "long_storyboard" ? "storyboard" : "short";
       router.push(`/project/${mode}/${newProj.id}`);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membuat project", "error");
     },
   });
@@ -64,7 +64,7 @@ export function useDeleteProject() {
 
       return { previousProjects };
     },
-    onError: (err: any, _id, context) => {
+    onError: (err: Error, _id, context) => {
       if (context?.previousProjects) {
         queryClient.setQueryData(projectKeys.all, context.previousProjects);
       }
@@ -89,16 +89,26 @@ export function useUpdateProject() {
       data,
     }: {
       id: string;
-      data: Partial<Pick<Project, "name" | "description" | "project_type" | "aspect_ratio" | "resolution" | "background_fill" | "language">>;
+      data: Partial<
+        Pick<
+          Project,
+          | "name"
+          | "description"
+          | "project_type"
+          | "aspect_ratio"
+          | "resolution"
+          | "background_fill"
+          | "language"
+        >
+      >;
     }) => api.updateProject(id, data),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
       showToast("Project berhasil diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui project", "error");
     },
   });
 }
-

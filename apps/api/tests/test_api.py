@@ -1,8 +1,10 @@
-import pytest
 from typing import Optional
-from app.services.subtitle_ass import hex_to_ass_color, ms_to_ass_time, generate_ass_subtitles
-from app.services.tts import estimate_tts_cost
+
+import pytest
+
 from app.services.narrative import split_into_sentence_segments
+from app.services.subtitle_ass import generate_ass_subtitles, hex_to_ass_color, ms_to_ass_time
+from app.services.tts import estimate_tts_cost
 
 
 def test_hex_to_ass_color():
@@ -355,8 +357,8 @@ def test_storage_render_deletion(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_gemini_tts_missing_key_throws_error(tmp_path, monkeypatch):
-    from app.services.tts import generate_gemini_tts
     from app.core.config import get_settings
+    from app.services.tts import generate_gemini_tts
 
     # Empty API keys
     settings = get_settings()
@@ -392,8 +394,9 @@ def test_split_text_for_tts():
 
 @pytest.mark.asyncio
 async def test_gemini_tts_payload_structure_omits_temperature(tmp_path, monkeypatch):
-    from app.services.tts import generate_gemini_tts
     import httpx
+
+    from app.services.tts import generate_gemini_tts
 
     captured_payload = {}
 
@@ -447,8 +450,8 @@ def test_build_master_scriptwriting_directive_includes_parameters():
 
 @pytest.mark.asyncio
 async def test_generate_narration_script_injects_parameters_into_master_prompt():
-    from app.services.narrative import generate_narration_script
     from app.services.ai_adapters.base import BaseLLMAdapter
+    from app.services.narrative import generate_narration_script
 
     captured_args = {}
 
@@ -520,8 +523,9 @@ def test_hash_embedding_deterministic_unit_norm():
 
 
 def test_timeline_schemas_has_audio_and_subtitles():
-    from app.schemas.timeline import TimelineResponse, TimelineUpdateRequest
     import uuid
+
+    from app.schemas.timeline import TimelineResponse, TimelineUpdateRequest
 
     req = TimelineUpdateRequest(clips=[], total_duration=0.0, has_audio=False, has_subtitles=False)
     assert req.has_audio is False
@@ -540,8 +544,9 @@ def test_timeline_schemas_has_audio_and_subtitles():
 
 
 def test_timeline_model_defaults():
-    from app.models.timeline import Timeline
     import uuid
+
+    from app.models.timeline import Timeline
 
     t = Timeline(project_id=str(uuid.uuid4()))
     assert t.has_audio is True
@@ -551,8 +556,8 @@ def test_timeline_model_defaults():
 
 
 def test_watermark_filter_builder(tmp_path):
-    from app.services.renderer import _build_watermark_filter
     from app.schemas.project import WatermarkSchema
+    from app.services.renderer import _build_watermark_filter
 
     wm = WatermarkSchema(
         enabled=True,
@@ -599,6 +604,7 @@ def test_watermark_filter_builder(tmp_path):
         offset_y=25,
     ).model_dump()
     img_filter_str = _build_watermark_filter(wm_img, tmp_path, video_w=1920, video_h=1080)
+    assert img_filter_str is not None
     # Test center-left, center-right, and custom drag position
     wm_custom = WatermarkSchema(
         enabled=True,
@@ -625,7 +631,8 @@ def test_watermark_filter_builder(tmp_path):
 
 @pytest.mark.asyncio
 async def test_project_watermark_update():
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from app.main import app
 
     transport = ASGITransport(app=app)
@@ -718,7 +725,7 @@ def test_tts_generate_request_accepts_model():
 
 
 def test_edge_tts_normalization():
-    from app.services.tts import _normalize_edge_rate, _normalize_edge_pitch
+    from app.services.tts import _normalize_edge_pitch, _normalize_edge_rate
 
     assert _normalize_edge_rate("10%") == "+10%"
     assert _normalize_edge_rate("-10%") == "-10%"
@@ -735,7 +742,11 @@ def test_edge_tts_normalization():
 
 @pytest.mark.asyncio
 async def test_alignment_empty_segments_safe():
-    from app.services.alignment import align_audio_with_text, sequence_anchored_forced_alignment, _align_fallback
+    from app.services.alignment import (
+        _align_fallback,
+        align_audio_with_text,
+        sequence_anchored_forced_alignment,
+    )
 
     assert await align_audio_with_text("/dummy/path.mp3", [], 10.0) == []
     assert await align_audio_with_text("/dummy/path.mp3", None, 10.0) == []
@@ -806,10 +817,11 @@ async def test_generate_speech_audio_fallback_enabled_uses_edge(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_trigger_final_render_resolution(monkeypatch):
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
-    from app.core.db import engine
+    from httpx import ASGITransport, AsyncClient
+
     import app.api.v1.render as render_module
+    from app.core.db import engine
+    from app.main import app
     async def mock_enqueue(job_id):
         pass
     monkeypatch.setattr(render_module, "enqueue_render_task", mock_enqueue)
@@ -1097,8 +1109,9 @@ def test_build_chapter_expansion_prompt_targets():
 
 def test_storyboard_item_response_cache_busting():
     from datetime import datetime
-    from app.models.storyboard import StoryboardItem
+
     from app.api.v1.storyboard import _item_to_response
+    from app.models.storyboard import StoryboardItem
 
     now = datetime(2026, 10, 17, 15, 0, 0)
     item = StoryboardItem(
@@ -1134,8 +1147,8 @@ def test_youtube_timestamp_formatting():
 def test_youtube_schemas_validation():
     from app.schemas.storyboard import (
         YouTubeMetadataGenerateRequest,
-        YouTubeThumbnailGenerateRequest,
         YouTubeMetadataUpdateRequest,
+        YouTubeThumbnailGenerateRequest,
     )
 
     req1 = YouTubeMetadataGenerateRequest(focus_angle="curiosity_gap", custom_prompt="Buat judul dramatis")
@@ -1177,12 +1190,11 @@ async def test_run_ffmpeg_and_render_timeouts():
 
 @pytest.mark.asyncio
 async def test_character_consistency_bible():
-    from app.services.storyboard import (
-        build_storyboard_outline_prompt,
-        build_chapter_expansion_prompt,
-        build_storyboard_prompt,
-    )
     from app.schemas.storyboard import StoryboardCharactersUpdateRequest
+    from app.services.storyboard import (
+        build_chapter_expansion_prompt,
+        build_storyboard_outline_prompt,
+    )
 
     # 1. Test outline prompt includes Character Bible instructions
     sys_p, usr_p = build_storyboard_outline_prompt(
@@ -1235,13 +1247,13 @@ async def test_character_consistency_bible():
 
 
 def test_multilingual_script_and_storyboard_directives():
+    from app.schemas.project import ProjectCreate, ProjectUpdate
     from app.services.narrative import build_master_scriptwriting_directive
     from app.services.storyboard import (
-        build_storyboard_outline_prompt,
         build_chapter_expansion_prompt,
+        build_storyboard_outline_prompt,
     )
     from app.services.tts import AVAILABLE_VOICES
-    from app.schemas.project import ProjectCreate, ProjectUpdate
 
     # 1. Test short-form narrative directive in EN vs ID
     en_directive = build_master_scriptwriting_directive(
@@ -1314,11 +1326,12 @@ def test_multilingual_script_and_storyboard_directives():
 @pytest.mark.asyncio
 async def test_update_storyboard_segment_no_index_collision():
     """Ensure updating a segment with ID 'seg-2' located at index 9 does NOT collide with index 1 (seg-1_2)."""
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
+    from httpx import ASGITransport, AsyncClient
+
     from app.core.db import SessionLocal
-    from app.models.project import Project
+    from app.main import app
     from app.models.narration import Narration
+    from app.models.project import Project
     from app.models.storyboard import StoryboardItem
 
     transport = ASGITransport(app=app)
@@ -1579,9 +1592,10 @@ def test_clean_narration_for_tts_and_punctuation():
 
 @pytest.mark.asyncio
 async def test_continuity_bible_api_endpoints():
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
+    from httpx import ASGITransport, AsyncClient
+
     from app.core.db import SessionLocal, engine
+    from app.main import app
     from app.models.project import Project
     from app.models.storyboard import StoryboardItem
 
@@ -1674,12 +1688,13 @@ async def test_continuity_bible_api_endpoints():
 async def test_extract_continuity_bible_from_script():
     import json
     from unittest.mock import AsyncMock, patch
-    from sqlalchemy import select
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
+
+    from httpx import ASGITransport, AsyncClient
+
     from app.core.db import SessionLocal, engine
-    from app.models.project import Project
+    from app.main import app
     from app.models.narration import Narration
+    from app.models.project import Project
     from app.models.storyboard import StoryboardItem
 
     await engine.dispose()
@@ -1804,6 +1819,7 @@ async def test_extract_continuity_bible_from_script():
 def test_strip_bars_and_ensure_16_9_letterbox():
     import cv2
     import numpy as np
+
     from app.services.image_gen import strip_bars_and_ensure_16_9
 
     # Image with black letterbox bars top and bottom
@@ -1821,6 +1837,7 @@ def test_strip_bars_and_ensure_16_9_letterbox():
 def test_strip_bars_and_ensure_16_9_white_bars():
     import cv2
     import numpy as np
+
     from app.services.image_gen import strip_bars_and_ensure_16_9
 
     # Image with white bars top and bottom
@@ -1838,6 +1855,7 @@ def test_strip_bars_and_ensure_16_9_white_bars():
 def test_strip_bars_and_ensure_16_9_square_crop():
     import cv2
     import numpy as np
+
     from app.services.image_gen import strip_bars_and_ensure_16_9
 
     # Square image 1024x1024
@@ -1853,6 +1871,7 @@ def test_strip_bars_and_ensure_16_9_square_crop():
 def test_strip_bars_and_ensure_16_9_pillarbox():
     import cv2
     import numpy as np
+
     from app.services.image_gen import strip_bars_and_ensure_16_9
 
     # Pillarbox (black bars on left and right)

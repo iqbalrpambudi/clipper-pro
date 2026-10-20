@@ -18,7 +18,7 @@ import {
   Maximize2,
   Move,
 } from "lucide-react";
-import { SentenceSegment, TimelineClip, SubtitleStyle, WatermarkConfig } from "@/types";
+import { SentenceSegment, TimelineClip, SubtitleStyle, WatermarkConfig, JassubInstance, BackgroundFill } from "@/types";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 import {
@@ -48,14 +48,7 @@ interface TimelineMonitorProps {
   segments: SentenceSegment[];
   subtitleStyle?: SubtitleStyle | null;
   aspectRatio: string;
-  backgroundFill?: {
-    mode?: "blur" | "black" | "cover" | "custom";
-    color?: string;
-    zoom?: number;
-    anti_copyright?: boolean;
-    dynamic_zoom?: boolean;
-    color_grading?: boolean;
-  };
+  backgroundFill?: Partial<BackgroundFill> | null;
   bgMode?: string;
   time: number;
   seekRequest: SeekRequest;
@@ -114,7 +107,7 @@ export function TimelineMonitor({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const blurCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const jassubRef = useRef<any>(null);
+  const jassubRef = useRef<JassubInstance | null>(null);
   const thumbnailImgCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const activeVideoSlot = useRef<0 | 1>(0);
@@ -138,7 +131,12 @@ export function TimelineMonitor({
   cbRef.current = { onTimeChange, onPlayingChange };
 
   // Dragging state for subtitle position
-  const dragStartPos = useRef<{ x: number; y: number; initialOffsetX: number; initialOffsetY: number }>({
+  const dragStartPos = useRef<{
+    x: number;
+    y: number;
+    initialOffsetX: number;
+    initialOffsetY: number;
+  }>({
     x: 0,
     y: 0,
     initialOffsetX: 0,
@@ -240,15 +238,20 @@ export function TimelineMonitor({
       const dynamicZoom = antiCopyright ? (backgroundFill?.dynamic_zoom ?? true) : false;
       const colorGrading = antiCopyright ? (backgroundFill?.color_grading ?? true) : false;
 
-      const clipIdx = clips.findIndex((c) => timeSec >= c.timeline_start && timeSec < c.timeline_end);
-      const activeIdx = clipIdx !== -1 ? clipIdx : timeSec >= duration ? Math.max(0, clips.length - 1) : 0;
+      const clipIdx = clips.findIndex(
+        (c) => timeSec >= c.timeline_start && timeSec < c.timeline_end
+      );
+      const activeIdx =
+        clipIdx !== -1 ? clipIdx : timeSec >= duration ? Math.max(0, clips.length - 1) : 0;
       const curClip = clips[activeIdx];
       const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
 
       // Video is drawable if it has valid dimensions and metadata loaded (readyState >= 1).
       // Even during an ongoing seek, readyState can be 1 while still holding the current frame buffer.
       // Checking readyState >= 1 prevents falling back to the poster thumbnail, eliminating all flicker/blink!
-      const isVideoReady = Boolean(activeVid && activeVid.videoWidth > 0 && activeVid.readyState >= 1);
+      const isVideoReady = Boolean(
+        activeVid && activeVid.videoWidth > 0 && activeVid.readyState >= 1
+      );
 
       // Always resolve and cache clip thumbnail for immediate poster rendering
       let thumbImg: HTMLImageElement | undefined = undefined;
@@ -291,7 +294,12 @@ export function TimelineMonitor({
         ctx.filter = "blur(12px) brightness(0.70)";
         ctx.drawImage(bCanvas, -25, -25, cW + 50, cH + 50);
         ctx.restore();
-      } else if (fillMode === "blur" && thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+      } else if (
+        fillMode === "blur" &&
+        thumbImg &&
+        thumbImg.complete &&
+        thumbImg.naturalWidth > 0
+      ) {
         ctx.save();
         ctx.filter = "blur(30px) brightness(0.70)";
         ctx.drawImage(thumbImg, -25, -25, cW + 50, cH + 50);
@@ -335,7 +343,7 @@ export function TimelineMonitor({
             destY = (cH - destH) / 2;
           } else {
             destH = cH * userZoom;
-            destW = (cH * videoAspect) * userZoom;
+            destW = cH * videoAspect * userZoom;
             destX = (cW - destW) / 2;
             destY = (cH - destH) / 2;
           }
@@ -391,7 +399,7 @@ export function TimelineMonitor({
             destY = (cH - destH) / 2;
           } else {
             destH = cH * userZoom;
-            destW = (cH * videoAspect) * userZoom;
+            destW = cH * videoAspect * userZoom;
             destX = (cW - destW) / 2;
             destY = (cH - destH) / 2;
           }
@@ -651,7 +659,8 @@ export function TimelineMonitor({
       const newIdx = clips.findIndex(
         (c) => curTime >= c.timeline_start && curTime < c.timeline_end
       );
-      const validIdx = newIdx !== -1 ? newIdx : curTime >= duration ? Math.max(0, clips.length - 1) : 0;
+      const validIdx =
+        newIdx !== -1 ? newIdx : curTime >= duration ? Math.max(0, clips.length - 1) : 0;
 
       if (validIdx !== currentClipIndexRef.current && validIdx < clips.length) {
         const nextSlot = (activeVideoSlot.current === 0 ? 1 : 0) as 0 | 1;
@@ -750,7 +759,6 @@ export function TimelineMonitor({
   useEffect(() => {
     let mounted = true;
     let canvasEl: HTMLCanvasElement | null = null;
-    let jassubInstance: any = null;
 
     async function initJassub() {
       if (!canvasContainerRef.current) return;
@@ -774,16 +782,11 @@ export function TimelineMonitor({
 
         const refResX = aspectRatio === "16:9" ? 1920 : 1080;
         const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-        const initialAss = generateAssSubtitles(
-          segments,
-          subtitleStyle || {},
-          refResX,
-          refResY
-        );
+        const initialAss = generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY);
 
         const baseUrl = window.location.origin;
 
-        jassubInstance = new JASSUB({
+        const instance = new JASSUB({
           canvas: canvasEl,
           subContent: initialAss,
           workerUrl: `${baseUrl}/jassub/jassub-worker.js`,
@@ -804,25 +807,25 @@ export function TimelineMonitor({
           debug: false,
         });
 
-        await jassubInstance.ready;
+        await instance.ready;
 
         if (!mounted) {
           try {
-            jassubInstance.destroy();
+            instance.destroy();
           } catch {}
           return;
         }
 
-        jassubRef.current = jassubInstance;
+        jassubRef.current = instance;
         setIsJassubReady(true);
 
-        jassubInstance.manualRender({
+        instance.manualRender({
           expectedDisplayTime: performance.now(),
           width: canvasWidth,
           height: canvasHeight,
           mediaTime: currentTimeRef.current,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[Timeline JASSUB] initialization failed:", err);
         setIsJassubReady(false);
       }
@@ -849,12 +852,10 @@ export function TimelineMonitor({
     try {
       const refResX = aspectRatio === "16:9" ? 1920 : 1080;
       const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-      const newAss = subtitleStyle?.enabled !== false ? generateAssSubtitles(
-        segments,
-        subtitleStyle || {},
-        refResX,
-        refResY
-      ) : "";
+      const newAss =
+        subtitleStyle?.enabled !== false
+          ? generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY)
+          : "";
       if (jassubRef.current.renderer?.setTrack) {
         jassubRef.current.renderer.setTrack(newAss);
       }
@@ -889,7 +890,10 @@ export function TimelineMonitor({
 
   const fontBaseSize = subtitleStyle?.font_size || 56;
   const scaledFontSize = Math.max(6, Number((fontBaseSize * scale).toFixed(2)));
-  const scaledOutlineWidth = Math.max(0.5, Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2)));
+  const scaledOutlineWidth = Math.max(
+    0.5,
+    Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2))
+  );
   const scaledOffsetY = Math.round((subtitleStyle?.offset_y || 0) * scaleY);
   const scaledOffsetX = Math.round((subtitleStyle?.offset_x || 0) * scale);
   const boxOpacity = subtitleStyle?.box_opacity ?? 0.0;
@@ -904,7 +908,11 @@ export function TimelineMonitor({
   if (segWords.length > 0) {
     activeWordIndex = segWords.findIndex((w) => curMs >= w.start_ms && curMs <= w.end_ms + 180);
     // Smooth hold across small inter-word pause within segment (up to 300ms pause)
-    if (activeWordIndex === -1 && curMs >= segWords[0].start_ms && curMs <= segWords[segWords.length - 1].end_ms + 300) {
+    if (
+      activeWordIndex === -1 &&
+      curMs >= segWords[0].start_ms &&
+      curMs <= segWords[segWords.length - 1].end_ms + 300
+    ) {
       for (let i = segWords.length - 1; i >= 0; i--) {
         if (curMs >= segWords[i].start_ms) {
           const nextW = segWords[i + 1];
@@ -919,16 +927,18 @@ export function TimelineMonitor({
   }
 
   const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
-  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] = [];
+  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] =
+    [];
   if (subtitleStyle?.display_mode === "burst" && segWords.length > 0) {
     for (let i = 0; i < segWords.length; i += burstCount) {
       const group = segWords.slice(i, i + burstCount);
       const gStart = group[0].start_ms;
       const gEnd = group[group.length - 1].end_ms;
       const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd = nextSlice.length > 0
-        ? Math.min(nextSlice[0].start_ms, gEnd + 350)
-        : Math.min((activeSegment?.end_ms ?? gEnd + 350), gEnd + 350);
+      const maxGEnd =
+        nextSlice.length > 0
+          ? Math.min(nextSlice[0].start_ms, gEnd + 350)
+          : Math.min(activeSegment?.end_ms ?? gEnd + 350, gEnd + 350);
 
       if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item, localIdx) => ({
@@ -990,14 +1000,28 @@ export function TimelineMonitor({
         playsInline
         muted
         preload="auto"
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+        style={{
+          position: "absolute",
+          opacity: 0,
+          pointerEvents: "none",
+          width: "1px",
+          height: "1px",
+          zIndex: -100,
+        }}
       />
       <video
         ref={videoRefB}
         playsInline
         muted
         preload="auto"
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+        style={{
+          position: "absolute",
+          opacity: 0,
+          pointerEvents: "none",
+          width: "1px",
+          height: "1px",
+          zIndex: -100,
+        }}
       />
 
       {/* Video display canvas container */}
@@ -1038,14 +1062,22 @@ export function TimelineMonitor({
             <div
               className="absolute left-0 right-0 z-20 px-4 flex justify-center text-center select-none pointer-events-none"
               style={{
-                top: subtitleStyle?.position === "top" ? "9.375%" : subtitleStyle?.position === "center" ? "50%" : undefined,
-                bottom: subtitleStyle?.position === "bottom" || !subtitleStyle?.position ? "11.45%" : undefined,
+                top:
+                  subtitleStyle?.position === "top"
+                    ? "9.375%"
+                    : subtitleStyle?.position === "center"
+                      ? "50%"
+                      : undefined,
+                bottom:
+                  subtitleStyle?.position === "bottom" || !subtitleStyle?.position
+                    ? "11.45%"
+                    : undefined,
                 transform: `translate(${scaledOffsetX}px, ${
                   subtitleStyle?.position === "center"
                     ? `calc(-50% + ${scaledOffsetY}px)`
                     : subtitleStyle?.position === "bottom"
-                    ? `${-scaledOffsetY}px`
-                    : `${scaledOffsetY}px`
+                      ? `${-scaledOffsetY}px`
+                      : `${scaledOffsetY}px`
                 })`,
               }}
             >
@@ -1059,7 +1091,8 @@ export function TimelineMonitor({
                       color: subtitleStyle?.primary_color || "#FFFFFF",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
                       textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
-                      backgroundColor: boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
+                      backgroundColor:
+                        boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
                       padding: boxOpacity > 0.05 ? "2px 8px" : "0",
                       borderRadius: "4px",
                     }}
@@ -1069,7 +1102,9 @@ export function TimelineMonitor({
                       <span
                         key={idx}
                         style={{
-                          color: w.isActive ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
+                          color: w.isActive
+                            ? subtitleStyle?.highlight_color || "#FFE600"
+                            : subtitleStyle?.primary_color || "#FFFFFF",
                           transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
                           transition: "all 0.08s ease-out",
                           display: "inline-block",
@@ -1087,11 +1122,14 @@ export function TimelineMonitor({
                       fontSize: `${scaledFontSize}px`,
                       fontFamily: `"${subtitleStyle?.font_family || "Poppins"}", sans-serif`,
                       fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 600,
-                      color: isHighlightEnabled ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
+                      color: isHighlightEnabled
+                        ? subtitleStyle?.highlight_color || "#FFE600"
+                        : subtitleStyle?.primary_color || "#FFFFFF",
                       WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
                       textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
                       transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
-                      backgroundColor: boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
+                      backgroundColor:
+                        boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
                       padding: boxOpacity > 0.05 ? "2px 8px" : "0",
                       borderRadius: "4px",
                       display: "inline-block",
@@ -1110,7 +1148,8 @@ export function TimelineMonitor({
                     color: subtitleStyle?.primary_color || "#FFFFFF",
                     WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
                     textShadow: `0 2px 4px rgba(0,0,0,0.8)`,
-                    backgroundColor: boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
+                    backgroundColor:
+                      boxOpacity > 0.05 ? subtitleStyle?.box_color || "#000000" : "transparent",
                     padding: boxOpacity > 0.05 ? "2px 8px" : "0",
                     borderRadius: "4px",
                   }}
@@ -1123,7 +1162,9 @@ export function TimelineMonitor({
                           <span
                             key={i}
                             style={{
-                              color: isActive ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
+                              color: isActive
+                                ? subtitleStyle?.highlight_color || "#FFE600"
+                                : subtitleStyle?.primary_color || "#FFFFFF",
                               transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
                               transition: "all 0.08s ease-out",
                               display: "inline-block",
@@ -1148,14 +1189,22 @@ export function TimelineMonitor({
               onPointerUp={handlePointerUp}
               className="absolute left-4 right-4 z-30 flex justify-center text-center select-none cursor-move group"
               style={{
-                top: subtitleStyle?.position === "top" ? "9.375%" : subtitleStyle?.position === "center" ? "50%" : undefined,
-                bottom: subtitleStyle?.position === "bottom" || !subtitleStyle?.position ? "11.45%" : undefined,
+                top:
+                  subtitleStyle?.position === "top"
+                    ? "9.375%"
+                    : subtitleStyle?.position === "center"
+                      ? "50%"
+                      : undefined,
+                bottom:
+                  subtitleStyle?.position === "bottom" || !subtitleStyle?.position
+                    ? "11.45%"
+                    : undefined,
                 transform: `translate(${scaledOffsetX}px, ${
                   subtitleStyle?.position === "center"
                     ? `calc(-50% + ${scaledOffsetY}px)`
                     : subtitleStyle?.position === "bottom"
-                    ? `${-scaledOffsetY}px`
-                    : `${scaledOffsetY}px`
+                      ? `${-scaledOffsetY}px`
+                      : `${scaledOffsetY}px`
                 })`,
               }}
             >
@@ -1180,7 +1229,9 @@ export function TimelineMonitor({
             <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none z-30">
               <span className="px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white font-mono shadow backdrop-blur-xs border border-white/10">
                 #{activeClipIdx + 1}
-                {activeClip.speed && Math.abs(activeClip.speed - 1) > 0.02 ? ` • ${activeClip.speed}x` : ""}
+                {activeClip.speed && Math.abs(activeClip.speed - 1) > 0.02
+                  ? ` • ${activeClip.speed}x`
+                  : ""}
               </span>
               {!isPlaying && (
                 <span className="px-1.5 py-0.5 rounded bg-black/80 text-primary border border-primary/30 text-[10px] font-mono font-bold shadow backdrop-blur-xs">
@@ -1258,7 +1309,11 @@ export function TimelineMonitor({
             title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
             id="timeline-monitor-play"
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />}
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5 fill-current" />
+            ) : (
+              <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />
+            )}
           </button>
 
           <TransportBtn title="Maju 1 frame (→)" onClick={() => onStep(1)}>
@@ -1289,7 +1344,11 @@ export function TimelineMonitor({
             title={isMuted ? "Unmute audio narasi" : "Mute audio narasi"}
             onClick={() => setIsMuted((m) => !m)}
           >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-destructive" /> : <Volume2 className="w-3.5 h-3.5" />}
+            {isMuted ? (
+              <VolumeX className="w-3.5 h-3.5 text-destructive" />
+            ) : (
+              <Volume2 className="w-3.5 h-3.5" />
+            )}
           </TransportBtn>
 
           {/* Preview Resolution Quality Selector */}

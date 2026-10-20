@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
 from app.core.storage import storage
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project, Scene, SourceVideo
-from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline
-from app.schemas.timeline import TimelineUpdateRequest, TimelineResponse
+from app.schemas.timeline import TimelineResponse, TimelineUpdateRequest
 from app.services.ai_adapters.factory import get_active_llm_adapter
 from app.services.matching import match_scenes_to_segments
 

@@ -26,13 +26,8 @@ interface GlobalTaskIndicatorProps {
 }
 
 export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
-  const {
-    activeTask,
-    tasksByProject,
-    currentProjectId,
-    setActiveTask,
-    showToast,
-  } = useStudioStore();
+  const { activeTask, tasksByProject, currentProjectId, setActiveTask, showToast } =
+    useStudioStore();
 
   const [showDetails, setShowDetails] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -41,7 +36,8 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
   // Resolve the task scoped to the active project
   const targetProjectId = projectId || currentProjectId;
   const currentTask = targetProjectId
-    ? (tasksByProject[targetProjectId] ?? (activeTask?.project_id === targetProjectId ? activeTask : null))
+    ? (tasksByProject[targetProjectId] ??
+      (activeTask?.project_id === targetProjectId ? activeTask : null))
     : activeTask;
 
   // Check if there are background tasks running in other projects
@@ -74,17 +70,19 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
     if (!currentTask || isCancelling) return;
     setIsCancelling(true);
     try {
-      if (currentTask.task_type === "youtube_download" && currentTask.data?.video_id) {
-        await api.cancelMedia(currentTask.project_id, currentTask.data.video_id);
-      } else if (currentTask.task_type === "render" && currentTask.data?.job_id) {
-        await api.cancelRenderJob(currentTask.project_id, currentTask.data.job_id);
+      const vidId = typeof currentTask.data?.video_id === "string" ? currentTask.data.video_id : undefined;
+      const jobId = typeof currentTask.data?.job_id === "string" ? currentTask.data.job_id : undefined;
+      if (currentTask.task_type === "youtube_download" && vidId) {
+        await api.cancelMedia(currentTask.project_id, vidId);
+      } else if (currentTask.task_type === "render" && jobId) {
+        await api.cancelRenderJob(currentTask.project_id, jobId);
       } else {
         await api.cancelProjectTasks(currentTask.project_id);
       }
       showToast("Sinyal pembatalan dikirim ke worker...", "info");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Gagal membatalkan task:", err);
-      showToast(err.message || "Gagal membatalkan task", "error");
+      showToast(err instanceof Error ? err.message : "Gagal membatalkan task", "error");
     } finally {
       setIsCancelling(false);
     }
@@ -190,8 +188,8 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
           isError
             ? "bg-[#181315] border-rose-500/30 shadow-rose-950/20"
             : isSuccess
-            ? "bg-[#121915] border-[#3ECF8E]/30 shadow-emerald-950/20"
-            : "bg-[#1C1C1C]/95 border-[#2E2E2E] shadow-black/40"
+              ? "bg-[#121915] border-[#3ECF8E]/30 shadow-emerald-950/20"
+              : "bg-[#1C1C1C]/95 border-[#2E2E2E] shadow-black/40"
         }`}
       >
         {/* Header Row */}
@@ -203,8 +201,8 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                 isError
                   ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
                   : isSuccess
-                  ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/30 text-[#3ECF8E]"
-                  : "bg-[#242424] border-[#2E2E2E] text-[#3ECF8E]"
+                    ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/30 text-[#3ECF8E]"
+                    : "bg-[#242424] border-[#2E2E2E] text-[#3ECF8E]"
               }`}
             >
               {isError ? (
@@ -278,7 +276,11 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                 className="h-6 px-2 text-[10px] font-medium rounded border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 flex items-center gap-1 transition-colors"
               >
                 <span>Detail</span>
-                {showDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {showDetails ? (
+                  <ChevronUp className="w-3 h-3" />
+                ) : (
+                  <ChevronDown className="w-3 h-3" />
+                )}
               </button>
             )}
 
@@ -313,7 +315,10 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
           <div className="mt-2.5">
             <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-1">
               <span className="truncate max-w-[240px]">
-                Tahap: <span className="text-foreground font-sans font-medium">{currentTask.stage || "processing"}</span>
+                Tahap:{" "}
+                <span className="text-foreground font-sans font-medium">
+                  {currentTask.stage || "processing"}
+                </span>
               </span>
               <span className="font-bold text-[#3ECF8E]">{currentTask.progress}%</span>
             </div>
@@ -348,13 +353,10 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
               <Layers className="w-3 h-3 text-[#3ECF8E]" />
               <span>Project lain di background:</span>
             </span>
-            <span className="text-[#3ECF8E] font-semibold">
-              {otherProjectsCount} job berjalan
-            </span>
+            <span className="text-[#3ECF8E] font-semibold">{otherProjectsCount} job berjalan</span>
           </div>
         )}
       </div>
     </div>
   );
 }
-

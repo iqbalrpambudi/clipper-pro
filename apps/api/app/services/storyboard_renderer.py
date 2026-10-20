@@ -1,25 +1,23 @@
 import asyncio
 import logging
 import math
-import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 import cv2
-import numpy as np
 
-from app.core.frame_math import sec_to_frame, frame_to_sec, snap_to_frame, COMPOSITION_FPS
-from app.services.tts import get_audio_duration
+from app.core.frame_math import COMPOSITION_FPS, frame_to_sec, sec_to_frame
+from app.core.storage import storage
 from app.services.cancellation import (
+    TaskCancelledException,
+    is_cancelled,
     register_process,
     unregister_process,
-    is_cancelled,
-    TaskCancelledException,
 )
-from app.services.renderer import _run_ffmpeg, _escape_filter_path, _build_watermark_filter
-from app.core.storage import storage
+from app.services.renderer import _build_watermark_filter, _escape_filter_path, _run_ffmpeg
+from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
 
@@ -320,7 +318,7 @@ async def render_storyboard_video(
 
         # Calculate total specified duration of items
         sum_item_dur = sum(float(it.get("duration") or 4.0) for it in valid_items)
-        
+
         # Check if items have start_time from Whisper alignment
         has_start_times = any(it.get("start_time") is not None for it in valid_items)
 

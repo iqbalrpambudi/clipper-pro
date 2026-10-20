@@ -1,13 +1,14 @@
 import base64
 import json
 import logging
-import os
 import re
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
+
 import httpx
+
 from app.core.config import get_settings
 from app.core.storage import storage
 
@@ -371,7 +372,7 @@ async def generate_image_to_path(
     size: str = "1792x1024",
 ) -> Tuple[str, str]:
     """Generate an image using OpenAI-compatible /v1/images/generations or multimodal /chat/completions fallback.
-    
+
     Guarantees the output image is in 16:9 widescreen landscape aspect ratio to match video composition.
     Returns (abs_file_path, relative_url).
     """
@@ -488,7 +489,7 @@ async def generate_image_to_path(
                     out_file.stem,
                 )
                 resp = await client.post(img_gen_url, headers=headers, json=payload)
-                
+
                 # If provider doesn't support b64_json, try without response_format (standard URL format)
                 if resp.status_code == 400 and "response_format" in resp.text:
                     payload.pop("response_format", None)

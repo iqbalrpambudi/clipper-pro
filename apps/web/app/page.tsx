@@ -192,7 +192,10 @@ export default function DashboardPage() {
                 <span className="font-bold text-lg tracking-tight text-white font-sans">
                   Cliper Pro
                 </span>
-                <Badge variant="supabase" className="text-[10px] uppercase font-mono tracking-wider">
+                <Badge
+                  variant="supabase"
+                  className="text-[10px] uppercase font-mono tracking-wider"
+                >
                   v2.0 Dual-Mode
                 </Badge>
               </div>
@@ -279,7 +282,8 @@ export default function DashboardPage() {
               </div>
               <h3 className="text-lg font-bold text-white mb-1.5">Belum Ada Project</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
-                Mulai buat video pendek TikTok/Reels dari YouTube atau susun naskah storyboard explainer dengan ilustrasi AI.
+                Mulai buat video pendek TikTok/Reels dari YouTube atau susun naskah storyboard
+                explainer dengan ilustrasi AI.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
@@ -308,9 +312,7 @@ export default function DashboardPage() {
               <div className="w-12 h-12 rounded-xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-3.5">
                 <Search className="w-5 h-5 text-muted-foreground" />
               </div>
-              <h3 className="text-base font-bold text-white mb-1">
-                Tidak ada project yang sesuai
-              </h3>
+              <h3 className="text-base font-bold text-white mb-1">Tidak ada project yang sesuai</h3>
               <p className="text-xs text-muted-foreground max-w-sm mb-5 leading-relaxed">
                 Tidak ditemukan project yang cocok dengan filter atau kata kunci pencarian Anda.
               </p>

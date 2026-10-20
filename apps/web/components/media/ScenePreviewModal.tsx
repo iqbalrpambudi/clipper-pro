@@ -156,7 +156,10 @@ export function ScenePreviewModal({
       if (video.currentTime >= effectiveEndTime || video.currentTime < startTime) {
         video.currentTime = startTime;
       }
-      video.play().then(() => setIsPlaying(true)).catch(() => {});
+      video
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
     }
   };
 
@@ -234,8 +237,12 @@ export function ScenePreviewModal({
             </span>
             <div>
               <h3 className="text-sm font-semibold text-foreground tracking-tight flex items-center gap-2">
-                {title || (sceneIndex !== undefined ? `Preview Scene #${sceneIndex + 1}` : "Preview Scene")}
-                <Badge variant="outline" className="font-mono text-[10px] py-0 text-muted-foreground border-[#2E2E2E]">
+                {title ||
+                  (sceneIndex !== undefined ? `Preview Scene #${sceneIndex + 1}` : "Preview Scene")}
+                <Badge
+                  variant="outline"
+                  className="font-mono text-[10px] py-0 text-muted-foreground border-[#2E2E2E]"
+                >
                   {duration.toFixed(1)}s Snippet
                 </Badge>
               </h3>
@@ -298,7 +305,9 @@ export function ScenePreviewModal({
           {/* Snippet Badge */}
           <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-[#2E2E2E] text-[10px] font-mono text-foreground flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>CLIP [{currentOffset.toFixed(1)}s / {duration.toFixed(1)}s]</span>
+            <span>
+              CLIP [{currentOffset.toFixed(1)}s / {duration.toFixed(1)}s]
+            </span>
           </div>
 
           {/* Speed Indicator */}
@@ -338,7 +347,11 @@ export function ScenePreviewModal({
                 className="w-8 h-8 rounded-lg shadow-sm"
                 title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
               >
-                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 ml-0.5 fill-current" />}
+                {isPlaying ? (
+                  <Pause className="w-4 h-4 fill-current" />
+                ) : (
+                  <Play className="w-4 h-4 ml-0.5 fill-current" />
+                )}
               </Button>
 
               <Button
@@ -386,7 +399,11 @@ export function ScenePreviewModal({
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 title={isMuted ? "Unmute" : "Mute"}
               >
-                {isMuted ? <VolumeX className="w-4 h-4 text-destructive" /> : <Volume2 className="w-4 h-4" />}
+                {isMuted ? (
+                  <VolumeX className="w-4 h-4 text-destructive" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -396,7 +413,9 @@ export function ScenePreviewModal({
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-foreground flex items-start gap-2.5">
               <MessageSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-primary block text-[11px] mb-0.5">Dialog Percakapan (Whisper):</span>
+                <span className="font-semibold text-primary block text-[11px] mb-0.5">
+                  Dialog Percakapan (Whisper):
+                </span>
                 <p className="italic text-foreground/90 leading-relaxed">"{transcript}"</p>
               </div>
             </div>

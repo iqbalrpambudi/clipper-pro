@@ -1,10 +1,8 @@
 import asyncio
 import logging
 import os
-import subprocess
 import tempfile
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +56,7 @@ def _transcribe_audio_file(
             language=language if language and language != "auto" else None,
             beam_size=5,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
+            vad_parameters={"min_silence_duration_ms": 500},
         )
 
         results = []

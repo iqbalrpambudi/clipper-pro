@@ -1,7 +1,8 @@
 import asyncio
 import json
 import logging
-from typing import Optional, Dict
+from typing import Dict, Optional
+
 from app.core.redis import get_redis_client
 
 log = logging.getLogger("cliper-cancellation")

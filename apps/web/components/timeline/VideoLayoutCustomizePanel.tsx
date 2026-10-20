@@ -2,18 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Maximize2,
-  Scan,
-  ZoomIn,
-  Smartphone,
-  Monitor,
-  Square,
-  Info,
-} from "lucide-react";
+import { Maximize2, Scan, ZoomIn, Smartphone, Monitor, Square, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project } from "@/types";
+import { Project, BackgroundFill } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,7 +13,7 @@ type LayoutPreset = "cover" | "fit" | "custom";
 
 interface VideoLayoutCustomizePanelProps {
   project: Project;
-  onLayoutChange?: (aspectRatio: string, backgroundFill: any) => void;
+  onLayoutChange?: (aspectRatio: string, backgroundFill: BackgroundFill) => void;
 }
 
 function resolveInitialPreset(fill?: Project["background_fill"]): LayoutPreset {
@@ -46,9 +38,7 @@ export function VideoLayoutCustomizePanel({
   const [activePreset, setActivePreset] = useState<LayoutPreset>(() =>
     resolveInitialPreset(project.background_fill)
   );
-  const [isBlur, setIsBlur] = useState<boolean>(() =>
-    resolveInitialBlur(project.background_fill)
-  );
+  const [isBlur, setIsBlur] = useState<boolean>(() => resolveInitialBlur(project.background_fill));
   const [customZoom, setCustomZoom] = useState<number>(() =>
     project.background_fill?.zoom && project.background_fill.zoom > 1.02
       ? project.background_fill.zoom
@@ -70,11 +60,12 @@ export function VideoLayoutCustomizePanel({
   }, [project.aspect_ratio, project.background_fill]);
 
   const updateProjectMutation = useMutation({
-    mutationFn: (data: any) => api.updateProject(project.id, data),
+    mutationFn: (data: Parameters<typeof api.updateProject>[1]) =>
+      api.updateProject(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan perubahan layout", "error");
     },
   });
@@ -135,7 +126,10 @@ export function VideoLayoutCustomizePanel({
       updateProjectMutation.mutate({
         background_fill: fill,
       });
-      showToast(isBlur ? "Preset Fit + Blur diterapkan" : "Preset Fit + Hitam Solid diterapkan", "info");
+      showToast(
+        isBlur ? "Preset Fit + Blur diterapkan" : "Preset Fit + Hitam Solid diterapkan",
+        "info"
+      );
     } else if (preset === "custom") {
       const targetZoom = customZoom > 1.02 ? customZoom : 1.35;
       setCustomZoom(targetZoom);
@@ -162,13 +156,21 @@ export function VideoLayoutCustomizePanel({
       updateProjectMutation.mutate({
         background_fill: fill,
       });
-      showToast(checked ? "Background blur diaktifkan (Fit)" : "Background hitam solid diaktifkan (Fit)", "info");
+      showToast(
+        checked ? "Background blur diaktifkan (Fit)" : "Background hitam solid diaktifkan (Fit)",
+        "info"
+      );
     } else if (activePreset === "custom") {
       const fill = notifyChange(aspectRatio, nextMode, customZoom);
       updateProjectMutation.mutate({
         background_fill: fill,
       });
-      showToast(checked ? "Background blur diaktifkan (Custom Zoom)" : "Background hitam solid diaktifkan (Custom Zoom)", "info");
+      showToast(
+        checked
+          ? "Background blur diaktifkan (Custom Zoom)"
+          : "Background hitam solid diaktifkan (Custom Zoom)",
+        "info"
+      );
     } else {
       // In cover mode, we preserve mode="cover" while recording user blur preference
       const fill = notifyChange(aspectRatio, "cover", 1.0);
@@ -211,7 +213,16 @@ export function VideoLayoutCustomizePanel({
           </h3>
         </div>
         <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
-          {aspectRatio} • {activePreset === "cover" ? "Cover" : activePreset === "fit" ? (isBlur ? "Fit+Blur" : "Fit+Hitam") : (isBlur ? "Zoom+Blur" : "Zoom+Hitam")}
+          {aspectRatio} •{" "}
+          {activePreset === "cover"
+            ? "Cover"
+            : activePreset === "fit"
+              ? isBlur
+                ? "Fit+Blur"
+                : "Fit+Hitam"
+              : isBlur
+                ? "Zoom+Blur"
+                : "Zoom+Hitam"}
         </Badge>
       </div>
 
@@ -224,7 +235,11 @@ export function VideoLayoutCustomizePanel({
               <span>Rasio Kanvas Proyek</span>
             </label>
             <span className="text-[10px] text-muted-foreground font-mono">
-              {aspectRatio === "9:16" ? "1080 × 1920" : aspectRatio === "16:9" ? "1920 × 1080" : "1080 × 1080"}
+              {aspectRatio === "9:16"
+                ? "1080 × 1920"
+                : aspectRatio === "16:9"
+                  ? "1920 × 1080"
+                  : "1080 × 1080"}
             </span>
           </div>
 
@@ -233,12 +248,15 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handleAspectRatioChange("9:16")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${aspectRatio === "9:16"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
+                aspectRatio === "9:16"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
-              <Smartphone className={`w-4 h-4 ${aspectRatio === "9:16" ? "text-primary" : "text-muted-foreground"}`} />
+              <Smartphone
+                className={`w-4 h-4 ${aspectRatio === "9:16" ? "text-primary" : "text-muted-foreground"}`}
+              />
               <div className="text-center">
                 <div className="text-xs font-semibold">9:16</div>
                 <div className="text-[9px] text-muted-foreground leading-tight">TikTok/Reels</div>
@@ -249,12 +267,15 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handleAspectRatioChange("16:9")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${aspectRatio === "16:9"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
+                aspectRatio === "16:9"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
-              <Monitor className={`w-4 h-4 ${aspectRatio === "16:9" ? "text-primary" : "text-muted-foreground"}`} />
+              <Monitor
+                className={`w-4 h-4 ${aspectRatio === "16:9" ? "text-primary" : "text-muted-foreground"}`}
+              />
               <div className="text-center">
                 <div className="text-xs font-semibold">16:9</div>
                 <div className="text-[9px] text-muted-foreground leading-tight">Landscape</div>
@@ -265,12 +286,15 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handleAspectRatioChange("1:1")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${aspectRatio === "1:1"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
+                aspectRatio === "1:1"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
-              <Square className={`w-4 h-4 ${aspectRatio === "1:1" ? "text-primary" : "text-muted-foreground"}`} />
+              <Square
+                className={`w-4 h-4 ${aspectRatio === "1:1" ? "text-primary" : "text-muted-foreground"}`}
+              />
               <div className="text-center">
                 <div className="text-xs font-semibold">1:1</div>
                 <div className="text-[9px] text-muted-foreground leading-tight">Square Feed</div>
@@ -282,9 +306,7 @@ export function VideoLayoutCustomizePanel({
         {/* Section 2: Preset Mode Tampilan Video (3 Preset) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-foreground">
-              Preset Tampilan Video
-            </label>
+            <label className="text-xs font-semibold text-foreground">Preset Tampilan Video</label>
             <span className="text-[10px] text-primary font-mono font-semibold uppercase">
               {activePreset === "cover"
                 ? "1. COVER"
@@ -299,17 +321,22 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handlePresetSelect("cover")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${activePreset === "cover"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
+                activePreset === "cover"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
               <div className="flex items-center justify-center">
-                <Maximize2 className={`w-4 h-4 ${activePreset === "cover" ? "text-primary" : "text-muted-foreground"}`} />
+                <Maximize2
+                  className={`w-4 h-4 ${activePreset === "cover" ? "text-primary" : "text-muted-foreground"}`}
+                />
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Cover</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">Penuh (Crop)</div>
+                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                  Penuh (Crop)
+                </div>
               </div>
             </button>
 
@@ -317,17 +344,22 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handlePresetSelect("fit")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${activePreset === "fit"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
+                activePreset === "fit"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
               <div className="flex items-center justify-center">
-                <Scan className={`w-4 h-4 ${activePreset === "fit" ? "text-primary" : "text-muted-foreground"}`} />
+                <Scan
+                  className={`w-4 h-4 ${activePreset === "fit" ? "text-primary" : "text-muted-foreground"}`}
+                />
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Fit</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">100% Utuh</div>
+                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                  100% Utuh
+                </div>
               </div>
             </button>
 
@@ -335,17 +367,22 @@ export function VideoLayoutCustomizePanel({
             <button
               type="button"
               onClick={() => handlePresetSelect("custom")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${activePreset === "custom"
-                ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
-                }`}
+              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
+                activePreset === "custom"
+                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
+                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+              }`}
             >
               <div className="flex items-center justify-center">
-                <ZoomIn className={`w-4 h-4 ${activePreset === "custom" ? "text-primary" : "text-muted-foreground"}`} />
+                <ZoomIn
+                  className={`w-4 h-4 ${activePreset === "custom" ? "text-primary" : "text-muted-foreground"}`}
+                />
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Custom Zoom</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">Slider Bebas</div>
+                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                  Slider Bebas
+                </div>
               </div>
             </button>
           </div>
@@ -362,15 +399,14 @@ export function VideoLayoutCustomizePanel({
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Background Blur
-                </span>
+                <span className="text-xs font-semibold text-foreground">Background Blur</span>
                 <Badge
                   variant="outline"
-                  className={`text-[9px] font-mono ${isBlur
-                    ? "text-primary border-primary/30 bg-primary/10"
-                    : "text-muted-foreground border-[#2E2E2E] bg-[#1a1a1a]"
-                    }`}
+                  className={`text-[9px] font-mono ${
+                    isBlur
+                      ? "text-primary border-primary/30 bg-primary/10"
+                      : "text-muted-foreground border-[#2E2E2E] bg-[#1a1a1a]"
+                  }`}
                 >
                   {isBlur ? "Blur Aktif" : "Hitam Solid"}
                 </Badge>
@@ -443,7 +479,8 @@ export function VideoLayoutCustomizePanel({
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
           <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Perubahan tampilan langsung aktif di Player Monitor dan disimpan otomatis untuk proses render final.
+            Perubahan tampilan langsung aktif di Player Monitor dan disimpan otomatis untuk proses
+            render final.
           </p>
         </div>
       </div>

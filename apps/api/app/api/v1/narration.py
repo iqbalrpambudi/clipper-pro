@@ -1,21 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
-from app.models.project import Project, Scene
 from app.models.narration import Narration, NarrationTemplate
+from app.models.project import Project, Scene
 from app.schemas.narration import (
     NarrationGenerateRequest,
+    NarrationResponse,
     NarrationUpdateRequest,
     SegmentsUpdateRequest,
-    NarrationResponse,
 )
 from app.services.ai_adapters.factory import get_active_llm_adapter
 from app.services.narrative import (
-    generate_narration_script,
-    split_into_sentence_segments,
     DEFAULT_TEMPLATES,
     LEGACY_TEMPLATE_ALIASES,
+    generate_narration_script,
+    split_into_sentence_segments,
 )
 
 router = APIRouter(prefix="/projects/{project_id}/narration", tags=["narration"])

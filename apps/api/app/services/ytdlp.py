@@ -2,10 +2,17 @@ import asyncio
 import json
 import logging
 import re
-import shutil
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any, List
+from typing import Any, Callable, Dict, List, Optional
+
 from app.schemas.media import YTFormatOption, YTInfoResponse
+from app.services.cancellation import (
+    TaskCancelledException,
+    clear_cancellation,
+    is_cancelled,
+    register_process,
+    unregister_process,
+)
 
 log = logging.getLogger(__name__)
 
@@ -125,15 +132,6 @@ async def get_video_info(url: str) -> YTInfoResponse:
         thumbnail=thumbnail,
         formats=sorted_formats,
     )
-
-
-from app.services.cancellation import (
-    register_process,
-    unregister_process,
-    is_cancelled,
-    clear_cancellation,
-    TaskCancelledException,
-)
 
 
 async def download_video(

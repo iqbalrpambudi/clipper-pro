@@ -1,21 +1,21 @@
-import asyncio
 import json
 import logging
 import re
 import time
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from typing import Any, Dict, List, Optional
 
-from app.core.storage import storage
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.security import decrypt_secret
-from app.models.project import Project
-from app.models.narration import Narration
-from app.models.storyboard import StoryboardItem
+from app.core.storage import storage
 from app.models.config import ModelConfig
 from app.models.image_preset import ImagePreset
+from app.models.narration import Narration
+from app.models.project import Project
+from app.models.storyboard import StoryboardItem
 from app.services.ai_adapters.factory import get_active_llm_adapter
 from app.services.image_gen import generate_single_image
 from app.services.image_studio import get_active_image_preset
@@ -74,7 +74,6 @@ async def generate_youtube_metadata(
     # Fetch active visual preset
     active_preset = await get_active_image_preset(db)
     preset_name = active_preset.name if active_preset else "Minimalist Storytelling Illustration"
-    preset_master = (active_preset.master_prompt if active_preset else "").strip()
 
     # Prepare project summary / narration text
     narration_text = (narration.raw_text if narration and narration.raw_text else "").strip()
@@ -177,8 +176,8 @@ async def generate_youtube_metadata(
     if locations:
         first_l = locations[0]
         main_loc_token = f"[loc:{first_l.get('id')}]"
-        for l in locations:
-            loc_summary_lines.append(f"- Location {l.get('name', '')} (`[loc:{l.get('id', '')}]`): {l.get('visual_anchor', '')}")
+        for loc in locations:
+            loc_summary_lines.append(f"- Location {loc.get('name', '')} (`[loc:{loc.get('id', '')}]`): {loc.get('visual_anchor', '')}")
 
     era = world_setting.get("era") or ""
     atmo = world_setting.get("atmosphere") or ""

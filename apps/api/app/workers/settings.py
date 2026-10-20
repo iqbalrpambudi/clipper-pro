@@ -1,13 +1,13 @@
 from app.core.redis import get_redis_settings
+from app.services.cancellation import start_cancellation_listener
 from app.workers.tasks import (
-    download_youtube_job,
+    cleanup_stuck_render_jobs,
     detect_scenes_job,
+    download_youtube_job,
+    generate_storyboard_images_job,
     generate_tts_and_align_job,
     render_video_job,
-    generate_storyboard_images_job,
-    cleanup_stuck_render_jobs,
 )
-from app.services.cancellation import start_cancellation_listener
 
 
 async def startup(ctx):

@@ -4,10 +4,12 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import httpx
+
 from app.core.config import get_settings
-from app.services.ai_adapters.base import BaseLLMAdapter, EMBEDDING_DIM, hash_embedding
+from app.services.ai_adapters.base import EMBEDDING_DIM, BaseLLMAdapter, hash_embedding
 
 log = logging.getLogger(__name__)
 
@@ -237,7 +239,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 elif resp.status_code == 404:
                     self._service_unavailable = True
                     log.error("AI vision model/endpoint not found (HTTP 404): %s. Disabling further calls.", resp.text[:200])
-                    raise RuntimeError(f"HTTP 404 Not Found")
+                    raise RuntimeError("HTTP 404 Not Found")
                 elif resp.status_code >= 400:
                     raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
 

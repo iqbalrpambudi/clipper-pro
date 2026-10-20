@@ -31,10 +31,12 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import {
   Project,
+  ProjectDetail,
   StoryboardItem,
   StoryboardCharacter,
   StoryboardLocation,
   StoryboardWorldSetting,
+  SentenceSegment,
 } from "@/types";
 import {
   Button,
@@ -50,10 +52,7 @@ import {
 import { presetStorage, ScriptPreset } from "@/lib/presetStorage";
 
 interface StoryboardScriptTabProps {
-  project: Project & {
-    narration?: any;
-    storyboard_items?: StoryboardItem[];
-  };
+  project: Project;
 }
 
 export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
@@ -76,24 +75,28 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   }, [activePreset, selectedPresetId, draft?.selectedPresetId]);
 
   const [topic, setTopic] = useState<string>(
-    draft?.topic !== undefined
-      ? draft.topic
-      : (project.narration?.topic || project.name || "")
+    draft?.topic !== undefined ? draft.topic : project.narration?.topic || project.name || ""
   );
   const [durationMins, setDurationMins] = useState<number>(
     draft?.durationMins !== undefined
       ? draft.durationMins
-      : (project.narration?.target_duration ? Math.round(project.narration.target_duration / 60) : 5)
+      : project.narration?.target_duration
+        ? Math.round(project.narration.target_duration / 60)
+        : 5
   );
   const [tone, setTone] = useState<string>(draft?.tone || project.narration?.tone || "santai");
-  const [language, setLanguage] = useState<string>(project.narration?.language || project.language || "id");
+  const [language, setLanguage] = useState<string>(
+    project.narration?.language || project.language || "id"
+  );
   const [imagesPerSegment, setImagesPerSegment] = useState<number>(draft?.imagesPerSegment ?? 2);
-  const [customInstructions, setCustomInstructions] = useState<string>(draft?.customInstructions || "");
+  const [customInstructions, setCustomInstructions] = useState<string>(
+    draft?.customInstructions || ""
+  );
 
   const handleLanguageSelect = (newLang: string) => {
     setLanguage(newLang);
     api.updateProject(project.id, { language: newLang }).then(() => {
-      queryClient.setQueryData(["project", project.id], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
         if (!old) return old;
         return { ...old, language: newLang };
       });
@@ -109,7 +112,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
   // Script & Narration Presets
   const [scriptPresets, setScriptPresets] = useState<ScriptPreset[]>([]);
-  const [selectedScriptPresetId, setSelectedScriptPresetId] = useState<string>(draft?.selectedScriptPresetId || "");
+  const [selectedScriptPresetId, setSelectedScriptPresetId] = useState<string>(
+    draft?.selectedScriptPresetId || ""
+  );
   const [showSaveScriptModal, setShowSaveScriptModal] = useState<boolean>(false);
   const [newScriptPresetName, setNewScriptPresetName] = useState<string>("");
 
@@ -184,9 +189,13 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   // Story Continuity Bible state (Characters & Variants, Locations, World Setting)
   const [bibleTab, setBibleTab] = useState<"characters" | "locations" | "world">("characters");
   const [editingBible, setEditingBible] = useState<boolean>(false);
-  const [charactersList, setCharactersList] = useState<StoryboardCharacter[]>(project.characters || []);
+  const [charactersList, setCharactersList] = useState<StoryboardCharacter[]>(
+    project.characters || []
+  );
   const [locationsList, setLocationsList] = useState<StoryboardLocation[]>(project.locations || []);
-  const [worldSetting, setWorldSetting] = useState<StoryboardWorldSetting>(project.world_setting || {});
+  const [worldSetting, setWorldSetting] = useState<StoryboardWorldSetting>(
+    project.world_setting || {}
+  );
 
   useEffect(() => {
     if (project.characters) setCharactersList(project.characters);
@@ -269,7 +278,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         world_setting: worldSetting,
       }),
     onSuccess: (res) => {
-      queryClient.setQueryData(["project", project.id], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -283,7 +292,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       setEditingBible(false);
       showToast("Story Continuity Bible berhasil disimpan!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui Story Continuity Bible", "error");
     },
   });
@@ -301,7 +310,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       if (res?.world_setting) {
         setWorldSetting(res.world_setting);
       }
-      queryClient.setQueryData(["project", project.id], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -317,7 +326,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         "success"
       );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengekstrak character sheet dari naskah", "error");
     },
   });
@@ -325,7 +334,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const [resetBibleOnGenerate, setResetBibleOnGenerate] = useState<boolean>(true);
 
   const narration = project.narration;
-  const segments: any[] = narration?.segments || [];
+  const segments: (SentenceSegment & { chapter?: string; segment_id?: string })[] =
+    (narration?.segments as (SentenceSegment & { chapter?: string; segment_id?: string })[]) || [];
   const items: StoryboardItem[] = project.storyboard_items || [];
 
   // Narration Copy state & handlers
@@ -336,7 +346,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
     let fullText = "";
     if (segments && segments.length > 0) {
       fullText = segments
-        .map((s: any) => (s.text || "").trim())
+        .map((s) => (s.text || "").trim())
         .filter(Boolean)
         .join("\n\n");
     }
@@ -370,7 +380,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
   const [editText, setEditText] = useState<string>("");
   const [editItemPrompts, setEditItemPrompts] = useState<Record<string, string>>({});
 
-  const handleStartEditSegment = (seg: any, idx: number, segItems: StoryboardItem[]) => {
+  const handleStartEditSegment = (
+    seg: SentenceSegment & { chapter?: string; segment_id?: string },
+    idx: number,
+    segItems: StoryboardItem[]
+  ) => {
     const segId = seg.id || seg.segment_id || `seg-${idx + 1}`;
     setEditingSegmentId(segId);
     setEditingSegmentIndex(idx);
@@ -411,9 +425,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         segment_index: segmentIndex,
         items: itemUpdates,
       }),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       if (data?.narration) {
-        queryClient.setQueryData(["project", project.id], (old: any) => {
+        queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -427,12 +441,16 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       handleCancelEditSegment();
       showToast("Segmen berhasil diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui segmen", "error");
     },
   });
 
-  const handleSaveEditSegment = (segmentId: string, segItems: StoryboardItem[], segIdx?: number) => {
+  const handleSaveEditSegment = (
+    segmentId: string,
+    segItems: StoryboardItem[],
+    segIdx?: number
+  ) => {
     const itemsPayload = segItems.map((it) => ({
       id: it.id,
       image_prompt:
@@ -441,7 +459,12 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
     updateSegmentMutation.mutate({
       segmentId,
-      segmentIndex: segIdx !== undefined ? segIdx : (editingSegmentIndex !== null ? editingSegmentIndex : undefined),
+      segmentIndex:
+        segIdx !== undefined
+          ? segIdx
+          : editingSegmentIndex !== null
+            ? editingSegmentIndex
+            : undefined,
       chapter: editChapter.trim(),
       text: editText.trim(),
       items: itemsPayload,
@@ -459,7 +482,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       language?: string;
       reset_bible?: boolean;
     }) => api.generateStoryboardScript(project.id, data),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       if (data?.characters) {
         setCharactersList(data.characters);
       }
@@ -470,7 +493,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         setWorldSetting(data.world_setting);
       }
       if (data?.narration) {
-        queryClient.setQueryData(["project", project.id], (old: any) => {
+        queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -489,7 +512,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Naskah storyboard & adegan gambar berhasil di-generate!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal generate naskah storyboard", "error");
     },
   });
@@ -543,7 +566,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             Ide Konten & Naskah Narasi Panjang (4–8 Menit)
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tentukan ide cerita. LLM akan merancang alur terstruktur (Hook, Inti Cerita, Penutup) dan prompt gambar sketsa untuk setiap adegan.
+            Tentukan ide cerita. LLM akan merancang alur terstruktur (Hook, Inti Cerita, Penutup)
+            dan prompt gambar sketsa untuk setiap adegan.
           </p>
         </div>
 
@@ -585,7 +609,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Parameter Naskah AI</h3>
-              <p className="text-[11px] text-muted-foreground">Sesuaikan target durasi dan gaya pembawaan</p>
+              <p className="text-[11px] text-muted-foreground">
+                Sesuaikan target durasi dan gaya pembawaan
+              </p>
             </div>
           </div>
 
@@ -600,26 +626,29 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   onChange={(e) => handleLoadScriptPreset(e.target.value)}
                   className="bg-[#1C1C1C] border border-[#333] hover:border-violet-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-violet-500 font-medium truncate max-w-[210px]"
                 >
-                  <option value="" disabled>-- Muat Preset Tersimpan --</option>
+                  <option value="" disabled>
+                    -- Muat Preset Tersimpan --
+                  </option>
                   {scriptPresets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
                     </option>
                   ))}
                 </select>
-                {selectedScriptPresetId && !scriptPresets.find((p) => p.id === selectedScriptPresetId)?.isBuiltin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const cur = scriptPresets.find((p) => p.id === selectedScriptPresetId);
-                      if (cur) handleDeleteScriptPreset(cur.id, cur.name);
-                    }}
-                    title="Hapus Preset Kustom Ini"
-                    className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
+                {selectedScriptPresetId &&
+                  !scriptPresets.find((p) => p.id === selectedScriptPresetId)?.isBuiltin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = scriptPresets.find((p) => p.id === selectedScriptPresetId);
+                        if (cur) handleDeleteScriptPreset(cur.id, cur.name);
+                      }}
+                      title="Hapus Preset Kustom Ini"
+                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
               </div>
 
               <button
@@ -634,7 +663,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* Save Preset Inline Form */}
             {showSaveScriptModal && (
-              <form onSubmit={handleSaveScriptPreset} className="flex items-center gap-2 pt-2 border-t border-[#222]">
+              <form
+                onSubmit={handleSaveScriptPreset}
+                className="flex items-center gap-2 pt-2 border-t border-[#222]"
+              >
                 <Input
                   type="text"
                   placeholder="Nama preset baru (mis. Dokumenter Favorit 8m)..."
@@ -691,10 +723,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => handleLanguageSelect("id")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${language === "id"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                    }`}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                    language === "id"
+                      ? "bg-violet-600 text-white font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
                 >
                   <span className="text-base">🇮🇩</span>
                   <span>Bahasa Indonesia</span>
@@ -702,10 +735,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => handleLanguageSelect("en")}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${language === "en"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                    }`}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
+                    language === "en"
+                      ? "bg-violet-600 text-white font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
                 >
                   <span className="text-base">🇬🇧</span>
                   <span>English Explainer</span>
@@ -756,10 +790,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                     key={t.id}
                     type="button"
                     onClick={() => setTone(t.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${tone === t.id
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                      }`}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${
+                      tone === t.id
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
+                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                    }`}
                   >
                     {t.label}
                   </button>
@@ -796,7 +831,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               {presets.find((p) => p.id === (selectedPresetId || activePreset?.id)) && (
                 <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
                   <span className="truncate max-w-[260px]">
-                    {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} • 16:9 Landscape
+                    {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category}{" "}
+                    • 16:9 Landscape
                   </span>
                   <span className="text-violet-400 font-mono text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
                     Prompt Visual Selaras
@@ -820,10 +856,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                     key={opt.count}
                     type="button"
                     onClick={() => setImagesPerSegment(opt.count)}
-                    className={`p-2.5 rounded-xl border text-center transition ${imagesPerSegment === opt.count
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                      }`}
+                    className={`p-2.5 rounded-xl border text-center transition ${
+                      imagesPerSegment === opt.count
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                    }`}
                   >
                     <div className="text-xs font-bold">{opt.label}</div>
                     <div className="text-[10px] text-muted-foreground">{opt.sub}</div>
@@ -856,8 +893,13 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   onChange={(e) => setResetBibleOnGenerate(e.target.checked)}
                   className="rounded border-[#333] text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
                 />
-                <label htmlFor="resetBibleCheck" className="text-[11px] text-slate-300 cursor-pointer select-none">
-                  <span className="font-semibold text-white block">Perbarui Character Sheet untuk Cerita Baru</span>
+                <label
+                  htmlFor="resetBibleCheck"
+                  className="text-[11px] text-slate-300 cursor-pointer select-none"
+                >
+                  <span className="font-semibold text-white block">
+                    Perbarui Character Sheet untuk Cerita Baru
+                  </span>
                   <span className="text-[10px] text-muted-foreground block">
                     Centang agar karakter & latar lama diganti dengan karakter cerita baru ini
                   </span>
@@ -878,7 +920,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>{segments.length > 0 ? `Generate Ulang Naskah (${durationMins} Menit)` : `Generate Naskah Storyboard (${durationMins} Menit)`}</span>
+                  <span>
+                    {segments.length > 0
+                      ? `Generate Ulang Naskah (${durationMins} Menit)`
+                      : `Generate Naskah Storyboard (${durationMins} Menit)`}
+                  </span>
                 </>
               )}
             </Button>
@@ -911,9 +957,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
                 </button>
               ) : (
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Target Estimasi
-                </span>
+                <span className="text-[10px] text-slate-400 font-mono">Target Estimasi</span>
               )}
             </div>
 
@@ -927,7 +971,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   {resultDurationFormatted}
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                  {wordCount > 0 ? `~${(wordCount / 135).toFixed(1)} mnt (135 kpm)` : `Target ${durationMins} mnt`}
+                  {wordCount > 0
+                    ? `~${(wordCount / 135).toFixed(1)} mnt (135 kpm)`
+                    : `Target ${durationMins} mnt`}
                 </span>
               </div>
 
@@ -950,7 +996,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   Estimasi Ilustrasi
                 </span>
                 <div className="text-sm font-bold text-emerald-400 mt-1 font-mono">
-                  {items.length > 0 ? `${items.length} Slot Gambar` : `${durationMins * 2 * imagesPerSegment} Estimasi Slot`}
+                  {items.length > 0
+                    ? `${items.length} Slot Gambar`
+                    : `${durationMins * 2 * imagesPerSegment} Estimasi Slot`}
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
                   {imagesPerSegment} gambar / segmen
@@ -969,7 +1017,6 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   <div>
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       Story Continuity Bible
-
                     </h4>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Penguncian konsistensi karakter & varian wujud, latar tempat, dan era waktu
@@ -995,7 +1042,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-[#161616] border border-[#2E2E2E] text-slate-200 shadow-2xl p-1 z-50">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-56 bg-[#161616] border border-[#2E2E2E] text-slate-200 shadow-2xl p-1 z-50"
+                    >
                       <DropdownMenuItem
                         onClick={() => extractBibleMutation.mutate({})}
                         disabled={extractBibleMutation.isPending}
@@ -1008,7 +1058,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         )}
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-white">Ekstrak dari Naskah</span>
-                          <span className="text-[10px] text-slate-400">Analisis naskah untuk sinkron profil</span>
+                          <span className="text-[10px] text-slate-400">
+                            Analisis naskah untuk sinkron profil
+                          </span>
                         </div>
                       </DropdownMenuItem>
 
@@ -1024,7 +1076,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         <Users className="w-4 h-4 text-violet-400 shrink-0" />
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-white">Tambah Karakter</span>
-                          <span className="text-[10px] text-slate-400">Tambah profil tokoh & varian wujud</span>
+                          <span className="text-[10px] text-slate-400">
+                            Tambah profil tokoh & varian wujud
+                          </span>
                         </div>
                       </DropdownMenuItem>
 
@@ -1038,7 +1092,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         <MapPin className="w-4 h-4 text-sky-400 shrink-0" />
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-white">Tambah Tempat</span>
-                          <span className="text-[10px] text-slate-400">Kunci konsistensi latar arsitektur</span>
+                          <span className="text-[10px] text-slate-400">
+                            Kunci konsistensi latar arsitektur
+                          </span>
                         </div>
                       </DropdownMenuItem>
 
@@ -1072,10 +1128,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("characters")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "characters"
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "characters"
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Karakter & Varian</span>
@@ -1087,10 +1144,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("locations")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "locations"
-                    ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "locations"
+                      ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>Latar Tempat</span>
@@ -1102,10 +1160,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setBibleTab("world")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${bibleTab === "world"
-                    ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                    bibleTab === "world"
+                      ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
                 >
                   <Compass className="w-3.5 h-3.5" />
                   <span>Era & Atmosfer</span>
@@ -1251,7 +1310,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                                           onChange={(e) => {
                                             const updated = [...charactersList];
                                             const variants = [...(updated[cIdx].variants || [])];
-                                            variants[vIdx] = { ...v, visual_anchor: e.target.value };
+                                            variants[vIdx] = {
+                                              ...v,
+                                              visual_anchor: e.target.value,
+                                            };
                                             updated[cIdx] = { ...updated[cIdx], variants };
                                             setCharactersList(updated);
                                           }}
@@ -1263,7 +1325,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                                   </div>
                                 ) : (
                                   <p className="text-[10px] text-slate-500 italic">
-                                    Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot; untuk menambahkan versi muda, dewasa, atau bentuk perubahan wujud.
+                                    Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot;
+                                    untuk menambahkan versi muda, dewasa, atau bentuk perubahan
+                                    wujud.
                                   </p>
                                 )}
                               </div>
@@ -1307,7 +1371,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                                             ✨ {v.label}
                                           </span>
                                           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                                            [char:{char.id || char.name.toLowerCase().replace(/\s+/g, "")}:{v.variant_id}]
+                                            [char:
+                                            {char.id || char.name.toLowerCase().replace(/\s+/g, "")}
+                                            :{v.variant_id}]
                                           </span>
                                         </div>
                                         <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
@@ -1326,11 +1392,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
-                    <p className="text-xs text-slate-400">
-                      Belum ada profil karakter terkunci.
-                    </p>
+                    <p className="text-xs text-slate-400">Belum ada profil karakter terkunci.</p>
                     <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-                      Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda dapat menambahkannya manual sekarang.
+                      Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah,
+                      atau Anda dapat menambahkannya manual sekarang.
                     </p>
                     <button
                       type="button"
@@ -1421,11 +1486,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
-                    <p className="text-xs text-slate-400">
-                      Belum ada latar tempat terkunci.
-                    </p>
+                    <p className="text-xs text-slate-400">Belum ada latar tempat terkunci.</p>
                     <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-                      Latar tempat (arsitektur, pantai, kapal, istana) akan dikunci otomatis agar latar belakang gambar tetap konsisten antar babak.
+                      Latar tempat (arsitektur, pantai, kapal, istana) akan dikunci otomatis agar
+                      latar belakang gambar tetap konsisten antar babak.
                     </p>
                     <button
                       type="button"
@@ -1453,7 +1517,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         type="text"
                         value={worldSetting.era || ""}
                         placeholder="mis. Zaman Kerajaan Nusantara Abad ke-14 (Pra-modern, tanpa teknologi mesin/listrik)"
-                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, era: e.target.value }))}
+                        onChange={(e) =>
+                          setWorldSetting((prev) => ({ ...prev, era: e.target.value }))
+                        }
                         className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
                       />
                     ) : (
@@ -1472,7 +1538,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                         type="text"
                         value={worldSetting.time_setting || ""}
                         placeholder="mis. Masa Lalu Tradisional / Sejarah"
-                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, time_setting: e.target.value }))}
+                        onChange={(e) =>
+                          setWorldSetting((prev) => ({ ...prev, time_setting: e.target.value }))
+                        }
                         className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
                       />
                     ) : (
@@ -1490,13 +1558,16 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                       <textarea
                         value={worldSetting.atmosphere || ""}
                         placeholder="mis. Cinematic warm vintage tone, golden sunset lighting, dramatic stormy sky in climax"
-                        onChange={(e) => setWorldSetting((prev) => ({ ...prev, atmosphere: e.target.value }))}
+                        onChange={(e) =>
+                          setWorldSetting((prev) => ({ ...prev, atmosphere: e.target.value }))
+                        }
                         rows={2}
                         className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-500"
                       />
                     ) : (
                       <p className="text-[11px] text-slate-300 font-mono bg-black/40 p-2 rounded-lg border border-[#222] leading-relaxed">
-                        {worldSetting.atmosphere || "Pencahayaan dramatis dan atmosfer visual sesuai tone naskah."}
+                        {worldSetting.atmosphere ||
+                          "Pencahayaan dramatis dan atmosfer visual sesuai tone naskah."}
                       </p>
                     )}
                   </div>
@@ -1554,7 +1625,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               Daftar Babak & Segmen Naskah (0 Segmen)
             </h3>
             <p className="text-xs text-muted-foreground max-w-lg mx-auto mb-4 leading-relaxed">
-              Ketikkan topik ide cerita di panel kiri atas lalu klik tombol <strong>Generate Naskah Storyboard</strong>. Sistem akan menghasilkan alur babak naskah narasi lengkap beserta prompt gambar sketsa hand-drawn di sini.
+              Ketikkan topik ide cerita di panel kiri atas lalu klik tombol{" "}
+              <strong>Generate Naskah Storyboard</strong>. Sistem akan menghasilkan alur babak
+              naskah narasi lengkap beserta prompt gambar sketsa hand-drawn di sini.
             </p>
           </div>
         ) : (
@@ -1567,8 +1640,13 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <span>Daftar Babak & Segmen Naskah ({segments.length} Segmen)</span>
-                    <Badge variant="outline" className="text-[10px] font-mono border-violet-500/30 text-violet-300 bg-violet-500/10 normal-case">
-                      {(project.narration?.language || language) === "en" ? "🇬🇧 English Explainer" : "🇮🇩 Indonesian"}
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-mono border-violet-500/30 text-violet-300 bg-violet-500/10 normal-case"
+                    >
+                      {(project.narration?.language || language) === "en"
+                        ? "🇬🇧 English Explainer"
+                        : "🇮🇩 Indonesian"}
                     </Badge>
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
@@ -1608,9 +1686,12 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
 
             {/* Segments List with full width 2-column layout */}
             <div className="space-y-4">
-              {segments.map((seg: any, idx: number) => {
+              {segments.map((seg, idx: number) => {
                 const segId = seg.id || seg.segment_id || `seg-${idx + 1}`;
-                const isEditing = editingSegmentIndex !== null ? editingSegmentIndex === idx : editingSegmentId === segId;
+                const isEditing =
+                  editingSegmentIndex !== null
+                    ? editingSegmentIndex === idx
+                    : editingSegmentId === segId;
                 const segItems = items.filter((it) => {
                   if (seg.id) return it.segment_id === seg.id;
                   if (seg.segment_id) return it.segment_id === seg.segment_id;
@@ -1620,10 +1701,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 return (
                   <div
                     key={seg.id || idx}
-                    className={`p-5 rounded-xl border transition space-y-3.5 ${isEditing
-                      ? "border-violet-500/80 bg-[#161616] ring-1 ring-violet-500/30 shadow-lg shadow-violet-500/5"
-                      : "border-[#262626] bg-[#141414] hover:border-violet-500/40"
-                      }`}
+                    className={`p-5 rounded-xl border transition space-y-3.5 ${
+                      isEditing
+                        ? "border-violet-500/80 bg-[#161616] ring-1 ring-violet-500/30 shadow-lg shadow-violet-500/5"
+                        : "border-[#262626] bg-[#141414] hover:border-violet-500/40"
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#222] pb-2.5">
                       <div className="flex items-center gap-2 flex-1">
@@ -1664,7 +1746,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                               ) : (
                                 <Copy className="w-3 h-3 text-slate-400" />
                               )}
-                              <span className="text-[11px]">{copiedSegmentId === segId ? "Tersalin" : "Salin"}</span>
+                              <span className="text-[11px]">
+                                {copiedSegmentId === segId ? "Tersalin" : "Salin"}
+                              </span>
                             </Button>
 
                             <Button
@@ -1731,7 +1815,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                               className="w-full text-xs text-white leading-relaxed font-sans bg-[#111] border-violet-500/40 focus:border-violet-400 p-3 rounded-xl resize-y"
                             />
                             <p className="text-[10px] text-slate-500 leading-normal">
-                              💡 Teks narasi dibacakan oleh TTS: gunakan koma (,) atau titik (.), hindari tanda titik dua (:) dan titik koma (;), serta tanpa token variabel.
+                              💡 Teks narasi dibacakan oleh TTS: gunakan koma (,) atau titik (.),
+                              hindari tanda titik dua (:) dan titik koma (;), serta tanpa token
+                              variabel.
                             </p>
                           </>
                         ) : (
@@ -1750,10 +1836,11 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                           {segItems.map((item, iIdx) => (
                             <div
                               key={item.id}
-                              className={`flex items-start gap-2.5 text-[11px] text-slate-300 p-2.5 rounded-lg border leading-relaxed font-mono ${isEditing
-                                ? "bg-[#111] border-[#333]"
-                                : "bg-surface/60 border-surface-border"
-                                }`}
+                              className={`flex items-start gap-2.5 text-[11px] text-slate-300 p-2.5 rounded-lg border leading-relaxed font-mono ${
+                                isEditing
+                                  ? "bg-[#111] border-[#333]"
+                                  : "bg-surface/60 border-surface-border"
+                              }`}
                             >
                               <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 font-bold shrink-0 mt-1">
                                 #{iIdx + 1}

@@ -1,25 +1,26 @@
-from pathlib import Path
 import shutil
 import uuid
+from pathlib import Path
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+
 from app.core.db import get_db
 from app.core.storage import storage
-from app.models.project import Project, SourceVideo, Scene, RenderJob
-from app.models.narration import Narration, AudioTrack
-from app.models.timeline import Timeline, SubtitleStyle
+from app.models.project import Project, Scene, SourceVideo
 from app.models.storyboard import StoryboardItem
+from app.models.timeline import SubtitleStyle, Timeline
 from app.schemas.project import (
     ProjectCreate,
-    ProjectUpdate,
-    ProjectResponse,
     ProjectDetailResponse,
-    SourceVideoResponse,
-    SceneResponse,
+    ProjectResponse,
+    ProjectUpdate,
     RenderJobResponse,
+    SceneResponse,
+    SourceVideoResponse,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])

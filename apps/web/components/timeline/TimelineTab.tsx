@@ -28,7 +28,18 @@ import { useHistoryState } from "@/hooks/useHistoryState";
 import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Timeline, TimelineClip, Scene, AudioTrack, Narration, SourceVideo, WatermarkConfig } from "@/types";
+import {
+  Project,
+  Timeline,
+  TimelineClip,
+  Scene,
+  AudioTrack,
+  Narration,
+  SourceVideo,
+  WatermarkConfig,
+  BackgroundFill,
+  SentenceSegment,
+} from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,7 +69,7 @@ interface TimelineTabProps {
   };
 }
 
-const EMPTY_SEGMENTS: any[] = [];
+const EMPTY_SEGMENTS: SentenceSegment[] = [];
 
 export function TimelineTab({ project }: TimelineTabProps) {
   const queryClient = useQueryClient();
@@ -128,7 +139,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
   const [isLoopingClip, setIsLoopingClip] = useState(false);
 
   // Left sidebar & drawer state: "pool" (Media Pool), "inspector" (Clip Inspector), "subtitles" (Subtitle Customizer), "layout" (Aspect Ratio), or "watermark" (Text Watermark Overlay)
-  const [activeSideTab, setActiveSideTab] = useState<"pool" | "inspector" | "subtitles" | "layout" | "watermark">("pool");
+  const [activeSideTab, setActiveSideTab] = useState<
+    "pool" | "inspector" | "subtitles" | "layout" | "watermark"
+  >("pool");
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
 
   // Resizable panel dimensions: drawer width and tracks panel height
@@ -139,7 +152,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
   // Live aspect ratio and background fill states
   const [liveAspectRatio, setLiveAspectRatio] = useState<string>(project.aspect_ratio || "9:16");
-  const [liveBackgroundFill, setLiveBackgroundFill] = useState<any>(project.background_fill || null);
+  const [liveBackgroundFill, setLiveBackgroundFill] = useState<BackgroundFill | null>(
+    project.background_fill || null
+  );
 
   useEffect(() => {
     if (project.aspect_ratio) setLiveAspectRatio(project.aspect_ratio);
@@ -165,7 +180,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
   }, [project.subtitle_style]);
 
   // Active watermark preview state (syncs live to monitor)
-  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(project.watermark || null);
+  const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(
+    project.watermark || null
+  );
 
   useEffect(() => {
     if (project.watermark) {
@@ -174,8 +191,12 @@ export function TimelineTab({ project }: TimelineTabProps) {
   }, [project.watermark]);
 
   // Track attachment state (synced with timeline has_audio and has_subtitles)
-  const [isAudioAttached, setIsAudioAttached] = useState<boolean>(project.timeline?.has_audio ?? true);
-  const [isSubtitlesAttached, setIsSubtitlesAttached] = useState<boolean>(project.timeline?.has_subtitles ?? true);
+  const [isAudioAttached, setIsAudioAttached] = useState<boolean>(
+    project.timeline?.has_audio ?? true
+  );
+  const [isSubtitlesAttached, setIsSubtitlesAttached] = useState<boolean>(
+    project.timeline?.has_subtitles ?? true
+  );
 
   useEffect(() => {
     if (project.timeline) {
@@ -185,7 +206,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
   }, [project.timeline?.has_audio, project.timeline?.has_subtitles]);
 
   const attachedSegments = useMemo(() => {
-    return isSubtitlesAttached ? (project.narration?.segments || EMPTY_SEGMENTS) : EMPTY_SEGMENTS;
+    return isSubtitlesAttached ? project.narration?.segments || EMPTY_SEGMENTS : EMPTY_SEGMENTS;
   }, [isSubtitlesAttached, project.narration?.segments]);
 
   // When a clip is selected, auto-switch the side drawer to inspector
@@ -200,7 +221,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
   // Compute total timeline duration
   const totalDuration = useMemo(() => {
     const lastClipEnd = timelineEnd(clips);
-    const audioDur = isAudioAttached ? (project.audio?.duration || 0) : 0;
+    const audioDur = isAudioAttached ? project.audio?.duration || 0 : 0;
     return Math.max(lastClipEnd, audioDur, clips.length > 0 || isAudioAttached ? 1 : 0);
   }, [clips, isAudioAttached, project.audio?.duration]);
 
@@ -297,7 +318,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
       showToast("Scene berhasil dicocokkan otomatis dengan naskah!", "success");
       setIsAutoMatching(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setIsAutoMatching(false);
       showToast(err.message || "Gagal mencocokkan scene", "error");
     },
@@ -318,7 +339,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
         showToast("Susunan timeline berhasil disimpan!", "success");
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan timeline", "error");
     },
   });
@@ -368,7 +389,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
         "info"
       );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengosongkan timeline", "error");
     },
   });
@@ -384,7 +405,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Audio & Subtitle berhasil ditambahkan kembali ke timeline!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menambahkan audio/subtitle", "error");
     },
   });
@@ -501,13 +522,19 @@ export function TimelineTab({ project }: TimelineTabProps) {
         const next = replaceScene(clips, target.index, sc);
         setClips(next);
         setSelectedClipIndex(target.index);
-        showToast(`Klip #${target.index + 1} diganti dengan Scene #${sc.scene_index + 1}`, "success");
+        showToast(
+          `Klip #${target.index + 1} diganti dengan Scene #${sc.scene_index + 1}`,
+          "success"
+        );
       } else if (target.type === "insert") {
         const res = insertSceneAt(clips, target.t, sc);
         if (res) {
           setClips(res.clips);
           setSelectedClipIndex(res.index);
-          showToast(`Scene #${sc.scene_index + 1} disisipkan di posisi ${target.t.toFixed(1)}s`, "success");
+          showToast(
+            `Scene #${sc.scene_index + 1} disisipkan di posisi ${target.t.toFixed(1)}s`,
+            "success"
+          );
         }
       } else if (target.type === "append") {
         const next = appendScene(clips, sc);
@@ -528,7 +555,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
       }
       const next = replaceScene(clips, selectedClipIndex, sc);
       setClips(next);
-      showToast(`Klip #${selectedClipIndex + 1} diganti dengan Scene #${sc.scene_index + 1}`, "success");
+      showToast(
+        `Klip #${selectedClipIndex + 1} diganti dengan Scene #${sc.scene_index + 1}`,
+        "success"
+      );
     },
     [clips, selectedClipIndex, setClips, showToast]
   );
@@ -539,7 +569,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
       if (res) {
         setClips(res.clips);
         setSelectedClipIndex(res.index);
-        showToast(`Scene #${sc.scene_index + 1} disisipkan di playhead (${time.toFixed(1)}s)`, "success");
+        showToast(
+          `Scene #${sc.scene_index + 1} disisipkan di playhead (${time.toFixed(1)}s)`,
+          "success"
+        );
       } else {
         showToast("Tidak dapat menyisipkan di posisi ini", "error");
       }
@@ -633,7 +666,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) {
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
         return;
       }
 
@@ -714,7 +751,16 @@ export function TimelineTab({ project }: TimelineTabProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, saveTimelineMutation, handleSplit, handleDeleteSelectedClip, toggleLoop, stepFrames, jumpCut]);
+  }, [
+    undo,
+    redo,
+    saveTimelineMutation,
+    handleSplit,
+    handleDeleteSelectedClip,
+    toggleLoop,
+    stepFrames,
+    jumpCut,
+  ]);
 
   const selectedClip = selectedClipIndex !== null ? clips[selectedClipIndex] || null : null;
   const selectedScene = selectedClip ? sceneMap.get(selectedClip.scene_id) : undefined;
@@ -728,24 +774,37 @@ export function TimelineTab({ project }: TimelineTabProps) {
             <Film className="w-4 h-4 text-primary" />
             Timeline Studio
           </span>
-          <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]">
+          <Badge
+            variant="outline"
+            className="font-mono text-[10px] text-muted-foreground border-[#2E2E2E]"
+          >
             {clips.length} klip
           </Badge>
           {saveTimelineMutation.isPending ? (
-            <Badge variant="outline" className="border-primary/40 text-primary text-[10px] flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="border-primary/40 text-primary text-[10px] flex items-center gap-1"
+            >
               <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
             </Badge>
           ) : isDirty ? (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Autosave...
             </Badge>
           ) : clips.length > 0 ? (
-            <Badge variant="outline" className="border-primary/40 text-primary text-[10px] flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="border-primary/40 text-primary text-[10px] flex items-center gap-1"
+            >
               <CheckCircle2 className="w-3 h-3" /> Tersimpan
             </Badge>
           ) : null}
           <span className="text-[11px] text-muted-foreground hidden sm:inline">
-            Durasi: <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
+            Durasi:{" "}
+            <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
           </span>
         </div>
 
@@ -844,10 +903,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("pool")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "pool"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                      activeSideTab === "pool"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                      }`}
+                    }`}
                     title="Media Pool (Koleksi Scene)"
                   >
                     <Film className="w-4 h-4" />
@@ -856,10 +916,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("inspector")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${activeSideTab === "inspector"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
+                      activeSideTab === "inspector"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                      }`}
+                    }`}
                     title="Clip Inspector (Pengaturan Klip)"
                   >
                     <SlidersHorizontal className="w-4 h-4" />
@@ -871,10 +932,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("subtitles")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "subtitles"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                      activeSideTab === "subtitles"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                      }`}
+                    }`}
                     title="Subtitle Style & Presets"
                   >
                     <Subtitles className="w-4 h-4" />
@@ -883,10 +945,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("layout")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "layout"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                      activeSideTab === "layout"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                      }`}
+                    }`}
                     title="Mode Tampilan & Rasio Video"
                   >
                     <Maximize2 className="w-4 h-4" />
@@ -895,10 +958,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                   <button
                     type="button"
                     onClick={() => setActiveSideTab("watermark")}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "watermark"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                      activeSideTab === "watermark"
                         ? "bg-primary text-black font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                      }`}
+                    }`}
                     title="Watermark Video (Teks & Posisi)"
                   >
                     <Stamp className="w-4 h-4" />
@@ -1009,7 +1073,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 clips={clips}
                 segments={attachedSegments}
                 peaks={isAudioAttached ? peaks : null}
-                audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
+                audioDuration={isAudioAttached ? project.audio?.duration || totalDuration : 0}
                 voice={project.audio?.voice}
                 duration={totalDuration}
                 time={time}
@@ -1096,10 +1160,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("pool");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "pool" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                    activeSideTab === "pool" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                  }`}
                   title="Media Pool (Koleksi Scene)"
                 >
                   <Film className="w-4 h-4" />
@@ -1111,10 +1176,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("inspector");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${activeSideTab === "inspector" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
+                    activeSideTab === "inspector" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                  }`}
                   title="Clip Inspector (Pengaturan Klip)"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
@@ -1129,10 +1195,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("subtitles");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "subtitles" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                    activeSideTab === "subtitles" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                  }`}
                   title="Subtitle Style & Presets"
                 >
                   <Subtitles className="w-4 h-4" />
@@ -1144,10 +1211,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("layout");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "layout" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                    activeSideTab === "layout" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                  }`}
                   title="Mode Tampilan & Rasio Video"
                 >
                   <Maximize2 className="w-4 h-4" />
@@ -1159,10 +1227,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     setActiveSideTab("watermark");
                     setIsDrawerCollapsed(false);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${activeSideTab === "watermark" && !isDrawerCollapsed
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                    activeSideTab === "watermark" && !isDrawerCollapsed
                       ? "bg-primary text-black font-semibold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
-                    }`}
+                  }`}
                   title="Watermark Video (Teks & Posisi)"
                 >
                   <Stamp className="w-4 h-4" />
@@ -1176,15 +1245,20 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E] flex items-center justify-center transition"
                 title={isDrawerCollapsed ? "Buka panel drawer" : "Tutup panel drawer"}
               >
-                {isDrawerCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                {isDrawerCollapsed ? (
+                  <ChevronRight className="w-4 h-4" />
+                ) : (
+                  <ChevronLeft className="w-4 h-4" />
+                )}
               </button>
             </div>
 
             {/* Left Drawer Container (Media Pool OR Clip Inspector OR Subtitle Panel) */}
             <div
               style={{ width: isDrawerCollapsed ? 0 : drawerWidth }}
-              className={`shrink-0 border-r border-surface-border bg-surface-secondary flex flex-col overflow-hidden transition-[width] duration-75 ${isDrawerCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-                }`}
+              className={`shrink-0 border-r border-surface-border bg-surface-secondary flex flex-col overflow-hidden transition-[width] duration-75 ${
+                isDrawerCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+              }`}
             >
               {activeSideTab === "pool" ? (
                 <TimelineMediaPool
@@ -1333,7 +1407,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               clips={clips}
               segments={attachedSegments}
               peaks={isAudioAttached ? peaks : null}
-              audioDuration={isAudioAttached ? (project.audio?.duration || totalDuration) : 0}
+              audioDuration={isAudioAttached ? project.audio?.duration || totalDuration : 0}
               voice={project.audio?.voice}
               duration={totalDuration}
               time={time}
@@ -1386,7 +1460,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Kosongkan Timeline?</h3>
-                <p className="text-xs text-muted-foreground">Pilih cakupan track yang ingin dikosongkan</p>
+                <p className="text-xs text-muted-foreground">
+                  Pilih cakupan track yang ingin dikosongkan
+                </p>
               </div>
             </div>
 
@@ -1400,11 +1476,15 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E]"
                 }`}
               >
-                <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "all" ? "border-destructive bg-destructive" : "border-[#4E4E4E]"}`}>
+                <div
+                  className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "all" ? "border-destructive bg-destructive" : "border-[#4E4E4E]"}`}
+                >
                   {clearScope === "all" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-semibold text-foreground">Kosongkan Semua Track (V1, S1, A1)</div>
+                  <div className="text-xs font-semibold text-foreground">
+                    Kosongkan Semua Track (V1, S1, A1)
+                  </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
                     Hapus semua klip video serta lepaskan audio narasi dan subtitle dari timeline.
                   </div>
@@ -1420,20 +1500,29 @@ export function TimelineTab({ project }: TimelineTabProps) {
                     : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E]"
                 }`}
               >
-                <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "video_only" ? "border-primary bg-primary" : "border-[#4E4E4E]"}`}>
-                  {clearScope === "video_only" && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                <div
+                  className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center ${clearScope === "video_only" ? "border-primary bg-primary" : "border-[#4E4E4E]"}`}
+                >
+                  {clearScope === "video_only" && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-semibold text-foreground">Hanya Klip Video Saja (V1)</div>
+                  <div className="text-xs font-semibold text-foreground">
+                    Hanya Klip Video Saja (V1)
+                  </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Hapus klip video tetapi biarkan audio narasi dan subtitle tetap berada di timeline.
+                    Hapus klip video tetapi biarkan audio narasi dan subtitle tetap berada di
+                    timeline.
                   </div>
                 </div>
               </button>
             </div>
 
             <p className="text-[11px] text-muted-foreground leading-relaxed bg-[#141414] p-2.5 rounded-lg border border-[#2E2E2E]">
-              💡 <strong>Tips:</strong> Jika semua track dikosongkan, Anda dapat menggunakan tombol <span className="text-primary font-semibold">+ Re-add Audio & Subtitle</span> atau <span className="text-primary font-semibold">Auto-Match AI</span> kembali kapan saja.
+              💡 <strong>Tips:</strong> Jika semua track dikosongkan, Anda dapat menggunakan tombol{" "}
+              <span className="text-primary font-semibold">+ Re-add Audio & Subtitle</span> atau{" "}
+              <span className="text-primary font-semibold">Auto-Match AI</span> kembali kapan saja.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2E2E]">
@@ -1453,8 +1542,12 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 onClick={() => clearTimelineMutation.mutate(clearScope)}
                 className="gap-2"
               >
-                {clearTimelineMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span>{clearScope === "all" ? "Kosongkan Semua Track" : "Hapus Klip Video Saja"}</span>
+                {clearTimelineMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : null}
+                <span>
+                  {clearScope === "all" ? "Kosongkan Semua Track" : "Hapus Klip Video Saja"}
+                </span>
               </Button>
             </div>
           </div>

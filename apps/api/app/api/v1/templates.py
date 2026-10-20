@@ -1,10 +1,12 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
 from app.models.narration import NarrationTemplate
-from app.schemas.narration import TemplateResponse, TemplateCreate, TemplateUpdate
+from app.schemas.narration import TemplateCreate, TemplateResponse, TemplateUpdate
 from app.services.narrative import DEFAULT_TEMPLATES
 
 router = APIRouter(prefix="/templates", tags=["templates"])

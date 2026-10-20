@@ -16,12 +16,16 @@ function ToastBanner() {
           toast.type === "success"
             ? "bg-emerald-950/95 border-emerald-500/50 text-emerald-100 shadow-emerald-950/50"
             : toast.type === "error"
-            ? "bg-rose-950/95 border-rose-500/50 text-rose-100 shadow-rose-950/50"
-            : "bg-[#18181B]/95 border-violet-500/50 text-slate-100 shadow-violet-950/50"
+              ? "bg-rose-950/95 border-rose-500/50 text-rose-100 shadow-rose-950/50"
+              : "bg-[#18181B]/95 border-violet-500/50 text-slate-100 shadow-violet-950/50"
         } backdrop-blur-xl transition-all`}
       >
-        {toast.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />}
-        {toast.type === "error" && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />}
+        {toast.type === "success" && (
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        )}
+        {toast.type === "error" && (
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+        )}
         {toast.type === "info" && <Info className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />}
         <div className="flex-1 max-h-60 overflow-y-auto pr-1 break-words leading-relaxed">
           {toast.message}

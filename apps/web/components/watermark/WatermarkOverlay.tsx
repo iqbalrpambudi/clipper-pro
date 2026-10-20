@@ -216,14 +216,15 @@ export function WatermarkOverlay({
               ? `${strokeWidth}px ${watermark.shadow_color || "rgba(0,0,0,0.7)"}`
               : undefined,
             backgroundColor: hasBackground
-              ? hexToRgba(watermark.background_color || "#000000", watermark.background_opacity ?? 0.5)
+              ? hexToRgba(
+                  watermark.background_color || "#000000",
+                  watermark.background_opacity ?? 0.5
+                )
               : "transparent",
             padding: hasBackground
               ? `${Math.max(2, Math.round(4 * scale))}px ${Math.max(6, Math.round(10 * scale))}px`
               : "0px",
-            borderRadius: hasBackground
-              ? `${Math.max(3, Math.round(6 * scale))}px`
-              : "0px",
+            borderRadius: hasBackground ? `${Math.max(3, Math.round(6 * scale))}px` : "0px",
           }}
         >
           {watermark.text}

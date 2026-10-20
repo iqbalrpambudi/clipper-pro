@@ -1,7 +1,5 @@
 import type { SentenceSegment, SubtitleStyle } from "../types";
 
-
-
 // Exact font metric compensation ratios between CSS unitsPerEm and libass/FreeType winAscent+winDescent
 export const FONT_METRIC_COMPENSATION: Record<string, number> = {
   Anton: 1.72,
@@ -174,7 +172,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         for (let j = 0; j < kCount; j++) {
           const targetWord = group[j];
-          const tStart = (i === 0 && j === 0) ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms) : targetWord.start_ms;
+          const tStart =
+            i === 0 && j === 0
+              ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms)
+              : targetWord.start_ms;
           let tEnd: number;
 
           if (j < kCount - 1) {
@@ -220,7 +221,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const nWords = words.length;
 
       // Compute wrapping breaks to match preview layout (max ~85% width)
-      const maxChars = Math.max(24, Math.floor((playResX * 0.85) / (assFontSize * 0.40)));
+      const maxChars = Math.max(24, Math.floor((playResX * 0.85) / (assFontSize * 0.4)));
       const wrapBreaks = new Set<number>();
       let curLen = 0;
       for (let iW = 0; iW < words.length; iW++) {
@@ -239,7 +240,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
       for (let j = 0; j < nWords; j++) {
         const targetWord = words[j];
-        const tStart = j === 0 ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms) : targetWord.start_ms;
+        const tStart =
+          j === 0
+            ? Math.min(seg.start_ms ?? targetWord.start_ms, targetWord.start_ms)
+            : targetWord.start_ms;
         let tEnd: number;
 
         if (j < nWords - 1) {
@@ -262,13 +266,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         for (let m = 0; m < words.length; m++) {
           const w = words[m];
           const wText = (w.word || "").trim();
-          const prefix = wrapBreaks.has(m) ? "\\N" : (m === 0 ? "" : " ");
+          const prefix = wrapBreaks.has(m) ? "\\N" : m === 0 ? "" : " ";
 
           if (m === j) {
             if (anim === "none") {
               lineParts.push(`${prefix}{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);
             } else {
-              lineParts.push(`${prefix}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`);
+              lineParts.push(
+                `${prefix}{\\c${highlightCol}}${popFx}${wText.toUpperCase()}${scaleReset}`
+              );
             }
           } else {
             lineParts.push(`${prefix}{\\c${primaryCol}}${scaleReset}${wText.toUpperCase()}`);

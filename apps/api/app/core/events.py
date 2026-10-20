@@ -1,7 +1,8 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from app.core.redis import get_redis_client
 
 log = logging.getLogger("cliper-events")

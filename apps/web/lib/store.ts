@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { SubtitleStyle } from "@/types";
 
 export type StudioTab =
   | "media"
@@ -30,7 +31,7 @@ export interface TaskEvent {
   stage: string;
   message: string;
   error?: string | null;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   timestamp?: string;
 }
 
@@ -106,7 +107,7 @@ export interface ScriptDraftState {
 }
 
 export interface SubtitleDraftState {
-  style?: any;
+  style?: Partial<SubtitleStyle>;
   selectedPresetId?: string;
 }
 

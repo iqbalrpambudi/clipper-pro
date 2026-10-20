@@ -2,13 +2,13 @@ import asyncio
 import json
 import logging
 import re
-import uuid
-from typing import Dict, Any, List, Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
-from app.models.narration import Narration, AudioTrack
 from app.models.storyboard import StoryboardItem
 from app.services.ai_adapters.factory import get_active_llm_adapter
 
@@ -31,7 +31,7 @@ def resolve_prompt_variables(
 ) -> str:
     """
     Resolve and compile variable tokens in a storyboard image prompt template.
-    
+
     Supported tokens:
     - [preset:style], [style], [Preset Style] -> preset master prompt
     - [era], [world:era] -> world_setting era
@@ -63,15 +63,15 @@ def resolve_prompt_variables(
 
     # Pre-index locations
     loc_map: Dict[str, Dict[str, Any]] = {}
-    for l in locs:
-        if not isinstance(l, dict):
+    for loc in locs:
+        if not isinstance(loc, dict):
             continue
-        l_id = _normalize_key(l.get("id", "") or l.get("location_id", ""))
-        l_name = _normalize_key(l.get("name", ""))
+        l_id = _normalize_key(loc.get("id", "") or loc.get("location_id", ""))
+        l_name = _normalize_key(loc.get("name", ""))
         if l_id:
-            loc_map[l_id] = l
+            loc_map[l_id] = loc
         if l_name:
-            loc_map[l_name] = l
+            loc_map[l_name] = loc
 
     def _find_character(query: str) -> Optional[Dict[str, Any]]:
         norm_q = _normalize_key(query)
@@ -107,12 +107,12 @@ def resolve_prompt_variables(
         if not norm_q:
             return None
         if norm_q in loc_map:
-            l = loc_map[norm_q]
-            return l.get("environment_anchor") or l.get("description") or ""
+            loc_item = loc_map[norm_q]
+            return loc_item.get("environment_anchor") or loc_item.get("description") or ""
         # Partial containment match
-        for k, l in loc_map.items():
+        for k, loc_item in loc_map.items():
             if norm_q in k or k in norm_q:
-                return l.get("environment_anchor") or l.get("description") or ""
+                return loc_item.get("environment_anchor") or loc_item.get("description") or ""
         return None
 
     def _token_replacer(match: re.Match) -> str:
@@ -220,11 +220,11 @@ def clean_narration_for_tts(
 
     # Pre-index locations
     loc_map: Dict[str, str] = {}
-    for l in locs:
-        if not isinstance(l, dict):
+    for loc in locs:
+        if not isinstance(loc, dict):
             continue
-        l_name = (l.get("name") or "").strip()
-        l_id = _normalize_key(l.get("id") or l.get("location_id") or "")
+        l_name = (loc.get("name") or "").strip()
+        l_id = _normalize_key(loc.get("id") or loc.get("location_id") or "")
         l_norm_name = _normalize_key(l_name)
         if l_name:
             if l_id:
@@ -769,10 +769,10 @@ def _format_continuity_bible_instructions(
         else:
             lines.append("2. TOKEN LATAR TEMPAT UTAMA (LOCATIONS):")
 
-        for l in locations:
-            l_name = l.get("name", "Location" if language == "en" else "Lokasi")
-            l_id = l.get("id") or l.get("location_id") or _normalize_key(l_name)
-            l_anchor = l.get("environment_anchor", "")
+        for loc in locations:
+            l_name = loc.get("name", "Location" if language == "en" else "Lokasi")
+            l_id = loc.get("id") or loc.get("location_id") or _normalize_key(l_name)
+            l_anchor = loc.get("environment_anchor", "")
             lines.append(f"   • {l_name}: Use token `[loc:{l_id}]` (Environment: {l_anchor})")
         lines.append("")
 
@@ -967,7 +967,7 @@ def build_chapter_expansion_prompt(
         char_remind_str = f"- Locked Characters (Use exact visual anchors): {names}\n" if language == "en" else f"- Karakter Terkunci (Gunakan visual anchor mereka persis): {names}\n"
 
     kp_str = "\n".join(f"- {kp}" for kp in chapter_key_points) if chapter_key_points else ("- Develop according to chapter synopsis" if language == "en" else "- Kembangkan sesuai sinopsis babak")
-    
+
     if language == "en":
         user_prompt = (
             f"Overall Video Context:\n"
@@ -1336,8 +1336,8 @@ async def generate_storyboard_script(
 
     proj.language = language
 
-    from app.services.image_studio import get_active_image_preset
     from app.models.image_preset import ImagePreset
+    from app.services.image_studio import get_active_image_preset
 
     preset = None
     if preset_id:
@@ -1413,7 +1413,7 @@ async def generate_storyboard_script(
                 log.info("Detected %d locked characters from outline: %s", len(detected_characters), [c.get("name") for c in detected_characters])
             if outline_data.get("locations"):
                 detected_locations = outline_data.get("locations", []) or []
-                log.info("Detected %d locations from outline: %s", len(detected_locations), [l.get("name") for l in detected_locations])
+                log.info("Detected %d locations from outline: %s", len(detected_locations), [loc.get("name") for loc in detected_locations])
             if outline_data.get("world_setting"):
                 detected_world_setting = outline_data.get("world_setting", {}) or {}
                 log.info("Detected world setting from outline: %s", detected_world_setting.get("era"))
@@ -1532,7 +1532,7 @@ async def generate_storyboard_script(
             log.info("Detected %d locked characters from single-shot: %s", len(detected_characters), [c.get("name") for c in detected_characters])
         if data.get("locations"):
             detected_locations = data.get("locations", []) or []
-            log.info("Detected %d locations from single-shot: %s", len(detected_locations), [l.get("name") for l in detected_locations])
+            log.info("Detected %d locations from single-shot: %s", len(detected_locations), [loc.get("name") for loc in detected_locations])
         if data.get("world_setting"):
             detected_world_setting = data.get("world_setting", {}) or {}
             log.info("Detected world setting from single-shot: %s", detected_world_setting.get("era"))
@@ -1635,7 +1635,7 @@ async def generate_storyboard_script(
             # If a segment has multiple images, split the segment into subsegments
             if len(img_prompts) > 1:
                 sub_texts = _split_text_into_subsegments(seg_text, len(img_prompts))
-                for sub_idx, (sub_text, prompt) in enumerate(zip(sub_texts, img_prompts)):
+                for sub_idx, (sub_text, prompt) in enumerate(zip(sub_texts, img_prompts, strict=False)):
                     clean_sub = clean_narration_for_tts(
                         sub_text,
                         characters=detected_characters,

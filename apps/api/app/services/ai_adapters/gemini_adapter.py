@@ -4,11 +4,11 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import httpx
 
 from app.services.ai_adapters.base import EMBEDDING_DIM, hash_embedding
-
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 
 log = logging.getLogger(__name__)

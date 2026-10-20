@@ -29,23 +29,24 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, StoryboardItem, SubtitleStyle } from "@/types";
+import { Project, ProjectDetail, StoryboardItem, SubtitleStyle, SentenceSegment, WordTimestamp } from "@/types";
 import { Button, Badge, Input } from "@/components/ui";
 import { presetStorage, SubtitleCustomPreset } from "@/lib/presetStorage";
 
 interface StoryboardTimelineTabProps {
-  project: Project & {
-    narration?: any;
-    audio?: any;
-    storyboard_items?: StoryboardItem[];
-    subtitle_style?: SubtitleStyle | null;
-  };
+  project: Project;
 }
 
 function hexToRgba(hex: string, opacity: number = 1): string {
   if (!hex) return `rgba(0, 0, 0, ${opacity})`;
   const clean = hex.replace("#", "");
-  const fullHex = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const fullHex =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean;
   const r = parseInt(fullHex.substring(0, 2), 16) || 0;
   const g = parseInt(fullHex.substring(2, 4), 16) || 0;
   const b = parseInt(fullHex.substring(4, 6), 16) || 0;
@@ -173,9 +174,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const { setActiveTab, showToast, subtitleDraftsByProject, setSubtitleDraft } = useStudioStore();
 
   const narration = project.narration;
-  const audio = (project as any).audio || (project as any).audio_track;
+  const audio = project.audio || project.audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
-  const segments: any[] = narration?.segments || [];
+  const segments: SentenceSegment[] = narration?.segments || [];
 
   const draft = subtitleDraftsByProject[project.id];
 
@@ -192,8 +193,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
   // Subtitle Style State (WYSIWYG 16:9 canvas)
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>(() => {
-    if (draft?.style) return draft.style;
-    return {
+    const base: SubtitleStyle = {
       enabled: project.subtitle_style?.enabled !== false,
       preset_name: project.subtitle_style?.preset_name || "viral_tiktok",
       font_family: project.subtitle_style?.font_family || "Poppins",
@@ -214,11 +214,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       scale_factor: project.subtitle_style?.scale_factor ?? 1.0,
       emoji_enabled: false,
     };
+    if (draft?.style) return { ...base, ...draft.style };
+    return base;
   });
 
   // Custom Subtitle Presets state
   const [customSubtitlePresets, setCustomSubtitlePresets] = useState<SubtitleCustomPreset[]>([]);
-  const [selectedSubtitlePresetId, setSelectedSubtitlePresetId] = useState<string>(draft?.selectedPresetId || "");
+  const [selectedSubtitlePresetId, setSelectedSubtitlePresetId] = useState<string>(
+    draft?.selectedPresetId || ""
+  );
   const [showSaveSubtitleModal, setShowSaveSubtitleModal] = useState<boolean>(false);
   const [newSubtitlePresetName, setNewSubtitlePresetName] = useState<string>("");
 
@@ -238,12 +242,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       return;
     }
     const timer = setTimeout(() => {
-      api.updateSubtitleStyle(project.id, subtitleStyle).then((res) => {
-        queryClient.setQueryData(["project", project.id], (old: any) => {
-          if (!old) return old;
-          return { ...old, subtitle_style: res || subtitleStyle };
-        });
-      }).catch(() => {});
+      api
+        .updateSubtitleStyle(project.id, subtitleStyle)
+        .then((res) => {
+          queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
+            if (!old) return old;
+            return { ...old, subtitle_style: res || subtitleStyle };
+          });
+        })
+        .catch(() => {});
     }, 800);
     return () => clearTimeout(timer);
   }, [subtitleStyle, project.id, queryClient]);
@@ -312,7 +319,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Efek motion gambar diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui motion", "error");
     },
   });
@@ -324,7 +331,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Gaya subtitle tersimpan untuk render final!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan subtitle", "error");
     },
   });
@@ -335,7 +342,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(() => { });
+      audioRef.current.play().catch(() => {});
       setIsPlaying(true);
     }
   };
@@ -381,10 +388,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const activeSegment = useMemo(() => {
     if (!segments.length) return null;
     const curMs = currentTime * 1000;
-    const direct = segments.find((seg: any) => curMs >= seg.start_ms && curMs <= (seg.end_ms + 250));
+    const direct = segments.find(
+      (seg: SentenceSegment) => curMs >= seg.start_ms && curMs <= seg.end_ms + 250
+    );
     if (direct) return direct;
     for (let i = segments.length - 1; i >= 0; i--) {
-      if (curMs >= segments[i].start_ms && (i === segments.length - 1 || curMs < segments[i + 1].start_ms)) {
+      if (
+        curMs >= segments[i].start_ms &&
+        (i === segments.length - 1 || curMs < segments[i + 1].start_ms)
+      ) {
         return segments[i];
       }
     }
@@ -395,23 +407,33 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   const scale = frameDimensions.width / 1920;
   const scaleY = frameDimensions.height / 1080;
   const scaledFontSize = Math.max(9, Math.round((subtitleStyle.font_size || 38) * scale));
-  const scaledOutlineWidth = Math.max(0, Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2)));
+  const scaledOutlineWidth = Math.max(
+    0,
+    Number(((subtitleStyle.outline_width ?? 4) * scale).toFixed(2))
+  );
   const scaledOffsetY = Math.round((subtitleStyle.offset_y || 0) * scaleY);
   const scaledOffsetX = Math.round((subtitleStyle.offset_x || 0) * scale);
   const isScaleAnim = subtitleStyle.highlight_animation === "scale";
   const isHighlightEnabled = subtitleStyle.highlight_animation !== "none";
   const zoomScale = isScaleAnim ? (subtitleStyle.scale_factor ?? 1.15) : 1.0;
   const fw = (subtitleStyle.font_weight || "Bold").toLowerCase();
-  const fontWeightValue = fw === "bold" ? 800 : fw === "semibold" ? 700 : fw === "medium" ? 500 : 400;
+  const fontWeightValue =
+    fw === "bold" ? 800 : fw === "semibold" ? 700 : fw === "medium" ? 500 : 400;
 
   // Active words & burst calculations
   const curMs = currentTime * 1000;
-  const segWords: any[] = activeSegment?.words || [];
+  const segWords: WordTimestamp[] = activeSegment?.words || [];
   let activeWordIndex = -1;
   if (segWords.length > 0) {
-    activeWordIndex = segWords.findIndex((w: any) => curMs >= w.start_ms && curMs <= (w.end_ms + 180));
+    activeWordIndex = segWords.findIndex(
+      (w: WordTimestamp) => curMs >= w.start_ms && curMs <= w.end_ms + 180
+    );
     // Smooth hold across small inter-word pause within segment (up to 300ms pause)
-    if (activeWordIndex === -1 && curMs >= segWords[0].start_ms && curMs <= segWords[segWords.length - 1].end_ms + 300) {
+    if (
+      activeWordIndex === -1 &&
+      curMs >= segWords[0].start_ms &&
+      curMs <= segWords[segWords.length - 1].end_ms + 300
+    ) {
       for (let i = segWords.length - 1; i >= 0; i--) {
         if (curMs >= segWords[i].start_ms) {
           const nextW = segWords[i + 1];
@@ -426,19 +448,21 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   }
 
   const burstCount = Math.max(2, subtitleStyle.burst_word_count || 2);
-  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] = [];
+  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean }[] =
+    [];
   if (subtitleStyle.display_mode === "burst" && segWords.length > 0) {
     for (let i = 0; i < segWords.length; i += burstCount) {
       const group = segWords.slice(i, i + burstCount);
       const gStart = group[0].start_ms;
       const gEnd = group[group.length - 1].end_ms;
       const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd = nextSlice.length > 0
-        ? Math.min(nextSlice[0].start_ms, gEnd + 350)
-        : Math.min((activeSegment?.end_ms ?? gEnd + 350), gEnd + 350);
+      const maxGEnd =
+        nextSlice.length > 0
+          ? Math.min(nextSlice[0].start_ms, gEnd + 350)
+          : Math.min(activeSegment?.end_ms ?? gEnd + 350, gEnd + 350);
 
       if (curMs >= gStart && curMs <= maxGEnd) {
-        activeBurstGroup = group.map((item: any, localIdx: number) => ({
+        activeBurstGroup = group.map((item: WordTimestamp, localIdx: number) => ({
           ...item,
           isActive: isHighlightEnabled && i + localIdx === activeWordIndex,
         }));
@@ -477,7 +501,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
     setIsDraggingSubtitle(false);
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch { }
+    } catch {}
     updateStyleMutation.mutate(subtitleStyle);
   };
 
@@ -514,7 +538,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
             Preview Video 16:9 & Studio Kustomisasi Subtitle
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tonton simulasi preview video landscape 16:9 dengan live karaoke subtitle dan penataan visual adegan secara real-time.
+            Tonton simulasi preview video landscape 16:9 dengan live karaoke subtitle dan penataan
+            visual adegan secara real-time.
           </p>
         </div>
 
@@ -542,7 +567,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       {audio && (
         <audio
           ref={audioRef}
-          src={audio.audio_url || audio.file_url}
+          src={audio.audio_url || audio.file_url || undefined}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={() => setIsPlaying(false)}
@@ -563,8 +588,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   key={activeItem.id}
                   src={activeItem.image_url}
                   alt={activeItem.image_prompt}
-                  className={`w-full h-full object-cover origin-center ${isPlaying ? getMotionAnimationClass(activeItem.motion_effect) : "scale-100"
-                    }`}
+                  className={`w-full h-full object-cover origin-center ${
+                    isPlaying ? getMotionAnimationClass(activeItem.motion_effect) : "scale-100"
+                  }`}
                 />
               </div>
             ) : (
@@ -581,14 +607,23 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               <div
                 className="absolute left-0 right-0 z-20 px-6 flex justify-center text-center select-none pointer-events-none"
                 style={{
-                  top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
-                  bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-                  transform: `translate(${scaledOffsetX}px, ${subtitleStyle.position === "center"
+                  top:
+                    subtitleStyle.position === "top"
+                      ? "10%"
+                      : subtitleStyle.position === "center"
+                        ? "50%"
+                        : undefined,
+                  bottom:
+                    subtitleStyle.position === "bottom" || !subtitleStyle.position
+                      ? "12%"
+                      : undefined,
+                  transform: `translate(${scaledOffsetX}px, ${
+                    subtitleStyle.position === "center"
                       ? `calc(-50% + ${scaledOffsetY}px)`
                       : subtitleStyle.position === "bottom"
                         ? `${-scaledOffsetY}px`
                         : `${scaledOffsetY}px`
-                    })`,
+                  })`,
                 }}
               >
                 {/* 1. Burst Mode (2-3 kata) */}
@@ -605,7 +640,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                         textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                         backgroundColor:
                           (subtitleStyle.box_opacity ?? 0) > 0.05
-                            ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                            ? hexToRgba(
+                                subtitleStyle.box_color || "#000000",
+                                subtitleStyle.box_opacity
+                              )
                             : "transparent",
                         padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
                         borderRadius: "8px",
@@ -616,7 +654,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                         <span
                           key={idx}
                           style={{
-                            color: w.isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                            color: w.isActive
+                              ? subtitleStyle.highlight_color || "#FFE600"
+                              : subtitleStyle.primary_color || "#FFFFFF",
                             transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
                             transition: "all 0.08s ease-out",
                             display: "inline-block",
@@ -635,14 +675,20 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                         fontSize: `${scaledFontSize * 1.05}px`,
                         fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
                         fontWeight: fontWeightValue,
-                        color: isHighlightEnabled ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
+                        color: isHighlightEnabled
+                          ? subtitleStyle.highlight_color || "#FFE600"
+                          : subtitleStyle.primary_color || "#FFFFFF",
                         WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
                         paintOrder: "stroke fill",
                         textShadow: "0 2px 8px rgba(0,0,0,0.8)",
-                        transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
+                        transform:
+                          isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
                         backgroundColor:
                           (subtitleStyle.box_opacity ?? 0) > 0.05
-                            ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                            ? hexToRgba(
+                                subtitleStyle.box_color || "#000000",
+                                subtitleStyle.box_opacity
+                              )
                             : "transparent",
                         padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
                         borderRadius: "8px",
@@ -666,7 +712,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                       backgroundColor:
                         (subtitleStyle.box_opacity ?? 0) > 0.05
-                          ? hexToRgba(subtitleStyle.box_color || "#000000", subtitleStyle.box_opacity)
+                          ? hexToRgba(
+                              subtitleStyle.box_color || "#000000",
+                              subtitleStyle.box_opacity
+                            )
                           : "transparent",
                       padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
                       borderRadius: "8px",
@@ -674,23 +723,25 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     className="inline-block uppercase tracking-wide leading-snug max-w-[85%]"
                   >
                     {segWords.length > 0
-                      ? segWords.map((w: any, i: number) => {
-                        const isActive = isHighlightEnabled && i === activeWordIndex;
-                        return (
-                          <span
-                            key={i}
-                            style={{
-                              color: isActive ? subtitleStyle.highlight_color || "#FFE600" : subtitleStyle.primary_color || "#FFFFFF",
-                              transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
-                              transition: "all 0.08s ease-out",
-                              display: "inline-block",
-                            }}
-                            className="mr-1.5"
-                          >
-                            {w.word}
-                          </span>
-                        );
-                      })
+                      ? segWords.map((w: WordTimestamp, i: number) => {
+                          const isActive = isHighlightEnabled && i === activeWordIndex;
+                          return (
+                            <span
+                              key={i}
+                              style={{
+                                color: isActive
+                                  ? subtitleStyle.highlight_color || "#FFE600"
+                                  : subtitleStyle.primary_color || "#FFFFFF",
+                                transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "none",
+                                transition: "all 0.08s ease-out",
+                                display: "inline-block",
+                              }}
+                              className="mr-1.5"
+                            >
+                              {w.word}
+                            </span>
+                          );
+                        })
                       : activeSegment.text}
                   </div>
                 )}
@@ -705,14 +756,23 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 onPointerUp={handlePointerUp}
                 className="absolute left-6 right-6 z-30 flex justify-center text-center select-none cursor-move group"
                 style={{
-                  top: subtitleStyle.position === "top" ? "10%" : subtitleStyle.position === "center" ? "50%" : undefined,
-                  bottom: subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-                  transform: `translate(${scaledOffsetX}px, ${subtitleStyle.position === "center"
+                  top:
+                    subtitleStyle.position === "top"
+                      ? "10%"
+                      : subtitleStyle.position === "center"
+                        ? "50%"
+                        : undefined,
+                  bottom:
+                    subtitleStyle.position === "bottom" || !subtitleStyle.position
+                      ? "12%"
+                      : undefined,
+                  transform: `translate(${scaledOffsetX}px, ${
+                    subtitleStyle.position === "center"
                       ? `calc(-50% + ${scaledOffsetY}px)`
                       : subtitleStyle.position === "bottom"
                         ? `${-scaledOffsetY}px`
                         : `${scaledOffsetY}px`
-                    })`,
+                  })`,
                 }}
               >
                 <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-violet-400/70 transition-all flex items-center justify-center pointer-events-auto">
@@ -768,18 +828,27 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     setSubtitleStyle(updated);
                     updateStyleMutation.mutate(updated);
                     showToast(
-                      newEnabled ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih).",
+                      newEnabled
+                        ? "Subtitle diaktifkan."
+                        : "Subtitle dinonaktifkan (video bersih).",
                       "info"
                     );
                   }}
-                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${subtitleStyle.enabled !== false
+                  className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${
+                    subtitleStyle.enabled !== false
                       ? "bg-violet-600/20 text-violet-300 border-violet-500/40"
                       : "bg-[#222222] text-slate-500 border-[#2E2E2E]"
-                    }`}
-                  title={subtitleStyle.enabled !== false ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
+                  }`}
+                  title={
+                    subtitleStyle.enabled !== false
+                      ? "Matikan Subtitle Video"
+                      : "Aktifkan Subtitle Video"
+                  }
                 >
                   <Type className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold">{subtitleStyle.enabled !== false ? "SUBTITLE ON" : "SUBTITLE OFF"}</span>
+                  <span className="text-[10px] font-bold">
+                    {subtitleStyle.enabled !== false ? "SUBTITLE ON" : "SUBTITLE OFF"}
+                  </span>
                 </button>
 
                 <button
@@ -792,7 +861,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   }}
                   className="p-2 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition"
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4 text-rose-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
                 </button>
 
                 <span className="text-xs font-mono font-bold text-violet-400">
@@ -821,10 +894,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
             <button
               type="button"
               onClick={() => setActiveRightTab("subtitles")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${activeRightTab === "subtitles"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
+                activeRightTab === "subtitles"
                   ? "bg-violet-600 text-white font-semibold shadow-sm"
                   : "text-slate-400 hover:text-white"
-                }`}
+              }`}
             >
               <Type className="w-3.5 h-3.5" />
               <span>Studio Subtitle</span>
@@ -832,10 +906,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
             <button
               type="button"
               onClick={() => setActiveRightTab("motion")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${activeRightTab === "motion"
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition ${
+                activeRightTab === "motion"
                   ? "bg-violet-600 text-white font-semibold shadow-sm"
                   : "text-slate-400 hover:text-white"
-                }`}
+              }`}
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Adegan & Motion</span>
@@ -848,7 +923,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               {/* Checklist Toggle: Enable / Disable Subtitle */}
               <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] shadow-sm space-y-2">
                 <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="subtitle-enable-check" className="flex items-center gap-3 cursor-pointer select-none flex-1">
+                  <label
+                    htmlFor="subtitle-enable-check"
+                    className="flex items-center gap-3 cursor-pointer select-none flex-1"
+                  >
                     <input
                       id="subtitle-enable-check"
                       type="checkbox"
@@ -862,14 +940,18 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                         setSubtitleStyle(updated);
                         updateStyleMutation.mutate(updated);
                         showToast(
-                          checked ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
+                          checked
+                            ? "Subtitle diaktifkan."
+                            : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
                           "info"
                         );
                       }}
                       className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
                     />
                     <div>
-                      <span className="text-xs font-bold text-white block">Gunakan Subtitle pada Video</span>
+                      <span className="text-xs font-bold text-white block">
+                        Gunakan Subtitle pada Video
+                      </span>
                       <span className="text-[10px] text-muted-foreground block">
                         {subtitleStyle.enabled !== false
                           ? "Subtitle tampil di preview dan akan dibakar ke render video"
@@ -880,10 +962,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
                   <Badge
                     variant={subtitleStyle.enabled !== false ? "default" : "secondary"}
-                    className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${subtitleStyle.enabled !== false
+                    className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+                      subtitleStyle.enabled !== false
                         ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
                         : "bg-[#222222] text-slate-500 border border-[#333333]"
-                      }`}
+                    }`}
                   >
                     {subtitleStyle.enabled !== false ? "AKTIF" : "NONAKTIF"}
                   </Badge>
@@ -892,7 +975,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
               {subtitleStyle.enabled === false && (
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2">
-                  <span>⚠️ Subtitle sedang dinonaktifkan. Video akan dirender bersih tanpa subtitle. Beri centang pada checklist di atas jika ingin mengaktifkan subtitle kembali.</span>
+                  <span>
+                    ⚠️ Subtitle sedang dinonaktifkan. Video akan dirender bersih tanpa subtitle.
+                    Beri centang pada checklist di atas jika ingin mengaktifkan subtitle kembali.
+                  </span>
                 </div>
               )}
 
@@ -901,15 +987,21 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Bookmark className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                    <span className="text-xs font-semibold text-slate-300 shrink-0">Preset Kustom:</span>
+                    <span className="text-xs font-semibold text-slate-300 shrink-0">
+                      Preset Kustom:
+                    </span>
                     <select
                       value={selectedSubtitlePresetId}
                       onChange={(e) => handleLoadSubtitlePreset(e.target.value)}
                       className="bg-[#1C1C1C] border border-[#333] hover:border-violet-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-violet-500 font-medium truncate max-w-[200px]"
                     >
-                      <option value="" disabled>-- Muat Preset Subtitle --</option>
+                      <option value="" disabled>
+                        -- Muat Preset Subtitle --
+                      </option>
                       {customSubtitlePresets.length === 0 ? (
-                        <option value="" disabled>Belum ada preset kustom tersimpan</option>
+                        <option value="" disabled>
+                          Belum ada preset kustom tersimpan
+                        </option>
                       ) : (
                         customSubtitlePresets.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -922,7 +1014,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       <button
                         type="button"
                         onClick={() => {
-                          const cur = customSubtitlePresets.find((p) => p.id === selectedSubtitlePresetId);
+                          const cur = customSubtitlePresets.find(
+                            (p) => p.id === selectedSubtitlePresetId
+                          );
                           if (cur) handleDeleteSubtitlePreset(cur.id, cur.name);
                         }}
                         title="Hapus Preset Ini"
@@ -945,7 +1039,10 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
                 {/* Save Subtitle Preset Inline Form */}
                 {showSaveSubtitleModal && (
-                  <form onSubmit={handleSaveSubtitlePreset} className="flex items-center gap-2 pt-2 border-t border-[#222]">
+                  <form
+                    onSubmit={handleSaveSubtitlePreset}
+                    className="flex items-center gap-2 pt-2 border-t border-[#222]"
+                  >
                     <Input
                       type="text"
                       placeholder="Nama preset subtitle (mis. Style Kuning Bold)..."
@@ -981,7 +1078,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {COLOR_PRESETS.map((p) => {
-                    const isSelected = subtitleStyle.preset_name === p.name.toLowerCase().replace(/\s+/g, "_");
+                    const isSelected =
+                      subtitleStyle.preset_name === p.name.toLowerCase().replace(/\s+/g, "_");
                     const Icon = p.icon;
                     return (
                       <button
@@ -1007,15 +1105,18 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           setSubtitleStyle(updated);
                           updateStyleMutation.mutate(updated);
                         }}
-                        className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${isSelected
+                        className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
+                          isSelected
                             ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
                             : "bg-[#141414] border-[#2A2A2A] text-slate-300 hover:border-violet-500/40"
-                          }`}
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 truncate">
                           <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                           <span className="truncate">{p.name}</span>
-                          {isSelected && <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />}
+                          {isSelected && (
+                            <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />
+                          )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <span
@@ -1055,13 +1156,14 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       onClick={() =>
                         setSubtitleStyle((prev) => ({
                           ...prev,
-                          display_mode: m.id as any,
+                          display_mode: m.id as SubtitleStyle["display_mode"],
                         }))
                       }
-                      className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${subtitleStyle.display_mode === m.id
+                      className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${
+                        subtitleStyle.display_mode === m.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
                           : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
-                        }`}
+                      }`}
                     >
                       <span className="text-xs font-bold">{m.label}</span>
                       <span className="text-[9px] text-muted-foreground">{m.desc}</span>
@@ -1072,7 +1174,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 {/* Kata per Kelompok untuk Mode Burst */}
                 {subtitleStyle.display_mode === "burst" && (
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#181818] border border-[#2E2E2E] mt-1">
-                    <span className="text-xs font-semibold text-slate-300">Kata per Kelompok Burst</span>
+                    <span className="text-xs font-semibold text-slate-300">
+                      Kata per Kelompok Burst
+                    </span>
                     <div className="flex gap-1.5">
                       {[2, 3].map((count) => (
                         <button
@@ -1084,10 +1188,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                               burst_word_count: count,
                             }))
                           }
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition ${(subtitleStyle.burst_word_count || 2) === count
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                            (subtitleStyle.burst_word_count || 2) === count
                               ? "bg-violet-600 text-white shadow-sm"
                               : "bg-[#242424] text-slate-400 hover:text-white"
-                            }`}
+                          }`}
                         >
                           {count} Kata
                         </button>
@@ -1116,11 +1221,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation
+                    onClick={() =>
+                      setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))
+                    }
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "color" ||
+                      !subtitleStyle.highlight_animation
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                      }`}
+                    }`}
                   >
                     <span className="text-xs font-bold block">Warna Glow</span>
                     <span className="text-[9px] text-muted-foreground">Transisi halus glow</span>
@@ -1128,11 +1237,14 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
                   <button
                     type="button"
-                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "scale"
+                    onClick={() =>
+                      setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))
+                    }
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "scale"
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                      }`}
+                    }`}
                   >
                     <span className="text-xs font-bold block">Scale Pop</span>
                     <span className="text-[9px] text-muted-foreground">Membesar & loncat</span>
@@ -1140,11 +1252,14 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
                   <button
                     type="button"
-                    onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "none" }))}
-                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${subtitleStyle.highlight_animation === "none"
+                    onClick={() =>
+                      setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "none" }))
+                    }
+                    className={`p-2 rounded-xl border text-left cursor-pointer transition ${
+                      subtitleStyle.highlight_animation === "none"
                         ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
                         : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
-                      }`}
+                    }`}
                   >
                     <span className="text-xs font-bold block">Statis</span>
                     <span className="text-[9px] text-muted-foreground">Tanpa animasi</span>
@@ -1155,7 +1270,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 {subtitleStyle.highlight_animation === "scale" && (
                   <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2E2E2E] space-y-1.5 mt-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-300 font-medium">Tingkat Pembesaran (Scale Factor)</span>
+                      <span className="text-slate-300 font-medium">
+                        Tingkat Pembesaran (Scale Factor)
+                      </span>
                       <span className="font-mono text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
                         {(subtitleStyle.scale_factor || 1.15).toFixed(2)}x
                       </span>
@@ -1372,7 +1489,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <div>
                     <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
                       <span>Tebal Outline</span>
-                      <span className="font-mono text-violet-400 font-bold">{subtitleStyle.outline_width ?? 4}px</span>
+                      <span className="font-mono text-violet-400 font-bold">
+                        {subtitleStyle.outline_width ?? 4}px
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -1450,14 +1569,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                       onClick={() =>
                         setSubtitleStyle((prev) => ({
                           ...prev,
-                          position: pos.id as any,
+                          position: pos.id as SubtitleStyle["position"],
                           offset_y: pos.id === "bottom" ? -30 : 0,
                         }))
                       }
-                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${subtitleStyle.position === pos.id
+                      className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
+                        subtitleStyle.position === pos.id
                           ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
                           : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
-                        }`}
+                      }`}
                     >
                       {pos.label}
                     </button>
@@ -1468,7 +1588,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 <div className="pt-1">
                   <div className="flex justify-between items-center mb-1 text-[11px] text-slate-300">
                     <span>Offset Posisi Vertikal (Y):</span>
-                    <span className="font-mono text-violet-400 font-bold">{subtitleStyle.offset_y || 0}px</span>
+                    <span className="font-mono text-violet-400 font-bold">
+                      {subtitleStyle.offset_y || 0}px
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -1558,13 +1680,16 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                           onClick={() =>
                             updateItemMutation.mutate({
                               id: activeItem.id,
-                              data: { motion_effect: m.id as any },
+                              data: {
+                                motion_effect: m.id as StoryboardItem["motion_effect"],
+                              },
                             })
                           }
-                          className={`p-2 rounded-xl text-xs font-medium border text-center transition ${activeItem.motion_effect === m.id
+                          className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
+                            activeItem.motion_effect === m.id
                               ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
                               : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                            }`}
+                          }`}
                         >
                           {m.label}
                         </button>
@@ -1604,10 +1729,11 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
               <div
                 key={item.id}
                 onClick={() => handleSeek(item.start_time)}
-                className={`min-w-[200px] max-w-[220px] rounded-xl border p-2.5 cursor-pointer transition flex flex-col justify-between shrink-0 ${isCurrent
+                className={`min-w-[200px] max-w-[220px] rounded-xl border p-2.5 cursor-pointer transition flex flex-col justify-between shrink-0 ${
+                  isCurrent
                     ? "border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500/30"
                     : "border-[#2E2E2E] bg-[#141414] hover:border-violet-500/40"
-                  }`}
+                }`}
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-video rounded-lg bg-black overflow-hidden mb-2 border border-[#262626]">

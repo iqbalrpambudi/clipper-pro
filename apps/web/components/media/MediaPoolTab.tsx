@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
 import { useStudioStore } from "@/lib/store";
-import { Project, SourceVideo, Scene } from "@/types";
+import { Project, SourceVideo, Scene, YTInfoResponse, YTFormatOption } from "@/types";
 import { api } from "@/lib/api";
 import {
   useDeleteMedia,
@@ -50,12 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui";
-import {
-  PageHeader,
-  Toolbar,
-  Dropzone,
-  EmptyState,
-} from "@/components/fragments";
+import { PageHeader, Toolbar, Dropzone, EmptyState } from "@/components/fragments";
 
 interface MediaPoolTabProps {
   project: Project & {
@@ -68,7 +63,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const { activeTask } = useStudioStore();
   const [isYTOpen, setIsYTOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState("");
-  const [ytInfo, setYtInfo] = useState<any>(null);
+  const [ytInfo, setYtInfo] = useState<YTInfoResponse | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
@@ -210,9 +205,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
     setRetaggingMode(mode);
     setRetagProgress(10);
     setRetagElapsed(0);
-    setRetagStepText(
-      `Memulai ${mode === "quick" ? "Quick Tagging" : "Force Tagging"}...`
-    );
+    setRetagStepText(`Memulai ${mode === "quick" ? "Quick Tagging" : "Force Tagging"}...`);
     retagMutation.mutate(mode, {
       onSuccess: () => {
         setRetagProgress(100);
@@ -339,9 +332,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               const isDownloadActive =
                 activeTask?.task_type === "youtube_download" &&
                 activeTask.data?.video_id === vid.id;
-              const dlProgress = isDownloadActive
-                ? activeTask.progress
-                : vid.progress || 15;
+              const dlProgress = isDownloadActive ? activeTask.progress : vid.progress || 15;
               const dlMessage =
                 isDownloadActive && activeTask.message
                   ? activeTask.message
@@ -350,16 +341,13 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               const isDetectActive =
                 activeTask?.task_type === "scene_detect" &&
                 (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id);
-              const detectProgress = isDetectActive
-                ? activeTask.progress
-                : vid.progress || 25;
+              const detectProgress = isDetectActive ? activeTask.progress : vid.progress || 25;
               const detectMessage =
                 isDetectActive && activeTask.message
                   ? activeTask.message
                   : `Menganalisis visual AI (${detectProgress}%)...`;
 
-              const videoScenes =
-                project.scenes?.filter((s) => s.source_video_id === vid.id) || [];
+              const videoScenes = project.scenes?.filter((s) => s.source_video_id === vid.id) || [];
               const sceneCount = videoScenes.length;
 
               return (
@@ -385,7 +373,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           </Badge>
                         )}
                         {vid.status === "processing" && (
-                          <Badge variant="supabase" className="text-[10px] py-0 gap-1 animate-pulse">
+                          <Badge
+                            variant="supabase"
+                            className="text-[10px] py-0 gap-1 animate-pulse"
+                          >
                             <Loader2 className="w-2.5 h-2.5 animate-spin" />
                             <span>Analisis AI</span>
                           </Badge>
@@ -410,11 +401,15 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                             variant="destructive"
                             size="sm"
                             onClick={() => cancelMediaMutation.mutate(vid.id)}
-                            disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                            disabled={
+                              cancelMediaMutation.isPending &&
+                              cancelMediaMutation.variables === vid.id
+                            }
                             className="h-6 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1 px-2 shadow-sm"
                             title="Batalkan proses video ini"
                           >
-                            {cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id ? (
+                            {cancelMediaMutation.isPending &&
+                            cancelMediaMutation.variables === vid.id ? (
                               <Loader2 className="w-2.5 h-2.5 animate-spin" />
                             ) : (
                               <StopCircle className="w-2.5 h-2.5" />
@@ -473,7 +468,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                             <button
                               type="button"
                               onClick={() => cancelMediaMutation.mutate(vid.id)}
-                              disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                              disabled={
+                                cancelMediaMutation.isPending &&
+                                cancelMediaMutation.variables === vid.id
+                              }
                               className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
                               title="Batalkan proses download"
                             >
@@ -500,7 +498,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                             <button
                               type="button"
                               onClick={() => cancelMediaMutation.mutate(vid.id)}
-                              disabled={cancelMediaMutation.isPending && cancelMediaMutation.variables === vid.id}
+                              disabled={
+                                cancelMediaMutation.isPending &&
+                                cancelMediaMutation.variables === vid.id
+                              }
                               className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
                               title="Batalkan proses deteksi"
                             >
@@ -521,9 +522,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     {vid.status === "failed" && (
                       <div className="mb-2 text-[11px] text-rose-400 flex items-center gap-1.5 bg-rose-500/10 p-1.5 rounded border border-rose-500/20">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">
-                          {vid.error_message || "Gagal memproses"}
-                        </span>
+                        <span className="truncate">{vid.error_message || "Gagal memproses"}</span>
                       </div>
                     )}
                   </div>
@@ -548,7 +547,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
               {modelConfig?.vision_model && (
                 <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
-                  Vision: <strong className="text-foreground ml-1">{modelConfig.vision_model}</strong>
+                  Vision:{" "}
+                  <strong className="text-foreground ml-1">{modelConfig.vision_model}</strong>
                 </Badge>
               )}
 
@@ -672,12 +672,9 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               </div>
               <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
                 <span>
-                  {Math.floor(retagElapsed / 60)}:
-                  {String(retagElapsed % 60).padStart(2, "0")}
+                  {Math.floor(retagElapsed / 60)}:{String(retagElapsed % 60).padStart(2, "0")}
                 </span>
-                <span className="text-[#3ECF8E] font-bold">
-                  {Math.round(retagProgress)}%
-                </span>
+                <span className="text-[#3ECF8E] font-bold">{Math.round(retagProgress)}%</span>
                 <button
                   type="button"
                   onClick={() => api.cancelProjectTasks(project.id)}
@@ -712,9 +709,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   {Math.floor(transcribeElapsed / 60)}:
                   {String(transcribeElapsed % 60).padStart(2, "0")}
                 </span>
-                <span className="text-sky-400 font-bold">
-                  {Math.round(transcribeProgress)}%
-                </span>
+                <span className="text-sky-400 font-bold">{Math.round(transcribeProgress)}%</span>
                 <button
                   type="button"
                   onClick={() => api.cancelProjectTasks(project.id)}
@@ -756,9 +751,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       src={scene.thumbnail_url}
                       alt={scene.description || "Scene thumbnail"}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={() =>
-                        setBrokenThumbnails((prev) => ({ ...prev, [scene.id]: true }))
-                      }
+                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [scene.id]: true }))}
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
@@ -897,7 +890,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   Pilih Resolusi Download:
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {ytInfo.formats?.map((fmt: any) => {
+                  {ytInfo.formats?.map((fmt: YTFormatOption) => {
                     const isSelected = downloadingFormatId === fmt.format_id;
                     return (
                       <Button
@@ -917,8 +910,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           {isSelected
                             ? "Memulai..."
                             : fmt.filesize_approx_mb
-                            ? `${fmt.filesize_approx_mb} MB`
-                            : "Auto"}
+                              ? `${fmt.filesize_approx_mb} MB`
+                              : "Auto"}
                         </span>
                       </Button>
                     );
@@ -968,8 +961,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
           <p className="text-sm text-foreground/80 leading-relaxed py-2">
             Apakah Anda yakin ingin menghapus{" "}
-            <span className="font-semibold text-white">"{videoToDelete?.filename}"</span>?
-            Seluruh scene visual AI hasil analisis video ini juga akan dihapus dari project.
+            <span className="font-semibold text-white">"{videoToDelete?.filename}"</span>? Seluruh
+            scene visual AI hasil analisis video ini juga akan dihapus dari project.
           </p>
 
           <DialogFooter className="pt-2">
@@ -995,9 +988,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               }}
               className="gap-1.5"
             >
-              {deleteMutation.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : null}
+              {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
               <span>Hapus Video</span>
             </Button>
           </DialogFooter>

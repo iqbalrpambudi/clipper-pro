@@ -1,31 +1,33 @@
 import uuid
 from pathlib import Path
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.responses import Response
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
+from app.core.events import publish_project_event
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
-from app.models.narration import Narration, AudioTrack
 from app.models.timeline import SubtitleStyle
+from app.schemas.narration import NarrationResponse
 from app.schemas.subtitle import (
-    SubtitlePresetResponse,
     SubtitlePresetCreate,
+    SubtitlePresetResponse,
     SubtitlePresetUpdate,
+    SubtitlePreviewResponse,
     SubtitleStyleResponse,
     SubtitleStyleUpdateRequest,
-    SubtitlePreviewResponse,
 )
-from app.schemas.narration import NarrationResponse
 from app.schemas.tts import RealignWordsRequest
-from fastapi.responses import Response
 from app.services.alignment import align_audio_with_text
-from app.core.events import publish_project_event
 from app.services.subtitle_ass import (
-    get_builtin_presets,
     generate_ass_subtitles,
     generate_srt_subtitles,
     generate_vtt_subtitles,
+    get_builtin_presets,
 )
 
 router = APIRouter(tags=["subtitles"])
@@ -458,7 +460,7 @@ async def preview_ass_subtitles(project_id: str, db: AsyncSession = Depends(get_
     }
 
     ass_text = generate_ass_subtitles(narration.segments, style_dict)
-    lines = [l for l in ass_text.splitlines() if l.startswith("Dialogue:")]
+    lines = [line for line in ass_text.splitlines() if line.startswith("Dialogue:")]
 
     return SubtitlePreviewResponse(
         ass_content=ass_text,

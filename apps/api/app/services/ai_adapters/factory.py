@@ -1,13 +1,14 @@
 from typing import Optional, Tuple
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import get_settings
 from app.core.security import decrypt_secret
 from app.models.config import ModelConfig
 from app.services.ai_adapters.base import BaseLLMAdapter
-from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
+from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 
 
 def _normalize_gemini_model(model_name: str) -> str:

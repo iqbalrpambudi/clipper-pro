@@ -18,6 +18,7 @@ import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { StudioLayout, StudioNavTab } from "@/components/layout";
 import { Button } from "@/components/ui";
+import { RenderJob } from "@/types";
 import {
   StoryboardScriptTab,
   StoryboardVoiceTab,
@@ -102,7 +103,7 @@ export default function StoryboardStudioPage({ params }: PageProps) {
     if (projectTask) return;
 
     const activeJob = project.render_jobs?.find(
-      (j: any) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+      (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
     );
     if (activeJob) {
       setActiveTask(
@@ -145,7 +146,7 @@ export default function StoryboardStudioPage({ params }: PageProps) {
 
     if (activeTask.status === "progress" && activeTask.task_type === "render") {
       const activeJob = project.render_jobs?.find(
-        (j: any) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+        (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
       );
       if (!activeJob) {
         setActiveTask(null, id);
@@ -186,14 +187,14 @@ export default function StoryboardStudioPage({ params }: PageProps) {
       id: "storyboard_voice",
       label: "2. Suara & Sync",
       icon: Volume2,
-      badge: (project as any).audio ? "Siap" : undefined,
+      badge: project.audio ? "Siap" : undefined,
     },
     {
       id: "storyboard_images",
       label: "3. Ilustrasi AI",
       icon: ImageIcon,
-      badge: (project as any).storyboard_items?.length
-        ? `${(project as any).storyboard_items.length} Slot`
+      badge: project.storyboard_items?.length
+        ? `${project.storyboard_items.length} Slot`
         : undefined,
     },
     {
@@ -206,19 +207,21 @@ export default function StoryboardStudioPage({ params }: PageProps) {
       id: "storyboard_watermark",
       label: "5. Watermark & Audio",
       icon: Stamp,
-      badge: (project as any).watermark?.enabled ? "Aktif" : undefined,
+      badge: project.watermark?.enabled ? "Aktif" : undefined,
     },
     {
       id: "storyboard_render",
       label: "6. Render 16:9",
       icon: Download,
-      badge: (project as any).render_jobs?.length ? `${(project as any).render_jobs.length} Job` : undefined,
+      badge: project.render_jobs?.length
+        ? `${project.render_jobs.length} Job`
+        : undefined,
     },
     {
       id: "storyboard_youtube",
       label: "7. YouTube & Thumbnail",
       icon: Youtube,
-      badge: (project as any).youtube_metadata?.title ? "Siap" : undefined,
+      badge: project.youtube_metadata?.title ? "Siap" : undefined,
     },
   ];
 
@@ -250,25 +253,13 @@ export default function StoryboardStudioPage({ params }: PageProps) {
           "storyboard_watermark",
           "storyboard_render",
           "storyboard_youtube",
-        ].includes(activeTab)) && <StoryboardScriptTab project={project as any} />}
-      {activeTab === "storyboard_voice" && (
-        <StoryboardVoiceTab project={project as any} />
-      )}
-      {activeTab === "storyboard_images" && (
-        <StoryboardImagesTab project={project as any} />
-      )}
-      {activeTab === "storyboard_timeline" && (
-        <StoryboardTimelineTab project={project as any} />
-      )}
-      {activeTab === "storyboard_watermark" && (
-        <StoryboardWatermarkTab project={project as any} />
-      )}
-      {activeTab === "storyboard_render" && (
-        <StoryboardRenderTab project={project as any} />
-      )}
-      {activeTab === "storyboard_youtube" && (
-        <StoryboardYoutubeTab project={project as any} />
-      )}
+        ].includes(activeTab)) && <StoryboardScriptTab project={project} />}
+      {activeTab === "storyboard_voice" && <StoryboardVoiceTab project={project} />}
+      {activeTab === "storyboard_images" && <StoryboardImagesTab project={project} />}
+      {activeTab === "storyboard_timeline" && <StoryboardTimelineTab project={project} />}
+      {activeTab === "storyboard_watermark" && <StoryboardWatermarkTab project={project} />}
+      {activeTab === "storyboard_render" && <StoryboardRenderTab project={project} />}
+      {activeTab === "storyboard_youtube" && <StoryboardYoutubeTab project={project} />}
     </StudioLayout>
   );
 }

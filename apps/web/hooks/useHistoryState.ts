@@ -29,7 +29,11 @@ export function useHistoryState<T>(initial: T) {
   }, []);
 
   const begin = useCallback(() => {
-    setState((s) => ({ past: [...s.past, s.present].slice(-MAX_HISTORY), present: s.present, future: [] }));
+    setState((s) => ({
+      past: [...s.past, s.present].slice(-MAX_HISTORY),
+      present: s.present,
+      future: [],
+    }));
   }, []);
 
   /** Drop the step created by begin() when the gesture changed nothing. */

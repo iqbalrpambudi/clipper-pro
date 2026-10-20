@@ -208,11 +208,7 @@ function contentFromScene(scene: Scene) {
 }
 
 /** Replace the footage of clip i with a scene, keeping the slot timing. Center-weighted. */
-export function replaceScene(
-  clips: TimelineClip[],
-  i: number,
-  scene: Scene
-): TimelineClip[] {
+export function replaceScene(clips: TimelineClip[], i: number, scene: Scene): TimelineClip[] {
   const c = clips[i];
   if (!c) return clips;
   const b = sceneSafeBounds(scene);
@@ -288,7 +284,12 @@ export function insertSceneAt(
   const midIndex = idx + pieces.length;
   pieces.push(fitSource(mid, b, "start", 1));
   if (end < c.timeline_end) {
-    pieces.push({ ...c, id: newClipId(), timeline_start: end, clip_start: r3(sourceTimeAt(c, end)) });
+    pieces.push({
+      ...c,
+      id: newClipId(),
+      timeline_start: end,
+      clip_start: r3(sourceTimeAt(c, end)),
+    });
   }
   const out = [...clips];
   out.splice(idx, 1, ...pieces);

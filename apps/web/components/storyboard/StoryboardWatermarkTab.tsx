@@ -18,19 +18,14 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Project, StoryboardItem, WatermarkConfig } from "@/types";
+import { Project, WatermarkConfig } from "@/types";
 import { Button, Badge } from "@/components/ui";
 import { useStudioStore } from "@/lib/store";
 import { WatermarkOverlay } from "@/components/watermark/WatermarkOverlay";
 import { WatermarkCustomizePanel } from "@/components/watermark/WatermarkCustomizePanel";
 
 interface StoryboardWatermarkTabProps {
-  project: Project & {
-    narration?: any;
-    audio?: any;
-    storyboard_items?: StoryboardItem[];
-    render_jobs?: any[];
-  };
+  project: Project;
 }
 
 const BGM_MOODS = [
@@ -144,7 +139,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
     try {
       await api.updateProject(project.id, { watermark: liveWatermark });
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-    } catch (_err) {
+    } catch {
       // ignore
     }
   };
@@ -194,9 +189,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             >
               <Stamp className="w-3.5 h-3.5" />
               <span>Watermark & Branding</span>
-              {liveWatermark?.enabled && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              )}
+              {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
             </button>
             <button
               onClick={() => setActiveSubTab("bgm")}
@@ -474,8 +467,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 </div>
                 <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
                   Integrasikan musik latar sinematik bebas royalti atau unggah audio kustom Anda
-                  sendiri. Dilengkapi dengan auto-ducking cerdas agar narasi suara AI tetap terdengar
-                  jernih dan dominan.
+                  sendiri. Dilengkapi dengan auto-ducking cerdas agar narasi suara AI tetap
+                  terdengar jernih dan dominan.
                 </p>
               </div>
 
@@ -515,10 +508,11 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div
                     key={bgm.id}
                     onClick={() => setSelectedBgm(bgm.id)}
-                    className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between group ${isSelected
-                      ? "bg-[#18181F] border-violet-500 shadow-md shadow-violet-500/10"
-                      : "bg-[#141414] border-[#262626] hover:border-[#383838]"
-                      }`}
+                    className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between group ${
+                      isSelected
+                        ? "bg-[#18181F] border-violet-500 shadow-md shadow-violet-500/10"
+                        : "bg-[#141414] border-[#262626] hover:border-[#383838]"
+                    }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -539,9 +533,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                         <div>
                           <div className="font-bold text-sm text-foreground flex items-center gap-2">
                             {bgm.name}
-                            {isSelected && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
-                            )}
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                           </div>
                           <span className="text-[10px] text-muted-foreground uppercase font-semibold">
                             {bgm.genre} • Durasi {bgm.duration}
@@ -618,12 +610,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
               <div className="mt-4 border-2 border-dashed border-[#2E2E2E] hover:border-violet-500/50 rounded-xl p-5 text-center cursor-pointer transition bg-[#181818]">
                 <UploadCloud className="w-6 h-6 text-violet-400 mx-auto mb-1.5" />
-                <div className="text-xs font-semibold text-white">
-                  Pilih File Audio (MP3 / WAV)
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  Maksimal durasi 10 menit
-                </span>
+                <div className="text-xs font-semibold text-white">Pilih File Audio (MP3 / WAV)</div>
+                <span className="text-[10px] text-muted-foreground">Maksimal durasi 10 menit</span>
               </div>
             </div>
           </div>

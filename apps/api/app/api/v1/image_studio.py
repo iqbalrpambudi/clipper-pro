@@ -1,20 +1,19 @@
 import logging
-import os
 import shutil
 import uuid
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from app.core.db import get_db
 from app.core.storage import storage
 from app.models.image_preset import ImagePreset
 from app.schemas.image_preset import (
-    ImagePresetResponse,
     ImagePresetCreate,
+    ImagePresetResponse,
     ImagePresetUpdate,
     StudioAnalyzeRequest,
     StudioAnalyzeResponse,
@@ -22,11 +21,10 @@ from app.schemas.image_preset import (
     StudioTestGenerateResponse,
 )
 from app.services.image_studio import (
-    seed_default_image_presets,
-    get_active_image_preset,
-    set_active_image_preset,
     analyze_visual_style,
     generate_preset_test_image,
+    seed_default_image_presets,
+    set_active_image_preset,
 )
 
 log = logging.getLogger(__name__)
@@ -67,7 +65,7 @@ async def create_or_save_image_preset(
 ):
     """Create a new image preset or save/overwrite preset (e.g. 'doodle-ilustrasi')."""
     await seed_default_image_presets(db)
-    
+
     preset_id = payload.id or f"preset-{uuid.uuid4().hex[:8]}"
 
     existing = await db.get(ImagePreset, preset_id)
@@ -89,7 +87,7 @@ async def create_or_save_image_preset(
             existing.user_text_input = payload.user_text_input
         if payload.style_attributes is not None:
             existing.style_attributes = payload.style_attributes
-        
+
         if payload.is_active:
             await set_active_image_preset(db, preset_id)
         else:

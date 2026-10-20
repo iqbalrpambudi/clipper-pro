@@ -24,7 +24,14 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, StoryboardItem } from "@/types";
+import {
+  Project,
+  StoryboardItem,
+  SentenceSegment,
+  StoryboardCharacter,
+  StoryboardCharacterVariant,
+  StoryboardLocation,
+} from "@/types";
 import { Button, Textarea, Badge } from "@/components/ui";
 
 function renderTokenizedPrompt(promptText: string) {
@@ -105,10 +112,7 @@ function renderTokenizedPrompt(promptText: string) {
 }
 
 interface StoryboardImagesTabProps {
-  project: Project & {
-    narration?: any;
-    storyboard_items?: StoryboardItem[];
-  };
+  project: Project;
 }
 
 export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
@@ -116,7 +120,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
   const { setActiveTab, showToast } = useStudioStore();
 
   const narration = project.narration;
-  const segments: any[] = narration?.segments || [];
+  const segments: SentenceSegment[] = narration?.segments || [];
   const items: StoryboardItem[] = project.storyboard_items || [];
 
   // Active modal image preview
@@ -154,7 +158,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
       queryClient.invalidateQueries({ queryKey: ["image-presets"] });
       showToast(`Preset visual diubah ke: ${p.name}`, "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengubah preset", "error");
     },
   });
@@ -168,7 +172,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         res.fail_count === 0 ? "success" : "info"
       );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menjalankan batch generate gambar", "error");
     },
   });
@@ -181,7 +185,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
       setEditingItemId(null);
       showToast("Prompt ilustrasi berhasil diperbarui!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memperbarui item", "error");
     },
   });
@@ -191,9 +195,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
     try {
       // If currently editing this item, use and save the edited prompt immediately
       const promptToUse =
-        editingItemId === item.id && editPromptText.trim()
-          ? editPromptText.trim()
-          : undefined;
+        editingItemId === item.id && editPromptText.trim() ? editPromptText.trim() : undefined;
 
       await api.generateSingleStoryboardImage(project.id, item.id, {
         prompt: promptToUse,
@@ -206,8 +208,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
 
       await queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Gambar ilustrasi berhasil diperbarui!", "success");
-    } catch (err: any) {
-      showToast(err.message || "Gagal membuat gambar", "error");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Gagal membuat gambar", "error");
     } finally {
       setGeneratingItemId(null);
     }
@@ -221,7 +223,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
     });
   };
 
-  const handleUpdateMotion = (itemId: string, motion: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static") => {
+  const handleUpdateMotion = (
+    itemId: string,
+    motion: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static"
+  ) => {
     updateItemMutation.mutate({
       id: itemId,
       data: { motion_effect: motion },
@@ -250,7 +255,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             Galeri Gambar Ilustrasi Sketsa Storyboard
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Generate gambar AI untuk setiap adegan naskah secara batch atau satu per satu. Edit prompt visual bila ingin menyesuaikan komposisi gambar.
+            Generate gambar AI untuk setiap adegan naskah secara batch atau satu per satu. Edit
+            prompt visual bila ingin menyesuaikan komposisi gambar.
           </p>
         </div>
 
@@ -317,7 +323,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             </div>
 
             {/* Characters */}
-            {project.characters?.map((char: any, i: number) => {
+            {project.characters?.map((char: StoryboardCharacter, i: number) => {
               const charId = char.id || char.name?.toLowerCase().replace(/\s+/g, "");
               const hasVariants = Array.isArray(char.variants) && char.variants.length > 0;
               return (
@@ -332,7 +338,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                   </span>
                   {hasVariants && (
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
-                      +{char.variants.length} varian
+                      +{char.variants?.length} varian
                     </span>
                   )}
                 </span>
@@ -340,7 +346,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             })}
 
             {/* Locations */}
-            {project.locations?.map((loc: any, i: number) => {
+            {project.locations?.map((loc: StoryboardLocation, i: number) => {
               const locId = loc.id || loc.name?.toLowerCase().replace(/\s+/g, "");
               return (
                 <span
@@ -444,20 +450,26 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             disabled={batchGenerateMutation.isPending || items.length === 0}
             className="bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-lg shadow-violet-500/20 gap-2 shrink-0 py-2.5"
           >
-          {batchGenerateMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Menghasilkan Semua Gambar ({readyCount}/{items.length})...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              <span>{pendingCount > 0 ? `Generate Semua Gambar (${pendingCount} Slot)` : "Regenerate Semua Gambar"}</span>
-            </>
-          )}
-        </Button>
+            {batchGenerateMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>
+                  Menghasilkan Semua Gambar ({readyCount}/{items.length})...
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  {pendingCount > 0
+                    ? `Generate Semua Gambar (${pendingCount} Slot)`
+                    : "Regenerate Semua Gambar"}
+                </span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
 
       {/* Main Items Gallery Grouped by Segment */}
       {items.length === 0 ? (
@@ -465,19 +477,16 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           <ImageIcon className="w-12 h-12 text-slate-500 mx-auto mb-3" />
           <h3 className="text-base font-bold text-white mb-1.5">Belum Ada Slot Gambar</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
-            Buat naskah storyboard terlebih dahulu pada langkah pertama agar adegan dan prompt visual terbentuk.
+            Buat naskah storyboard terlebih dahulu pada langkah pertama agar adegan dan prompt
+            visual terbentuk.
           </p>
-          <Button
-            onClick={() => setActiveTab("storyboard_script")}
-            variant="supabase"
-            size="sm"
-          >
+          <Button onClick={() => setActiveTab("storyboard_script")} variant="supabase" size="sm">
             Buka Tab Naskah
           </Button>
         </div>
       ) : (
         <div className="space-y-8">
-          {segments.map((seg: any, segIdx: number) => {
+          {segments.map((seg: SentenceSegment, segIdx: number) => {
             const segItems = items.filter((it) => it.segment_id === seg.id);
             if (segItems.length === 0) return null;
 
@@ -588,30 +597,40 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
 
                               {/* Quick Token Insertion Chips */}
                               <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                                <span className="text-[9px] text-slate-500 font-mono">Sisipkan:</span>
+                                <span className="text-[9px] text-slate-500 font-mono">
+                                  Sisipkan:
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => setEditPromptText((prev) => `${prev} [preset:style]`)}
+                                  onClick={() =>
+                                    setEditPromptText((prev) => `${prev} [preset:style]`)
+                                  }
                                   className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono transition"
                                 >
                                   + [preset:style]
                                 </button>
-                                {project.characters?.map((c: any, ci: number) => {
+                                {project.characters?.map((c: StoryboardCharacter, ci: number) => {
                                   const cId = c.id || c.name?.toLowerCase().replace(/\s+/g, "");
                                   return (
                                     <React.Fragment key={`tok-c-${ci}`}>
                                       <button
                                         type="button"
-                                        onClick={() => setEditPromptText((prev) => `${prev} [char:${cId}]`)}
+                                        onClick={() =>
+                                          setEditPromptText((prev) => `${prev} [char:${cId}]`)
+                                        }
                                         className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
                                       >
                                         + [char:{cId}]
                                       </button>
-                                      {c.variants?.map((v: any, vi: number) => (
+                                      {c.variants?.map((v: StoryboardCharacterVariant, vi: number) => (
                                         <button
                                           key={`tok-v-${ci}-${vi}`}
                                           type="button"
-                                          onClick={() => setEditPromptText((prev) => `${prev} [char:${cId}:${v.variant_id}]`)}
+                                          onClick={() =>
+                                            setEditPromptText(
+                                              (prev) => `${prev} [char:${cId}:${v.variant_id}]`
+                                            )
+                                          }
                                           className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
                                         >
                                           + [char:{cId}:{v.variant_id}]
@@ -620,13 +639,15 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                     </React.Fragment>
                                   );
                                 })}
-                                {project.locations?.map((l: any, li: number) => {
+                                {project.locations?.map((l: StoryboardLocation, li: number) => {
                                   const lId = l.id || l.name?.toLowerCase().replace(/\s+/g, "");
                                   return (
                                     <button
                                       key={`tok-l-${li}`}
                                       type="button"
-                                      onClick={() => setEditPromptText((prev) => `${prev} [loc:${lId}]`)}
+                                      onClick={() =>
+                                        setEditPromptText((prev) => `${prev} [loc:${lId}]`)
+                                      }
                                       className="px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] font-mono transition"
                                     >
                                       + [loc:{lId}]
@@ -739,7 +760,12 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               <span className="text-slate-400 font-medium">Ken Burns Motion:</span>
                               <select
                                 value={item.motion_effect || "zoom_in"}
-                                onChange={(e) => handleUpdateMotion(item.id, e.target.value as any)}
+                                onChange={(e) =>
+                                  handleUpdateMotion(
+                                    item.id,
+                                    e.target.value as StoryboardItem["motion_effect"]
+                                  )
+                                }
                                 className="bg-[#181818] border border-[#2E2E2E] text-slate-200 text-[10px] rounded px-1.5 py-0.5 focus:outline-none"
                               >
                                 <option value="zoom_in">Slow Zoom In</option>
@@ -755,10 +781,11 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               onClick={() => handleGenerateSingle(item)}
                               disabled={isGeneratingThis || batchGenerateMutation.isPending}
                               variant={item.status === "ready" ? "outline" : "supabase"}
-                              className={`w-full text-xs h-8 gap-1.5 ${item.status === "ready"
+                              className={`w-full text-xs h-8 gap-1.5 ${
+                                item.status === "ready"
                                   ? "border-[#2E2E2E] hover:border-violet-500 hover:text-violet-300"
                                   : "bg-violet-600 hover:bg-violet-500 text-white"
-                                }`}
+                              }`}
                             >
                               {isGeneratingThis ? (
                                 <>
@@ -768,7 +795,11 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               ) : (
                                 <>
                                   <RefreshCw className="w-3 h-3" />
-                                  <span>{item.status === "ready" ? "Regenerate Gambar Ini" : "Generate Gambar Ini"}</span>
+                                  <span>
+                                    {item.status === "ready"
+                                      ? "Regenerate Gambar Ini"
+                                      : "Generate Gambar Ini"}
+                                  </span>
                                 </>
                               )}
                             </Button>

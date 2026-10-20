@@ -2,15 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  Film,
-  Video,
-  Image as ImageIcon,
-  Edit3,
-  Trash2,
-  ArrowRight,
-  Calendar,
-} from "lucide-react";
+import { Film, Video, Image as ImageIcon, Edit3, Trash2, ArrowRight, Calendar } from "lucide-react";
 import { Project } from "@/types";
 import {
   Card,

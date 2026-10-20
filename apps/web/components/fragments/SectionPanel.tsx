@@ -41,18 +41,12 @@ export function SectionPanel({
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               {icon && <div className="shrink-0">{icon}</div>}
-              <h3 className="text-xs font-semibold text-foreground tracking-tight">
-                {title}
-              </h3>
+              <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
               {badge && <div>{badge}</div>}
             </div>
-            {description && (
-              <p className="text-[11px] text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
           </div>
-          {actions && (
-            <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
-          )}
+          {actions && <div className="flex items-center gap-1.5 shrink-0">{actions}</div>}
         </div>
       )}
 

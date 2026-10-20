@@ -3,14 +3,7 @@
 import React, { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Film,
-  FileText,
-  Volume2,
-  Layers,
-  Download,
-  Loader2,
-} from "lucide-react";
+import { Film, FileText, Volume2, Layers, Download, Loader2 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
@@ -21,6 +14,7 @@ import { NarrationTab } from "@/components/narration/NarrationTab";
 import { TTSTab } from "@/components/tts/TTSTab";
 import { TimelineTab } from "@/components/timeline/TimelineTab";
 import { RenderTab } from "@/components/render/RenderTab";
+import { SourceVideo, RenderJob } from "@/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -87,7 +81,7 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
     const projectTask = tasksByProject[id];
     if (projectTask) return;
 
-    const downloadingVid = project.source_videos?.find((v: any) => v.status === "downloading");
+    const downloadingVid = project.source_videos?.find((v: SourceVideo) => v.status === "downloading");
     if (downloadingVid) {
       setActiveTask(
         {
@@ -106,7 +100,7 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
     }
 
     const processingVid = project.source_videos?.find(
-      (v: any) => v.status === "processing" || v.status === "pending"
+      (v: SourceVideo) => v.status === "processing" || v.status === "pending"
     );
     if (processingVid) {
       setActiveTask(
@@ -126,7 +120,7 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
     }
 
     const activeJob = project.render_jobs?.find(
-      (j: any) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+      (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
     );
     if (activeJob) {
       setActiveTask(
@@ -168,8 +162,8 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
     if (activeTask.project_id !== id) return;
 
     if (activeTask.status === "progress") {
-      const vidId = activeTask.data?.video_id;
-      const vid = vidId ? project.source_videos?.find((v: any) => v.id === vidId) : null;
+      const vidId = typeof activeTask.data?.video_id === "string" ? activeTask.data.video_id : undefined;
+      const vid = vidId ? project.source_videos?.find((v: SourceVideo) => v.id === vidId) : null;
 
       if (activeTask.task_type === "youtube_download") {
         if (vid && vid.status !== "downloading") {
@@ -224,21 +218,23 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
       id: "tts",
       label: "3. Suara & TTS",
       icon: Volume2,
-      badge: (project as any).audio_track || (project as any).audio ? "Siap" : undefined,
+      badge: project.audio_track || project.audio ? "Siap" : undefined,
     },
     {
       id: "timeline",
       label: "4. Timeline & Subtitle",
       icon: Layers,
-      badge: (project as any).timeline?.clips?.length
-        ? `${(project as any).timeline.clips.length} Klip`
+      badge: project.timeline?.clips?.length
+        ? `${project.timeline.clips.length} Klip`
         : undefined,
     },
     {
       id: "render",
       label: "5. Render & Export",
       icon: Download,
-      badge: (project as any).render_jobs?.length ? `${(project as any).render_jobs.length} Job` : undefined,
+      badge: project.render_jobs?.length
+        ? `${project.render_jobs.length} Job`
+        : undefined,
     },
   ];
 
@@ -261,7 +257,8 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
       onRenameProject={handleRenameProject}
       isRenaming={updateProjectMutation.isPending}
     >
-      {(activeTab === "media" || !["narration", "tts", "timeline", "render"].includes(activeTab)) && (
+      {(activeTab === "media" ||
+        !["narration", "tts", "timeline", "render"].includes(activeTab)) && (
         <MediaPoolTab project={project} />
       )}
       {activeTab === "narration" && <NarrationTab project={project} />}

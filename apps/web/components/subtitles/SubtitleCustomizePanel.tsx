@@ -264,7 +264,7 @@ export function SubtitleCustomizePanel({
 
   // Update style mutation
   const updateStyleMutation = useMutation({
-    mutationFn: (data: any) => api.updateSubtitleStyle(project.id, data),
+    mutationFn: (data: Partial<SubtitleStyle>) => api.updateSubtitleStyle(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       queryClient.invalidateQueries({ queryKey: ["subtitle-presets"] });
@@ -272,7 +272,7 @@ export function SubtitleCustomizePanel({
       setIsSavePresetOpen(false);
       setNewPresetName("");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan gaya subtitle", "error");
     },
   });
@@ -312,7 +312,7 @@ export function SubtitleCustomizePanel({
       setIsSavePresetOpen(false);
       setNewPresetName("");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan preset baru", "error");
     },
   });
@@ -324,7 +324,7 @@ export function SubtitleCustomizePanel({
       queryClient.invalidateQueries({ queryKey: ["subtitle-presets"] });
       showToast("Preset kustom berhasil dihapus", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus preset", "error");
     },
   });
@@ -364,7 +364,7 @@ export function SubtitleCustomizePanel({
     showToast(`Preset "${preset.name}" berhasil diterapkan!`, "success");
   };
 
-  const handleApplyColorTheme = (theme: typeof COLOR_THEMES[0]) => {
+  const handleApplyColorTheme = (theme: (typeof COLOR_THEMES)[0]) => {
     const updated: SubtitleStyle = {
       ...style,
       primary_color: theme.primary,
@@ -382,8 +382,11 @@ export function SubtitleCustomizePanel({
       const res = await api.previewASS(project.id);
       setAssContent(res.ass_content);
       setIsAssModalOpen(true);
-    } catch (err: any) {
-      showToast(err.message || "Gagal menghasilkan preview ASS", "error");
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "Gagal menghasilkan preview ASS",
+        "error"
+      );
     }
   };
 
@@ -477,7 +480,10 @@ export function SubtitleCustomizePanel({
           <div className="lg:col-span-4 space-y-4">
             {/* Enable / Disable Subtitle Checklist Card */}
             <div className="p-3.5 rounded-xl bg-[#161616] border border-[#262626] flex items-center justify-between gap-3 shadow-xs">
-              <label htmlFor="clipper-subtitles-enable" className="flex items-center gap-3 cursor-pointer select-none flex-1">
+              <label
+                htmlFor="clipper-subtitles-enable"
+                className="flex items-center gap-3 cursor-pointer select-none flex-1"
+              >
                 <input
                   id="clipper-subtitles-enable"
                   type="checkbox"
@@ -487,14 +493,18 @@ export function SubtitleCustomizePanel({
                     const updated = { ...style, enabled: checked };
                     commitStyle(updated, true);
                     showToast(
-                      checked ? "Subtitle diaktifkan." : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
+                      checked
+                        ? "Subtitle diaktifkan."
+                        : "Subtitle dinonaktifkan (video bersih tanpa subtitle).",
                       "info"
                     );
                   }}
                   className="w-4 h-4 rounded accent-primary cursor-pointer"
                 />
                 <div>
-                  <span className="text-xs font-bold text-foreground block">Gunakan Subtitle pada Video</span>
+                  <span className="text-xs font-bold text-foreground block">
+                    Gunakan Subtitle pada Video
+                  </span>
                   <span className="text-[10px] text-muted-foreground block">
                     {style.enabled !== false
                       ? "Subtitle aktif di player monitor dan render final"
@@ -557,8 +567,7 @@ export function SubtitleCustomizePanel({
               ) : (
                 <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-0.5 custom-scrollbar">
                   {customPresets.map((p) => {
-                    const isSelected =
-                      style.preset_name === (p.preset_name || p.name || p.id);
+                    const isSelected = style.preset_name === (p.preset_name || p.name || p.id);
                     return (
                       <div
                         key={p.id}
@@ -640,8 +649,7 @@ export function SubtitleCustomizePanel({
 
               <div className="grid grid-cols-2 gap-2">
                 {builtinPresets.map((p) => {
-                  const isSelected =
-                    style.preset_name === (p.preset_name || p.id || p.name);
+                  const isSelected = style.preset_name === (p.preset_name || p.id || p.name);
                   return (
                     <button
                       key={p.id}
@@ -679,8 +687,8 @@ export function SubtitleCustomizePanel({
                           {p.display_mode === "per_word"
                             ? "Word"
                             : p.display_mode === "burst"
-                            ? "Burst"
-                            : "Line"}
+                              ? "Burst"
+                              : "Line"}
                         </span>
                       </div>
                     </button>
@@ -724,7 +732,9 @@ export function SubtitleCustomizePanel({
               {/* Font Size Slider with Step Buttons */}
               <div>
                 <div className="flex justify-between items-center mb-1 text-xs">
-                  <span className="text-muted-foreground font-medium">Ukuran Huruf (Font Size)</span>
+                  <span className="text-muted-foreground font-medium">
+                    Ukuran Huruf (Font Size)
+                  </span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -931,7 +941,10 @@ export function SubtitleCustomizePanel({
                     }
                     onPointerUp={(e) =>
                       commitStyle(
-                        { ...style, scale_factor: parseFloat((e.target as HTMLInputElement).value) },
+                        {
+                          ...style,
+                          scale_factor: parseFloat((e.target as HTMLInputElement).value),
+                        },
                         true
                       )
                     }
@@ -1101,7 +1114,9 @@ export function SubtitleCustomizePanel({
                 <div>
                   <div className="flex justify-between items-center mb-1 text-[11px]">
                     <span className="text-muted-foreground">Tebal Outline</span>
-                    <span className="font-mono text-primary font-bold">{style.outline_width}px</span>
+                    <span className="font-mono text-primary font-bold">
+                      {style.outline_width}px
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -1323,11 +1338,7 @@ export function SubtitleCustomizePanel({
               {assContent || "Belum ada subtitle yang digenerate."}
             </div>
             <div className="flex justify-end pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAssModalOpen(false)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setIsAssModalOpen(false)}>
                 Tutup
               </Button>
             </div>
@@ -1344,7 +1355,8 @@ export function SubtitleCustomizePanel({
               Simpan sebagai Preset Baru
             </h3>
             <p className="text-xs text-muted-foreground">
-              Semua pengaturan gaya subtitle aktif (font, warna, outline, posisi, animasi) akan disimpan sebagai preset yang dapat digunakan kembali.
+              Semua pengaturan gaya subtitle aktif (font, warna, outline, posisi, animasi) akan
+              disimpan sebagai preset yang dapat digunakan kembali.
             </p>
             <Input
               type="text"

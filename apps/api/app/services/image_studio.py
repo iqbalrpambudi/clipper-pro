@@ -3,16 +3,16 @@ import logging
 import re
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from typing import Any, Dict, Optional, Tuple
 
-from app.core.config import get_settings
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.security import decrypt_secret
 from app.core.storage import storage
 from app.models.config import ModelConfig
 from app.models.image_preset import ImagePreset
-from app.services.ai_adapters.factory import get_active_vision_adapter, get_active_llm_adapter
+from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
 from app.services.image_gen import generate_image_to_path
 
 log = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ async def analyze_visual_style(
     name = parsed.get("name") or (f"Preset {clean_text[:25]}" if clean_text else "Preset Gaya Ilustrasi AI")
     category = parsed.get("category") or ("doodle" if "doodle" in clean_text.lower() else "custom")
     description = parsed.get("description") or f"Preset visual berbasis '{clean_text or 'gaya ilustrasi visual'}' untuk serial storyboard 16:9."
-    
+
     master_prompt = parsed.get("master_prompt", "")
     if not master_prompt or len(master_prompt.strip()) < 30:
         aspect = "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical)."
@@ -269,7 +269,6 @@ async def generate_preset_test_image(
     Generate a live test preview image using the synthesized master prompt.
     Saved to storage/presets/preview_{uid}.png.
     """
-    settings = get_settings()
     base_url = None
     api_key = None
     model = None

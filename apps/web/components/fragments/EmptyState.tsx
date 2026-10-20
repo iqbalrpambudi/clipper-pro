@@ -35,13 +35,9 @@ export function EmptyState({
           ) : null}
         </div>
       )}
-      <h3 className="text-sm font-semibold text-foreground tracking-tight mb-1">
-        {title}
-      </h3>
+      <h3 className="text-sm font-semibold text-foreground tracking-tight mb-1">{title}</h3>
       {description && (
-        <p className="text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed">
-          {description}
-        </p>
+        <p className="text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed">{description}</p>
       )}
       {(action || secondaryAction) && (
         <div className="flex items-center gap-2 mt-1">

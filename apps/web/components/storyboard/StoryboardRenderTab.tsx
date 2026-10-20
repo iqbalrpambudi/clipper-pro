@@ -21,12 +21,7 @@ import { Project, RenderJob, StoryboardItem } from "@/types";
 import { Button, Badge } from "@/components/ui";
 
 interface StoryboardRenderTabProps {
-  project: Project & {
-    narration?: any;
-    audio?: any;
-    storyboard_items?: StoryboardItem[];
-    render_jobs?: RenderJob[];
-  };
+  project: Project;
 }
 
 function formatBytes(bytes?: number | null): string {
@@ -52,14 +47,13 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   }, [project.resolution]);
 
   const updateProjectMutation = useMutation({
-    mutationFn: (data: Partial<Pick<Project, "resolution">>) =>
-      api.updateProject(project.id, data),
+    mutationFn: (data: Partial<Pick<Project, "resolution">>) => api.updateProject(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     },
   });
 
-  const audio = (project as any).audio || (project as any).audio_track;
+  const audio = project.audio || project.audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
   const readyItemsCount = items.filter((it) => it.status === "ready" && it.image_url).length;
 
@@ -69,7 +63,9 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
     initialData: project.render_jobs || [],
     refetchInterval: (query) => {
       const data = query.state.data;
-      const isRunning = data?.some((j: RenderJob) => j.status === "rendering" || j.status === "queued");
+      const isRunning = data?.some(
+        (j: RenderJob) => j.status === "rendering" || j.status === "queued"
+      );
       return isRunning ? 2000 : false;
     },
   });
@@ -81,7 +77,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast(`Proses render video 16:9 (${resolution}) dimulai di background!`, "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memulai render video", "error");
     },
   });
@@ -92,7 +88,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
       queryClient.invalidateQueries({ queryKey: ["render-jobs", project.id] });
       showToast("File render berhasil dihapus.", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menghapus file render", "error");
     },
   });
@@ -105,7 +101,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Rendering video berhasil dibatalkan.", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membatalkan render", "error");
     },
   });
@@ -113,7 +109,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   const activeRenderJob = renderJobs.find((j) => j.status === "rendering" || j.status === "queued");
   const isRendering =
     Boolean(activeRenderJob) ||
-    (activeTask?.task_type === "render" && (activeTask.status === "progress" || activeTask.status === "queued"));
+    (activeTask?.task_type === "render" &&
+      (activeTask.status === "progress" || activeTask.status === "queued"));
 
   return (
     <div className="space-y-8 max-w-8xl mx-auto pb-16">
@@ -132,7 +129,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             Render & Export Video Storyboard 16:9
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Susun gambar ilustrasi dengan efek Ken Burns dinamis, padukan dengan audio narasi suara dan subtitle ASS, lalu export ke MP4 Full HD.
+            Susun gambar ilustrasi dengan efek Ken Burns dinamis, padukan dengan audio narasi suara
+            dan subtitle ASS, lalu export ke MP4 Full HD.
           </p>
         </div>
 
@@ -195,15 +193,22 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             </div>
             <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-[#222222]">
               <span>Status Subtitle:</span>
-              <span className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}>
-                {project.subtitle_style?.enabled !== false ? "Aktif (Burn-in)" : "Nonaktif (Tanpa Subtitle)"}
+              <span
+                className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}
+              >
+                {project.subtitle_style?.enabled !== false
+                  ? "Aktif (Burn-in)"
+                  : "Nonaktif (Tanpa Subtitle)"}
               </span>
             </div>
           </div>
 
           {/* Subtitle Option Toggle Checklist */}
           <div className="p-3.5 rounded-xl bg-black/40 border border-[#262626] flex items-center justify-between text-xs">
-            <label htmlFor="render-subtitles-toggle" className="flex items-center gap-2.5 cursor-pointer select-none">
+            <label
+              htmlFor="render-subtitles-toggle"
+              className="flex items-center gap-2.5 cursor-pointer select-none"
+            >
               <input
                 id="render-subtitles-toggle"
                 type="checkbox"
@@ -216,7 +221,9 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                   });
                   queryClient.invalidateQueries({ queryKey: ["project", project.id] });
                   showToast(
-                    checked ? "Subtitle diaktifkan untuk render." : "Subtitle dinonaktifkan (render tanpa subtitle).",
+                    checked
+                      ? "Subtitle diaktifkan untuk render."
+                      : "Subtitle dinonaktifkan (render tanpa subtitle).",
                     "info"
                   );
                 }}
@@ -226,10 +233,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             </label>
             <Badge
               variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
-              className={`text-[10px] font-mono ${project.subtitle_style?.enabled !== false
+              className={`text-[10px] font-mono ${
+                project.subtitle_style?.enabled !== false
                   ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
                   : "bg-[#222222] text-slate-400 border border-[#333333]"
-                }`}
+              }`}
             >
               {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
             </Badge>
@@ -243,7 +251,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "1080p", label: "1080p (Full HD)", desc: "1920 × 1080 • Kualitas Terbaik" },
-                { id: "720p", label: "720p (HD)", desc: "1280 × 720 • Render Cepat (2.5x lebih cepat)" },
+                {
+                  id: "720p",
+                  label: "720p (HD)",
+                  desc: "1280 × 720 • Render Cepat (2.5x lebih cepat)",
+                },
               ].map((res) => (
                 <button
                   key={res.id}
@@ -252,10 +264,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                     setResolution(res.id);
                     updateProjectMutation.mutate({ resolution: res.id });
                   }}
-                  className={`p-3 rounded-xl border text-left transition ${resolution === res.id
+                  className={`p-3 rounded-xl border text-left transition ${
+                    resolution === res.id
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
                       : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                    }`}
+                  }`}
                 >
                   <div className="text-xs font-bold">{res.label}</div>
                   <div className="text-[10px] text-muted-foreground">{res.desc}</div>
@@ -286,7 +299,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
 
             {!audio && (
               <p className="text-[11px] text-amber-400/90 text-center">
-                ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum me-render.
+                ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum
+                me-render.
               </p>
             )}
           </div>
@@ -301,11 +315,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   <h4 className="text-xs font-bold text-white font-mono">
-                    Sedang Me-render Video Final ({
-                      (activeTask?.task_type === "render" && activeTask.progress !== undefined)
-                        ? activeTask.progress
-                        : (activeRenderJob?.progress || 10)
-                    }%)
+                    Sedang Me-render Video Final (
+                    {activeTask?.task_type === "render" && activeTask.progress !== undefined
+                      ? activeTask.progress
+                      : activeRenderJob?.progress || 10}
+                    %)
                   </h4>
                 </div>
                 {activeRenderJob && (
@@ -333,10 +347,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                   style={{
                     width: `${Math.max(
                       5,
-                      (activeTask?.task_type === "render" && activeTask.progress !== undefined)
+                      activeTask?.task_type === "render" && activeTask.progress !== undefined
                         ? activeTask.progress
-                        : (activeRenderJob?.progress || 10)
-                    )}%`
+                        : activeRenderJob?.progress || 10
+                    )}%`,
                   }}
                 />
               </div>
@@ -386,7 +400,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
 
             {renderJobs.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs">
-                Belum ada video yang dirender untuk project ini. Klik tombol render di samping untuk memulai.
+                Belum ada video yang dirender untuk project ini. Klik tombol render di samping untuk
+                memulai.
               </div>
             ) : (
               <div className="space-y-3">
@@ -416,18 +431,20 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             Video Storyboard 16:9
                           </span>
                           <span
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${job.status === "completed"
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                              job.status === "completed"
                                 ? "bg-emerald-500/10 text-emerald-400"
                                 : job.status === "rendering"
                                   ? "bg-violet-500/10 text-violet-300"
                                   : "bg-rose-500/10 text-rose-400"
-                              }`}
+                            }`}
                           >
                             {job.status}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                          Ukuran: {formatBytes(job.file_size_bytes)} • {new Date(job.created_at).toLocaleString("id-ID")}
+                          Ukuran: {formatBytes(job.file_size_bytes)} •{" "}
+                          {new Date(job.created_at).toLocaleString("id-ID")}
                         </p>
                         {job.status === "failed" && job.error_message && (
                           <p className="text-[11px] text-rose-400/90 mt-1 max-w-md">
@@ -443,7 +460,9 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                           variant="destructive"
                           size="sm"
                           onClick={() => cancelJobMutation.mutate(job.id)}
-                          disabled={cancelJobMutation.isPending && cancelJobMutation.variables === job.id}
+                          disabled={
+                            cancelJobMutation.isPending && cancelJobMutation.variables === job.id
+                          }
                           className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5 px-3 font-semibold shadow-sm"
                           title="Batalkan proses render ini"
                         >

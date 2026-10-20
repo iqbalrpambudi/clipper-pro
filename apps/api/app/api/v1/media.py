@@ -2,29 +2,28 @@ import asyncio
 import uuid
 from pathlib import Path
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, select
+
 from arq import create_pool
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.events import publish_project_event
 from app.core.redis import get_redis_settings
 from app.core.storage import storage
-from app.core.config import get_settings
 from app.models.project import Project, SourceVideo
-from app.schemas.project import SourceVideoResponse
 from app.schemas.media import (
-    YTInfoResponse,
     YTDownloadRequest,
-    YTUpdateResponse,
+    YTInfoResponse,
 )
+from app.schemas.project import SourceVideoResponse
+from app.services.scene_detector import get_video_metadata
 from app.services.ytdlp import (
     get_video_info,
-    get_ytdlp_version,
-    update_ytdlp,
 )
-from app.services.scene_detector import get_video_metadata
 from app.workers.tasks import detect_scenes_job, download_youtube_job
-from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/media", tags=["media"])
 
@@ -343,8 +342,9 @@ async def delete_source_video(
 
     # Clear cached task in Redis if it belongs to this video
     try:
-        from app.core.redis import get_redis_client
         import json
+
+        from app.core.redis import get_redis_client
         redis_client = get_redis_client()
         cache_key = f"project:{project_id}:active_task"
         cached = await redis_client.get(cache_key)

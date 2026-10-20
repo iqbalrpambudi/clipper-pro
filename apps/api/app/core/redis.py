@@ -1,6 +1,8 @@
 from typing import Optional
+
 from arq.connections import RedisSettings
 from redis import asyncio as aioredis
+
 from app.core.config import get_settings
 
 settings = get_settings()

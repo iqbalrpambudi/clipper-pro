@@ -28,7 +28,9 @@ export function useAudioPeaks(url?: string | null) {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
-        const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         const ctx: AudioContext = new Ctx();
         const audio = await ctx.decodeAudioData(buf);
         ctx.close().catch(() => {});

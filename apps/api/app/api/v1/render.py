@@ -1,20 +1,22 @@
 import asyncio
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from datetime import datetime
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
 from arq import create_pool
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
 from app.core.redis import get_redis_settings
 from app.core.storage import storage
 from app.models.project import Project, RenderJob
 from app.schemas.project import RenderJobResponse
-from app.workers.tasks import render_video_job
 from app.services.cancellation import clear_cancellation, kill_all_matching_processes
+from app.workers.tasks import render_video_job
 
 router = APIRouter(prefix="/projects/{project_id}/render", tags=["render"])
 
@@ -282,8 +284,8 @@ async def cancel_render_job(
     if not job or job.project_id != project_id:
         raise HTTPException(status_code=404, detail="Render job tidak ditemukan")
 
-    from app.services.cancellation import request_cancellation
     from app.core.events import publish_project_event
+    from app.services.cancellation import request_cancellation
     await request_cancellation(project_id, job_id=job_id)
 
     job.status = "failed"

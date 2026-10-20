@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { SourceVideo } from "@/types";
+import { SourceVideo, Scene, ProjectDetail } from "@/types";
 
 export function useDeleteMedia(projectId: string) {
   const queryClient = useQueryClient();
@@ -12,15 +12,15 @@ export function useDeleteMedia(projectId: string) {
     onMutate: async (vidId: string) => {
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
 
-      const prevProject = queryClient.getQueryData<any>(["project", projectId]);
+      const prevProject = queryClient.getQueryData<ProjectDetail>(["project", projectId]);
 
       // Optimistically remove video and its scenes from the project query cache immediately
-      queryClient.setQueryData(["project", projectId], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", projectId], (old) => {
         if (!old) return old;
         return {
           ...old,
-          source_videos: (old.source_videos || []).filter((v: any) => v.id !== vidId),
-          scenes: (old.scenes || []).filter((s: any) => s.source_video_id !== vidId),
+          source_videos: (old.source_videos || []).filter((v: SourceVideo) => v.id !== vidId),
+          scenes: (old.scenes || []).filter((s: Scene) => s.source_video_id !== vidId),
         };
       });
 
@@ -31,7 +31,7 @@ export function useDeleteMedia(projectId: string) {
 
       return { prevProject };
     },
-    onError: (err: any, _vidId, context) => {
+    onError: (err: Error, _vidId, context) => {
       if (context?.prevProject) {
         queryClient.setQueryData(["project", projectId], context.prevProject);
       }
@@ -57,7 +57,7 @@ export function useCancelMedia(projectId: string) {
       setActiveTask(null, projectId);
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal membatalkan proses video", "error");
     },
   });
@@ -72,9 +72,9 @@ export function useDownloadYT(projectId: string) {
       api.downloadYT(projectId, url, formatId, title),
     onSuccess: (newVid: SourceVideo) => {
       if (newVid) {
-        queryClient.setQueryData(["project", projectId], (old: any) => {
+        queryClient.setQueryData<ProjectDetail>(["project", projectId], (old) => {
           if (!old) return old;
-          const exists = (old.source_videos || []).some((v: any) => v.id === newVid.id);
+          const exists = (old.source_videos || []).some((v: SourceVideo) => v.id === newVid.id);
           if (exists) return old;
           return {
             ...old,
@@ -85,7 +85,7 @@ export function useDownloadYT(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       showToast("Download YouTube dimulai di background!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mendownload YouTube", "error");
     },
   });
@@ -98,7 +98,7 @@ export function useUploadMedia(projectId: string) {
   return useMutation({
     mutationFn: (formData: FormData) => api.uploadMedia(projectId, formData),
     onSuccess: (uploadedVideos: SourceVideo[]) => {
-      queryClient.setQueryData(["project", projectId], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", projectId], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -106,9 +106,12 @@ export function useUploadMedia(projectId: string) {
         };
       });
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      showToast("Video berhasil diunggah! Scene detection sedang berjalan di background.", "success");
+      showToast(
+        "Video berhasil diunggah! Scene detection sedang berjalan di background.",
+        "success"
+      );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal mengunggah video", "error");
     },
   });
@@ -127,7 +130,7 @@ export function useYTInfo(projectId: string) {
 
   return useMutation({
     mutationFn: (url: string) => api.getYTInfo(projectId, url),
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menginspeksi video YouTube", "error");
     },
   });
@@ -144,7 +147,7 @@ export function useRetagScenes(projectId: string) {
       await queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
       showToast(res.message || `Berhasil tagging ${res.count} scene!`, "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal tagging ulang scene", "error");
     },
   });
@@ -161,7 +164,7 @@ export function useTranscribeScenes(projectId: string) {
       await queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
       showToast(res.message || "Transkripsi dialog audio dijadwalkan!", "info");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal memulai transkripsi dialog", "error");
     },
   });
@@ -178,10 +181,8 @@ export function useRepairThumbnails(projectId: string) {
       await queryClient.refetchQueries({ queryKey: ["scenes", projectId] });
       showToast(res.message || `Berhasil memperbaiki ${res.repaired} thumbnail!`, "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal meregenerasi thumbnail", "error");
     },
   });
 }
-
-

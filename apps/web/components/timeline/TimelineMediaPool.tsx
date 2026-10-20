@@ -126,7 +126,10 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <Film className="w-3.5 h-3.5 text-primary" /> Media Pool
         </span>
-        <Badge variant="outline" className="text-[10px] text-muted-foreground font-mono border-[#2E2E2E]">
+        <Badge
+          variant="outline"
+          className="text-[10px] text-muted-foreground font-mono border-[#2E2E2E]"
+        >
           {list.length} scene
         </Badge>
       </div>
@@ -157,7 +160,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
           <div className="relative" ref={filterPopoverRef}>
             <Button
               type="button"
-              variant={filter !== "all" || sort !== "order" || videoId !== "all" ? "supabase" : "outline"}
+              variant={
+                filter !== "all" || sort !== "order" || videoId !== "all" ? "supabase" : "outline"
+              }
               size="icon"
               onClick={() => setIsFilterOpen((o) => !o)}
               className="h-7 w-7"
@@ -169,7 +174,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
             {isFilterOpen && (
               <div className="absolute right-0 top-full mt-1.5 w-64 p-3 rounded-xl bg-[#181818] border border-[#2E2E2E] shadow-2xl z-50 space-y-3">
                 <div>
-                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Status Scene</div>
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Status Scene
+                  </div>
                   <div className="grid grid-cols-3 gap-1 bg-[#121212] p-0.5 rounded-lg border border-[#2E2E2E]">
                     {pills.map((p) => (
                       <button
@@ -191,7 +198,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
                 {sourceVideos.length > 1 && (
                   <div>
-                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Video Sumber</div>
+                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                      Video Sumber
+                    </div>
                     <select
                       value={videoId}
                       onChange={(e) => setVideoId(e.target.value)}
@@ -208,7 +217,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                 )}
 
                 <div>
-                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Urutan</div>
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Urutan
+                  </div>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as Sort)}
@@ -241,7 +252,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
       <div className="flex-1 overflow-y-auto p-2.5">
         {list.length === 0 ? (
-          <p className="text-center text-[11px] text-muted-foreground py-10">Tidak ada scene yang cocok.</p>
+          <p className="text-center text-[11px] text-muted-foreground py-10">
+            Tidak ada scene yang cocok.
+          </p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
             {list.map((sc) => {
@@ -260,8 +273,8 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     isCurrent
                       ? "border-primary ring-1 ring-primary/50"
                       : used
-                      ? "border-primary/40 hover:border-primary"
-                      : "border-[#2E2E2E] hover:border-[#3E3E3E]"
+                        ? "border-primary/40 hover:border-primary"
+                        : "border-[#2E2E2E] hover:border-[#3E3E3E]"
                   }`}
                   title={`${sc.description || "Scene"}\nSeret ke timeline • Double-click: ${selectedClipNumber !== null ? `ganti klip #${selectedClipNumber}` : "tambah di akhir"}`}
                 >
@@ -279,8 +292,12 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                         <Film className="w-5 h-5 text-muted-foreground opacity-50" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 px-1 rounded bg-black/80 text-[9px] font-bold text-foreground">#{sc.scene_index + 1}</span>
-                    <span className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[9px] font-mono text-foreground">{sc.duration.toFixed(1)}s</span>
+                    <span className="absolute top-1 left-1 px-1 rounded bg-black/80 text-[9px] font-bold text-foreground">
+                      #{sc.scene_index + 1}
+                    </span>
+                    <span className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[9px] font-mono text-foreground">
+                      {sc.duration.toFixed(1)}s
+                    </span>
                     {used && (
                       <span className="absolute top-1 right-1 px-1 rounded bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary flex items-center gap-0.5">
                         <Check className="w-2.5 h-2.5" />
@@ -298,17 +315,27 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     </button>
                   </div>
                   <div className="p-1.5 space-y-1">
-                    <p className="text-[10px] text-foreground/90 line-clamp-2 leading-tight min-h-[2.2em]">{sc.description || "Scene"}</p>
+                    <p className="text-[10px] text-foreground/90 line-clamp-2 leading-tight min-h-[2.2em]">
+                      {sc.description || "Scene"}
+                    </p>
                     <div className="grid grid-cols-3 gap-1">
                       <PoolAction
-                        title={selectedClipNumber !== null ? `Ganti klip #${selectedClipNumber}` : "Pilih klip di timeline dulu"}
+                        title={
+                          selectedClipNumber !== null
+                            ? `Ganti klip #${selectedClipNumber}`
+                            : "Pilih klip di timeline dulu"
+                        }
                         disabled={selectedClipNumber === null || isCurrent}
                         onClick={() => onReplace(sc)}
                         tone="brand"
                       >
                         <Replace className="w-3 h-3" />
                       </PoolAction>
-                      <PoolAction title="Sisipkan di posisi playhead" disabled={!canInsertAtPlayhead} onClick={() => onInsert(sc)}>
+                      <PoolAction
+                        title="Sisipkan di posisi playhead"
+                        disabled={!canInsertAtPlayhead}
+                        onClick={() => onInsert(sc)}
+                      >
                         <PlusSquare className="w-3 h-3" />
                       </PoolAction>
                       <PoolAction title="Tambahkan di akhir timeline" onClick={() => onAppend(sc)}>
@@ -325,7 +352,9 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
       <div className="px-3 py-1.5 border-t border-[#2E2E2E] text-[9px] text-muted-foreground flex items-center justify-between bg-[#161616]">
         <span>
-          <Replace className="inline w-2.5 h-2.5" /> Ganti • <PlusSquare className="inline w-2.5 h-2.5" /> Sisip • <ListPlus className="inline w-2.5 h-2.5" /> Akhir
+          <Replace className="inline w-2.5 h-2.5" /> Ganti •{" "}
+          <PlusSquare className="inline w-2.5 h-2.5" /> Sisip •{" "}
+          <ListPlus className="inline w-2.5 h-2.5" /> Akhir
         </span>
         <span>atau seret ke timeline</span>
       </div>

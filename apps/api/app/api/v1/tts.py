@@ -1,32 +1,34 @@
 import asyncio
 from pathlib import Path
 from typing import List, Optional
+
+import httpx
+from arq import create_pool
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from arq import create_pool
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.events import publish_project_event
 from app.core.redis import get_redis_settings
-from app.core.storage import storage
 from app.core.security import decrypt_secret
+from app.core.storage import storage
 from app.models.config import ModelConfig
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
-from app.models.narration import Narration, AudioTrack
+from app.schemas.narration import NarrationResponse
 from app.schemas.tts import (
-    VoiceInfo,
+    AudioTrackResponse,
     CostEstimateRequest,
     CostEstimateResponse,
-    TTSGenerateRequest,
-    AudioTrackResponse,
     RealignWordsRequest,
+    TTSGenerateRequest,
+    VoiceInfo,
 )
-from app.schemas.narration import NarrationResponse
-import httpx
-from app.core.config import get_settings
-from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.services.alignment import align_audio_with_text
-from app.core.events import publish_project_event
+from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.workers.tasks import generate_tts_and_align_job
 
 router = APIRouter(tags=["tts"])

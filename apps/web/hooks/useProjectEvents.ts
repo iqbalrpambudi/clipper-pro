@@ -80,7 +80,10 @@ export function useProjectEvents(projectId: string) {
           showToast(task.message || "Proses berhasil diselesaikan!", "success");
           // refetchType "all" makes invalidate also refetch active + inactive queries
           queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
-          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({
+            queryKey: ["render-jobs", projectId],
+            refetchType: "all",
+          });
           queryClient.invalidateQueries({ queryKey: ["scenes", projectId], refetchType: "all" });
 
           // Retain success status briefly, then auto-dismiss
@@ -97,16 +100,25 @@ export function useProjectEvents(projectId: string) {
           if (isCancelled) {
             showToast(task.message || "Proses worker berhasil dibatalkan", "info");
           } else {
-            showToast(task.error || task.message || "Terjadi kesalahan pada worker background", "error");
+            showToast(
+              task.error || task.message || "Terjadi kesalahan pada worker background",
+              "error"
+            );
           }
           queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
-          queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({
+            queryKey: ["render-jobs", projectId],
+            refetchType: "all",
+          });
           queryClient.invalidateQueries({ queryKey: ["scenes", projectId], refetchType: "all" });
 
           // Keep cancelled toast brief, error visible longer
-          clearTimerRef.current = setTimeout(() => {
-            setActiveTask(null, projectId);
-          }, isCancelled ? 2500 : 7000);
+          clearTimerRef.current = setTimeout(
+            () => {
+              setActiveTask(null, projectId);
+            },
+            isCancelled ? 2500 : 7000
+          );
         }
       } catch (err) {
         console.warn("[SSE] Error parsing event message", err);

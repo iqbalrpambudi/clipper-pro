@@ -40,18 +40,13 @@ export function DeleteProjectDialog({
           </div>
           <DialogDescription>
             Apakah Anda yakin ingin menghapus project{" "}
-            <strong className="text-white font-medium">{project?.name}</strong>?
-            Semua data media, naskah, timeline, dan hasil render akan dihapus secara permanen.
+            <strong className="text-white font-medium">{project?.name}</strong>? Semua data media,
+            naskah, timeline, dan hasil render akan dihapus secara permanen.
           </DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Batal
           </Button>
           <Button

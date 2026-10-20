@@ -1,12 +1,18 @@
 import asyncio
 import logging
-import os
 import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Callable
-from app.core.frame_math import sec_to_frame, frame_to_sec, snap_to_frame, COMPOSITION_FPS
+from typing import Any, Callable, Dict, List, Optional
+
+from app.core.frame_math import frame_to_sec, sec_to_frame, snap_to_frame
+from app.services.cancellation import (
+    TaskCancelledException,
+    is_cancelled,
+    register_process,
+    unregister_process,
+)
 from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -17,14 +23,6 @@ def _escape_filter_path(path: str) -> str:
     # libass/ffmpeg requires colons, backslashes, and single quotes escaped
     escaped = str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return escaped
-
-from app.services.cancellation import (
-    register_process,
-    unregister_process,
-    is_cancelled,
-    TaskCancelledException,
-)
-
 
 TIME_REGEX = re.compile(r"time=(\d+):(\d+):(\d+\.\d+)")
 
@@ -230,7 +228,7 @@ def _build_watermark_filter(
         elif pos == "center-left":
             pos_expr = f"{ox}:(main_h-overlay_h)/2"
         elif pos == "center":
-            pos_expr = f"(main_w-overlay_w)/2:(main_h-overlay_h)/2"
+            pos_expr = "(main_w-overlay_w)/2:(main_h-overlay_h)/2"
         elif pos == "center-right":
             pos_expr = f"main_w-overlay_w-{ox}:(main_h-overlay_h)/2"
         elif pos == "bottom-left":
@@ -297,7 +295,7 @@ def _build_watermark_filter(
     elif pos == "center-left":
         pos_expr = f"x={ox}:y=(h-text_h)/2"
     elif pos == "center":
-        pos_expr = f"x=(w-text_w)/2:y=(h-text_h)/2"
+        pos_expr = "x=(w-text_w)/2:y=(h-text_h)/2"
     elif pos == "center-right":
         pos_expr = f"x=w-text_w-{ox}:y=(h-text_h)/2"
     elif pos == "bottom-left":
@@ -413,7 +411,7 @@ async def render_timeline_video(
             # Target output duration on the 30 FPS timeline
             timeline_start = snap_to_frame(float(clip.get("timeline_start", 0.0)))
             raw_timeline_end = float(clip.get("timeline_end", timeline_start + source_dur))
-            
+
             # If this is the last clip and audio is longer, extend to cover the full audio duration
             if idx == total_clips - 1 and audio_dur > 0 and audio_dur > raw_timeline_end:
                 timeline_end = snap_to_frame(audio_dur)

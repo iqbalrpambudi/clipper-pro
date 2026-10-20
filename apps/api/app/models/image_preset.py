@@ -1,8 +1,9 @@
-import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any
-from sqlalchemy import String, Text, Boolean, DateTime, JSON
+from typing import Any, Dict, Optional
+
+from sqlalchemy import JSON, Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.core.db import Base
 
 

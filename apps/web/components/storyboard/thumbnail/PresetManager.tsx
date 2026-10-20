@@ -92,7 +92,8 @@ export function PresetManager({
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          Simpan kombinasi font, warna, stroke, dan background box aktif agar bisa dipakai berulang kali di video mendatang dalam 1 klik.
+          Simpan kombinasi font, warna, stroke, dan background box aktif agar bisa dipakai berulang
+          kali di video mendatang dalam 1 klik.
         </p>
 
         {isSaving ? (
@@ -191,7 +192,9 @@ export function PresetManager({
               <BookmarkPlus className="w-3.5 h-3.5" />
               <span>Preset Kustom Anda</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">{customPresets.length} Tersimpan</span>
+            <span className="text-[10px] text-muted-foreground">
+              {customPresets.length} Tersimpan
+            </span>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
@@ -218,7 +221,10 @@ export function PresetManager({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="flex items-center gap-1.5 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Button
                     size="sm"
                     variant="outline"

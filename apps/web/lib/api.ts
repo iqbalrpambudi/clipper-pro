@@ -1,12 +1,16 @@
 import {
   Project,
+  ProjectDetail,
   SourceVideo,
   Scene,
+  SentenceSegment,
   Narration,
   NarrationTemplate,
   AudioTrack,
   Timeline,
+  TimelineClip,
   SubtitleStyle,
+  SubtitleStyleUpdateRequest,
   SubtitlePreset,
   RenderJob,
   VoiceInfo,
@@ -19,19 +23,30 @@ import {
   StudioAnalysisResult,
   YouTubeMetadata,
   YouTubeThumbnailHistory,
+  YTInfoResponse,
+  CostEstimateResponse,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const REQUEST_TIMEOUT_MS = 120_000;
 
 /** FastAPI returns `detail` as a string, or a list of {loc,msg} for 422s. */
-function formatErrorDetail(errJson: any, fallback: string): string {
-  const detail = errJson?.detail;
+function formatErrorDetail(errJson: unknown, fallback: string): string {
+  if (!errJson || typeof errJson !== "object") return fallback;
+  const detail = (errJson as { detail?: unknown }).detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
-    return detail
-      .map((d: any) => (typeof d === "string" ? d : d?.msg || JSON.stringify(d)))
-      .join("; ") || fallback;
+    return (
+      detail
+        .map((d: unknown) => {
+          if (typeof d === "string") return d;
+          if (d && typeof d === "object" && "msg" in d) {
+            return String((d as { msg: unknown }).msg);
+          }
+          return JSON.stringify(d);
+        })
+        .join("; ") || fallback
+    );
   }
   if (detail) return JSON.stringify(detail);
   return fallback;
@@ -54,9 +69,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   let res: Response;
   try {
     res = await fetch(url, { ...options, headers, signal: controller.signal });
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timer);
-    if (err?.name === "AbortError") {
+    if (err instanceof Error && err.name === "AbortError") {
       throw new Error("Permintaan ke server timeout atau dibatalkan");
     }
     throw new Error("Tidak dapat terhubung ke server API");
@@ -91,18 +106,37 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Projects
   getProjects: () => request<Project[]>("/api/v1/projects"),
-  getProject: (id: string) => request<Project & { source_videos: SourceVideo[]; scenes: Scene[]; narration?: Narration | null; audio?: AudioTrack | null; timeline?: Timeline | null; subtitle_style?: SubtitleStyle | null; render_jobs?: RenderJob[] }>(`/api/v1/projects/${id}`),
-  createProject: (data: { name: string; description?: string; project_type?: "short_video" | "long_storyboard"; aspect_ratio?: string; resolution?: string; language?: string }) =>
-    request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
-  updateProject: (id: string, data: Partial<Pick<Project, 'name' | 'description' | 'project_type' | 'aspect_ratio' | 'resolution' | 'background_fill' | 'watermark' | 'language'>>) =>
-    request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  getProject: (id: string) => request<ProjectDetail>(`/api/v1/projects/${id}`),
+  createProject: (data: {
+    name: string;
+    description?: string;
+    project_type?: "short_video" | "long_storyboard";
+    aspect_ratio?: string;
+    resolution?: string;
+    language?: string;
+  }) => request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(data) }),
+  updateProject: (
+    id: string,
+    data: Partial<
+      Pick<
+        Project,
+        | "name"
+        | "description"
+        | "project_type"
+        | "aspect_ratio"
+        | "resolution"
+        | "background_fill"
+        | "watermark"
+        | "language"
+      >
+    >
+  ) => request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   uploadWatermarkImage: (projectId: string, formData: FormData) =>
     request<{ success: boolean; url: string; file_path: string; filename: string }>(
       `/api/v1/projects/${projectId}/watermark/upload`,
       { method: "POST", body: formData }
     ),
-  deleteProject: (id: string) =>
-    request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
+  deleteProject: (id: string) => request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
 
   // Media & YouTube
   uploadMedia: (projectId: string, formData: FormData) =>
@@ -111,7 +145,7 @@ export const api = {
       body: formData,
     }),
   getYTInfo: (projectId: string, url: string) =>
-    request<any>(`/api/v1/projects/${projectId}/media/yt-info`, {
+    request<YTInfoResponse>(`/api/v1/projects/${projectId}/media/yt-info`, {
       method: "POST",
       body: JSON.stringify({ url }),
     }),
@@ -123,18 +157,23 @@ export const api = {
   deleteMedia: (projectId: string, videoId: string) =>
     request<void>(`/api/v1/projects/${projectId}/media/${videoId}`, { method: "DELETE" }),
   cancelMedia: (projectId: string, videoId: string) =>
-    request<{ status: string; message: string }>(`/api/v1/projects/${projectId}/media/${videoId}/cancel`, { method: "POST" }),
-
-  // Background Tasks / Worker Cancellation
-  cancelProjectTasks: (projectId: string) =>
-    request<{ status: string; message: string; cancelled_videos: number; cancelled_renders: number; cancelled_audio: number }>(
-      `/api/v1/projects/${projectId}/tasks/cancel`,
+    request<{ status: string; message: string }>(
+      `/api/v1/projects/${projectId}/media/${videoId}/cancel`,
       { method: "POST" }
     ),
 
+  // Background Tasks / Worker Cancellation
+  cancelProjectTasks: (projectId: string) =>
+    request<{
+      status: string;
+      message: string;
+      cancelled_videos: number;
+      cancelled_renders: number;
+      cancelled_audio: number;
+    }>(`/api/v1/projects/${projectId}/tasks/cancel`, { method: "POST" }),
+
   // Scenes
-  getScenes: (projectId: string) =>
-    request<Scene[]>(`/api/v1/projects/${projectId}/scenes`),
+  getScenes: (projectId: string) => request<Scene[]>(`/api/v1/projects/${projectId}/scenes`),
   retagScenes: (projectId: string, mode: "quick" | "force" = "quick") =>
     request<{ message: string; count: number; total: number; model: string; mode: string }>(
       `/api/v1/projects/${projectId}/scenes/retag`,
@@ -194,12 +233,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateNarration: (projectId: string, data: { raw_text: string; segments?: any[]; language?: string }) =>
+  updateNarration: (
+    projectId: string,
+    data: { raw_text: string; segments?: SentenceSegment[]; language?: string }
+  ) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  updateNarrationSegments: (projectId: string, segments: any[]) =>
+  updateNarrationSegments: (projectId: string, segments: SentenceSegment[]) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration/segments`, {
       method: "PUT",
       body: JSON.stringify({ segments }),
@@ -212,7 +254,7 @@ export const api = {
       `/api/v1/tts/elevenlabs/voices${apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : ""}`
     ),
   estimateCost: (text: string, provider: string = "gemini") =>
-    request<any>("/api/v1/tts/estimate-cost", {
+    request<CostEstimateResponse>("/api/v1/tts/estimate-cost", {
       method: "POST",
       body: JSON.stringify({ text, provider }),
     }),
@@ -234,7 +276,7 @@ export const api = {
     }),
   realignTTS: (
     projectId: string,
-    data?: { offset_ms?: number; language?: string; model_size?: string; segments?: any[] }
+    data?: { offset_ms?: number; language?: string; model_size?: string; segments?: SentenceSegment[] }
   ) =>
     request<Narration>(`/api/v1/projects/${projectId}/tts/realign`, {
       method: "POST",
@@ -244,11 +286,10 @@ export const api = {
   // Timeline
   autoMatchTimeline: (projectId: string) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline/auto-match`, { method: "POST" }),
-  getTimeline: (projectId: string) =>
-    request<Timeline>(`/api/v1/projects/${projectId}/timeline`),
+  getTimeline: (projectId: string) => request<Timeline>(`/api/v1/projects/${projectId}/timeline`),
   updateTimeline: (
     projectId: string,
-    data: { clips: any[]; total_duration?: number; has_audio?: boolean; has_subtitles?: boolean }
+    data: { clips: TimelineClip[]; total_duration?: number; has_audio?: boolean; has_subtitles?: boolean }
   ) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline`, {
       method: "PUT",
@@ -260,7 +301,8 @@ export const api = {
   ) => {
     const params = new URLSearchParams();
     if (options?.clear_audio !== undefined) params.set("clear_audio", String(options.clear_audio));
-    if (options?.clear_subtitles !== undefined) params.set("clear_subtitles", String(options.clear_subtitles));
+    if (options?.clear_subtitles !== undefined)
+      params.set("clear_subtitles", String(options.clear_subtitles));
     const qs = params.toString() ? `?${params.toString()}` : "";
     return request<Timeline>(`/api/v1/projects/${projectId}/timeline${qs}`, {
       method: "DELETE",
@@ -272,7 +314,8 @@ export const api = {
   ) => {
     const params = new URLSearchParams();
     if (options?.readd_audio !== undefined) params.set("readd_audio", String(options.readd_audio));
-    if (options?.readd_subtitles !== undefined) params.set("readd_subtitles", String(options.readd_subtitles));
+    if (options?.readd_subtitles !== undefined)
+      params.set("readd_subtitles", String(options.readd_subtitles));
     const qs = params.toString() ? `?${params.toString()}` : "";
     return request<Timeline>(`/api/v1/projects/${projectId}/timeline/readd-narration${qs}`, {
       method: "POST",
@@ -301,13 +344,15 @@ export const api = {
     }),
   getSubtitleStyle: (projectId: string) =>
     request<SubtitleStyle>(`/api/v1/projects/${projectId}/subtitles/style`),
-  updateSubtitleStyle: (projectId: string, data: any) =>
+  updateSubtitleStyle: (projectId: string, data: SubtitleStyleUpdateRequest) =>
     request<SubtitleStyle>(`/api/v1/projects/${projectId}/subtitles/style`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
   previewASS: (projectId: string) =>
-    request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/preview-ass`),
+    request<{ ass_content: string; line_count: number }>(
+      `/api/v1/projects/${projectId}/subtitles/preview-ass`
+    ),
   matchSubtitleWithAudio: (
     projectId: string,
     data?: { offset_ms?: number; language?: string; model_size?: string }
@@ -341,7 +386,10 @@ export const api = {
       { method: "DELETE" }
     ),
   cancelRenderJob: (projectId: string, jobId: string) =>
-    request<{ status: string; message: string }>(`/api/v1/projects/${projectId}/render/jobs/${jobId}/cancel`, { method: "POST" }),
+    request<{ status: string; message: string }>(
+      `/api/v1/projects/${projectId}/render/jobs/${jobId}/cancel`,
+      { method: "POST" }
+    ),
 
   // Settings
   getModelConfig: () => request<ModelConfig>("/api/v1/settings/config"),
@@ -367,20 +415,35 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  testConnection: (data: { base_url?: string; chat_model: string; vision_model: string; api_key?: string }) =>
-    request<{ success: boolean; message: string; latency_ms?: number }>("/api/v1/settings/test-connection", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  testImageConnection: (data: { base_url?: string; image_model?: string; api_key?: string }) =>
-    request<{ success: boolean; message: string; latency_ms?: number; image_model_status?: string }>(
-      "/api/v1/settings/test-image-connection",
+  testConnection: (data: {
+    base_url?: string;
+    chat_model: string;
+    vision_model: string;
+    api_key?: string;
+  }) =>
+    request<{ success: boolean; message: string; latency_ms?: number }>(
+      "/api/v1/settings/test-connection",
       {
         method: "POST",
         body: JSON.stringify(data),
       }
     ),
-  testTtsConnection: (data: { provider?: string; api_key?: string; model?: string; voice?: string }) =>
+  testImageConnection: (data: { base_url?: string; image_model?: string; api_key?: string }) =>
+    request<{
+      success: boolean;
+      message: string;
+      latency_ms?: number;
+      image_model_status?: string;
+    }>("/api/v1/settings/test-image-connection", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  testTtsConnection: (data: {
+    provider?: string;
+    api_key?: string;
+    model?: string;
+    voice?: string;
+  }) =>
     request<{ success: boolean; message: string; latency_ms?: number; provider_status?: string }>(
       "/api/v1/settings/test-tts-connection",
       {
@@ -394,9 +457,12 @@ export const api = {
     if (category) params.set("category", category);
     const query = params.toString() ? `?${params.toString()}` : "";
     // Key travels in a header, not the query string, so it stays out of logs.
-    return request<{ models: string[]; image_models?: string[] }>(`/api/v1/settings/models${query}`, {
-      headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
-    });
+    return request<{ models: string[]; image_models?: string[] }>(
+      `/api/v1/settings/models${query}`,
+      {
+        headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
+      }
+    );
   },
 
   // Storyboard (Long Video Explainer)
@@ -416,15 +482,19 @@ export const api = {
     request<{
       success: boolean;
       project_id: string;
-      characters?: any[];
-      narration: any;
+      project_name?: string;
+      characters?: StoryboardCharacter[];
+      locations?: StoryboardLocation[];
+      world_setting?: StoryboardWorldSetting;
+      youtube_metadata?: Record<string, unknown>;
+      narration: Narration;
       storyboard_items: StoryboardItem[];
     }>(`/api/v1/projects/${projectId}/storyboard/generate-script`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateStoryboardCharacters: (projectId: string, characters: any[]) =>
-    request<{ success: boolean; characters: any[] }>(
+  updateStoryboardCharacters: (projectId: string, characters: StoryboardCharacter[]) =>
+    request<{ success: boolean; characters: StoryboardCharacter[] }>(
       `/api/v1/projects/${projectId}/storyboard/characters`,
       {
         method: "PUT",
@@ -454,10 +524,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  extractStoryboardContinuityBible: (
-    projectId: string,
-    data?: { custom_instructions?: string }
-  ) =>
+  extractStoryboardContinuityBible: (projectId: string, data?: { custom_instructions?: string }) =>
     request<{
       success: boolean;
       characters: StoryboardCharacter[];
@@ -480,7 +547,7 @@ export const api = {
     request<{
       success: boolean;
       segment_id: string;
-      narration: any;
+      narration: Narration;
       storyboard_items: StoryboardItem[];
     }>(`/api/v1/projects/${projectId}/storyboard/segments/${segmentId}`, {
       method: "PUT",
@@ -491,7 +558,18 @@ export const api = {
   updateStoryboardItem: (
     projectId: string,
     itemId: string,
-    data: Partial<Pick<StoryboardItem, "chapter_title" | "script_text" | "image_prompt" | "motion_effect" | "start_time" | "end_time" | "duration">>
+    data: Partial<
+      Pick<
+        StoryboardItem,
+        | "chapter_title"
+        | "script_text"
+        | "image_prompt"
+        | "motion_effect"
+        | "start_time"
+        | "end_time"
+        | "duration"
+      >
+    >
   ) =>
     request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}`, {
       method: "PATCH",
@@ -502,11 +580,17 @@ export const api = {
     itemId: string,
     data?: { prompt?: string; preset_id?: string }
   ) =>
-    request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-    }),
-  generateAllStoryboardImages: (projectId: string, data?: { item_ids?: string[]; concurrency?: number }) =>
+    request<StoryboardItem>(
+      `/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`,
+      {
+        method: "POST",
+        body: data ? JSON.stringify(data) : undefined,
+      }
+    ),
+  generateAllStoryboardImages: (
+    projectId: string,
+    data?: { item_ids?: string[]; concurrency?: number }
+  ) =>
     request<{
       success: boolean;
       total_processed: number;
@@ -517,9 +601,12 @@ export const api = {
       body: JSON.stringify(data || {}),
     }),
   syncStoryboardTiming: (projectId: string) =>
-    request<{ success: boolean; message: string }>(`/api/v1/projects/${projectId}/storyboard/sync-timing`, {
-      method: "POST",
-    }),
+    request<{ success: boolean; message: string }>(
+      `/api/v1/projects/${projectId}/storyboard/sync-timing`,
+      {
+        method: "POST",
+      }
+    ),
 
   // AI Visual Image Studio & Presets
   getImagePresets: () => request<ImagePreset[]>("/api/v1/image-presets"),
@@ -553,21 +640,40 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || "Gagal mengunggah gambar referensi");
     }
-    return res.json() as Promise<{ success: boolean; filename: string; file_path: string; url: string }>;
+    return res.json() as Promise<{
+      success: boolean;
+      filename: string;
+      file_path: string;
+      url: string;
+    }>;
   },
-  analyzeStylePreset: (data: { user_text: string; reference_image_url?: string; reference_image_path?: string }) =>
+  analyzeStylePreset: (data: {
+    user_text: string;
+    reference_image_url?: string;
+    reference_image_path?: string;
+  }) =>
     request<StudioAnalysisResult>("/api/v1/image-studio/analyze", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  testGeneratePresetImage: (data: { master_prompt: string; scene_prompt?: string; aspect_ratio?: string }) =>
-    request<{ image_url: string; file_path: string; prompt_used: string }>("/api/v1/image-studio/test-generate", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  testGeneratePresetImage: (data: {
+    master_prompt: string;
+    scene_prompt?: string;
+    aspect_ratio?: string;
+  }) =>
+    request<{ image_url: string; file_path: string; prompt_used: string }>(
+      "/api/v1/image-studio/test-generate",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
 
   // YouTube & Thumbnail Suite
-  generateYouTubeMetadata: (projectId: string, data?: { focus_angle?: string; custom_prompt?: string; language?: string }) =>
+  generateYouTubeMetadata: (
+    projectId: string,
+    data?: { focus_angle?: string; custom_prompt?: string; language?: string }
+  ) =>
     request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-metadata`, {
       method: "POST",
       body: JSON.stringify(data || {}),
@@ -576,13 +682,15 @@ export const api = {
     projectId: string,
     data: { prompt: string; style_prompt?: string; preset_id?: string }
   ) =>
-    request<{ thumbnail_url: string; prompt: string; history: YouTubeThumbnailHistory[]; youtube_metadata: YouTubeMetadata }>(
-      `/api/v1/projects/${projectId}/storyboard/youtube/generate-thumbnail`,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      }
-    ),
+    request<{
+      thumbnail_url: string;
+      prompt: string;
+      history: YouTubeThumbnailHistory[];
+      youtube_metadata: YouTubeMetadata;
+    }>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-thumbnail`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateYouTubeMetadata: (projectId: string, data: Partial<YouTubeMetadata>) =>
     request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`, {
       method: "PUT",
@@ -591,4 +699,3 @@ export const api = {
   getYouTubeMetadata: (projectId: string) =>
     request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`),
 };
-

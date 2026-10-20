@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Move } from "lucide-react";
-import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle } from "@/types";
+import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle, JassubInstance } from "@/types";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 import {
   COMPOSITION_FPS,
@@ -11,8 +11,6 @@ import {
   snapToFrame,
 } from "@/lib/timeline/frameMath";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
-
-
 
 export function hexToRgba(hex: string, alpha: number = 1.0): string {
   const clean = hex.replace("#", "");
@@ -48,8 +46,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
   const frameRef = useRef<HTMLDivElement | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
-  const jassubRef = useRef<any>(null);
-
+  const jassubRef = useRef<JassubInstance | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   // Mirror of currentTimeSec for effects that must not re-run every frame
@@ -63,7 +60,12 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
 
   // Dragging state for subtitle position
-  const dragStartPos = useRef<{ x: number; y: number; initialOffsetX: number; initialOffsetY: number }>({
+  const dragStartPos = useRef<{
+    x: number;
+    y: number;
+    initialOffsetX: number;
+    initialOffsetY: number;
+  }>({
     x: 0,
     y: 0,
     initialOffsetX: 0,
@@ -76,7 +78,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
   // Canonical canvas resolution matching project aspect ratio
   const canvasWidth = project.aspect_ratio === "16:9" ? 1920 : 1080;
-  const canvasHeight = project.aspect_ratio === "16:9" ? 1080 : project.aspect_ratio === "1:1" ? 1080 : 1920;
+  const canvasHeight =
+    project.aspect_ratio === "16:9" ? 1080 : project.aspect_ratio === "1:1" ? 1080 : 1920;
 
   // Measure actual preview container width for 100% pixel-perfect scaling
   useEffect(() => {
@@ -112,7 +115,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     });
 
     // If in tiny pause within segment, stick to most recent word
-    if (activeWordIndex === -1 && curMs >= segWords[0].start_ms && curMs <= segWords[segWords.length - 1].end_ms + 300) {
+    if (
+      activeWordIndex === -1 &&
+      curMs >= segWords[0].start_ms &&
+      curMs <= segWords[segWords.length - 1].end_ms + 300
+    ) {
       for (let i = segWords.length - 1; i >= 0; i--) {
         if (curMs >= segWords[i].start_ms) {
           activeWordIndex = i;
@@ -125,7 +132,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   // Burst Mode Calculation
   const isHighlightEnabled = subtitleStyle?.highlight_animation !== "none";
   const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
-  let activeBurstGroup: { word: string; start_ms: number; end_ms: number; isActive: boolean; cleanWord: string }[] = [];
+  let activeBurstGroup: {
+    word: string;
+    start_ms: number;
+    end_ms: number;
+    isActive: boolean;
+    cleanWord: string;
+  }[] = [];
 
   if (segWords.length > 0) {
     for (let i = 0; i < segWords.length; i += burstCount) {
@@ -133,7 +146,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       const gStart = group[0].start_ms;
       const gEnd = group[group.length - 1].end_ms;
       const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd = nextSlice.length > 0 ? Math.min(gEnd + 350, nextSlice[0].start_ms) : gEnd + 350;
+      const maxGEnd =
+        nextSlice.length > 0 ? Math.min(gEnd + 350, nextSlice[0].start_ms) : gEnd + 350;
 
       if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item, localIdx) => {
@@ -278,14 +292,19 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       const colorGrading = antiCopyright ? (project.background_fill?.color_grading ?? true) : false;
 
       // Active clip lookup
-      const clipIdx = clips.findIndex((c) => timeSec >= c.timeline_start && timeSec < c.timeline_end);
-      const activeIdx = clipIdx !== -1 ? clipIdx : timeSec >= durationSec ? Math.max(0, clips.length - 1) : 0;
+      const clipIdx = clips.findIndex(
+        (c) => timeSec >= c.timeline_start && timeSec < c.timeline_end
+      );
+      const activeIdx =
+        clipIdx !== -1 ? clipIdx : timeSec >= durationSec ? Math.max(0, clips.length - 1) : 0;
       const curClip = clips[activeIdx];
       const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
 
       ctx.clearRect(0, 0, cW, cH);
 
-      const isVideoReady = Boolean(activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0);
+      const isVideoReady = Boolean(
+        activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0
+      );
 
       // Always resolve and cache clip thumbnail for immediate poster rendering
       let thumbImg: HTMLImageElement | undefined = undefined;
@@ -373,7 +392,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             destY = (cH - destH) / 2;
           } else {
             destH = cH * userZoom;
-            destW = (cH * videoAspect) * userZoom;
+            destW = cH * videoAspect * userZoom;
             destX = (cW - destW) / 2;
             destY = (cH - destH) / 2;
           }
@@ -431,7 +450,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             destY = (cH - destH) / 2;
           } else {
             destH = cH * userZoom;
-            destW = (cH * videoAspect) * userZoom;
+            destW = cH * videoAspect * userZoom;
             destX = (cW - destW) / 2;
             destY = (cH - destH) / 2;
           }
@@ -485,7 +504,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       const audio = audioRef.current;
       // Read the ref, not state: currentTimeSec is no longer an effect dep, so the
       // closure value would be frozen and paused seeks would not repaint.
-      const curTime = isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeRef.current;
+      const curTime =
+        isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeRef.current;
 
       if (isPlaying && audio && !audio.paused) {
         // Only push to state ~20x/sec; the loop itself reads currentTimeRef at 60fps.
@@ -499,7 +519,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
         const newIdx = clips.findIndex(
           (c) => curTime >= c.timeline_start && curTime < c.timeline_end
         );
-        const validIdx = newIdx !== -1 ? newIdx : curTime >= durationSec ? Math.max(0, clips.length - 1) : 0;
+        const validIdx =
+          newIdx !== -1 ? newIdx : curTime >= durationSec ? Math.max(0, clips.length - 1) : 0;
 
         if (validIdx !== currentClipIndexRef.current && validIdx < clips.length) {
           // Transition boundary hit! Ping-pong switch to the other video element
@@ -550,7 +571,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
               if (Math.abs(activeVid.playbackRate - targetSpeed) > 0.01) {
                 activeVid.playbackRate = targetSpeed;
               }
-              const expectedVidTime = curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
+              const expectedVidTime =
+                curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
               if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
                 activeVid.currentTime = expectedVidTime;
               }
@@ -619,7 +641,6 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   useEffect(() => {
     let mounted = true;
     let canvasEl: HTMLCanvasElement | null = null;
-    let jassubInstance: any = null;
 
     async function initJassub() {
       if (!canvasContainerRef.current) return;
@@ -650,7 +671,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
         const baseUrl = window.location.origin;
 
-        jassubInstance = new JASSUB({
+        const instance = new JASSUB({
           canvas: canvasEl,
           subContent: initialAss,
           workerUrl: `${baseUrl}/jassub/jassub-worker.js`,
@@ -671,27 +692,28 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           debug: false,
         });
 
-        await jassubInstance.ready;
+        await instance.ready;
 
         if (!mounted) {
           try {
-            jassubInstance.destroy();
+            instance.destroy();
           } catch {}
           return;
         }
 
-        jassubRef.current = jassubInstance;
+        jassubRef.current = instance;
         setIsJassubReady(true);
-        (window as any).__jassub = jassubInstance;
-        (window as any).__isJassubReady = true;
+        const win = window as unknown as { __jassub?: JassubInstance; __isJassubReady?: boolean };
+        win.__jassub = instance;
+        win.__isJassubReady = true;
 
-        jassubInstance.manualRender({
+        instance.manualRender({
           expectedDisplayTime: performance.now(),
           width: canvasWidth,
           height: canvasHeight,
           mediaTime: currentTimeRef.current,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[JASSUB] initialization failed:", err);
         setIsJassubReady(false);
       }
@@ -718,12 +740,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   useEffect(() => {
     if (!jassubRef.current || !isJassubReady) return;
     try {
-      const newAss = generateAssSubtitles(
-        segments,
-        subtitleStyle || {},
-        canvasWidth,
-        canvasHeight
-      );
+      const newAss = generateAssSubtitles(segments, subtitleStyle || {}, canvasWidth, canvasHeight);
       if (jassubRef.current.renderer?.setTrack) {
         jassubRef.current.renderer.setTrack(newAss);
       }
@@ -886,7 +903,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
   const fontBaseSize = subtitleStyle?.font_size || 56;
   const scaledFontSize = Math.max(6, Number((fontBaseSize * scale).toFixed(2)));
-  const scaledOutlineWidth = Math.max(0.5, Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2)));
+  const scaledOutlineWidth = Math.max(
+    0.5,
+    Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2))
+  );
 
   const offsetY = subtitleStyle?.offset_y || 0;
   const offsetX = subtitleStyle?.offset_x || 0;
@@ -894,7 +914,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   const scaledOffsetX = Math.round(offsetX * scale);
 
   const boxOpacity = subtitleStyle?.box_opacity ?? 0.0;
-  const boxBgColor = boxOpacity > 0.05 ? hexToRgba(subtitleStyle?.box_color || "#000000", boxOpacity) : "transparent";
+  const boxBgColor =
+    boxOpacity > 0.05
+      ? hexToRgba(subtitleStyle?.box_color || "#000000", boxOpacity)
+      : "transparent";
 
   // Drag position handlers
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -940,13 +963,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     ? project.aspect_ratio === "16:9"
       ? "w-[260px] sm:w-[340px] aspect-[16/9]"
       : project.aspect_ratio === "1:1"
-      ? "w-[200px] sm:w-[240px] aspect-square"
-      : "w-[190px] sm:w-[220px] aspect-[9/16]"
+        ? "w-[200px] sm:w-[240px] aspect-square"
+        : "w-[190px] sm:w-[220px] aspect-[9/16]"
     : project.aspect_ratio === "16:9"
-    ? "w-[320px] sm:w-[480px] aspect-[16/9]"
-    : project.aspect_ratio === "1:1"
-    ? "w-[280px] sm:w-[340px] aspect-square"
-    : "w-[280px] sm:w-[320px] aspect-[9/16]";
+      ? "w-[320px] sm:w-[480px] aspect-[16/9]"
+      : project.aspect_ratio === "1:1"
+        ? "w-[280px] sm:w-[340px] aspect-square"
+        : "w-[280px] sm:w-[320px] aspect-[9/16]";
 
   return (
     <div className="flex flex-col items-center">
@@ -987,14 +1010,28 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           playsInline
           muted
           preload="auto"
-          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: "1px",
+            height: "1px",
+            zIndex: -100,
+          }}
         />
         <video
           ref={videoRefB}
           playsInline
           muted
           preload="auto"
-          style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: "1px", height: "1px", zIndex: -100 }}
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: "1px",
+            height: "1px",
+            zIndex: -100,
+          }}
         />
 
         {/* If no clips in timeline */}
@@ -1012,14 +1049,22 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             onPointerUp={handlePointerUp}
             className="absolute left-4 right-4 z-30 flex justify-center text-center select-none cursor-move group"
             style={{
-              top: subtitleStyle?.position === "top" ? "9.375%" : subtitleStyle?.position === "center" ? "50%" : undefined,
-              bottom: subtitleStyle?.position === "bottom" || !subtitleStyle?.position ? "11.45%" : undefined,
+              top:
+                subtitleStyle?.position === "top"
+                  ? "9.375%"
+                  : subtitleStyle?.position === "center"
+                    ? "50%"
+                    : undefined,
+              bottom:
+                subtitleStyle?.position === "bottom" || !subtitleStyle?.position
+                  ? "11.45%"
+                  : undefined,
               transform: `translate(${scaledOffsetX}px, ${
                 subtitleStyle?.position === "center"
                   ? `calc(-50% + ${scaledOffsetY}px)`
                   : subtitleStyle?.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
+                    ? `${-scaledOffsetY}px`
+                    : `${scaledOffsetY}px`
               })`,
             }}
           >
@@ -1037,14 +1082,22 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           <div
             className="absolute left-0 right-0 z-20 px-3 flex justify-center text-center select-none pointer-events-none"
             style={{
-              top: subtitleStyle?.position === "top" ? "9.375%" : subtitleStyle?.position === "center" ? "50%" : undefined,
-              bottom: subtitleStyle?.position === "bottom" || !subtitleStyle?.position ? "11.45%" : undefined,
+              top:
+                subtitleStyle?.position === "top"
+                  ? "9.375%"
+                  : subtitleStyle?.position === "center"
+                    ? "50%"
+                    : undefined,
+              bottom:
+                subtitleStyle?.position === "bottom" || !subtitleStyle?.position
+                  ? "11.45%"
+                  : undefined,
               transform: `translate(${scaledOffsetX}px, ${
                 subtitleStyle?.position === "center"
                   ? `calc(-50% + ${scaledOffsetY}px)`
                   : subtitleStyle?.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
+                    ? `${-scaledOffsetY}px`
+                    : `${scaledOffsetY}px`
               })`,
             }}
           >
@@ -1069,10 +1122,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                     <span
                       key={idx}
                       style={{
-                        color: w.isActive ? subtitleStyle?.highlight_color || "#00FF66" : subtitleStyle?.primary_color || "#FFFFFF",
+                        color: w.isActive
+                          ? subtitleStyle?.highlight_color || "#00FF66"
+                          : subtitleStyle?.primary_color || "#FFFFFF",
                         transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
                         transformOrigin: "center bottom",
-                        transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
+                        transition:
+                          "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
                       }}
                       className="mx-1 inline-block"
                     >
@@ -1091,14 +1147,18 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                       style={{
                         fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
                         fontSize: `${scaledFontSize}px`,
-                        fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                        color: isHighlightEnabled ? subtitleStyle?.highlight_color || "#FFE600" : subtitleStyle?.primary_color || "#FFFFFF",
+                        fontWeight:
+                          subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
+                        color: isHighlightEnabled
+                          ? subtitleStyle?.highlight_color || "#FFE600"
+                          : subtitleStyle?.primary_color || "#FFFFFF",
                         WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
                         paintOrder: "stroke fill",
                         backgroundColor: boxBgColor,
                         padding: boxOpacity > 0.05 ? "3px 8px" : "0",
                         borderRadius: "6px",
-                        transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
+                        transform:
+                          isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
                         transformOrigin: "center bottom",
                         transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                       }}
@@ -1132,10 +1192,13 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                       <span
                         key={idx}
                         style={{
-                          color: isActive ? subtitleStyle?.highlight_color || "#38BDF8" : subtitleStyle?.primary_color || "#EEEEEE",
+                          color: isActive
+                            ? subtitleStyle?.highlight_color || "#38BDF8"
+                            : subtitleStyle?.primary_color || "#EEEEEE",
                           transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
                           transformOrigin: "center bottom",
-                          transition: "color 80ms ease-out, transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          transition:
+                            "color 80ms ease-out, transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
                         }}
                         className="mx-0.5 inline-block"
                       >
@@ -1159,11 +1222,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           <span className="text-amber-400/90 font-semibold uppercase">
             {project.background_fill?.mode === "cover"
               ? "Cover 9:16"
-              : (project.background_fill?.zoom && project.background_fill.zoom > 1.05)
-              ? `Zoom ${Math.round(project.background_fill.zoom * 100)}%`
-              : project.background_fill?.mode === "black"
-              ? "Fit Black"
-              : "Fit Blur"}
+              : project.background_fill?.zoom && project.background_fill.zoom > 1.05
+                ? `Zoom ${Math.round(project.background_fill.zoom * 100)}%`
+                : project.background_fill?.mode === "black"
+                  ? "Fit Black"
+                  : "Fit Blur"}
           </span>
         </div>
       </div>
@@ -1205,7 +1268,11 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
               onClick={togglePlay}
               className="px-3.5 py-1.5 rounded-lg bg-primary text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shadow-xs"
             >
-              {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              {isPlaying ? (
+                <Pause className="w-3.5 h-3.5 fill-current" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-current" />
+              )}
               <span>{isPlaying ? "Pause" : "Play"}</span>
             </button>
           </div>
@@ -1215,7 +1282,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
               type="button"
               onClick={toggleMute}
               className={`p-1.5 rounded-lg border border-[#2E2E2E] text-xs transition ${
-                isMuted ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground bg-[#181818]"
+                isMuted
+                  ? "text-destructive bg-destructive/10"
+                  : "text-muted-foreground hover:text-foreground bg-[#181818]"
               }`}
               title={isMuted ? "Unmute" : "Mute"}
             >

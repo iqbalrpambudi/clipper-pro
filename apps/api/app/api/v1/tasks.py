@@ -1,12 +1,14 @@
 import logging
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
-from app.models.project import Project, SourceVideo, RenderJob
-from app.models.narration import AudioTrack
 from app.core.events import publish_project_event
+from app.models.narration import AudioTrack
+from app.models.project import Project, RenderJob, SourceVideo
 from app.services.cancellation import request_cancellation
 
 log = logging.getLogger("cliper-tasks-api")

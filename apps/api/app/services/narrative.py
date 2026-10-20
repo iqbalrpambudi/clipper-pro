@@ -1,7 +1,7 @@
-import re
 import logging
-import uuid
-from typing import List, Dict, Any, Optional
+import re
+from typing import Any, Dict, List, Optional
+
 from app.services.ai_adapters.base import BaseLLMAdapter
 
 log = logging.getLogger(__name__)

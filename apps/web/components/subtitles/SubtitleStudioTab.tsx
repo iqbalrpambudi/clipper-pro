@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, SubtitleStyle, Narration, AudioTrack, TimelineClip } from "@/types";
+import { Project, SubtitleStyle, SubtitleStyleUpdateRequest, SubtitlePreset, Narration, AudioTrack, TimelineClip } from "@/types";
 import { PreviewPlayer } from "@/components/render/PreviewPlayer";
 
 interface SubtitleStudioTabProps {
@@ -74,13 +74,13 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
   }, [project.subtitle_style]);
 
   const updateStyleMutation = useMutation({
-    mutationFn: (data: any) => api.updateSubtitleStyle(project.id, data),
+    mutationFn: (data: SubtitleStyleUpdateRequest) => api.updateSubtitleStyle(project.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Gaya subtitle berhasil disimpan!", "success");
       setIsSavePresetOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan gaya subtitle", "error");
     },
   });
@@ -88,9 +88,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
   // Debounced style commit: color pickers fire on every input event, which
   // previously produced a PUT per pixel of mouse movement.
   const styleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (styleDebounceRef.current) clearTimeout(styleDebounceRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (styleDebounceRef.current) clearTimeout(styleDebounceRef.current);
+    },
+    []
+  );
 
   const commitStyle = (updated: SubtitleStyle) => {
     setStyle(updated);
@@ -100,7 +103,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
     }, 400);
   };
 
-  const handleApplyPreset = (preset: any) => {
+  const handleApplyPreset = (preset: SubtitlePreset) => {
     const updated: SubtitleStyle = {
       ...style,
       preset_name: preset.preset_name || preset.id,
@@ -131,8 +134,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
       const res = await api.previewASS(project.id);
       setAssContent(res.ass_content);
       setIsAssModalOpen(true);
-    } catch (err: any) {
-      showToast(err.message || "Gagal menghasilkan preview ASS", "error");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Gagal menghasilkan preview ASS", "error");
     }
   };
 
@@ -152,9 +155,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
           <div className="flex items-center justify-between pb-2.5 border-b border-surface-border/60 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-accent-yellow" />
-              <h3 className="text-sm font-bold text-white tracking-tight">
-                Pilih Preset Subtitle
-              </h3>
+              <h3 className="text-sm font-bold text-white tracking-tight">Pilih Preset Subtitle</h3>
               <Link
                 href="/settings"
                 className="text-[10px] text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium underline transition"
@@ -223,10 +224,15 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-1.5 gap-1.5 min-w-0">
-                      <span className="text-xs font-bold text-white truncate min-w-0 flex-1" title={p.name}>
+                      <span
+                        className="text-xs font-bold text-white truncate min-w-0 flex-1"
+                        title={p.name}
+                      >
                         {p.name}
                       </span>
-                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-brand-400 shrink-0" />}
+                      {isSelected && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                      )}
                     </div>
 
                     {/* Preview visual mini box */}
@@ -247,9 +253,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                       </span>
                     </div>
 
-                    <p className="text-[10px] text-slate-400 line-clamp-1">
-                      {p.description}
-                    </p>
+                    <p className="text-[10px] text-slate-400 line-clamp-1">{p.description}</p>
                   </div>
 
                   <div className="pt-1.5 border-t border-surface-border/50 text-[9px] text-slate-500 flex justify-between mt-1.5">
@@ -341,7 +345,10 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <select
                 value={style.display_mode}
                 onChange={(e) => {
-                  const updated = { ...style, display_mode: e.target.value as any };
+                  const updated = {
+                    ...style,
+                    display_mode: e.target.value as SubtitleStyle["display_mode"],
+                  };
                   setStyle(updated);
                   updateStyleMutation.mutate(updated);
                 }}
@@ -355,7 +362,9 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
             {/* Burst Count */}
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Kata per Burst Group</label>
+              <label className="block text-slate-400 font-semibold mb-1">
+                Kata per Burst Group
+              </label>
               <select
                 value={style.burst_word_count}
                 onChange={(e) => {
@@ -390,7 +399,9 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
             {/* Highlight Color */}
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Warna Highlight Aktif</label>
+              <label className="block text-slate-400 font-semibold mb-1">
+                Warna Highlight Aktif
+              </label>
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-surface border border-surface-border">
                 <input
                   type="color"
@@ -401,13 +412,17 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   }
                   className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                 />
-                <span className="font-mono text-slate-300 text-[11px]">{style.highlight_color}</span>
+                <span className="font-mono text-slate-300 text-[11px]">
+                  {style.highlight_color}
+                </span>
               </div>
             </div>
 
             {/* Outline Color & Width */}
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Warna Outline/Stroke</label>
+              <label className="block text-slate-400 font-semibold mb-1">
+                Warna Outline/Stroke
+              </label>
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-surface border border-surface-border">
                 <input
                   type="color"
@@ -471,7 +486,9 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Warna Box Background</label>
+              <label className="block text-slate-400 font-semibold mb-1">
+                Warna Box Background
+              </label>
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-surface border border-surface-border">
                 <input
                   type="color"
@@ -490,11 +507,16 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
             {/* Position Preset */}
             <div>
-              <label className="block text-slate-400 font-semibold mb-1">Posisi Layar Vertikal</label>
+              <label className="block text-slate-400 font-semibold mb-1">
+                Posisi Layar Vertikal
+              </label>
               <select
                 value={style.position}
                 onChange={(e) => {
-                  const updated = { ...style, position: e.target.value as any };
+                  const updated = {
+                    ...style,
+                    position: e.target.value as SubtitleStyle["position"],
+                  };
                   setStyle(updated);
                   updateStyleMutation.mutate(updated);
                 }}
@@ -512,7 +534,10 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <select
                 value={style.highlight_animation}
                 onChange={(e) => {
-                  const updated = { ...style, highlight_animation: e.target.value as any };
+                  const updated = {
+                    ...style,
+                    highlight_animation: e.target.value as SubtitleStyle["highlight_animation"],
+                  };
                   commitStyle(updated);
                 }}
                 className="w-full px-2.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
@@ -540,11 +565,11 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               {/* Quick Presets */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { label: "1.10x (Sangat Halus)", val: 1.10 },
+                  { label: "1.10x (Sangat Halus)", val: 1.1 },
                   { label: "1.15x (Halus - Standar)", val: 1.15 },
                   { label: "1.25x (Sedang)", val: 1.25 },
                   { label: "1.35x (Tegas)", val: 1.35 },
-                  { label: "1.50x (Ekstra)", val: 1.50 },
+                  { label: "1.50x (Ekstra)", val: 1.5 },
                 ].map((item) => (
                   <button
                     key={item.val}
@@ -736,22 +761,24 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               🎙️
             </div>
             <div className="flex-1 text-[11px] leading-relaxed text-slate-400">
-              <span className="font-semibold text-slate-300">Koreksi kata & sinkronisasi suara:</span> Pengaturan timing per-kata, offset suara, dan Whisper AI Realignment dikelola di tab{" "}
+              <span className="font-semibold text-slate-300">
+                Koreksi kata & sinkronisasi suara:
+              </span>{" "}
+              Pengaturan timing per-kata, offset suara, dan Whisper AI Realignment dikelola di tab{" "}
               <button
                 type="button"
                 onClick={() => setActiveTab("tts")}
                 className="text-brand-400 hover:text-brand-300 underline font-medium cursor-pointer inline"
               >
                 Voice (TTS)
-              </button>.
+              </button>
+              .
             </div>
           </div>
 
           {/* Navigation to Render */}
           <div className="pt-2 border-t border-surface-border flex items-center justify-between">
-            <span className="text-[11px] text-slate-400">
-              Gaya subtitle tersimpan otomatis
-            </span>
+            <span className="text-[11px] text-slate-400">Gaya subtitle tersimpan otomatis</span>
             <button
               type="button"
               onClick={() => setActiveTab("render")}

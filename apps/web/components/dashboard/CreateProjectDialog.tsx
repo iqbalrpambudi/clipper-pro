@@ -86,7 +86,8 @@ export function CreateProjectDialog({
                   </div>
                   <h4 className="text-xs font-bold text-white mb-1">Short Video Clipper</h4>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Potong video panjang jadi klip TikTok/Reels viral dengan Scene AI & subtitle karaoke.
+                    Potong video panjang jadi klip TikTok/Reels viral dengan Scene AI & subtitle
+                    karaoke.
                   </p>
                 </div>
               </div>
@@ -114,7 +115,8 @@ export function CreateProjectDialog({
                   </div>
                   <h4 className="text-xs font-bold text-white mb-1">Long Storyboard Explainer</h4>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Generate naskah 4–8 menit, suara TTS, dan ilustrasi sketsa hand-drawn AI per segmen.
+                    Generate naskah 4–8 menit, suara TTS, dan ilustrasi sketsa hand-drawn AI per
+                    segmen.
                   </p>
                 </div>
               </div>
@@ -155,9 +157,7 @@ export function CreateProjectDialog({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">
-                Resolusi
-              </label>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Resolusi</label>
               <select
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
@@ -202,20 +202,10 @@ export function CreateProjectDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button
-              type="submit"
-              variant="supabase"
-              size="sm"
-              disabled={isPending}
-            >
+            <Button type="submit" variant="supabase" size="sm" disabled={isPending}>
               {isPending ? "Membuat..." : "Buat Project"}
             </Button>
           </DialogFooter>

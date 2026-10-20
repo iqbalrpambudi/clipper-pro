@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Narration, AudioTrack } from "@/types";
+import { Project, ProjectDetail, Narration, AudioTrack, SentenceSegment, VoiceInfo, WordTimestamp } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
@@ -153,17 +153,31 @@ function formatAudioTime(secs: number): string {
 
 export function TTSTab({ project }: TTSTabProps) {
   const queryClient = useQueryClient();
-  const { showToast, setActiveTab, activeTask, voiceDraftsByProject, setVoiceDraft } = useStudioStore();
+  const { showToast, setActiveTab, activeTask, voiceDraftsByProject, setVoiceDraft } =
+    useStudioStore();
 
   const draft = voiceDraftsByProject[project.id];
 
   const initialProvider = draft?.provider || project.audio?.provider || "gemini";
-  const initialVoice = draft?.voice || project.audio?.voice || (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
-  const initialGeminiModel = draft?.geminiModel || (project.audio?.provider === "gemini" && project.audio?.model) || "gemini-2.5-flash-preview-tts";
-  const initialElevenlabsModel = draft?.elevenlabsModel || (project.audio?.provider === "elevenlabs" && project.audio?.model) || "eleven_multilingual_v2";
-  const initialRunwareModel = draft?.runwareModel || (project.audio?.provider === "runware" && project.audio?.model) || "fishaudio:s2.1@pro";
-  const initialRate = draft?.rate !== undefined ? String(draft.rate) : (project.audio?.rate || "+0%");
-  const initialPitch = draft?.pitch !== undefined ? String(draft.pitch) : (project.audio?.pitch || "+0Hz");
+  const initialVoice =
+    draft?.voice ||
+    project.audio?.voice ||
+    (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
+  const initialGeminiModel =
+    draft?.geminiModel ||
+    (project.audio?.provider === "gemini" && project.audio?.model) ||
+    "gemini-2.5-flash-preview-tts";
+  const initialElevenlabsModel =
+    draft?.elevenlabsModel ||
+    (project.audio?.provider === "elevenlabs" && project.audio?.model) ||
+    "eleven_multilingual_v2";
+  const initialRunwareModel =
+    draft?.runwareModel ||
+    (project.audio?.provider === "runware" && project.audio?.model) ||
+    "fishaudio:s2.1@pro";
+  const initialRate = draft?.rate !== undefined ? String(draft.rate) : project.audio?.rate || "+0%";
+  const initialPitch =
+    draft?.pitch !== undefined ? String(draft.pitch) : project.audio?.pitch || "+0Hz";
   const initialFallback = draft?.fallbackEnabled ?? true;
 
   const [selectedVoice, setSelectedVoice] = useState(initialVoice);
@@ -241,8 +255,8 @@ export function TTSTab({ project }: TTSTabProps) {
     provider === "gemini"
       ? GEMINI_TTS_MODELS.find((m) => m.id === geminiModel) || GEMINI_TTS_MODELS[0]
       : provider === "elevenlabs"
-      ? ELEVENLABS_TTS_MODELS.find((m) => m.id === elevenlabsModel) || ELEVENLABS_TTS_MODELS[0]
-      : RUNWARE_TTS_MODELS.find((m) => m.id === runwareModel) || RUNWARE_TTS_MODELS[0];
+        ? ELEVENLABS_TTS_MODELS.find((m) => m.id === elevenlabsModel) || ELEVENLABS_TTS_MODELS[0]
+        : RUNWARE_TTS_MODELS.find((m) => m.id === runwareModel) || RUNWARE_TTS_MODELS[0];
 
   // Sample voice audio state
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
@@ -258,9 +272,7 @@ export function TTSTab({ project }: TTSTabProps) {
   const [isMuted, setIsMuted] = useState(false);
 
   // Live Progress State for TTS Generation (driven by SSE activeTask)
-  const [isGeneratingTTS, setIsGeneratingTTS] = useState(
-    project.audio?.status === "generating"
-  );
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(project.audio?.status === "generating");
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStepText, setGenerationStepText] = useState("");
   const [generationElapsed, setGenerationElapsed] = useState(0);
@@ -321,7 +333,11 @@ export function TTSTab({ project }: TTSTabProps) {
 
   // Detect completion when project.audio changes to ready
   useEffect(() => {
-    if (isGeneratingTTS && project.audio && (project.audio.status === "ready" || project.audio.audio_url)) {
+    if (
+      isGeneratingTTS &&
+      project.audio &&
+      (project.audio.status === "ready" || project.audio.audio_url)
+    ) {
       setGenerationProgress(100);
       setGenerationStepText("Audio narasi & forced alignment berhasil dibuat!");
       const timeout = setTimeout(() => {
@@ -415,7 +431,7 @@ export function TTSTab({ project }: TTSTabProps) {
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setIsGeneratingTTS(false);
       setGenerationProgress(0);
       showToast(err.message || "Gagal generate audio TTS", "error");
@@ -428,15 +444,15 @@ export function TTSTab({ project }: TTSTabProps) {
       setIsGeneratingTTS(false);
       showToast("Proses pembuatan audio dibatalkan", "info");
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
-    } catch (err: any) {
-      showToast(err.message || "Gagal membatalkan TTS", "error");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Gagal membatalkan TTS", "error");
     }
   };
 
   // Realignment & Timing Micro-Adjustment State
   const [offsetMs, setOffsetMs] = useState(0);
   const [isEditTimingMode, setIsEditTimingMode] = useState(false);
-  const [editableSegments, setEditableSegments] = useState<any[]>([]);
+  const [editableSegments, setEditableSegments] = useState<SentenceSegment[]>([]);
 
   useEffect(() => {
     if (project.narration?.segments) {
@@ -457,33 +473,35 @@ export function TTSTab({ project }: TTSTabProps) {
       if (data?.segments) {
         setEditableSegments(JSON.parse(JSON.stringify(data.segments)));
       }
-      queryClient.setQueryData(["project", project.id], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
         if (!old) return old;
         return {
           ...old,
-          narration: {
-            ...old.narration,
-            segments: data.segments,
-            status: "aligned",
-          },
+          narration: old.narration
+            ? {
+                ...old.narration,
+                segments: data.segments,
+                status: "aligned",
+              }
+            : null,
         };
       });
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Word timestamps berhasil diselaraskan ulang via Whisper AI!", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal melakukan realignment kata", "error");
     },
   });
 
   const updateSegmentsMutation = useMutation({
-    mutationFn: (segments: any[]) => api.updateNarrationSegments(project.id, segments),
+    mutationFn: (segments: SentenceSegment[]) => api.updateNarrationSegments(project.id, segments),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       showToast("Koreksi timing kata berhasil disimpan!", "success");
       setIsEditTimingMode(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan timing kata", "error");
     },
   });
@@ -531,7 +549,8 @@ export function TTSTab({ project }: TTSTabProps) {
 
     let modelParam = "";
     if (provider === "gemini") modelParam = `&model=${encodeURIComponent(geminiModel)}`;
-    else if (provider === "elevenlabs") modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
+    else if (provider === "elevenlabs")
+      modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
     else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
 
     const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&language=${encodeURIComponent(projectLanguage)}&t=${Date.now()}`;
@@ -599,7 +618,7 @@ export function TTSTab({ project }: TTSTabProps) {
   };
 
   // ElevenLabs dynamic account voice sync & custom voice ID
-  const [elevenLabsCustomVoices, setElevenLabsCustomVoices] = useState<any[]>([]);
+  const [elevenLabsCustomVoices, setElevenLabsCustomVoices] = useState<VoiceInfo[]>([]);
   const [isSyncingElevenLabs, setIsSyncingElevenLabs] = useState<boolean>(false);
   const [customVoiceInput, setCustomVoiceInput] = useState<string>("");
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -614,12 +633,15 @@ export function TTSTab({ project }: TTSTabProps) {
       const data = await api.getElevenLabsVoices();
       if (Array.isArray(data) && data.length > 0) {
         setElevenLabsCustomVoices(data);
-        showToast(`Berhasil menyinkronkan ${data.length} karakter suara dari ElevenLabs!`, "success");
+        showToast(
+          `Berhasil menyinkronkan ${data.length} karakter suara dari ElevenLabs!`,
+          "success"
+        );
       } else {
         showToast("Tidak ada karakter suara yang ditemukan di akun ElevenLabs.", "info");
       }
-    } catch (err: any) {
-      const msg = err.message || "Gagal menarik daftar suara dari ElevenLabs";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menarik daftar suara dari ElevenLabs";
       setSyncError(msg);
       showToast(msg, "error");
     } finally {
@@ -734,7 +756,10 @@ export function TTSTab({ project }: TTSTabProps) {
                   <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span className="text-xs font-semibold text-foreground">Model Gemini TTS</span>
                 </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+                >
                   {selectedModelObj?.badge || "Gemini"}
                 </Badge>
               </div>
@@ -771,7 +796,10 @@ export function TTSTab({ project }: TTSTabProps) {
                   <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span className="text-xs font-semibold text-foreground">Model ElevenLabs</span>
                 </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+                >
                   {selectedModelObj?.badge || "ElevenLabs"}
                 </Badge>
               </div>
@@ -801,7 +829,9 @@ export function TTSTab({ project }: TTSTabProps) {
               {/* ElevenLabs Voice Sync & Custom Voice ID Box */}
               <div className="pt-2.5 border-t border-[#2E2E2E]/80 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-slate-300">Suara Akun / Web Library:</span>
+                  <span className="text-[11px] font-medium text-slate-300">
+                    Suara Akun / Web Library:
+                  </span>
                   <Button
                     type="button"
                     variant="outline"
@@ -879,19 +909,25 @@ export function TTSTab({ project }: TTSTabProps) {
                 </div>
 
                 {/* Active Custom Voice indicator if selectedVoice is custom */}
-                {selectedVoice && !filteredVoices.some((v) => v.id.toLowerCase() === selectedVoice.toLowerCase()) && (
-                  <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                      <span className="text-[11px] font-medium text-violet-200 truncate">
-                        Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
-                      </span>
+                {selectedVoice &&
+                  !filteredVoices.some(
+                    (v) => v.id.toLowerCase() === selectedVoice.toLowerCase()
+                  ) && (
+                    <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <span className="text-[11px] font-medium text-violet-200 truncate">
+                          Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] py-0 px-1 border-violet-400 text-violet-300"
+                      >
+                        Custom ID
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-[9px] py-0 px-1 border-violet-400 text-violet-300">
-                      Custom ID
-                    </Badge>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           )}
@@ -904,7 +940,10 @@ export function TTSTab({ project }: TTSTabProps) {
                   <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
                   <span className="text-xs font-semibold text-foreground">Model Runware TTS</span>
                 </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+                >
                   {selectedModelObj?.badge || "Runware"}
                 </Badge>
               </div>
@@ -975,19 +1014,25 @@ export function TTSTab({ project }: TTSTabProps) {
                     )}
                   </Button>
                 </div>
-                {selectedVoice && !filteredVoices.some((v) => v.id.toLowerCase() === selectedVoice.toLowerCase()) && (
-                  <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                      <span className="text-[11px] font-medium text-violet-200 truncate">
-                        Voice Aktif: <span className="font-mono">{selectedVoice}</span>
-                      </span>
+                {selectedVoice &&
+                  !filteredVoices.some(
+                    (v) => v.id.toLowerCase() === selectedVoice.toLowerCase()
+                  ) && (
+                    <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <span className="text-[11px] font-medium text-violet-200 truncate">
+                          Voice Aktif: <span className="font-mono">{selectedVoice}</span>
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] py-0 px-1 border-violet-400 text-violet-300"
+                      >
+                        Custom Speaker
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-[9px] py-0 px-1 border-violet-400 text-violet-300">
-                      Custom Speaker
-                    </Badge>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           )}
@@ -1031,10 +1076,16 @@ export function TTSTab({ project }: TTSTabProps) {
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
-                      <span className="text-xs font-semibold text-foreground truncate min-w-0" title={v.name}>
+                      <span
+                        className="text-xs font-semibold text-foreground truncate min-w-0"
+                        title={v.name}
+                      >
                         {v.name}
                       </span>
-                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] py-0 px-1.5 text-muted-foreground"
+                      >
                         {v.gender}
                       </Badge>
                       <Badge
@@ -1043,10 +1094,10 @@ export function TTSTab({ project }: TTSTabProps) {
                           isEn
                             ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
                             : isId
-                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                            : isJa
-                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                            : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                              : isJa
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                : "bg-purple-500/15 text-purple-300 border-purple-500/30"
                         }`}
                       >
                         {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
@@ -1081,8 +1132,8 @@ export function TTSTab({ project }: TTSTabProps) {
                         {loadingSampleVoiceId === v.id
                           ? "Memuat..."
                           : isPlayingSample
-                          ? "Berhenti"
-                          : "Dengar Sampel"}
+                            ? "Berhenti"
+                            : "Dengar Sampel"}
                       </span>
                     </Button>
                     <span className="text-[10px] text-muted-foreground font-mono">ID: {v.id}</span>
@@ -1100,7 +1151,10 @@ export function TTSTab({ project }: TTSTabProps) {
           icon={<Sliders className="w-4 h-4 text-primary" />}
           actions={
             costEstimate ? (
-              <Badge variant="outline" className="text-primary border-primary/30 font-mono text-[10px]">
+              <Badge
+                variant="outline"
+                className="text-primary border-primary/30 font-mono text-[10px]"
+              >
                 Est: ${costEstimate.estimated_cost_usd} USD
               </Badge>
             ) : undefined
@@ -1154,7 +1208,8 @@ export function TTSTab({ project }: TTSTabProps) {
                     Fallback otomatis ke Edge-TTS jika API error / kuota habis
                   </span>
                   <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
-                    Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada bagian yang gagal.
+                    Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada
+                    bagian yang gagal.
                   </p>
                 </div>
               </label>
@@ -1166,7 +1221,9 @@ export function TTSTab({ project }: TTSTabProps) {
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 text-primary font-medium truncate max-w-[200px]">
                     <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                    <span className="truncate">{generationStepText || "Memproses audio TTS..."}</span>
+                    <span className="truncate">
+                      {generationStepText || "Memproses audio TTS..."}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground shrink-0">
                     <span>
@@ -1244,7 +1301,10 @@ export function TTSTab({ project }: TTSTabProps) {
           icon={<Music className="w-4 h-4 text-primary" />}
           badge={
             project.audio ? (
-              <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
+              <Badge
+                variant="outline"
+                className="font-mono text-[10px] text-primary border-primary/30"
+              >
                 {formatAudioTime(audioDuration)} • {project.audio.voice}
               </Badge>
             ) : undefined
@@ -1285,7 +1345,9 @@ export function TTSTab({ project }: TTSTabProps) {
                         Narasi: {project.name}
                       </h4>
                       <p className="text-[11px] text-muted-foreground">
-                        Voice: <strong className="text-foreground">{project.audio.voice}</strong> ({project.audio.provider.toUpperCase()}) • Kecepatan: {project.audio.rate || "+0%"}
+                        Voice: <strong className="text-foreground">{project.audio.voice}</strong> (
+                        {project.audio.provider.toUpperCase()}) • Kecepatan:{" "}
+                        {project.audio.rate || "+0%"}
                       </p>
                     </div>
                   </div>
@@ -1299,7 +1361,9 @@ export function TTSTab({ project }: TTSTabProps) {
                           isPlaying ? "animate-pulse" : "opacity-30"
                         }`}
                         style={{
-                          height: isPlaying ? `${Math.max(20, (h * ((currentTime * 3 + i) % 10)) / 10)}%` : "20%",
+                          height: isPlaying
+                            ? `${Math.max(20, (h * ((currentTime * 3 + i) % 10)) / 10)}%`
+                            : "20%",
                         }}
                       />
                     ))}
@@ -1424,7 +1488,9 @@ export function TTSTab({ project }: TTSTabProps) {
                         variant="supabase"
                         size="xs"
                         onClick={() => realignMutation.mutate({ offset_ms: offsetMs })}
-                        disabled={realignMutation.isPending || isGeneratingTTS || !project.audio?.audio_url}
+                        disabled={
+                          realignMutation.isPending || isGeneratingTTS || !project.audio?.audio_url
+                        }
                         className="gap-1.5 font-semibold shadow-xs"
                         title="Jalankan ulang forced word alignment dengan Whisper AI"
                       >
@@ -1433,7 +1499,9 @@ export function TTSTab({ project }: TTSTabProps) {
                         ) : (
                           <Wand2 className="w-3 h-3" />
                         )}
-                        <span>{realignMutation.isPending ? "Re-aligning..." : "Re-align Kata (AI)"}</span>
+                        <span>
+                          {realignMutation.isPending ? "Re-aligning..." : "Re-align Kata (AI)"}
+                        </span>
                       </Button>
 
                       {/* Global Offset Calibration Box */}
@@ -1468,7 +1536,9 @@ export function TTSTab({ project }: TTSTabProps) {
                         size="xs"
                         onClick={() => {
                           if (!isEditTimingMode && project.narration?.segments) {
-                            setEditableSegments(JSON.parse(JSON.stringify(project.narration.segments)));
+                            setEditableSegments(
+                              JSON.parse(JSON.stringify(project.narration.segments))
+                            );
                           }
                           setIsEditTimingMode(!isEditTimingMode);
                         }}
@@ -1489,7 +1559,9 @@ export function TTSTab({ project }: TTSTabProps) {
                           className="h-7 text-[11px] gap-1 font-semibold"
                         >
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>{updateSegmentsMutation.isPending ? "Menyimpan..." : "Simpan"}</span>
+                          <span>
+                            {updateSegmentsMutation.isPending ? "Menyimpan..." : "Simpan"}
+                          </span>
                         </Button>
                       )}
                     </div>
@@ -1497,87 +1569,93 @@ export function TTSTab({ project }: TTSTabProps) {
 
                   {/* Segments & Word Badges Breakdown */}
                   <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-                    {(isEditTimingMode ? editableSegments : project.narration.segments).map((seg, i) => {
-                      const isSegActive =
-                        currentTime * 1000 >= seg.start_ms && currentTime * 1000 <= seg.end_ms;
-                      return (
-                        <div
-                          key={seg.id || i}
-                          className={`p-3 rounded-xl border transition-all ${
-                            isSegActive
-                              ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20"
-                              : "bg-[#141414] border-[#2E2E2E] hover:border-[#3E3E3E]"
-                          }`}
-                        >
-                          <div className="flex justify-between font-mono text-[10px] text-muted-foreground mb-1.5">
-                            <span className="text-primary font-semibold">Segmen #{i + 1}</span>
-                            <span>
-                              {formatAudioTime(seg.start_ms / 1000)} — {formatAudioTime(seg.end_ms / 1000)} ({((seg.end_ms - seg.start_ms) / 1000).toFixed(2)}s)
-                            </span>
-                          </div>
+                    {(isEditTimingMode ? editableSegments : project.narration.segments).map(
+                      (seg, i) => {
+                        const isSegActive =
+                          currentTime * 1000 >= seg.start_ms && currentTime * 1000 <= seg.end_ms;
+                        return (
+                          <div
+                            key={seg.id || i}
+                            className={`p-3 rounded-xl border transition-all ${
+                              isSegActive
+                                ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20"
+                                : "bg-[#141414] border-[#2E2E2E] hover:border-[#3E3E3E]"
+                            }`}
+                          >
+                            <div className="flex justify-between font-mono text-[10px] text-muted-foreground mb-1.5">
+                              <span className="text-primary font-semibold">Segmen #{i + 1}</span>
+                              <span>
+                                {formatAudioTime(seg.start_ms / 1000)} —{" "}
+                                {formatAudioTime(seg.end_ms / 1000)} (
+                                {((seg.end_ms - seg.start_ms) / 1000).toFixed(2)}s)
+                              </span>
+                            </div>
 
-                          <div className="flex flex-wrap gap-1.5">
-                            {seg.words && seg.words.length > 0 ? (
-                              seg.words.map((w: any, wi: number) => {
-                                const isWordActive =
-                                  currentTime * 1000 >= w.start_ms &&
-                                  currentTime * 1000 <= w.end_ms;
+                            <div className="flex flex-wrap gap-1.5">
+                              {seg.words && seg.words.length > 0 ? (
+                                seg.words.map((w: WordTimestamp, wi: number) => {
+                                  const isWordActive =
+                                    currentTime * 1000 >= w.start_ms &&
+                                    currentTime * 1000 <= w.end_ms;
 
-                                if (isEditTimingMode) {
-                                  return (
-                                    <div
-                                      key={wi}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[#181818] border border-[#2E2E2E]"
-                                    >
-                                      <span className="font-semibold text-foreground">{w.word}</span>
-                                      <span className="font-mono text-[9px] text-muted-foreground bg-[#121212] px-1 rounded border border-[#2E2E2E]">
-                                        {w.start_ms}ms
-                                      </span>
-                                      <div className="flex items-center gap-0.5 ml-0.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleWordTimingNudge(i, wi, -50)}
-                                          className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
-                                          title="Mundurkan 50ms"
-                                        >
-                                          -
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleWordTimingNudge(i, wi, 50)}
-                                          className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
-                                          title="Majukan 50ms"
-                                        >
-                                          +
-                                        </button>
+                                  if (isEditTimingMode) {
+                                    return (
+                                      <div
+                                        key={wi}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[#181818] border border-[#2E2E2E]"
+                                      >
+                                        <span className="font-semibold text-foreground">
+                                          {w.word}
+                                        </span>
+                                        <span className="font-mono text-[9px] text-muted-foreground bg-[#121212] px-1 rounded border border-[#2E2E2E]">
+                                          {w.start_ms}ms
+                                        </span>
+                                        <div className="flex items-center gap-0.5 ml-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleWordTimingNudge(i, wi, -50)}
+                                            className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                                            title="Mundurkan 50ms"
+                                          >
+                                            -
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleWordTimingNudge(i, wi, 50)}
+                                            className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                                            title="Majukan 50ms"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                }
+                                    );
+                                  }
 
-                                return (
-                                  <button
-                                    key={wi}
-                                    type="button"
-                                    onClick={() => handleSeek(w.start_ms / 1000)}
-                                    className={`px-2 py-0.5 rounded-md text-xs transition cursor-pointer ${
-                                      isWordActive
-                                        ? "bg-primary text-black font-semibold shadow-xs"
-                                        : "bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                    }`}
-                                    title={`${w.word} • ${w.start_ms}ms - ${w.end_ms}ms`}
-                                  >
-                                    {w.word}
-                                  </button>
-                                );
-                              })
-                            ) : (
-                              <span className="text-xs text-foreground">{seg.text}</span>
-                            )}
+                                  return (
+                                    <button
+                                      key={wi}
+                                      type="button"
+                                      onClick={() => handleSeek(w.start_ms / 1000)}
+                                      className={`px-2 py-0.5 rounded-md text-xs transition cursor-pointer ${
+                                        isWordActive
+                                          ? "bg-primary text-black font-semibold shadow-xs"
+                                          : "bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground hover:border-primary/40"
+                                      }`}
+                                      title={`${w.word} • ${w.start_ms}ms - ${w.end_ms}ms`}
+                                    >
+                                      {w.word}
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-xs text-foreground">{seg.text}</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      }
+                    )}
                   </div>
                 </div>
               )}

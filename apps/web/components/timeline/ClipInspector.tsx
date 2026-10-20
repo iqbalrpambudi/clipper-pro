@@ -135,7 +135,8 @@ function SelectedInspector({
     lastTimeRef.current = time;
     lastSpeedRef.current = clip.speed || 1;
     if (inClip) {
-      anchorSrcPlayheadRef.current = clip.clip_start + (time - clip.timeline_start) * (clip.speed || 1);
+      anchorSrcPlayheadRef.current =
+        clip.clip_start + (time - clip.timeline_start) * (clip.speed || 1);
     } else {
       anchorSrcPlayheadRef.current = null;
     }
@@ -143,7 +144,9 @@ function SelectedInspector({
 
   const guidePlayhead = anchorSrcPlayheadRef.current;
   const guidePercent =
-    guidePlayhead !== null ? Math.max(0, Math.min(100, ((guidePlayhead - bounds.start) / span) * 100)) : null;
+    guidePlayhead !== null
+      ? Math.max(0, Math.min(100, ((guidePlayhead - bounds.start) / span) * 100))
+      : null;
 
   const commitDuration = () => {
     const v = parseFloat(durDraft.replace(",", "."));
@@ -192,14 +195,20 @@ function SelectedInspector({
             className="relative w-24 shrink-0 aspect-video rounded-lg overflow-hidden bg-black border border-[#2E2E2E] group"
             title="Preview potongan sumber"
           >
-            {clip.thumbnail_url && <img src={clip.thumbnail_url} alt="" className="w-full h-full object-cover" />}
+            {clip.thumbnail_url && (
+              <img src={clip.thumbnail_url} alt="" className="w-full h-full object-cover" />
+            )}
             <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
               <Play className="w-4 h-4 text-white" />
             </span>
           </button>
           <div className="min-w-0 text-[10px] space-y-0.5">
-            <p className="text-foreground font-semibold truncate">Scene #{scene ? scene.scene_index + 1 : "?"}</p>
-            <p className="text-muted-foreground line-clamp-2 leading-tight">{scene?.description || "Scene sumber"}</p>
+            <p className="text-foreground font-semibold truncate">
+              Scene #{scene ? scene.scene_index + 1 : "?"}
+            </p>
+            <p className="text-muted-foreground line-clamp-2 leading-tight">
+              {scene?.description || "Scene sumber"}
+            </p>
             <p className="font-mono text-muted-foreground">
               {clip.timeline_start.toFixed(2)}s → {clip.timeline_end.toFixed(2)}s
             </p>
@@ -223,7 +232,11 @@ function SelectedInspector({
         )}
 
         {/* Duration (extend / shorten) */}
-        <Section icon={<Timer className="w-3.5 h-3.5 text-primary" />} title="Durasi di timeline" hint={index < total - 1 ? "roll dgn klip berikut" : "klip terakhir"}>
+        <Section
+          icon={<Timer className="w-3.5 h-3.5 text-primary" />}
+          title="Durasi di timeline"
+          hint={index < total - 1 ? "roll dgn klip berikut" : "klip terakhir"}
+        >
           <div className="flex items-center gap-1">
             <StepBtn onClick={() => onSetDuration(dur - 0.5)}>-0.5</StepBtn>
             <StepBtn onClick={() => onSetDuration(dur - 1 / 30)}>-1f</StepBtn>
@@ -241,12 +254,23 @@ function SelectedInspector({
         </Section>
 
         {/* Slip */}
-        <Section icon={<MoveHorizontal className="w-3.5 h-3.5 text-primary" />} title="Pilih bagian scene (slip)" hint={`${(clip.clip_end - clip.clip_start).toFixed(2)}s dari ${span.toFixed(1)}s`}>
-          <div ref={barRef} className="relative h-9 rounded-lg bg-[#121212] border border-[#2E2E2E] overflow-hidden">
+        <Section
+          icon={<MoveHorizontal className="w-3.5 h-3.5 text-primary" />}
+          title="Pilih bagian scene (slip)"
+          hint={`${(clip.clip_end - clip.clip_start).toFixed(2)}s dari ${span.toFixed(1)}s`}
+        >
+          <div
+            ref={barRef}
+            className="relative h-9 rounded-lg bg-[#121212] border border-[#2E2E2E] overflow-hidden"
+          >
             {clip.thumbnail_url && (
               <div
                 className="absolute inset-0 opacity-20"
-                style={{ backgroundImage: `url(${clip.thumbnail_url})`, backgroundSize: "auto 100%", backgroundRepeat: "repeat-x" }}
+                style={{
+                  backgroundImage: `url(${clip.thumbnail_url})`,
+                  backgroundSize: "auto 100%",
+                  backgroundRepeat: "repeat-x",
+                }}
               />
             )}
             <div
@@ -289,7 +313,11 @@ function SelectedInspector({
         </Section>
 
         {/* Speed */}
-        <Section icon={<Gauge className="w-3.5 h-3.5 text-primary" />} title="Kecepatan" hint={`${clip.speed || 1}x`}>
+        <Section
+          icon={<Gauge className="w-3.5 h-3.5 text-primary" />}
+          title="Kecepatan"
+          hint={`${clip.speed || 1}x`}
+        >
           <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-lg border border-[#2E2E2E]">
             {SPEEDS.map((s) => {
               const ok = canUseSpeed(clip, s, sceneMap);
@@ -316,16 +344,34 @@ function SelectedInspector({
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <ActionBtn onClick={onSplit} disabled={!canSplit} icon={<Scissors className="w-3.5 h-3.5 text-primary" />} title="Potong klip di posisi playhead (S)">
+          <ActionBtn
+            onClick={onSplit}
+            disabled={!canSplit}
+            icon={<Scissors className="w-3.5 h-3.5 text-primary" />}
+            title="Potong klip di posisi playhead (S)"
+          >
             Potong (S)
           </ActionBtn>
-          <ActionBtn onClick={onToggleLoop} active={isLooping} icon={<Repeat className="w-3.5 h-3.5" />} title="Putar ulang klip ini di monitor (L)">
+          <ActionBtn
+            onClick={onToggleLoop}
+            active={isLooping}
+            icon={<Repeat className="w-3.5 h-3.5" />}
+            title="Putar ulang klip ini di monitor (L)"
+          >
             Loop (L)
           </ActionBtn>
-          <ActionBtn onClick={onPreviewSource} icon={<Play className="w-3.5 h-3.5 text-foreground" />}>
+          <ActionBtn
+            onClick={onPreviewSource}
+            icon={<Play className="w-3.5 h-3.5 text-foreground" />}
+          >
             Preview
           </ActionBtn>
-          <ActionBtn onClick={onDelete} danger icon={<Trash2 className="w-3.5 h-3.5" />} title="Hapus klip; klip sebelumnya mengisi celah (Del)">
+          <ActionBtn
+            onClick={onDelete}
+            danger
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            title="Hapus klip; klip sebelumnya mengisi celah (Del)"
+          >
             Hapus (Del)
           </ActionBtn>
         </div>
@@ -364,7 +410,9 @@ function EmptyInspector() {
           <div className="space-y-1">
             {rows.map(([k, v]) => (
               <div key={k} className="flex items-center justify-between text-[10px]">
-                <kbd className="px-1.5 py-0.5 rounded bg-[#121212] border border-[#2E2E2E] font-mono text-foreground">{k}</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-[#121212] border border-[#2E2E2E] font-mono text-foreground">
+                  {k}
+                </kbd>
                 <span className="text-muted-foreground">{v}</span>
               </div>
             ))}
@@ -375,7 +423,17 @@ function EmptyInspector() {
   );
 }
 
-function Section({ icon, title, hint, children }: { icon: React.ReactNode; title: string; hint?: string; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  hint,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-[10px]">

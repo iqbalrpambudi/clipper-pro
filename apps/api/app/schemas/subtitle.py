@@ -1,4 +1,5 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, ConfigDict, model_validator
 
 # ASS style headers, fontconfig names and ffmpeg filter strings are built from

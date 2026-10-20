@@ -67,109 +67,109 @@ const PRESETS: {
   desc: string;
   config: Partial<WatermarkConfig>;
 }[] = [
-    {
-      name: "Handle Medsos",
-      desc: "@username kanan bawah",
-      config: {
-        enabled: true,
-        watermark_type: "text",
-        text: "@cliperpro",
-        font_family: "Poppins",
-        font_size: 34,
-        font_color: "#FFFFFF",
-        opacity: 0.85,
-        position: "bottom-right",
-        offset_x: 32,
-        offset_y: 32,
-        has_background: false,
-        has_shadow: true,
-      },
+  {
+    name: "Handle Medsos",
+    desc: "@username kanan bawah",
+    config: {
+      enabled: true,
+      watermark_type: "text",
+      text: "@cliperpro",
+      font_family: "Poppins",
+      font_size: 34,
+      font_color: "#FFFFFF",
+      opacity: 0.85,
+      position: "bottom-right",
+      offset_x: 32,
+      offset_y: 32,
+      has_background: false,
+      has_shadow: true,
     },
-    {
-      name: "Branding Minimalis",
-      desc: "Kiri atas elegan",
-      config: {
-        enabled: true,
-        watermark_type: "text",
-        text: "CLİPER PRO",
-        font_family: "Inter",
-        font_size: 28,
-        font_color: "#FFFFFF",
-        opacity: 0.75,
-        position: "top-left",
-        offset_x: 28,
-        offset_y: 28,
-        has_background: false,
-        has_shadow: true,
-      },
+  },
+  {
+    name: "Branding Minimalis",
+    desc: "Kiri atas elegan",
+    config: {
+      enabled: true,
+      watermark_type: "text",
+      text: "CLİPER PRO",
+      font_family: "Inter",
+      font_size: 28,
+      font_color: "#FFFFFF",
+      opacity: 0.75,
+      position: "top-left",
+      offset_x: 28,
+      offset_y: 28,
+      has_background: false,
+      has_shadow: true,
     },
-    {
-      name: "Badge Punchy",
-      desc: "Box gelap kontras tinggi",
-      config: {
-        enabled: true,
-        watermark_type: "text",
-        text: "@kreator_video",
-        font_family: "Bebas Neue",
-        font_size: 38,
-        font_color: "#FFE600",
-        opacity: 0.95,
-        position: "top-right",
-        offset_x: 30,
-        offset_y: 30,
-        has_background: true,
-        background_color: "#000000",
-        background_opacity: 0.65,
-        has_shadow: true,
-      },
+  },
+  {
+    name: "Badge Punchy",
+    desc: "Box gelap kontras tinggi",
+    config: {
+      enabled: true,
+      watermark_type: "text",
+      text: "@kreator_video",
+      font_family: "Bebas Neue",
+      font_size: 38,
+      font_color: "#FFE600",
+      opacity: 0.95,
+      position: "top-right",
+      offset_x: 30,
+      offset_y: 30,
+      has_background: true,
+      background_color: "#000000",
+      background_opacity: 0.65,
+      has_shadow: true,
     },
-    {
-      name: "Proteksi Copyright",
-      desc: "Transparan di tengah",
-      config: {
-        enabled: true,
-        watermark_type: "text",
-        text: "© 2026 Cliper Pro",
-        font_family: "Oswald",
-        font_size: 42,
-        font_color: "#FFFFFF",
-        opacity: 0.4,
-        position: "center",
-        offset_x: 0,
-        offset_y: 0,
-        has_background: false,
-        has_shadow: true,
-      },
+  },
+  {
+    name: "Proteksi Copyright",
+    desc: "Transparan di tengah",
+    config: {
+      enabled: true,
+      watermark_type: "text",
+      text: "© 2026 Cliper Pro",
+      font_family: "Oswald",
+      font_size: 42,
+      font_color: "#FFFFFF",
+      opacity: 0.4,
+      position: "center",
+      offset_x: 0,
+      offset_y: 0,
+      has_background: false,
+      has_shadow: true,
     },
-    {
-      name: "Logo Kiri Atas",
-      desc: "Preset posisi logo",
-      config: {
-        enabled: true,
-        watermark_type: "image",
-        position: "top-left",
-        offset_x: 32,
-        offset_y: 32,
-        image_width: 150,
-        opacity: 0.9,
-        has_shadow: true,
-      },
+  },
+  {
+    name: "Logo Kiri Atas",
+    desc: "Preset posisi logo",
+    config: {
+      enabled: true,
+      watermark_type: "image",
+      position: "top-left",
+      offset_x: 32,
+      offset_y: 32,
+      image_width: 150,
+      opacity: 0.9,
+      has_shadow: true,
     },
-    {
-      name: "Logo Kanan Bawah",
-      desc: "Preset watermark logo",
-      config: {
-        enabled: true,
-        watermark_type: "image",
-        position: "bottom-right",
-        offset_x: 35,
-        offset_y: 35,
-        image_width: 140,
-        opacity: 0.85,
-        has_shadow: true,
-      },
+  },
+  {
+    name: "Logo Kanan Bawah",
+    desc: "Preset watermark logo",
+    config: {
+      enabled: true,
+      watermark_type: "image",
+      position: "bottom-right",
+      offset_x: 35,
+      offset_y: 35,
+      image_width: 140,
+      opacity: 0.85,
+      has_shadow: true,
     },
-  ];
+  },
+];
 
 function getInitialWatermark(wm?: WatermarkConfig | null): WatermarkConfig {
   return {
@@ -220,12 +220,11 @@ export function WatermarkCustomizePanel({
   }, [project.watermark]);
 
   const updateMutation = useMutation({
-    mutationFn: (newWm: WatermarkConfig) =>
-      api.updateProject(project.id, { watermark: newWm }),
+    mutationFn: (newWm: WatermarkConfig) => api.updateProject(project.id, { watermark: newWm }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan watermark", "error");
     },
   });
@@ -246,7 +245,7 @@ export function WatermarkCustomizePanel({
     }, 350);
   };
 
-  const applyPreset = (preset: typeof PRESETS[0]) => {
+  const applyPreset = (preset: (typeof PRESETS)[0]) => {
     const next: WatermarkConfig = {
       ...watermark,
       ...preset.config,
@@ -288,7 +287,7 @@ export function WatermarkCustomizePanel({
           "Logo watermark berhasil diunggah"
         );
       }
-    } catch (_err: any) {
+    } catch {
       // Local preview fallback
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -325,11 +324,17 @@ export function WatermarkCustomizePanel({
               <div className="font-semibold text-foreground text-sm flex items-center gap-2">
                 Watermark Video
                 {watermark.enabled ? (
-                  <Badge variant="default" className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <Badge
+                    variant="default"
+                    className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                  >
                     Aktif
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] text-muted-foreground border-[#333]">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-muted-foreground border-[#333]"
+                  >
                     Nonaktif
                   </Badge>
                 )}
@@ -362,10 +367,11 @@ export function WatermarkCustomizePanel({
           <button
             type="button"
             onClick={() => commitWatermark({ ...watermark, watermark_type: "text" })}
-            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${!isImageMode
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              !isImageMode
                 ? "bg-primary text-primary-foreground shadow"
                 : "text-muted-foreground hover:text-foreground"
-              }`}
+            }`}
           >
             <Type className="w-3.5 h-3.5" />
             <span>Teks Watermark</span>
@@ -373,10 +379,11 @@ export function WatermarkCustomizePanel({
           <button
             type="button"
             onClick={() => commitWatermark({ ...watermark, watermark_type: "image" })}
-            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${isImageMode
+            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              isImageMode
                 ? "bg-primary text-primary-foreground shadow"
                 : "text-muted-foreground hover:text-foreground"
-              }`}
+            }`}
           >
             <ImageIcon className="w-3.5 h-3.5" />
             <span>Gambar / Logo</span>
@@ -627,10 +634,11 @@ export function WatermarkCustomizePanel({
                     key={f.name}
                     type="button"
                     onClick={() => commitWatermark({ ...watermark, font_family: f.name })}
-                    className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${isSelected
+                    className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
+                      isSelected
                         ? "bg-primary/10 border-primary text-primary"
                         : "bg-[#141414] border-[#2E2E2E] hover:border-[#444] text-muted-foreground hover:text-foreground"
-                      }`}
+                    }`}
                   >
                     <span
                       style={{ fontFamily: `"${f.name}", sans-serif` }}
@@ -650,7 +658,9 @@ export function WatermarkCustomizePanel({
             <div>
               <div className="flex justify-between text-[11px] mb-1">
                 <span className="text-muted-foreground">Ukuran Font</span>
-                <span className="font-mono text-foreground font-semibold">{watermark.font_size}px</span>
+                <span className="font-mono text-foreground font-semibold">
+                  {watermark.font_size}px
+                </span>
               </div>
               <input
                 type="range"
@@ -709,18 +719,20 @@ export function WatermarkCustomizePanel({
                   type="button"
                   onClick={() => commitWatermark({ ...watermark, font_color: sw.color })}
                   style={{ backgroundColor: sw.color }}
-                  className={`w-6 h-6 rounded-full border transition flex items-center justify-center ${watermark.font_color.toLowerCase() === sw.color.toLowerCase()
+                  className={`w-6 h-6 rounded-full border transition flex items-center justify-center ${
+                    watermark.font_color.toLowerCase() === sw.color.toLowerCase()
                       ? "border-primary ring-2 ring-primary/40 scale-110"
                       : "border-[#444] hover:scale-105"
-                    }`}
+                  }`}
                   title={sw.name}
                 >
                   {watermark.font_color.toLowerCase() === sw.color.toLowerCase() && (
                     <Check
-                      className={`w-3.5 h-3.5 ${sw.color === "#FFFFFF" || sw.color === "#FFE600"
+                      className={`w-3.5 h-3.5 ${
+                        sw.color === "#FFFFFF" || sw.color === "#FFE600"
                           ? "text-black"
                           : "text-white"
-                        }`}
+                      }`}
                     />
                   )}
                 </button>
@@ -750,10 +762,11 @@ export function WatermarkCustomizePanel({
                   key={pos.id}
                   type="button"
                   onClick={() => commitWatermark({ ...watermark, position: pos.id })}
-                  className={`h-11 rounded-lg border text-center transition flex flex-col items-center justify-center gap-1 ${isSelected
+                  className={`h-11 rounded-lg border text-center transition flex flex-col items-center justify-center gap-1 ${
+                    isSelected
                       ? "bg-primary/20 border-primary text-primary font-bold shadow-sm shadow-primary/20"
                       : "bg-[#181818] border-[#2A2A2A] hover:border-[#444] text-muted-foreground hover:text-foreground"
-                    }`}
+                  }`}
                 >
                   <div className={`w-3 h-3 rounded-sm border border-current flex ${pos.iconCoord}`}>
                     <div className="w-1 h-1 bg-current rounded-full" />
@@ -786,9 +799,7 @@ export function WatermarkCustomizePanel({
               <Move className="w-3.5 h-3.5" />
             </div>
             <div>
-              <span className="font-semibold text-xs block">
-                Posisi Kustom Bebas (Drag & Drop)
-              </span>
+              <span className="font-semibold text-xs block">Posisi Kustom Bebas (Drag & Drop)</span>
               <span className="text-[10px] text-muted-foreground">
                 Tarik watermark sesuka hati langsung di area preview layar
               </span>
@@ -839,7 +850,9 @@ export function WatermarkCustomizePanel({
           <div className="p-2.5 rounded-lg bg-[#141414] border border-[#2A2A2A] space-y-2.5">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <div className="font-semibold text-xs text-foreground">Badge Latar Belakang (Box)</div>
+                <div className="font-semibold text-xs text-foreground">
+                  Badge Latar Belakang (Box)
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   Menambahkan kotak transparan di belakang teks watermark
                 </div>

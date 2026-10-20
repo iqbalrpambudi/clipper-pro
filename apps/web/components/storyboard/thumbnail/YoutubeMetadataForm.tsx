@@ -1,15 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  FileText,
-  Sparkles,
-  Copy,
-  Check,
-  RefreshCw,
-  Tag,
-  Wand2,
-} from "lucide-react";
+import { FileText, Sparkles, Copy, Check, RefreshCw, Tag, Wand2 } from "lucide-react";
 import { Button, Input, Textarea, Badge } from "@/components/ui";
 
 interface YoutubeMetadataFormProps {
@@ -112,7 +104,9 @@ export function YoutubeMetadataForm({
               ) : (
                 <Wand2 className="w-3.5 h-3.5 mr-1.5" />
               )}
-              <span>{isGenerating ? "Menganalisis Naskah..." : "Generate Judul, Deskripsi & Tag"}</span>
+              <span>
+                {isGenerating ? "Menganalisis Naskah..." : "Generate Judul, Deskripsi & Tag"}
+              </span>
             </Button>
           </div>
         </div>

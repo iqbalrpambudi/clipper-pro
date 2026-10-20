@@ -1,19 +1,19 @@
 import logging
 import re
 import time
-import httpx
 
-log = logging.getLogger("cliper-pro.settings")
-from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy import select
-from app.core.db import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import get_settings
-from app.core.security import encrypt_secret, mask_secret, decrypt_secret
+from app.core.db import get_db
+from app.core.security import decrypt_secret, encrypt_secret, mask_secret
 from app.models.config import ModelConfig
 from app.schemas.config import (
-    ModelConfigUpdate,
     ModelConfigResponse,
+    ModelConfigUpdate,
     TestConnectionRequest,
     TestConnectionResponse,
     TestImageConnectionRequest,
@@ -21,10 +21,12 @@ from app.schemas.config import (
     TestTtsConnectionRequest,
     TestTtsConnectionResponse,
 )
-from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
+from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.image_gen import test_image_connection
 from app.services.tts import test_tts_connection
+
+log = logging.getLogger("cliper-pro.settings")
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -218,7 +220,7 @@ async def test_model_connection(
             )
 
         # Ping chat model
-        chat_resp = await adapter.generate_chat("Jawab satu kata: OK")
+        _ = await adapter.generate_chat("Jawab satu kata: OK")
         latency = int((time.time() - start_time) * 1000)
 
         return TestConnectionResponse(

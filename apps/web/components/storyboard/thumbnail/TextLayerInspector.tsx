@@ -94,7 +94,8 @@ export function TextLayerInspector({
         <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
           {layers.length === 0 ? (
             <div className="text-center py-4 text-xs text-muted-foreground border border-dashed border-[#2E2E2E] rounded-lg">
-              Belum ada layer teks. Klik tombol <span className="text-amber-400 font-semibold">+ Tambah Teks</span> di atas.
+              Belum ada layer teks. Klik tombol{" "}
+              <span className="text-amber-400 font-semibold">+ Tambah Teks</span> di atas.
             </div>
           ) : (
             layers.map((layer, index) => {
@@ -114,14 +115,20 @@ export function TextLayerInspector({
                       {index + 1}
                     </span>
                     <div className="truncate">
-                      <span className="font-bold truncate block">{layer.text || "(Teks Kosong)"}</span>
+                      <span className="font-bold truncate block">
+                        {layer.text || "(Teks Kosong)"}
+                      </span>
                       <span className="text-[10px] text-muted-foreground truncate block">
-                        {layer.fontFamily} • {layer.fontSize}px {layer.bgEnabled ? "• Box Highlight" : ""}
+                        {layer.fontFamily} • {layer.fontSize}px{" "}
+                        {layer.bgEnabled ? "• Box Highlight" : ""}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex items-center gap-1 shrink-0 ml-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       title="Geser Naik"
@@ -283,9 +290,7 @@ export function TextLayerInspector({
 
             {/* Text Color Picker */}
             <div className="space-y-1.5 pt-1">
-              <label className="text-[11px] font-semibold text-slate-300 block">
-                Warna Teks
-              </label>
+              <label className="text-[11px] font-semibold text-slate-300 block">Warna Teks</label>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {COLOR_PRESETS.map((cp) => (
                   <button
@@ -317,9 +322,7 @@ export function TextLayerInspector({
                     className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
                     title="Pilih Warna Kustom"
                   />
-                  <span className="font-mono text-[10px] text-slate-400">
-                    {selectedLayer.fill}
-                  </span>
+                  <span className="font-mono text-[10px] text-slate-400">{selectedLayer.fill}</span>
                 </div>
               </div>
             </div>
@@ -332,7 +335,9 @@ export function TextLayerInspector({
                 <Square className="w-4 h-4 text-emerald-400" />
                 <div>
                   <h4 className="text-xs font-bold text-white">Box Highlight / Background Pill</h4>
-                  <p className="text-[10px] text-muted-foreground">Kotak warna di belakang teks ala thumbnail viral</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Kotak warna di belakang teks ala thumbnail viral
+                  </p>
                 </div>
               </div>
 
@@ -380,9 +385,7 @@ export function TextLayerInspector({
                       <input
                         type="color"
                         value={
-                          selectedLayer.bgFill?.startsWith("#")
-                            ? selectedLayer.bgFill
-                            : "#E50914"
+                          selectedLayer.bgFill?.startsWith("#") ? selectedLayer.bgFill : "#E50914"
                         }
                         onChange={(e) =>
                           onUpdateLayer(selectedLayer.id, {
@@ -478,7 +481,9 @@ export function TextLayerInspector({
                 <Palette className="w-4 h-4 text-cyan-400" />
                 <div>
                   <h4 className="text-xs font-bold text-white">Outline / Stroke Teks</h4>
-                  <p className="text-[10px] text-muted-foreground">Garis tepi luar tebal agar teks sangat terbaca</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Garis tepi luar tebal agar teks sangat terbaca
+                  </p>
                 </div>
               </div>
 
@@ -569,7 +574,9 @@ export function TextLayerInspector({
                 <Sun className="w-4 h-4 text-purple-400" />
                 <div>
                   <h4 className="text-xs font-bold text-white">Bayangan / 3D Pop / Glow</h4>
-                  <p className="text-[10px] text-muted-foreground">Efek dimensi agar teks timbul dari latar belakang</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Efek dimensi agar teks timbul dari latar belakang
+                  </p>
                 </div>
               </div>
 
@@ -640,9 +647,7 @@ export function TextLayerInspector({
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-semibold text-slate-300">
-                      Blur Bayangan
-                    </span>
+                    <span className="text-[11px] font-semibold text-slate-300">Blur Bayangan</span>
                     <span className="font-mono text-[11px] text-purple-400">
                       {selectedLayer.shadowBlur ?? 6}px
                     </span>
@@ -686,9 +691,7 @@ export function TextLayerInspector({
 
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[11px] font-semibold text-slate-300">
-                  Derajat Rotasi
-                </span>
+                <span className="text-[11px] font-semibold text-slate-300">Derajat Rotasi</span>
                 <span className="font-mono text-xs font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
                   {selectedLayer.rotation || 0}°
                 </span>
@@ -733,7 +736,8 @@ export function TextLayerInspector({
           <Type className="w-8 h-8 mx-auto text-slate-500 opacity-50" />
           <h5 className="text-xs font-bold text-slate-300">Pilih Layer Teks</h5>
           <p className="text-[11px] text-muted-foreground">
-            Klik salah satu teks langsung di kanvas thumbnail atau pilih dari daftar layer di atas untuk membuka opsi styling.
+            Klik salah satu teks langsung di kanvas thumbnail atau pilih dari daftar layer di atas
+            untuk membuka opsi styling.
           </p>
         </div>
       )}

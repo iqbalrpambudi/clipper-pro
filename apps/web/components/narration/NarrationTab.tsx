@@ -29,17 +29,9 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { Project, Narration, NarrationTemplate, Scene } from "@/types";
-import {
-  Button,
-  Input,
-  Textarea,
-  Badge,
-} from "@/components/ui";
-import {
-  SectionPanel,
-  EmptyState,
-} from "@/components/fragments";
+import { Project, ProjectDetail, Narration, NarrationTemplate, Scene } from "@/types";
+import { Button, Input, Textarea, Badge } from "@/components/ui";
+import { SectionPanel, EmptyState } from "@/components/fragments";
 import { cn } from "@/lib/utils";
 
 interface NarrationTabProps {
@@ -60,7 +52,9 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("dramatis");
   const [targetDuration, setTargetDuration] = useState(60);
-  const [language, setLanguage] = useState<string>(project.narration?.language || project.language || "id");
+  const [language, setLanguage] = useState<string>(
+    project.narration?.language || project.language || "id"
+  );
   const [customPrompt, setCustomPrompt] = useState("");
   const [showPromptDetails, setShowPromptDetails] = useState(false);
   const [rawText, setRawText] = useState("");
@@ -76,19 +70,16 @@ export function NarrationTab({ project }: NarrationTabProps) {
     queryFn: api.getTemplates,
   });
 
-  const selectedTemplate =
-    templates.find((t) => t.id === selectedTemplateId) || templates[0];
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
 
   useEffect(() => {
     if (project.narration) {
       setRawText(project.narration.raw_text);
       if (project.narration.language) setLanguage(project.narration.language);
-      if (project.narration.template_id)
-        setSelectedTemplateId(project.narration.template_id);
+      if (project.narration.template_id) setSelectedTemplateId(project.narration.template_id);
       if (project.narration.topic) setTopic(project.narration.topic);
       if (project.narration.tone) setTone(project.narration.tone);
-      if (project.narration.target_duration)
-        setTargetDuration(project.narration.target_duration);
+      if (project.narration.target_duration) setTargetDuration(project.narration.target_duration);
     }
   }, [project.narration]);
 
@@ -204,7 +195,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
       showToast("Naskah narasi berhasil dibuat dengan AI!", "success");
       setIsGeneratingNarration(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setIsGeneratingNarration(false);
       showToast(err.message || "Gagal generate naskah", "error");
     },
@@ -221,7 +212,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
       setIsEditing(false);
       showToast("Naskah berhasil disimpan & disegmentasi ulang", "success");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast(err.message || "Gagal menyimpan naskah", "error");
     },
   });
@@ -234,14 +225,12 @@ export function NarrationTab({ project }: NarrationTabProps) {
     setTimeout(() => setHasCopied(false), 2000);
   };
 
-  const hasDialogTranscript = project.scenes.some(
-    (s) => s.transcript && s.transcript.trim()
-  );
+  const hasDialogTranscript = project.scenes.some((s) => s.transcript && s.transcript.trim());
 
   const handleLanguageSelect = (newLang: string) => {
     setLanguage(newLang);
     api.updateProject(project.id, { language: newLang }).then(() => {
-      queryClient.setQueryData(["project", project.id], (old: any) => {
+      queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
         if (!old) return old;
         return { ...old, language: newLang };
       });
@@ -280,9 +269,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 )}
               >
                 <span>Semua</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.all}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.all}</span>
               </button>
 
               <button
@@ -297,9 +284,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               >
                 <Clapperboard className="w-3 h-3 text-purple-400" />
                 <span>Alur Cerita</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.recap}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.recap}</span>
               </button>
 
               <button
@@ -314,9 +299,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               >
                 <Lightbulb className="w-3 h-3 text-amber-400" />
                 <span>Fakta</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.fakta}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.fakta}</span>
               </button>
 
               <button
@@ -331,9 +314,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               >
                 <BookOpen className="w-3 h-3 text-sky-400" />
                 <span>Edukasi</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.edukasi}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.edukasi}</span>
               </button>
 
               <button
@@ -348,9 +329,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               >
                 <Sparkles className="w-3 h-3 text-teal-400" />
                 <span>Showcase</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.showcase}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.showcase}</span>
               </button>
 
               <button
@@ -365,9 +344,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               >
                 <MessageSquareQuote className="w-3 h-3 text-pink-400" />
                 <span>Opini & POV</span>
-                <span className="text-[10px] opacity-75 font-mono">
-                  {categoryCounts.opini}
-                </span>
+                <span className="text-[10px] opacity-75 font-mono">{categoryCounts.opini}</span>
               </button>
 
               {categoryCounts.custom > 0 && (
@@ -383,9 +360,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 >
                   <Code className="w-3 h-3 text-[#3ECF8E]" />
                   <span>Kustom</span>
-                  <span className="text-[10px] opacity-75 font-mono">
-                    {categoryCounts.custom}
-                  </span>
+                  <span className="text-[10px] opacity-75 font-mono">{categoryCounts.custom}</span>
                 </button>
               )}
             </div>
@@ -428,9 +403,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                           >
                             {badgeLabel}
                           </Badge>
-                          {isSelected && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#3ECF8E]" />
-                          )}
+                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#3ECF8E]" />}
                         </div>
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
@@ -537,9 +510,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-foreground">
-                    Target Durasi
-                  </label>
+                  <label className="text-xs font-semibold text-foreground">Target Durasi</label>
                   <span className="text-[11px] font-mono text-[#3ECF8E] font-bold">
                     {targetDuration >= 60
                       ? `${Math.floor(targetDuration / 60)}m${
@@ -674,8 +645,13 @@ export function NarrationTab({ project }: NarrationTabProps) {
           icon={<FileText className="w-4 h-4 text-[#3ECF8E]" />}
           badge={
             rawText ? (
-              <Badge variant="outline" className="text-[10px] font-mono border-[#3ECF8E]/30 text-[#3ECF8E] bg-[#3ECF8E]/10">
-                {(project.narration?.language || language) === "en" ? "🇬🇧 English" : "🇮🇩 Indonesian"}
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono border-[#3ECF8E]/30 text-[#3ECF8E] bg-[#3ECF8E]/10"
+              >
+                {(project.narration?.language || language) === "en"
+                  ? "🇬🇧 English"
+                  : "🇮🇩 Indonesian"}
               </Badge>
             ) : undefined
           }
@@ -750,44 +726,38 @@ export function NarrationTab({ project }: NarrationTabProps) {
               )}
 
               {/* Segment Breakdown */}
-              {project.narration?.segments &&
-                project.narration.segments.length > 0 && (
-                  <div className="pt-3 border-t border-[#2E2E2E]">
-                    <div className="flex items-center justify-between mb-2.5">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                        <MessageSquareQuote className="w-3.5 h-3.5 text-[#3ECF8E]" />
-                        <span>
-                          Segmentasi Kalimat ({project.narration.segments.length} Segmen)
-                        </span>
-                      </h4>
-                      <span className="text-[11px] text-muted-foreground">
-                        Sinkron otomatis dengan audio & visual
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {project.narration.segments.map((seg, idx) => (
-                        <div
-                          key={seg.id || idx}
-                          className="p-2.5 rounded-lg bg-[#141414] border border-[#2E2E2E] hover:border-[#3ECF8E]/30 transition flex items-start justify-between gap-3 text-xs"
-                        >
-                          <span className="w-5 h-5 rounded bg-[#3ECF8E]/15 border border-[#3ECF8E]/30 text-[#3ECF8E] font-mono font-bold flex items-center justify-center shrink-0 text-[10px]">
-                            {idx + 1}
-                          </span>
-                          <p className="flex-1 text-foreground/90 leading-relaxed">
-                            {seg.text}
-                          </p>
-                          {seg.end_ms > 0 && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#2E2E2E] text-muted-foreground shrink-0">
-                              {Math.round(seg.start_ms / 1000)}s -{" "}
-                              {Math.round(seg.end_ms / 1000)}s
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+              {project.narration?.segments && project.narration.segments.length > 0 && (
+                <div className="pt-3 border-t border-[#2E2E2E]">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-[#3ECF8E]" />
+                      <span>Segmentasi Kalimat ({project.narration.segments.length} Segmen)</span>
+                    </h4>
+                    <span className="text-[11px] text-muted-foreground">
+                      Sinkron otomatis dengan audio & visual
+                    </span>
                   </div>
-                )}
+
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {project.narration.segments.map((seg, idx) => (
+                      <div
+                        key={seg.id || idx}
+                        className="p-2.5 rounded-lg bg-[#141414] border border-[#2E2E2E] hover:border-[#3ECF8E]/30 transition flex items-start justify-between gap-3 text-xs"
+                      >
+                        <span className="w-5 h-5 rounded bg-[#3ECF8E]/15 border border-[#3ECF8E]/30 text-[#3ECF8E] font-mono font-bold flex items-center justify-center shrink-0 text-[10px]">
+                          {idx + 1}
+                        </span>
+                        <p className="flex-1 text-foreground/90 leading-relaxed">{seg.text}</p>
+                        {seg.end_ms > 0 && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#2E2E2E] text-muted-foreground shrink-0">
+                            {Math.round(seg.start_ms / 1000)}s - {Math.round(seg.end_ms / 1000)}s
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Bottom Next Step Bar */}
               <div className="pt-3 border-t border-[#2E2E2E] flex items-center justify-between">

@@ -1,7 +1,4 @@
-import re
-from typing import List, Dict, Any, Optional
-
-
+from typing import Any, Dict, List
 
 
 def hex_to_ass_color(hex_str: str, opacity: float = 1.0) -> str:
@@ -19,7 +16,7 @@ def hex_to_ass_color(hex_str: str, opacity: float = 1.0) -> str:
     r = clean[0:2]
     g = clean[2:4]
     b = clean[4:6]
-    
+
     # ASS alpha: 0 is opaque, 255 is transparent
     clamped_opacity = max(0.0, min(1.0, float(opacity)))
     a_val = int(round((1.0 - clamped_opacity) * 255))
@@ -199,7 +196,7 @@ def generate_ass_subtitles(
     primary_col = hex_to_ass_color(style_config.get("primary_color", "#FFFFFF"), opacity=1.0)
     highlight_col = hex_to_ass_color(style_config.get("highlight_color", "#FFE600"), opacity=1.0)
     outline_col = hex_to_ass_color(style_config.get("outline_color", "#000000"), opacity=1.0)
-    
+
     box_opacity = float(style_config.get("box_opacity", 0.0))
     box_col = hex_to_ass_color(style_config.get("box_color", "#000000"), opacity=box_opacity)
 
@@ -287,7 +284,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Active word transitions cleanly slice by slice without jumping.
             for i in range(0, len(words), burst_count):
                 group = words[i : i + burst_count]
-                g_start = group[0]["start_ms"]
                 g_end = group[-1]["end_ms"]
                 k_count = len(group)
 
@@ -311,7 +307,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     line_parts = []
                     for m, w in enumerate(group):
                         w_text = w["word"].strip()
-                        
+
                         if m == j:
                             if anim == "none":
                                 line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")

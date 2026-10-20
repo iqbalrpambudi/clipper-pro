@@ -1,3 +1,14 @@
+import type JASSUB from "jassub";
+
+export interface BackgroundFill {
+  mode: "blur" | "black" | "cover" | "custom";
+  color: string;
+  zoom?: number;
+  anti_copyright?: boolean;
+  dynamic_zoom?: boolean;
+  color_grading?: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -6,14 +17,7 @@ export interface Project {
   status: string;
   aspect_ratio: string;
   resolution: string;
-  background_fill: {
-    mode: "blur" | "black" | "cover" | "custom";
-    color: string;
-    zoom?: number;
-    anti_copyright?: boolean;
-    dynamic_zoom?: boolean;
-    color_grading?: boolean;
-  };
+  background_fill: BackgroundFill;
   watermark?: WatermarkConfig | null;
   created_at: string;
   updated_at: string;
@@ -27,6 +31,23 @@ export interface Project {
   locations?: StoryboardLocation[] | null;
   world_setting?: StoryboardWorldSetting | null;
   language?: string;
+  source_videos?: SourceVideo[];
+  scenes?: Scene[];
+  narration?: Narration | null;
+  audio?: AudioTrack | null;
+  audio_track?: AudioTrack | null;
+  timeline?: Timeline | null;
+  render_jobs?: RenderJob[];
+}
+
+export interface ProjectDetail extends Project {
+  source_videos: SourceVideo[];
+  scenes: Scene[];
+  narration?: Narration | null;
+  audio?: AudioTrack | null;
+  timeline?: Timeline | null;
+  subtitle_style?: SubtitleStyle | null;
+  render_jobs?: RenderJob[];
 }
 
 export interface StoryboardCharacterVariant {
@@ -136,6 +157,7 @@ export interface SentenceSegment {
   start_ms: number;
   end_ms: number;
   words: WordTimestamp[];
+  chapter?: string | null;
 }
 
 export interface Narration {
@@ -161,6 +183,7 @@ export interface AudioTrack {
   pitch: string;
   model?: string | null;
   audio_url?: string | null;
+  file_url?: string | null;
   duration: number;
   estimated_cost: number;
   status: string;
@@ -180,7 +203,7 @@ export interface TimelineClip {
   thumbnail_url?: string | null;
   video_url?: string | null;
   text?: string | null;
-  background_fill_override?: any;
+  background_fill_override?: Partial<BackgroundFill> | null;
 }
 
 export interface Timeline {
@@ -218,6 +241,11 @@ export interface SubtitleStyle {
   emoji_enabled: boolean;
 }
 
+export interface SubtitleStyleUpdateRequest extends Partial<SubtitleStyle> {
+  save_as_preset?: boolean;
+  new_preset_name?: string;
+}
+
 export interface SubtitlePreset extends SubtitleStyle {
   id: string;
   name: string;
@@ -229,7 +257,7 @@ export interface RenderJob {
   id: string;
   project_id: string;
   render_type: "final" | "preview";
-  status: "queued" | "rendering" | "completed" | "failed";
+  status: "queued" | "rendering" | "processing" | "completed" | "failed";
   progress: number;
   output_url?: string | null;
   thumbnail_url?: string | null;
@@ -313,6 +341,16 @@ export interface StoryboardItem {
   updated_at: string;
 }
 
+export interface StyleAttributes {
+  medium?: string;
+  linework?: string;
+  palette?: string[];
+  lighting?: string;
+  character_style?: string;
+  composition?: string;
+  [key: string]: unknown;
+}
+
 export interface ImagePreset {
   id: string;
   name: string;
@@ -323,15 +361,7 @@ export interface ImagePreset {
   reference_image_url?: string | null;
   preview_image_url?: string | null;
   user_text_input?: string | null;
-  style_attributes?: {
-    medium?: string;
-    linework?: string;
-    palette?: string[];
-    lighting?: string;
-    character_style?: string;
-    composition?: string;
-    [key: string]: any;
-  } | null;
+  style_attributes?: StyleAttributes | null;
   is_builtin: boolean;
   is_active: boolean;
   created_at?: string;
@@ -344,15 +374,7 @@ export interface StudioAnalysisResult {
   description: string;
   master_prompt: string;
   negative_prompt: string;
-  style_attributes: {
-    medium?: string;
-    linework?: string;
-    palette?: string[];
-    lighting?: string;
-    character_style?: string;
-    composition?: string;
-    [key: string]: any;
-  };
+  style_attributes: StyleAttributes;
 }
 
 export interface YouTubeThumbnailHistory {
@@ -445,4 +467,33 @@ export interface YouTubeMetadata {
   updated_at?: string;
 }
 
+export interface YTFormatOption {
+  format_id: string;
+  resolution: string;
+  ext: string;
+  filesize_approx_mb?: number | null;
+  fps?: number | null;
+  vcodec?: string | null;
+  acodec?: string | null;
+  label: string;
+}
+
+export interface YTInfoResponse {
+  title: string;
+  duration: number;
+  duration_str: string;
+  thumbnail?: string | null;
+  formats: YTFormatOption[];
+}
+
+export interface CostEstimateResponse {
+  char_count: number;
+  word_count: number;
+  estimated_duration_sec: number;
+  estimated_cost_usd: number;
+  currency: string;
+  provider: string;
+}
+
+export type JassubInstance = JASSUB;
 

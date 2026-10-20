@@ -3,8 +3,7 @@ import difflib
 import logging
 import os
 import re
-from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
 

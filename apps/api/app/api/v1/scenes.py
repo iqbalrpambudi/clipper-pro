@@ -1,12 +1,14 @@
-from pydantic import BaseModel
 import asyncio
-import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
+from app.core.events import publish_project_event
 from app.core.storage import storage
 from app.models.project import Scene, SourceVideo
 from app.models.timeline import Timeline
@@ -14,7 +16,6 @@ from app.schemas.project import SceneResponse
 from app.services.ai_adapters.factory import get_active_vision_adapter
 from app.services.vision_tagger import analyze_scene, parse_scene_analysis
 from app.workers.tasks import detect_scenes_job
-from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
 

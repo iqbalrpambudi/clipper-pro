@@ -1,7 +1,16 @@
 "use client";
 
 import React from "react";
-import { Sparkles, RefreshCw, Wand2, History, Palette, RotateCcw, User, MapPin } from "lucide-react";
+import {
+  Sparkles,
+  RefreshCw,
+  Wand2,
+  History,
+  Palette,
+  RotateCcw,
+  User,
+  MapPin,
+} from "lucide-react";
 import { YouTubeThumbnailHistory } from "@/types";
 import { Button, Textarea } from "@/components/ui";
 
@@ -75,7 +84,9 @@ export function AiThumbnailGenerator({
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          Pilih sudut visual viral. Prompt akan otomatis menyisipkan token karakter tokoh utama ({mainCharName || "tokoh"}), lokasi cerita ({mainLocName || "lokasi"}), dan ruang negatif untuk teks.
+          Pilih sudut visual viral. Prompt akan otomatis menyisipkan token karakter tokoh utama (
+          {mainCharName || "tokoh"}), lokasi cerita ({mainLocName || "lokasi"}), dan ruang negatif
+          untuk teks.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -146,7 +157,8 @@ export function AiThumbnailGenerator({
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-[10px] text-muted-foreground">
-            💡 Gambar dihasilkan bersih 16:9 tanpa teks AI, siap ditambahkan teks di tab <span className="text-amber-400 font-semibold">Editor Teks</span>.
+            💡 Gambar dihasilkan bersih 16:9 tanpa teks AI, siap ditambahkan teks di tab{" "}
+            <span className="text-amber-400 font-semibold">Editor Teks</span>.
           </p>
 
           <Button
@@ -172,7 +184,9 @@ export function AiThumbnailGenerator({
               <History className="w-3.5 h-3.5 text-slate-400" />
               <h5 className="text-xs font-bold text-slate-200">Riwayat Variasi Thumbnail</h5>
             </div>
-            <span className="text-[10px] text-muted-foreground">{thumbnailHistory.length} Gambar</span>
+            <span className="text-[10px] text-muted-foreground">
+              {thumbnailHistory.length} Gambar
+            </span>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">

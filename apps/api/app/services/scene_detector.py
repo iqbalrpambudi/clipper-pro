@@ -6,9 +6,10 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
+
 import cv2
-from scenedetect import ContentDetector, AdaptiveDetector
+from scenedetect import AdaptiveDetector, ContentDetector
 
 log = logging.getLogger(__name__)
 
@@ -188,7 +189,7 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
         if _extract_chunk(video_path, windows, pattern):
             outs = sorted(out_dir.glob(f"{tmp_prefix.name}*.jpg"))
             if len(outs) >= len(chunk):
-                for (fn, _), src in zip(chunk, outs):
+                for (fn, _), src in zip(chunk, outs, strict=False):
                     ok_frames[fn] = src
                 continue
             log.warning("chunk %d: expected %d frames, got %d", ci // SELECT_CHUNK, len(chunk), len(outs))

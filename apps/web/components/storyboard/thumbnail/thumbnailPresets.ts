@@ -1,8 +1,16 @@
-import { ThumbnailPreset, ThumbnailTextLayer } from "@/types";
+import { ThumbnailPreset, ThumbnailTextLayer, ThumbnailOverlayConfig } from "@/types";
 
 export const AVAILABLE_FONTS = [
-  { id: "Anton", name: "Anton (Sangat Direkomendasikan)", desc: "Tebal, lebar, punchy, standar thumbnail YouTube modern" },
-  { id: "Montserrat", name: "Montserrat Black", desc: "Elegan, modern, seimbang ala Vox & dokumenter" },
+  {
+    id: "Anton",
+    name: "Anton (Sangat Direkomendasikan)",
+    desc: "Tebal, lebar, punchy, standar thumbnail YouTube modern",
+  },
+  {
+    id: "Montserrat",
+    name: "Montserrat Black",
+    desc: "Elegan, modern, seimbang ala Vox & dokumenter",
+  },
   { id: "Poppins", name: "Poppins Bold", desc: "Geometris bersih, kekinian & eye-catching" },
   { id: "Bebas Neue", name: "Bebas Neue", desc: "Jangkung & tegas dengan tracking rapi" },
   { id: "Inter", name: "Inter ExtraBold", desc: "Ultra-bersih gaya infografis & tech" },
@@ -268,10 +276,14 @@ export function createDefaultTextLayer(
 }
 
 export function convertLegacyOverlayToLayers(
-  legacyOverlay?: any,
+  legacyOverlay?: ThumbnailOverlayConfig | null,
   defaultTitle?: string
 ): ThumbnailTextLayer[] {
-  if (legacyOverlay?.layers && Array.isArray(legacyOverlay.layers) && legacyOverlay.layers.length > 0) {
+  if (
+    legacyOverlay?.layers &&
+    Array.isArray(legacyOverlay.layers) &&
+    legacyOverlay.layers.length > 0
+  ) {
     return legacyOverlay.layers;
   }
 

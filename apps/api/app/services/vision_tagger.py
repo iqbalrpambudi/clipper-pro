@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from app.services.ai_adapters.base import BaseLLMAdapter, hash_embedding
 
 log = logging.getLogger(__name__)
@@ -163,7 +164,7 @@ async def analyze_scenes_batch(
         adapter._embedding_degraded = True
         embeddings = [hash_embedding(txt) for txt in texts_to_embed]
 
-    return list(zip(descriptions, tags_list, embeddings, analyses))
+    return list(zip(descriptions, tags_list, embeddings, analyses, strict=False))
 
 def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) -> str:
     """Rule-based relationship scene sekarang vs scene sebelumnya dari overlap entitas."""

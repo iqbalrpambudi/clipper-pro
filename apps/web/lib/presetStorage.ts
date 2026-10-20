@@ -139,7 +139,9 @@ export const presetStorage = {
       return DEFAULT_SCRIPT_PRESETS;
     }
   },
-  saveScriptPreset: (preset: Omit<ScriptPreset, "id" | "createdAt" | "isBuiltin">): ScriptPreset => {
+  saveScriptPreset: (
+    preset: Omit<ScriptPreset, "id" | "createdAt" | "isBuiltin">
+  ): ScriptPreset => {
     const list = presetStorage.getScriptPresets().filter((p) => !p.isBuiltin);
     const newPreset: ScriptPreset = {
       ...preset,
@@ -149,14 +151,20 @@ export const presetStorage = {
     };
     const updated = [newPreset, ...list];
     if (typeof window !== "undefined") {
-      localStorage.setItem(SCRIPT_PRESETS_KEY, JSON.stringify([...DEFAULT_SCRIPT_PRESETS, ...updated]));
+      localStorage.setItem(
+        SCRIPT_PRESETS_KEY,
+        JSON.stringify([...DEFAULT_SCRIPT_PRESETS, ...updated])
+      );
     }
     return newPreset;
   },
   deleteScriptPreset: (id: string) => {
     const list = presetStorage.getScriptPresets().filter((p) => p.id !== id && !p.isBuiltin);
     if (typeof window !== "undefined") {
-      localStorage.setItem(SCRIPT_PRESETS_KEY, JSON.stringify([...DEFAULT_SCRIPT_PRESETS, ...list]));
+      localStorage.setItem(
+        SCRIPT_PRESETS_KEY,
+        JSON.stringify([...DEFAULT_SCRIPT_PRESETS, ...list])
+      );
     }
   },
 
@@ -186,7 +194,10 @@ export const presetStorage = {
     };
     const updated = [newPreset, ...list];
     if (typeof window !== "undefined") {
-      localStorage.setItem(VOICE_PRESETS_KEY, JSON.stringify([...DEFAULT_VOICE_PRESETS, ...updated]));
+      localStorage.setItem(
+        VOICE_PRESETS_KEY,
+        JSON.stringify([...DEFAULT_VOICE_PRESETS, ...updated])
+      );
     }
     return newPreset;
   },

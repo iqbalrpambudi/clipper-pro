@@ -111,20 +111,10 @@ export function EditProjectDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button
-              type="submit"
-              variant="supabase"
-              size="sm"
-              disabled={isPending}
-            >
+            <Button type="submit" variant="supabase" size="sm" disabled={isPending}>
               {isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
           </DialogFooter>

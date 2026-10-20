@@ -11,6 +11,7 @@ import {
   Transformer,
   Rect,
 } from "react-konva";
+import type Konva from "konva";
 import { ThumbnailTextLayer } from "@/types";
 
 export interface ThumbnailCanvasRef {
@@ -31,20 +32,13 @@ const BASE_HEIGHT = 720;
 
 export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonvaCanvasProps>(
   (
-    {
-      imageUrl,
-      layers,
-      selectedLayerId,
-      onSelectLayer,
-      onUpdateLayer,
-      containerClassName = "",
-    },
+    { imageUrl, layers, selectedLayerId, onSelectLayer, onUpdateLayer, containerClassName = "" },
     ref
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const stageRef = useRef<any>(null);
-    const transformerRef = useRef<any>(null);
-    const nodeRefs = useRef<Record<string, any>>({});
+    const stageRef = useRef<Konva.Stage | null>(null);
+    const transformerRef = useRef<Konva.Transformer | null>(null);
+    const nodeRefs = useRef<Record<string, Konva.Node | null>>({});
 
     const [stageScale, setStageScale] = useState(1);
     const [canvasSize, setCanvasSize] = useState({ width: BASE_WIDTH, height: BASE_HEIGHT });
@@ -102,8 +96,8 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
 
     // Redraw on fonts load
     useEffect(() => {
-      if (typeof document !== "undefined" && (document as any).fonts) {
-        (document as any).fonts.ready.then(() => {
+      if (typeof document !== "undefined" && "fonts" in document) {
+        (document as unknown as { fonts: { ready: Promise<void> } }).fonts.ready.then(() => {
           stageRef.current?.batchDraw();
         });
       }
@@ -114,7 +108,8 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
       if (!transformerRef.current) return;
 
       if (selectedLayerId && nodeRefs.current[selectedLayerId]) {
-        transformerRef.current.nodes([nodeRefs.current[selectedLayerId]]);
+        const targetNode = nodeRefs.current[selectedLayerId];
+        if (targetNode) transformerRef.current.nodes([targetNode]);
         transformerRef.current.getLayer()?.batchDraw();
       } else {
         transformerRef.current.nodes([]);
@@ -194,12 +189,7 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
                 listening={false}
               />
             ) : (
-              <Rect
-                width={BASE_WIDTH}
-                height={BASE_HEIGHT}
-                fill="#121212"
-                listening={false}
-              />
+              <Rect width={BASE_WIDTH} height={BASE_HEIGHT} fill="#121212" listening={false} />
             )}
           </Layer>
 
@@ -215,7 +205,7 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
                   id={layer.id}
                   ref={(node) => {
                     if (node) {
-                      nodeRefs.current[layer.id] = node;
+                      nodeRefs.current[layer.id] = node as unknown as Konva.Node;
                     } else {
                       delete nodeRefs.current[layer.id];
                     }
@@ -252,13 +242,13 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
                       cornerRadius={layer.bgCornerRadius ?? 8}
                       opacity={layer.bgOpacity ?? 1}
                       shadowColor={hasShadow ? layer.shadowColor || "#000000" : undefined}
-                      shadowBlur={hasShadow ? layer.shadowBlur ?? 8 : 0}
+                      shadowBlur={hasShadow ? (layer.shadowBlur ?? 8) : 0}
                       shadowOffset={
                         hasShadow
                           ? { x: layer.shadowOffsetX ?? 4, y: layer.shadowOffsetY ?? 4 }
                           : undefined
                       }
-                      shadowOpacity={hasShadow ? layer.shadowOpacity ?? 0.8 : 0}
+                      shadowOpacity={hasShadow ? (layer.shadowOpacity ?? 0.8) : 0}
                     />
                   )}
 
@@ -277,21 +267,15 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
                     fillAfterStrokeEnabled={true}
                     // Shadow if bg is not enabled
                     shadowColor={
-                      !layer.bgEnabled && hasShadow
-                        ? layer.shadowColor || "#000000"
-                        : undefined
+                      !layer.bgEnabled && hasShadow ? layer.shadowColor || "#000000" : undefined
                     }
-                    shadowBlur={
-                      !layer.bgEnabled && hasShadow ? layer.shadowBlur ?? 6 : 0
-                    }
+                    shadowBlur={!layer.bgEnabled && hasShadow ? (layer.shadowBlur ?? 6) : 0}
                     shadowOffset={
                       !layer.bgEnabled && hasShadow
                         ? { x: layer.shadowOffsetX ?? 4, y: layer.shadowOffsetY ?? 4 }
                         : undefined
                     }
-                    shadowOpacity={
-                      !layer.bgEnabled && hasShadow ? layer.shadowOpacity ?? 0.9 : 0
-                    }
+                    shadowOpacity={!layer.bgEnabled && hasShadow ? (layer.shadowOpacity ?? 0.9) : 0}
                   />
                 </KonvaLabel>
               );
