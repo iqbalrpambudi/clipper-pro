@@ -21,7 +21,7 @@ from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_
 from app.services.storyboard import sync_storyboard_timing_from_alignment, resolve_prompt_variables
 from app.services.image_gen import generate_single_image
 from app.services.vision_tagger import analyze_scenes_batch
-from app.services.tts import generate_speech_audio, estimate_tts_cost
+from app.services.tts import generate_speech_audio, estimate_tts_cost, get_audio_duration
 from app.services.alignment import align_audio_with_text
 from app.services.matching import match_scenes_to_segments
 from app.services.subtitle_ass import generate_ass_subtitles
@@ -1218,6 +1218,7 @@ async def generate_storyboard_images_job(
         cfg = res.scalar_one_or_none()
 
         base_url = cfg.image_base_url if cfg else None
+        api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
         model = cfg.image_model if cfg else "dall-e-3"
         from app.services.image_studio import get_active_image_preset
         active_preset = await get_active_image_preset(db)

@@ -256,7 +256,7 @@ export function WatermarkCustomizePanel({
   };
 
   const addPrefix = (prefix: string) => {
-    let current = watermark.text;
+    const current = watermark.text;
     if (!current.startsWith(prefix)) {
       commitWatermark({ ...watermark, text: `${prefix}${current}` });
     }

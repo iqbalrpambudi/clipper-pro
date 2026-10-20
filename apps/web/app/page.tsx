@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
   // Filtered & Sorted Projects
   const filteredProjects = useMemo(() => {
-    let result = projects.filter((p) => {
+    const result = projects.filter((p) => {
       // 1. Mode filter
       if (modeFilter !== "all") {
         const type = p.project_type || "short_video";

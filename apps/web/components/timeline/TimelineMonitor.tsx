@@ -457,7 +457,7 @@ export function TimelineMonitor({
       const seekClip = clips[idx];
 
       if (seekClip) {
-        let currentSlot = activeVideoSlot.current;
+        const currentSlot = activeVideoSlot.current;
         let activeVid = currentSlot === 0 ? videoRefA.current : videoRefB.current;
         let otherVid = currentSlot === 0 ? videoRefB.current : videoRefA.current;
 
