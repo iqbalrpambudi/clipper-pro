@@ -147,16 +147,22 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white"
+        style={{ backgroundColor: "#121212", color: "#ffffff" }}
+      >
         <Loader2 className="w-8 h-8 text-violet-400 animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">Memuat Studio Long Storyboard...</p>
+        <p className="text-sm text-slate-400">Memuat Studio Long Storyboard...</p>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white"
+        style={{ backgroundColor: "#121212", color: "#ffffff" }}
+      >
         <p className="text-sm text-rose-400 mb-4">Project tidak ditemukan atau gagal dimuat.</p>
         <Link href="/">
           <Button variant="outline" size="sm" className="border-[#2E2E2E]">

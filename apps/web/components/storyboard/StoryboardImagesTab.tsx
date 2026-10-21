@@ -476,38 +476,58 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           </Button>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 grid-flow-row-dense gap-5">
           {segments.map((seg: SentenceSegment, segIdx: number) => {
             const segItems = items.filter((it) => it.segment_id === seg.id);
             if (segItems.length === 0) return null;
 
+            // Segments with multiple images span more columns so each image keeps a usable width
+            const spanClass =
+              segItems.length >= 3
+                ? "md:col-span-2 xl:col-span-3"
+                : segItems.length === 2
+                  ? "md:col-span-2"
+                  : "";
+            const innerGridClass =
+              segItems.length >= 3
+                ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                : segItems.length === 2
+                  ? "grid-cols-1 sm:grid-cols-2"
+                  : "grid-cols-1";
+
             return (
               <div
                 key={seg.id || segIdx}
-                className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-lg"
+                className={`rounded-2xl border border-[#2E2E2E] bg-[#181818] p-4 flex flex-col gap-3 shadow-lg min-w-0 ${spanClass}`}
               >
                 {/* Segment Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2E2E2E] pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
-                      Segmen #{segIdx + 1}
+                <div className="flex items-center justify-between gap-2 border-b border-[#2E2E2E] pb-2.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shrink-0 text-[10px] font-mono font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                      #{segIdx + 1}
                     </span>
-                    <h3 className="text-sm font-bold text-white">
+                    <h3
+                      className="text-xs font-bold text-white truncate"
+                      title={seg.chapter || `Babak ${segIdx + 1}`}
+                    >
                       {seg.chapter || `Babak ${segIdx + 1}`}
                     </h3>
                   </div>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {segItems.length} Ilustrasi Gambar
+                  <span className="shrink-0 text-[10px] text-slate-400 font-mono">
+                    {segItems.length} Gambar
                   </span>
                 </div>
 
                 {/* Narration script line context */}
-                <div className="p-3 rounded-xl bg-black/40 border border-[#262626] text-xs text-slate-200 leading-relaxed font-sans">
+                <div
+                  className="p-2.5 rounded-lg bg-black/40 border border-[#262626] text-[11px] text-slate-300 leading-relaxed font-sans line-clamp-3"
+                  title={seg.text}
+                >
                   &ldquo;{seg.text}&rdquo;
                 </div>
 
                 {/* Grid of Images in this segment */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className={`grid ${innerGridClass} gap-3 flex-1`}>
                   {segItems.map((item, imgIdx) => {
                     const isGeneratingThis = generatingItemId === item.id;
                     const isEditingThis = editingItemId === item.id;
