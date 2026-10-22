@@ -41,10 +41,10 @@ export function EditProjectDialog({
 }: EditProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="workspace-dialog max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-[#3ECF8E]" />
+            <Edit3 className="w-5 h-5 text-[#C45B3A]" />
             <DialogTitle>Edit Nama Project</DialogTitle>
           </div>
           <DialogDescription>
@@ -89,7 +89,7 @@ export function EditProjectDialog({
                 className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
                   language === "id"
                     ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10 font-semibold"
-                    : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                    : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
                 <span className="text-base">🇮🇩</span>
@@ -101,7 +101,7 @@ export function EditProjectDialog({
                 className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
                   language === "en"
                     ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10 font-semibold"
-                    : "border-[#2E2E2E] bg-[#181818] text-muted-foreground hover:border-[#3E3E3E]"
+                    : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
                 <span className="text-base">🇬🇧</span>
@@ -114,7 +114,12 @@ export function EditProjectDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" variant="supabase" size="sm" disabled={isPending}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending}
+              className="workspace-primary-button"
+            >
               {isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
           </DialogFooter>

@@ -41,14 +41,14 @@ export function ProjectFilter({
       {/* Top Filter & Search Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Mode Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181818] border border-[#2E2E2E] overflow-x-auto shrink-0">
+        <div className="workspace-filter-pills flex items-center gap-1.5 overflow-x-auto">
           <button
             type="button"
             onClick={() => onModeFilterChange("all")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
               modeFilter === "all"
-                ? "bg-[#2A2A2A] text-white shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-white"
+                ? "workspace-filter-active"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Semua ({totalCount})
@@ -58,8 +58,8 @@ export function ProjectFilter({
             onClick={() => onModeFilterChange("short_video")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap ${
               modeFilter === "short_video"
-                ? "bg-[#3ECF8E]/20 text-[#3ECF8E] font-semibold border border-[#3ECF8E]/30"
-                : "text-muted-foreground hover:text-white"
+                ? "workspace-filter-active"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Film className="w-3.5 h-3.5" />
@@ -70,8 +70,8 @@ export function ProjectFilter({
             onClick={() => onModeFilterChange("long_storyboard")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap ${
               modeFilter === "long_storyboard"
-                ? "bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30"
-                : "text-muted-foreground hover:text-white"
+                ? "workspace-filter-active"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5" />
@@ -89,13 +89,13 @@ export function ProjectFilter({
               placeholder="Cari nama atau deskripsi project..."
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
-              className="pl-9 pr-8 h-9 text-xs bg-[#181818] border-[#2E2E2E] focus:border-[#3ECF8E]/60 rounded-xl"
+              className="workspace-filter-input h-9 rounded-xl pl-9 pr-8 text-xs"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => onSearchQueryChange("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white p-0.5"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
                 title="Hapus pencarian"
               >
                 <X className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ export function ProjectFilter({
             <select
               value={sortOption}
               onChange={(e) => onSortOptionChange(e.target.value as ProjectSortOption)}
-              className="h-9 px-3 pr-8 py-1 bg-[#181818] rounded-xl border border-[#2E2E2E] text-muted-foreground hover:text-white text-xs focus:outline-none focus:border-[#3ECF8E]/60 appearance-none cursor-pointer"
+              className="workspace-filter-input h-9 cursor-pointer appearance-none rounded-xl px-3 py-1 pr-8 text-xs text-muted-foreground focus:outline-none"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -121,14 +121,14 @@ export function ProjectFilter({
       </div>
 
       {/* Filter Info / Status Bar */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-[#222222] pt-2 px-1">
+      <div className="flex items-center justify-between border-t border-border px-1 pt-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span>
-            Menampilkan <strong className="text-white font-medium">{filteredCount}</strong> dari{" "}
-            <strong className="text-white font-medium">{totalCount}</strong> project
+            Menampilkan <strong className="font-medium text-foreground">{filteredCount}</strong>{" "}
+            dari <strong className="font-medium text-foreground">{totalCount}</strong> project
           </span>
           {searchQuery && (
-            <span className="text-[11px] bg-[#222222] text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+            <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">
               kata kunci: &quot;{searchQuery}&quot;
             </span>
           )}
@@ -138,7 +138,7 @@ export function ProjectFilter({
           <button
             type="button"
             onClick={onResetFilters}
-            className="flex items-center gap-1.5 text-xs text-[#3ECF8E] hover:underline hover:text-[#34D399] transition font-medium"
+            className="flex items-center gap-1.5 text-xs font-medium text-[#A9472C] transition hover:underline"
           >
             <RotateCcw className="w-3 h-3" />
             <span>Reset Filter</span>

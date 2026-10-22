@@ -18,6 +18,7 @@ async def generate_elevenlabs_tts(
     model: str = "eleven_multilingual_v2",
     rate: str = "+0%",
     pitch: str = "+0Hz",
+    language: Optional[str] = None,
 ) -> float:
     """Generate audio via ElevenLabs API with high stability (0.75) for 100% consistent persona & intonation."""
     settings = get_settings()
@@ -51,8 +52,16 @@ async def generate_elevenlabs_tts(
         voice_settings["style"] = 0.0
         voice_settings["use_speaker_boost"] = True
 
+    # Language hint: multilingual models default to voice's accent bias without it.
+    target_lang = (language or "").strip().lower()
+    spoken_text = text
+    if target_lang == "en":
+        spoken_text = f"Read the following in natural English:\n{text}"
+    elif target_lang == "id":
+        spoken_text = f"Bacakan teks berikut dengan bahasa Indonesia yang natural:\n{text}"
+
     payload = {
-        "text": text,
+        "text": spoken_text,
         "model_id": model_id,
         "voice_settings": voice_settings,
     }

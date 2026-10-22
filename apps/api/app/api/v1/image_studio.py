@@ -36,6 +36,7 @@ router = APIRouter(tags=["image_studio"])
 # PRESETS CRUD
 # ==========================================
 
+
 @router.get("/image-presets", response_model=List[ImagePresetResponse])
 async def list_image_presets(db: AsyncSession = Depends(get_db)):
     """List all AI image illustration style presets."""
@@ -58,7 +59,9 @@ async def get_image_preset(preset_id: str, db: AsyncSession = Depends(get_db)):
     return preset
 
 
-@router.post("/image-presets", response_model=ImagePresetResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/image-presets", response_model=ImagePresetResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_or_save_image_preset(
     payload: ImagePresetCreate,
     db: AsyncSession = Depends(get_db),
@@ -72,23 +75,24 @@ async def create_or_save_image_preset(
     if existing:
         # Update existing
         existing.name = payload.name
-        if payload.description is not None:
+        if "description" in payload.model_fields_set:
             existing.description = payload.description
         if payload.category:
             existing.category = payload.category
+        existing.preset_type = payload.preset_type
         existing.master_prompt = payload.master_prompt
-        if payload.negative_prompt is not None:
+        if "negative_prompt" in payload.model_fields_set:
             existing.negative_prompt = payload.negative_prompt
-        if payload.reference_image_url is not None:
+        if "reference_image_url" in payload.model_fields_set:
             existing.reference_image_url = payload.reference_image_url
-        if payload.preview_image_url is not None:
+        if "preview_image_url" in payload.model_fields_set:
             existing.preview_image_url = payload.preview_image_url
-        if payload.user_text_input is not None:
+        if "user_text_input" in payload.model_fields_set:
             existing.user_text_input = payload.user_text_input
         if payload.style_attributes is not None:
             existing.style_attributes = payload.style_attributes
 
-        if payload.is_active:
+        if payload.is_active or existing.is_active:
             await set_active_image_preset(db, preset_id)
         else:
             await db.commit()
@@ -101,6 +105,7 @@ async def create_or_save_image_preset(
         name=payload.name,
         description=payload.description,
         category=payload.category or "custom",
+        preset_type=payload.preset_type,
         master_prompt=payload.master_prompt,
         negative_prompt=payload.negative_prompt,
         reference_image_url=payload.reference_image_url,
@@ -133,19 +138,21 @@ async def update_image_preset(
 
     if payload.name is not None:
         preset.name = payload.name
-    if payload.description is not None:
+    if "description" in payload.model_fields_set:
         preset.description = payload.description
     if payload.category is not None:
         preset.category = payload.category
+    if payload.preset_type is not None:
+        preset.preset_type = payload.preset_type
     if payload.master_prompt is not None:
         preset.master_prompt = payload.master_prompt
-    if payload.negative_prompt is not None:
+    if "negative_prompt" in payload.model_fields_set:
         preset.negative_prompt = payload.negative_prompt
-    if payload.reference_image_url is not None:
+    if "reference_image_url" in payload.model_fields_set:
         preset.reference_image_url = payload.reference_image_url
-    if payload.preview_image_url is not None:
+    if "preview_image_url" in payload.model_fields_set:
         preset.preview_image_url = payload.preview_image_url
-    if payload.user_text_input is not None:
+    if "user_text_input" in payload.model_fields_set:
         preset.user_text_input = payload.user_text_input
     if payload.style_attributes is not None:
         preset.style_attributes = payload.style_attributes
@@ -191,6 +198,7 @@ async def activate_preset(preset_id: str, db: AsyncSession = Depends(get_db)):
 # AI VISUAL STUDIO WORKFLOW
 # ==========================================
 
+
 @router.post("/image-studio/upload-reference")
 async def upload_reference_image(file: UploadFile = File(...)):
     """Upload a visual reference image for style analysis."""
@@ -199,7 +207,9 @@ async def upload_reference_image(file: UploadFile = File(...)):
 
     ext = Path(file.filename).suffix.lower()
     if ext not in (".png", ".jpg", ".jpeg", ".webp"):
-        raise HTTPException(status_code=400, detail="Format file tidak didukung. Gunakan PNG, JPG, JPEG, atau WebP")
+        raise HTTPException(
+            status_code=400, detail="Format file tidak didukung. Gunakan PNG, JPG, JPEG, atau WebP"
+        )
 
     presets_dir = storage.get_presets_dir()
     unique_name = f"ref_{uuid.uuid4().hex[:12]}{ext}"
@@ -240,6 +250,7 @@ async def analyze_style_preset(
     try:
         res = await analyze_visual_style(
             user_text=payload.user_text,
+            preset_type=payload.preset_type,
             reference_image_path=resolved_path,
             db=db,
         )
@@ -260,13 +271,15 @@ async def test_generate_preset_image(
     try:
         abs_path, rel_url = await generate_preset_test_image(
             master_prompt=payload.master_prompt,
+            negative_prompt=payload.negative_prompt,
             scene_prompt=payload.scene_prompt,
             db=db,
         )
         return StudioTestGenerateResponse(
             image_url=rel_url,
             file_path=abs_path,
-            prompt_used=payload.scene_prompt or "Seorang kakek bijak menceritakan kisah kuno di bawah pohon",
+            prompt_used=payload.scene_prompt
+            or "Seorang kakek bijak menceritakan kisah kuno di bawah pohon",
         )
     except Exception as e:
         log.exception("Error in generate_preset_test_image: %s", e)

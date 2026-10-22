@@ -14,6 +14,7 @@ class ImagePreset(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(50), default="custom")
+    preset_type: Mapped[str] = mapped_column(String(20), default="style")
     master_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     negative_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     reference_image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -23,4 +24,6 @@ class ImagePreset(Base):
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

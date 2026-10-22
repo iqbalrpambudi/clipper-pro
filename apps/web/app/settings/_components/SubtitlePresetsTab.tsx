@@ -20,6 +20,7 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { SubtitlePreset } from "@/types";
+import { Badge, Button, Input, NativeSelect, Slider } from "@/components/ui";
 
 const FONT_OPTIONS = ["Montserrat", "Bebas Neue", "Inter", "Poppins", "Anton", "Oswald", "Roboto"];
 
@@ -230,14 +231,16 @@ export function SubtitlePresetsTab() {
               ({subtitlePresets.length} preset tersedia)
             </span>
           </div>
-          <button
+          <Button
             type="button"
             onClick={handleOpenCreateSubtitleModal}
-            className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+            variant="workspace-primary"
+            size="workspace-sm"
+            className="gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Preset Subtitle Baru</span>
-          </button>
+          </Button>
         </div>
 
         {/* Subtitle Preset Cards Grid */}
@@ -245,13 +248,15 @@ export function SubtitlePresetsTab() {
           {subtitlePresets.map((preset) => {
             const isSelected = selectedSubtitlePresetId === preset.id;
             return (
-              <div
+              <button
                 key={preset.id}
+                type="button"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedSubtitlePresetId(preset.id)}
-                className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                className={`w-full rounded-xl p-4 border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] transition-all flex flex-col justify-between ${
                   isSelected
-                    ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                    : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                    ? "border-[#C45B3A] bg-[#F8EEEA] shadow-xs ring-1 ring-[#C45B3A]/30"
+                    : "border-[#E5E1D7] hover:border-[#D8CFC2] bg-[#FBFAF7]"
                 }`}
               >
                 <div>
@@ -265,9 +270,7 @@ export function SubtitlePresetsTab() {
                         {preset.name}
                       </span>
                     </div>
-                    {isSelected && (
-                      <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
-                    )}
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
                     {preset.description || "Gaya subtitle kustom"}
@@ -277,9 +280,9 @@ export function SubtitlePresetsTab() {
                 <div className="space-y-2 pt-2 border-t border-surface-border/50">
                   {/* Style badges */}
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-slate-300 font-mono">
+                    <Badge variant="workspace" className="rounded px-1.5 py-0.5 font-mono">
                       {preset.font_family} ({preset.font_size}px)
-                    </span>
+                    </Badge>
                     <span className="flex items-center gap-1">
                       <span
                         className="w-2.5 h-2.5 rounded-full border border-black/40"
@@ -296,18 +299,15 @@ export function SubtitlePresetsTab() {
                     <span className="font-mono text-slate-400 truncate max-w-[120px]">
                       {preset.id}
                     </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
-                        preset.is_builtin
-                          ? "bg-brand-500/20 text-brand-300"
-                          : "bg-emerald-500/20 text-emerald-300"
-                      }`}
+                    <Badge
+                      variant={preset.is_builtin ? "workspace" : "workspace-success"}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] uppercase"
                     >
                       {preset.is_builtin ? "Bawaan" : "Kustom"}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -343,16 +343,14 @@ export function SubtitlePresetsTab() {
                       : "bg-emerald-500/20 text-emerald-300"
                   }`}
                 >
-                  {currentSelectedSubtitlePreset.is_builtin
-                    ? "Preset Bawaan"
-                    : "Preset Kustom"}
+                  {currentSelectedSubtitlePreset.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
                 </span>
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               {currentSelectedSubtitlePreset.is_builtin ? (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     if (
@@ -364,7 +362,9 @@ export function SubtitlePresetsTab() {
                     }
                   }}
                   disabled={resetSubtitlePresetMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-surface-border hover:bg-rose-500/10 hover:border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                  variant="workspace-secondary"
+                  size="workspace-sm"
+                  className="gap-1.5"
                   title="Kembalikan preset ke setelan default pabrik"
                 >
                   {resetSubtitlePresetMutation.isPending ? (
@@ -373,9 +373,9 @@ export function SubtitlePresetsTab() {
                     <RotateCcw className="w-3.5 h-3.5" />
                   )}
                   <span>Reset ke Default</span>
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     if (
@@ -387,7 +387,9 @@ export function SubtitlePresetsTab() {
                     }
                   }}
                   disabled={deleteSubtitlePresetMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                  variant="workspace-destructive"
+                  size="workspace-sm"
+                  className="gap-1.5"
                   title="Hapus preset subtitle kustom ini"
                 >
                   {deleteSubtitlePresetMutation.isPending ? (
@@ -396,7 +398,7 @@ export function SubtitlePresetsTab() {
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                   )}
                   <span>Hapus Preset</span>
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -445,8 +447,7 @@ export function SubtitlePresetsTab() {
                   }}
                 >
                   {["RAHASIA", "BESAR", "DI BALIK", "DUNIA"].map((word, wIdx) => {
-                    const isHighlightEnabled =
-                      subtitlePresetForm.highlight_animation !== "none";
+                    const isHighlightEnabled = subtitlePresetForm.highlight_animation !== "none";
                     const isHighlighted =
                       isHighlightEnabled &&
                       (subtitlePresetForm.display_mode === "full_sentence"
@@ -504,13 +505,13 @@ export function SubtitlePresetsTab() {
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Nama Preset Subtitle
               </label>
-              <input
+              <Input
                 type="text"
                 value={subtitlePresetForm.name}
                 onChange={(e) =>
                   setSubtitlePresetForm({ ...subtitlePresetForm, name: e.target.value })
                 }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                className="text-xs font-semibold"
                 placeholder="Contoh: Viral TikTok Neon"
                 required
               />
@@ -520,7 +521,7 @@ export function SubtitlePresetsTab() {
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Deskripsi Ringkas
               </label>
-              <input
+              <Input
                 type="text"
                 value={subtitlePresetForm.description || ""}
                 onChange={(e) =>
@@ -529,7 +530,7 @@ export function SubtitlePresetsTab() {
                     description: e.target.value,
                   })
                 }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                className="text-xs"
                 placeholder="Contoh: Gaya bold dengan outline hitam tebal..."
               />
             </div>
@@ -547,7 +548,7 @@ export function SubtitlePresetsTab() {
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Font Family
                 </label>
-                <select
+                <NativeSelect
                   value={subtitlePresetForm.font_family}
                   onChange={(e) =>
                     setSubtitlePresetForm({
@@ -555,38 +556,37 @@ export function SubtitlePresetsTab() {
                       font_family: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500 font-sans"
+                  className="font-sans"
                 >
                   {FONT_OPTIONS.map((font) => (
                     <option key={font} value={font}>
                       {font}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
-                    Ukuran Font
-                  </label>
+                  <label className="text-[11px] font-semibold text-slate-300">Ukuran Font</label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.font_size}px
                   </span>
                 </div>
-                <input
-                  type="range"
+                <Slider
+                  appearance="workspace"
+                  aria-label="Ukuran font subtitle"
                   min={30}
                   max={90}
                   step={2}
-                  value={subtitlePresetForm.font_size}
-                  onChange={(e) =>
+                  value={[subtitlePresetForm.font_size]}
+                  onValueChange={([font_size]) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      font_size: parseInt(e.target.value),
+                      font_size,
                     })
                   }
-                  className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                  className="mt-2"
                 />
               </div>
 
@@ -594,7 +594,7 @@ export function SubtitlePresetsTab() {
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Ketebalan Font (Weight)
                 </label>
-                <select
+                <NativeSelect
                   value={subtitlePresetForm.font_weight}
                   onChange={(e) =>
                     setSubtitlePresetForm({
@@ -602,12 +602,11 @@ export function SubtitlePresetsTab() {
                       font_weight: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                 >
                   <option value="Normal">Normal</option>
                   <option value="Bold">Bold (Tebal)</option>
                   <option value="ExtraBold">Extra Bold (Sangat Tebal)</option>
-                </select>
+                </NativeSelect>
               </div>
             </div>
           </div>
@@ -616,9 +615,7 @@ export function SubtitlePresetsTab() {
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="w-4 h-4 text-accent-yellow" />
-              <h4 className="text-xs font-bold text-white">
-                2. Warna Teks, Highlight & Outline
-              </h4>
+              <h4 className="text-xs font-bold text-white">2. Warna Teks, Highlight & Outline</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -639,7 +636,7 @@ export function SubtitlePresetsTab() {
                     }
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={subtitlePresetForm.primary_color}
                     onChange={(e) =>
@@ -648,7 +645,7 @@ export function SubtitlePresetsTab() {
                         primary_color: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
+                    className="text-xs font-mono"
                   />
                 </div>
               </div>
@@ -670,7 +667,7 @@ export function SubtitlePresetsTab() {
                     }
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={subtitlePresetForm.highlight_color}
                     onChange={(e) =>
@@ -679,7 +676,7 @@ export function SubtitlePresetsTab() {
                         highlight_color: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
+                    className="text-xs font-mono"
                   />
                 </div>
                 {/* Color pills quick select */}
@@ -688,13 +685,15 @@ export function SubtitlePresetsTab() {
                     <button
                       type="button"
                       key={pill.color}
+                      aria-label={`Pilih warna ${pill.label}`}
+                      aria-pressed={subtitlePresetForm.highlight_color === pill.color}
                       onClick={() =>
                         setSubtitlePresetForm({
                           ...subtitlePresetForm,
                           highlight_color: pill.color,
                         })
                       }
-                      className="w-4 h-4 rounded-full border border-black/50 transition transform hover:scale-125"
+                      className="h-7 w-7 rounded-full border border-[#A8A398] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] focus-visible:ring-offset-2"
                       style={{ backgroundColor: pill.color }}
                       title={pill.label}
                     />
@@ -724,19 +723,19 @@ export function SubtitlePresetsTab() {
                     }
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
-                  <input
-                    type="range"
+                  <Slider
+                    appearance="workspace"
+                    aria-label="Lebar outline subtitle"
                     min={0}
                     max={10}
                     step={1}
-                    value={subtitlePresetForm.outline_width}
-                    onChange={(e) =>
+                    value={[subtitlePresetForm.outline_width]}
+                    onValueChange={([outline_width]) =>
                       setSubtitlePresetForm({
                         ...subtitlePresetForm,
-                        outline_width: parseInt(e.target.value),
+                        outline_width,
                       })
                     }
-                    className="w-full h-2 bg-surface rounded-lg cursor-pointer"
                   />
                 </div>
               </div>
@@ -758,7 +757,7 @@ export function SubtitlePresetsTab() {
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Mode Penampilan Kata
                 </label>
-                <select
+                <NativeSelect
                   value={subtitlePresetForm.display_mode}
                   onChange={(e) =>
                     setSubtitlePresetForm({
@@ -766,12 +765,11 @@ export function SubtitlePresetsTab() {
                       display_mode: e.target.value as SubtitlePreset["display_mode"],
                     })
                   }
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                 >
                   <option value="per_word">Per Kata (Karaoke)</option>
                   <option value="burst">Burst (2-3 Kata Hormozi)</option>
                   <option value="full_sentence">Kalimat Penuh</option>
-                </select>
+                </NativeSelect>
               </div>
 
               {/* Highlight Animation */}
@@ -779,22 +777,20 @@ export function SubtitlePresetsTab() {
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Animasi Highlight
                 </label>
-                <select
+                <NativeSelect
                   value={subtitlePresetForm.highlight_animation}
                   onChange={(e) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      highlight_animation:
-                        e.target.value as SubtitlePreset["highlight_animation"],
+                      highlight_animation: e.target.value as SubtitlePreset["highlight_animation"],
                     })
                   }
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                 >
                   <option value="color">Warna Glow (Halus)</option>
                   <option value="scale">Scale Up (Efek Punch Pop)</option>
                   <option value="box">Kotak Highlight Latar</option>
                   <option value="none">Tanpa Animasi</option>
-                </select>
+                </NativeSelect>
               </div>
 
               {/* Scale Factor */}
@@ -807,19 +803,20 @@ export function SubtitlePresetsTab() {
                     {(subtitlePresetForm.scale_factor || 1.15).toFixed(2)}x
                   </span>
                 </div>
-                <input
-                  type="range"
+                <Slider
+                  appearance="workspace"
+                  aria-label="Skala pembesaran kata"
                   min={1.05}
                   max={1.8}
                   step={0.05}
-                  value={subtitlePresetForm.scale_factor || 1.15}
-                  onChange={(e) =>
+                  value={[subtitlePresetForm.scale_factor || 1.15]}
+                  onValueChange={([scale_factor]) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      scale_factor: parseFloat(e.target.value),
+                      scale_factor,
                     })
                   }
-                  className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                  className="mt-2"
                 />
               </div>
             </div>
@@ -842,7 +839,7 @@ export function SubtitlePresetsTab() {
                     }
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={subtitlePresetForm.box_color}
                     onChange={(e) =>
@@ -851,7 +848,7 @@ export function SubtitlePresetsTab() {
                         box_color: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
+                    className="text-xs font-mono"
                   />
                 </div>
               </div>
@@ -866,19 +863,20 @@ export function SubtitlePresetsTab() {
                     {Math.round(subtitlePresetForm.box_opacity * 100)}%
                   </span>
                 </div>
-                <input
-                  type="range"
+                <Slider
+                  appearance="workspace"
+                  aria-label="Opasitas kotak background"
                   min={0}
                   max={1}
                   step={0.05}
-                  value={subtitlePresetForm.box_opacity}
-                  onChange={(e) =>
+                  value={[subtitlePresetForm.box_opacity]}
+                  onValueChange={([box_opacity]) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      box_opacity: parseFloat(e.target.value),
+                      box_opacity,
                     })
                   }
-                  className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                  className="mt-2"
                 />
               </div>
             </div>
@@ -888,9 +886,7 @@ export function SubtitlePresetsTab() {
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
               <Move className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-xs font-bold text-white">
-                4. Posisi Layar & Offset Presisi
-              </h4>
+              <h4 className="text-xs font-bold text-white">4. Posisi Layar & Offset Presisi</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -898,7 +894,7 @@ export function SubtitlePresetsTab() {
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Posisi Vertikal Dasar
                 </label>
-                <select
+                <NativeSelect
                   value={subtitlePresetForm.position}
                   onChange={(e) =>
                     setSubtitlePresetForm({
@@ -906,12 +902,11 @@ export function SubtitlePresetsTab() {
                       position: e.target.value as SubtitlePreset["position"],
                     })
                   }
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                 >
                   <option value="bottom">Bawah Layar (Bottom)</option>
                   <option value="center">Tengah Layar (Center)</option>
                   <option value="top">Atas Layar (Top)</option>
-                </select>
+                </NativeSelect>
               </div>
 
               <div>
@@ -923,19 +918,20 @@ export function SubtitlePresetsTab() {
                     {subtitlePresetForm.offset_y}px
                   </span>
                 </div>
-                <input
-                  type="range"
+                <Slider
+                  appearance="workspace"
+                  aria-label="Offset vertikal subtitle"
                   min={-250}
                   max={250}
                   step={5}
-                  value={subtitlePresetForm.offset_y}
-                  onChange={(e) =>
+                  value={[subtitlePresetForm.offset_y]}
+                  onValueChange={([offset_y]) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      offset_y: parseInt(e.target.value),
+                      offset_y,
                     })
                   }
-                  className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                  className="mt-2"
                 />
               </div>
 
@@ -948,19 +944,20 @@ export function SubtitlePresetsTab() {
                     {subtitlePresetForm.offset_x}px
                   </span>
                 </div>
-                <input
-                  type="range"
+                <Slider
+                  appearance="workspace"
+                  aria-label="Offset horizontal subtitle"
                   min={-150}
                   max={150}
                   step={5}
-                  value={subtitlePresetForm.offset_x}
-                  onChange={(e) =>
+                  value={[subtitlePresetForm.offset_x]}
+                  onValueChange={([offset_x]) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      offset_x: parseInt(e.target.value),
+                      offset_x,
                     })
                   }
-                  className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                  className="mt-2"
                 />
               </div>
             </div>
@@ -968,10 +965,11 @@ export function SubtitlePresetsTab() {
 
           {/* Submit Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-            <button
+            <Button
               type="submit"
               disabled={updateSubtitlePresetMutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-xl shadow-brand-500/25 transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
+              variant="workspace-primary"
+              className="gap-2"
             >
               {updateSubtitlePresetMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -983,7 +981,7 @@ export function SubtitlePresetsTab() {
                   ? "Menyimpan..."
                   : "Simpan Perubahan Gaya Subtitle"}
               </span>
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -1004,13 +1002,15 @@ export function SubtitlePresetsTab() {
                   </p>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsCreateSubtitleModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                variant="workspace-quiet"
+                size="workspace-icon"
+                aria-label="Tutup dialog preset subtitle"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             <form
@@ -1022,7 +1022,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Nama Preset Subtitle <span className="text-rose-400">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     required
                     placeholder="Contoh: Cyber Neon Punch"
@@ -1039,7 +1039,7 @@ export function SubtitlePresetsTab() {
                         id: slug ? `sub_${slug}` : newSubtitlePresetForm.id,
                       });
                     }}
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-medium focus:outline-none focus:border-brand-500"
+                    className="text-xs font-medium"
                   />
                 </div>
 
@@ -1047,7 +1047,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     ID Identifier (Slug Unik) <span className="text-rose-400">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     required
                     placeholder="sub_cyber_neon"
@@ -1058,7 +1058,7 @@ export function SubtitlePresetsTab() {
                         id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"),
                       })
                     }
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+                    className="text-xs font-mono"
                   />
                 </div>
               </div>
@@ -1067,7 +1067,7 @@ export function SubtitlePresetsTab() {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Deskripsi Ringkas
                 </label>
-                <input
+                <Input
                   type="text"
                   placeholder="Contoh: Gaya teks tebal warna kuning neon dengan outline pekat..."
                   value={newSubtitlePresetForm.description}
@@ -1077,7 +1077,7 @@ export function SubtitlePresetsTab() {
                       description: e.target.value,
                     })
                   }
-                  className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                  className="text-xs"
                 />
               </div>
 
@@ -1086,7 +1086,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Font Family
                   </label>
-                  <select
+                  <NativeSelect
                     value={newSubtitlePresetForm.font_family}
                     onChange={(e) =>
                       setNewSubtitlePresetForm({
@@ -1094,33 +1094,33 @@ export function SubtitlePresetsTab() {
                         font_family: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     {FONT_OPTIONS.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Ukuran Font ({newSubtitlePresetForm.font_size}px)
                   </label>
-                  <input
-                    type="range"
+                  <Slider
+                    appearance="workspace"
+                    aria-label="Ukuran font subtitle baru"
                     min={32}
                     max={84}
                     step={2}
-                    value={newSubtitlePresetForm.font_size}
-                    onChange={(e) =>
+                    value={[newSubtitlePresetForm.font_size]}
+                    onValueChange={([font_size]) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        font_size: parseInt(e.target.value),
+                        font_size,
                       })
                     }
-                    className="w-full h-2 bg-surface rounded-lg cursor-pointer mt-2"
+                    className="mt-2"
                   />
                 </div>
 
@@ -1128,7 +1128,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Ketebalan (Weight)
                   </label>
-                  <select
+                  <NativeSelect
                     value={newSubtitlePresetForm.font_weight}
                     onChange={(e) =>
                       setNewSubtitlePresetForm({
@@ -1136,12 +1136,11 @@ export function SubtitlePresetsTab() {
                         font_weight: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="Normal">Normal</option>
                     <option value="Bold">Bold</option>
                     <option value="ExtraBold">Extra Bold</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
 
@@ -1210,7 +1209,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Mode Penampilan
                   </label>
-                  <select
+                  <NativeSelect
                     value={newSubtitlePresetForm.display_mode}
                     onChange={(e) =>
                       setNewSubtitlePresetForm({
@@ -1218,12 +1217,11 @@ export function SubtitlePresetsTab() {
                         display_mode: e.target.value as "per_word" | "burst" | "full_sentence",
                       })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="per_word">Per Kata (Karaoke)</option>
                     <option value="burst">Burst (2-3 Kata)</option>
                     <option value="full_sentence">Kalimat Penuh</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
 
@@ -1232,7 +1230,7 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Animasi Highlight
                   </label>
-                  <select
+                  <NativeSelect
                     value={newSubtitlePresetForm.highlight_animation}
                     onChange={(e) =>
                       setNewSubtitlePresetForm({
@@ -1240,20 +1238,19 @@ export function SubtitlePresetsTab() {
                         highlight_animation: e.target.value as "scale" | "color" | "box" | "none",
                       })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="color">Warna Glow (Halus)</option>
                     <option value="scale">Scale Up (Efek Punch Pop)</option>
                     <option value="box">Kotak Highlight Latar</option>
                     <option value="none">Tanpa Animasi</option>
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Posisi Layar
                   </label>
-                  <select
+                  <NativeSelect
                     value={newSubtitlePresetForm.position}
                     onChange={(e) =>
                       setNewSubtitlePresetForm({
@@ -1261,27 +1258,27 @@ export function SubtitlePresetsTab() {
                         position: e.target.value as "bottom" | "center" | "top",
                       })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="bottom">Bawah Layar (Bottom)</option>
                     <option value="center">Tengah Layar (Center)</option>
                     <option value="top">Atas Layar (Top)</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-surface-border flex items-center justify-end gap-3">
-                <button
+                <Button
                   type="button"
                   onClick={() => setIsCreateSubtitleModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface text-xs font-medium transition"
+                  variant="workspace-secondary"
                 >
                   Batal
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={createSubtitlePresetMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-lg shadow-brand-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
+                  variant="workspace-primary"
+                  className="gap-1.5"
                 >
                   {createSubtitlePresetMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1293,7 +1290,7 @@ export function SubtitlePresetsTab() {
                       ? "Menyimpan..."
                       : "Buat Preset Subtitle"}
                   </span>
-                </button>
+                </Button>
               </div>
             </form>
           </div>

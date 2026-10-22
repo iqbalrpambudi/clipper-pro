@@ -21,6 +21,7 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { NarrationTemplate } from "@/types";
+import { Badge, Button, Input, NativeSelect, Textarea, WorkspaceChip } from "@/components/ui";
 
 export function PromptTemplatesTab() {
   const queryClient = useQueryClient();
@@ -167,31 +168,33 @@ export function PromptTemplatesTab() {
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-brand-400" />
             <h3 className="text-sm font-bold text-white">Preset Template Naskah</h3>
-            <span className="text-[11px] text-slate-400">
-              ({templates.length} preset tersedia)
-            </span>
+            <span className="text-[11px] text-slate-400">({templates.length} preset tersedia)</span>
           </div>
-          <button
+          <Button
             type="button"
             onClick={handleOpenCreateModal}
-            className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+            variant="workspace-primary"
+            size="workspace-sm"
+            className="gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Preset Baru</span>
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {templates.map((tpl) => {
             const isSelected = selectedTemplateId === tpl.id;
             return (
-              <div
+              <button
                 key={tpl.id}
+                type="button"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedTemplateId(tpl.id)}
-                className={`rounded-xl p-4 border cursor-pointer transition-all flex flex-col justify-between ${
+                className={`w-full rounded-xl p-4 border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] transition-all flex flex-col justify-between ${
                   isSelected
-                    ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                    : "border-[#2E2E2E] hover:border-[#3E3E3E] bg-[#181818]"
+                    ? "border-[#C45B3A] bg-[#F8EEEA] shadow-xs ring-1 ring-[#C45B3A]/30"
+                    : "border-[#E5E1D7] hover:border-[#D8CFC2] bg-[#FBFAF7]"
                 }`}
               >
                 <div>
@@ -222,9 +225,7 @@ export function PromptTemplatesTab() {
                         {tpl.name}
                       </span>
                     </div>
-                    {isSelected && (
-                      <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />
-                    )}
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
                     {tpl.description || "Tidak ada deskripsi"}
@@ -232,28 +233,24 @@ export function PromptTemplatesTab() {
                 </div>
 
                 <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center gap-1.5">
-                  <span className="font-mono text-slate-400 truncate max-w-[100px]">
-                    {tpl.id}
-                  </span>
+                  <span className="font-mono text-slate-400 truncate max-w-[100px]">{tpl.id}</span>
                   {tpl.sub_category && (
-                    <span
-                      className="px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-slate-300 truncate max-w-[90px]"
+                    <Badge
+                      variant="workspace"
+                      className="max-w-[90px] truncate rounded px-1.5 py-0.5"
                       title={tpl.sub_category}
                     >
                       {tpl.sub_category}
-                    </span>
+                    </Badge>
                   )}
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
-                      tpl.is_builtin
-                        ? "bg-brand-500/20 text-brand-300"
-                        : "bg-emerald-500/20 text-emerald-300"
-                    }`}
+                  <Badge
+                    variant={tpl.is_builtin ? "workspace" : "workspace-success"}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[9px] uppercase"
                   >
                     {tpl.is_builtin ? "Bawaan" : "Kustom"}
-                  </span>
+                  </Badge>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -272,9 +269,7 @@ export function PromptTemplatesTab() {
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
                 <Code className="w-4 h-4 text-accent-yellow shrink-0" />
-                <span className="truncate">
-                  Editor Preset: {currentSelectedTemplate.name}
-                </span>
+                <span className="truncate">Editor Preset: {currentSelectedTemplate.name}</span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                 <span>ID Preset:</span>
@@ -295,17 +290,17 @@ export function PromptTemplatesTab() {
 
             <div className="flex items-center gap-2">
               {currentSelectedTemplate.is_builtin ? (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
-                    if (
-                      confirm("Reset prompt preset ini ke setelan standar bawaan pabrik?")
-                    ) {
+                    if (confirm("Reset prompt preset ini ke setelan standar bawaan pabrik?")) {
                       resetTemplateMutation.mutate();
                     }
                   }}
                   disabled={resetTemplateMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-surface border border-surface-border hover:bg-rose-500/10 hover:border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                  variant="workspace-secondary"
+                  size="workspace-sm"
+                  className="gap-1.5"
                   title="Kembalikan prompt ke teks standar pabrik"
                 >
                   {resetTemplateMutation.isPending ? (
@@ -314,9 +309,9 @@ export function PromptTemplatesTab() {
                     <RotateCcw className="w-3.5 h-3.5" />
                   )}
                   <span>Reset ke Default</span>
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     if (
@@ -328,7 +323,9 @@ export function PromptTemplatesTab() {
                     }
                   }}
                   disabled={deleteTemplateMutation.isPending}
-                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                  variant="workspace-destructive"
+                  size="workspace-sm"
+                  className="gap-1.5"
                   title="Hapus preset kustom ini"
                 >
                   {deleteTemplateMutation.isPending ? (
@@ -337,7 +334,7 @@ export function PromptTemplatesTab() {
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                   )}
                   <span>Hapus Preset</span>
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -348,11 +345,11 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Nama Preset Naskah
               </label>
-              <input
+              <Input
                 type="text"
                 value={templateForm.name}
                 onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                className="text-xs font-semibold"
                 placeholder="Contoh: Fakta Sains Populer"
                 required
               />
@@ -362,12 +359,9 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Tone Bawaan (Gaya Bahasa)
               </label>
-              <select
+              <NativeSelect
                 value={templateForm.default_tone}
-                onChange={(e) =>
-                  setTemplateForm({ ...templateForm, default_tone: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                onChange={(e) => setTemplateForm({ ...templateForm, default_tone: e.target.value })}
               >
                 <option value="santai">Santai (Casual & Friendly)</option>
                 <option value="tegang">Tegang (Tense & Gripping)</option>
@@ -377,19 +371,16 @@ export function PromptTemplatesTab() {
                 <option value="berwibawa">Berwibawa (Authoritative)</option>
                 <option value="mencekam">Mencekam (Creepy & Dark)</option>
                 <option value="hangat">Hangat (Warm & Touching)</option>
-              </select>
+              </NativeSelect>
             </div>
 
             <div className="sm:col-span-1">
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Preset / Kategori
               </label>
-              <select
+              <NativeSelect
                 value={templateForm.category}
-                onChange={(e) =>
-                  setTemplateForm({ ...templateForm, category: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
               >
                 <option value="recap">Alur Cerita & Story</option>
                 <option value="fakta">Fakta & Trivia</option>
@@ -397,20 +388,18 @@ export function PromptTemplatesTab() {
                 <option value="showcase">Showcase & Review</option>
                 <option value="opini">Opini & POV</option>
                 <option value="custom">Kustom</option>
-              </select>
+              </NativeSelect>
             </div>
 
             <div className="sm:col-span-1">
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Sub-kategori (Opsional)
               </label>
-              <input
+              <Input
                 type="text"
                 value={templateForm.sub_category}
-                onChange={(e) =>
-                  setTemplateForm({ ...templateForm, sub_category: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                onChange={(e) => setTemplateForm({ ...templateForm, sub_category: e.target.value })}
+                className="text-xs"
                 placeholder="Mis. Aksi, Komedi, POV Imersif, Bongkar Mitos..."
               />
             </div>
@@ -419,13 +408,11 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Deskripsi Ringkas
               </label>
-              <input
+              <Input
                 type="text"
                 value={templateForm.description}
-                onChange={(e) =>
-                  setTemplateForm({ ...templateForm, description: e.target.value })
-                }
-                className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                className="text-xs"
                 placeholder="Contoh: Format naskah ringkas edukatif..."
               />
             </div>
@@ -437,22 +424,18 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-bold text-white flex items-center gap-1.5">
                 <span>1. System Prompt (Aturan Persona, Gaya Bahasa & Struktur AI)</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                Instruksi Primer LLM
-              </span>
+              <span className="text-[10px] text-slate-400 font-mono">Instruksi Primer LLM</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10
-              kata), struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan
-              pertanyaan penutup (CTA).
+              System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata),
+              struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan pertanyaan
+              penutup (CTA).
             </p>
-            <textarea
+            <Textarea
               rows={9}
               value={templateForm.system_prompt}
-              onChange={(e) =>
-                setTemplateForm({ ...templateForm, system_prompt: e.target.value })
-              }
-              className="w-full p-4 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500 transition selection:bg-brand-500/30"
+              onChange={(e) => setTemplateForm({ ...templateForm, system_prompt: e.target.value })}
+              className="text-xs font-mono leading-relaxed"
               placeholder="Instruksi system prompt untuk AI..."
               required
             />
@@ -464,45 +447,38 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-bold text-white">
                 2. User Prompt Template (Format Input & Variabel)
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                Template Format Dinamis
-              </span>
+              <span className="text-[10px] text-slate-400 font-mono">Template Format Dinamis</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam
-              prompt:
+              Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam prompt:
             </p>
             <div className="flex flex-wrap gap-1.5 py-1">
-              {[
-                "{topic}",
-                "{tone}",
-                "{target_duration}",
-                "{word_count}",
-                "{scene_context}",
-              ].map((token) => (
-                <button
-                  type="button"
-                  key={token}
-                  onClick={() => {
-                    setTemplateForm((prev) => ({
-                      ...prev,
-                      user_prompt_template: prev.user_prompt_template + " " + token,
-                    }));
-                  }}
-                  className="px-2 py-0.5 rounded bg-surface hover:bg-brand-500/20 border border-surface-border text-[11px] font-mono text-brand-300 transition"
-                  title="Klik untuk menambahkan variabel"
-                >
-                  + {token}
-                </button>
-              ))}
+              {["{topic}", "{tone}", "{target_duration}", "{word_count}", "{scene_context}"].map(
+                (token) => (
+                  <WorkspaceChip
+                    type="button"
+                    key={token}
+                    onClick={() => {
+                      setTemplateForm((prev) => ({
+                        ...prev,
+                        user_prompt_template: prev.user_prompt_template + " " + token,
+                      }));
+                    }}
+                    className="font-mono"
+                    title="Klik untuk menambahkan variabel"
+                  >
+                    + {token}
+                  </WorkspaceChip>
+                )
+              )}
             </div>
-            <textarea
+            <Textarea
               rows={6}
               value={templateForm.user_prompt_template}
               onChange={(e) =>
                 setTemplateForm({ ...templateForm, user_prompt_template: e.target.value })
               }
-              className="w-full p-4 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500 transition selection:bg-brand-500/30"
+              className="text-xs font-mono leading-relaxed"
               placeholder="Template prompt user..."
               required
             />
@@ -510,10 +486,11 @@ export function PromptTemplatesTab() {
 
           {/* Submit Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-            <button
+            <Button
               type="submit"
               disabled={updateTemplateMutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-xl shadow-brand-500/25 transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
+              variant="workspace-primary"
+              className="gap-2"
             >
               {updateTemplateMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -521,11 +498,9 @@ export function PromptTemplatesTab() {
                 <Check className="w-4 h-4" />
               )}
               <span>
-                {updateTemplateMutation.isPending
-                  ? "Menyimpan..."
-                  : "Simpan Perubahan Preset"}
+                {updateTemplateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Preset"}
               </span>
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -546,13 +521,15 @@ export function PromptTemplatesTab() {
                   </p>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                variant="workspace-quiet"
+                size="workspace-icon"
+                aria-label="Tutup dialog preset naskah"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             <form
@@ -564,7 +541,7 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Nama Preset <span className="text-rose-400">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     required
                     placeholder="Contoh: Review Produk Unboxing"
@@ -581,7 +558,7 @@ export function PromptTemplatesTab() {
                         id: slug ? `preset_${slug}` : newTemplateForm.id,
                       });
                     }}
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-medium focus:outline-none focus:border-brand-500"
+                    className="text-xs font-medium"
                   />
                 </div>
 
@@ -589,7 +566,7 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     ID Identifier (Slug Unik) <span className="text-rose-400">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     required
                     placeholder="preset_review_unboxing"
@@ -600,7 +577,7 @@ export function PromptTemplatesTab() {
                         id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"),
                       })
                     }
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+                    className="text-xs font-mono"
                   />
                 </div>
               </div>
@@ -610,12 +587,11 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Tone Bawaan
                   </label>
-                  <select
+                  <NativeSelect
                     value={newTemplateForm.default_tone}
                     onChange={(e) =>
                       setNewTemplateForm({ ...newTemplateForm, default_tone: e.target.value })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="santai">Santai (Casual & Friendly)</option>
                     <option value="tegang">Tegang (Tense & Gripping)</option>
@@ -625,21 +601,21 @@ export function PromptTemplatesTab() {
                     <option value="berwibawa">Berwibawa (Authoritative)</option>
                     <option value="mencekam">Mencekam (Creepy & Dark)</option>
                     <option value="hangat">Hangat (Warm & Touching)</option>
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Deskripsi Ringkas
                   </label>
-                  <input
+                  <Input
                     type="text"
                     placeholder="Contoh: Format naskah khusus affiliate dan unboxing"
                     value={newTemplateForm.description}
                     onChange={(e) =>
                       setNewTemplateForm({ ...newTemplateForm, description: e.target.value })
                     }
-                    className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    className="text-xs"
                   />
                 </div>
               </div>
@@ -649,12 +625,11 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Preset / Kategori
                   </label>
-                  <select
+                  <NativeSelect
                     value={newTemplateForm.category}
                     onChange={(e) =>
                       setNewTemplateForm({ ...newTemplateForm, category: e.target.value })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option value="custom">Kustom</option>
                     <option value="recap">Alur Cerita & Story</option>
@@ -662,21 +637,21 @@ export function PromptTemplatesTab() {
                     <option value="edukasi">Edukasi & Tips</option>
                     <option value="showcase">Showcase & Review</option>
                     <option value="opini">Opini & POV</option>
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Sub-kategori (Opsional)
                   </label>
-                  <input
+                  <Input
                     type="text"
                     placeholder="Mis. Aksi, POV Imersif, Bongkar Mitos..."
                     value={newTemplateForm.sub_category}
                     onChange={(e) =>
                       setNewTemplateForm({ ...newTemplateForm, sub_category: e.target.value })
                     }
-                    className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-brand-500"
+                    className="text-xs"
                   />
                 </div>
               </div>
@@ -686,7 +661,7 @@ export function PromptTemplatesTab() {
                   1. System Prompt (Instruksi Persona & Struktur Naskah){" "}
                   <span className="text-rose-400">*</span>
                 </label>
-                <textarea
+                <Textarea
                   rows={5}
                   required
                   value={newTemplateForm.system_prompt}
@@ -694,7 +669,7 @@ export function PromptTemplatesTab() {
                     setNewTemplateForm({ ...newTemplateForm, system_prompt: e.target.value })
                   }
                   placeholder="Instruksi sistem persona dan format naskah..."
-                  className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
+                  className="text-xs font-mono leading-relaxed"
                 />
               </div>
 
@@ -711,7 +686,7 @@ export function PromptTemplatesTab() {
                       "{word_count}",
                       "{scene_context}",
                     ].map((token) => (
-                      <button
+                      <WorkspaceChip
                         type="button"
                         key={token}
                         onClick={() => {
@@ -720,14 +695,15 @@ export function PromptTemplatesTab() {
                             user_prompt_template: prev.user_prompt_template + " " + token,
                           }));
                         }}
-                        className="px-1.5 py-0.2 rounded bg-surface hover:bg-brand-500/20 border border-surface-border text-[10px] font-mono text-brand-300 transition"
+                        size="sm"
+                        className="min-h-7 px-2 font-mono text-[10px]"
                       >
                         + {token}
-                      </button>
+                      </WorkspaceChip>
                     ))}
                   </div>
                 </div>
-                <textarea
+                <Textarea
                   rows={4}
                   required
                   value={newTemplateForm.user_prompt_template}
@@ -735,22 +711,23 @@ export function PromptTemplatesTab() {
                     setNewTemplateForm({ ...newTemplateForm, user_prompt_template: e.target.value })
                   }
                   placeholder="Template format variabel..."
-                  className="w-full p-3 bg-black/60 rounded-xl border border-surface-border text-slate-200 text-xs font-mono leading-relaxed focus:outline-none focus:border-brand-500"
+                  className="text-xs font-mono leading-relaxed"
                 />
               </div>
 
               <div className="pt-3 border-t border-surface-border flex items-center justify-end gap-3">
-                <button
+                <Button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-surface text-xs font-medium transition"
+                  variant="workspace-secondary"
                 >
                   Batal
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={createTemplateMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-lg shadow-brand-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
+                  variant="workspace-primary"
+                  className="gap-1.5"
                 >
                   {createTemplateMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -760,7 +737,7 @@ export function PromptTemplatesTab() {
                   <span>
                     {createTemplateMutation.isPending ? "Menyimpan..." : "Buat Preset Naskah"}
                   </span>
-                </button>
+                </Button>
               </div>
             </form>
           </div>

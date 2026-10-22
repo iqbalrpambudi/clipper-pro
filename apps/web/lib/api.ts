@@ -278,7 +278,12 @@ export const api = {
     }),
   realignTTS: (
     projectId: string,
-    data?: { offset_ms?: number; language?: string; model_size?: string; segments?: SentenceSegment[] }
+    data?: {
+      offset_ms?: number;
+      language?: string;
+      model_size?: string;
+      segments?: SentenceSegment[];
+    }
   ) =>
     request<Narration>(`/api/v1/projects/${projectId}/tts/realign`, {
       method: "POST",
@@ -291,7 +296,12 @@ export const api = {
   getTimeline: (projectId: string) => request<Timeline>(`/api/v1/projects/${projectId}/timeline`),
   updateTimeline: (
     projectId: string,
-    data: { clips: TimelineClip[]; total_duration?: number; has_audio?: boolean; has_subtitles?: boolean }
+    data: {
+      clips: TimelineClip[];
+      total_duration?: number;
+      has_audio?: boolean;
+      has_subtitles?: boolean;
+    }
   ) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline`, {
       method: "PUT",
@@ -639,7 +649,7 @@ export const api = {
       }
     ),
 
-  // AI Visual Image Studio & Presets
+  // AI Art Studio & Presets
   getImagePresets: () => request<ImagePreset[]>("/api/v1/image-presets"),
   getImagePreset: (id: string) => request<ImagePreset>(`/api/v1/image-presets/${id}`),
   createImagePreset: (data: Partial<ImagePreset>) =>
@@ -680,6 +690,7 @@ export const api = {
   },
   analyzeStylePreset: (data: {
     user_text: string;
+    preset_type?: ImagePreset["preset_type"];
     reference_image_url?: string;
     reference_image_path?: string;
   }) =>
@@ -689,6 +700,7 @@ export const api = {
     }),
   testGeneratePresetImage: (data: {
     master_prompt: string;
+    negative_prompt?: string;
     scene_prompt?: string;
     aspect_ratio?: string;
   }) =>

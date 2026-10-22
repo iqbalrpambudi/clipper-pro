@@ -1,414 +1,1184 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Palette,
-  Save,
-  RotateCcw,
-  SlidersHorizontal,
-  FolderOpen,
   ArrowLeft,
+  ArrowRight,
+  Blend,
+  Check,
+  CheckCircle2,
+  Image as ImageIcon,
   Loader2,
+  Palette,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  Upload,
+  UserRound,
+  WandSparkles,
 } from "lucide-react";
+import { WorkspaceShell } from "@/components/layout";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  NativeSelect,
+  Textarea,
+  WorkspaceChip,
+} from "@/components/ui";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { ImagePreset, StudioAnalysisResult } from "@/types";
-import { Button, Badge } from "@/components/ui";
-import { ImageStudioSynthesizer } from "./_components/ImageStudioSynthesizer";
-import { ImageStudioTester } from "./_components/ImageStudioTester";
-import { ImagePresetsDialog, ImageZoomModal } from "./_components/ImageStudioDialogs";
+import type { ImagePreset, StudioAnalysisResult } from "@/types";
+import { ImageZoomModal } from "./_components/ImageZoomModal";
+import { QUICK_INSPIRATION_TAGS, SAMPLE_SCENES } from "./_components/constants";
+
+type PresetType = ImagePreset["preset_type"];
+type StudioStep = "design" | "sample" | "test";
+type TestImage = { url: string; prompt: string };
+
+const typeOptions: {
+  value: PresetType;
+  label: string;
+  description: string;
+  icon: typeof Palette;
+}[] = [
+  {
+    value: "style",
+    label: "Gaya ilustrasi",
+    description: "Medium, warna, garis, dan suasana visual",
+    icon: Palette,
+  },
+  {
+    value: "character",
+    label: "Karakter",
+    description: "Sosok dan ciri yang ingin dikenali",
+    icon: UserRound,
+  },
+  {
+    value: "combined",
+    label: "Gaya + karakter",
+    description: "Bangun dunia visual beserta tokohnya",
+    icon: Blend,
+  },
+];
+
+const stepOptions: { id: StudioStep; label: string }[] = [
+  { id: "design", label: "Rancang" },
+  { id: "sample", label: "Buat contoh" },
+  { id: "test", label: "Uji prompt" },
+];
+
+const samplePromptFor = (type: PresetType) =>
+  type === "character"
+    ? "Satu karakter tampak seluruh tubuh, berdiri dengan pose percaya diri di latar sederhana"
+    : type === "combined"
+      ? "Seorang tokoh utama menjelajahi tempat yang memperlihatkan dunia visualnya"
+      : "Sebuah adegan sederhana yang memperlihatkan tekstur, garis, dan palet warna gaya ini";
+
+const analysisKeyFor = (type: PresetType, text: string, reference: string) =>
+  JSON.stringify([type, text.trim(), reference]);
+
+const typeLabel = (type: PresetType) =>
+  typeOptions.find((option) => option.value === type)?.label ?? "Gaya ilustrasi";
+
+function InlineError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p
+      role="alert"
+      className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800"
+    >
+      {message}
+    </p>
+  );
+}
+
+function PresetCard({
+  preset,
+  onEdit,
+  onActivate,
+  onDelete,
+  isActivating,
+}: {
+  preset: ImagePreset;
+  onEdit: (preset: ImagePreset) => void;
+  onActivate: (id: string) => void;
+  onDelete: (preset: ImagePreset) => void;
+  isActivating: boolean;
+}) {
+  const palette = preset.style_attributes?.palette?.slice(0, 5) ?? [];
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] shadow-[0_10px_30px_rgba(50,43,30,0.04)]">
+      <div className="relative aspect-[16/9] overflow-hidden bg-[#171717]">
+        {preset.preview_image_url ? (
+          <img
+            src={preset.preview_image_url}
+            alt={`Pratinjau ${preset.name}`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center bg-[radial-gradient(ellipse_at_50%_115%,#c45b3a_0%,#aeb39c_22%,#e9e4d7_23%,#e9e4d7_24%,#171717_25%)]">
+            <div className="rounded-full border border-white/20 bg-black/35 p-4 text-white/70">
+              <ImageIcon className="h-7 w-7" aria-hidden="true" />
+            </div>
+          </div>
+        )}
+        <div className="absolute left-3 top-3 flex gap-2">
+          <Badge variant="workspace">{typeLabel(preset.preset_type ?? "style")}</Badge>
+          {preset.is_active && <Badge variant="workspace-success">Aktif di storyboard</Badge>}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-[#26251F]">{preset.name}</h2>
+            <p className="mt-1 line-clamp-2 min-h-9 text-xs leading-5 text-[#77766D]">
+              {preset.description || preset.master_prompt}
+            </p>
+          </div>
+          {preset.is_builtin && <Badge variant="workspace-accent">Bawaan</Badge>}
+        </div>
+
+        {palette.length > 0 && (
+          <div
+            className="mt-3 flex items-center gap-1.5"
+            role="img"
+            aria-label={`Palet warna: ${palette.join(", ")}`}
+          >
+            {palette.map((color, index) => {
+              const hex = color.match(/#[\da-f]{6}/i)?.[0] ?? "#D8D2C4";
+              return (
+                <span
+                  key={`${color}-${index}`}
+                  className="h-2 flex-1 rounded-full"
+                  style={{ backgroundColor: hex }}
+                  title={color}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[#E5E1D7] pt-3">
+          <Button size="sm" variant="workspace-secondary" onClick={() => onEdit(preset)}>
+            Buka di Studio
+          </Button>
+          {!preset.is_active && (
+            <Button
+              size="sm"
+              variant="workspace-primary"
+              onClick={() => onActivate(preset.id)}
+              disabled={isActivating}
+            >
+              Aktifkan
+            </Button>
+          )}
+          {!preset.is_builtin && (
+            <Button
+              size="icon"
+              variant="workspace-quiet"
+              className="ml-auto text-rose-700 hover:bg-rose-50"
+              aria-label={`Hapus preset ${preset.name}`}
+              onClick={() => onDelete(preset)}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function ImageStudioPage() {
   const queryClient = useQueryClient();
   const { showToast } = useStudioStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Form State
-  const [userText, setUserText] = useState(
-    "Doodle stickman hitam putih vintage parchment watercolor"
-  );
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string>(
-    "/storage/presets/doodle_ref.png"
-  );
-  const [referenceImagePath, setReferenceImagePath] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
-
-  // Analysis / Synthesized Preset State
-  const [presetName, setPresetName] = useState("Doodle Ilustrasi");
-  const [category, setCategory] = useState("doodle");
-  const [description, setDescription] = useState(
-    "Gaya sketsa stickman berkepala bulat botak di atas kertas parchment kuno, tinta hitam ekspresif, dan sapuan cat air hangat sepia."
-  );
+  const [view, setView] = useState<"collection" | "studio">("collection");
+  const [step, setStep] = useState<StudioStep>("design");
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [presetType, setPresetType] = useState<PresetType>("style");
+  const [analyzedInputKey, setAnalyzedInputKey] = useState<string | null>(null);
+  const [userText, setUserText] = useState("");
+  const [referenceImageUrl, setReferenceImageUrl] = useState("");
+  const [referenceImagePath, setReferenceImagePath] = useState("");
+  const [presetName, setPresetName] = useState("");
+  const [category, setCategory] = useState("custom");
+  const [description, setDescription] = useState("");
   const [masterPrompt, setMasterPrompt] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState(
-    "No 3D CGI, no photorealism, no modern digital glossy gradients, no clutter, no digital text artifacts, no blurry details, no photorealistic humans."
-  );
+  const [negativePrompt, setNegativePrompt] = useState("");
   const [styleAttributes, setStyleAttributes] = useState<
     StudioAnalysisResult["style_attributes"] | null
   >(null);
-
-  // Test Generator State
-  const [scenePrompt, setScenePrompt] = useState(
-    "Seorang kakek bijak menceritakan kisah kuno di samping lentera minyak di bawah pohon rindang"
-  );
-  const [previewImageUrl, setPreviewImageUrl] = useState<string>(
-    "/storage/presets/doodle_preview.png"
-  );
-  const [testImageHistory, setTestImageHistory] = useState<string[]>([]);
-  const [isCopied, setIsCopied] = useState(false);
-
-  // Modals & Viewers
-  const [isPresetListOpen, setIsPresetListOpen] = useState(false);
-  const [selectedPresetForEdit, setSelectedPresetForEdit] = useState<ImagePreset | null>(null);
+  const [representativePrompt, setRepresentativePrompt] = useState(samplePromptFor("style"));
+  const [representativeImageUrl, setRepresentativeImageUrl] = useState("");
+  const [scenePrompt, setScenePrompt] = useState("");
+  const [testImages, setTestImages] = useState<TestImage[]>([]);
+  const [selectedTestImage, setSelectedTestImage] = useState<TestImage | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ImagePreset | null>(null);
   const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
-  const [saveTarget, setSaveTarget] = useState<"doodle-ilustrasi" | "new" | "active_id">(
-    "doodle-ilustrasi"
-  );
 
-  // Query: Get all presets
-  const { data: presets = [], isLoading: isLoadingPresets } = useQuery({
+  const presetsQuery = useQuery({
     queryKey: ["image-presets"],
     queryFn: api.getImagePresets,
   });
+  const presets = presetsQuery.data ?? [];
+  const activePreset = presets.find((preset) => preset.is_active);
+  const currentStepIndex = stepOptions.findIndex((option) => option.id === step);
 
-  const activePreset = presets.find((p) => p.is_active) || presets[0];
-
-  // Set initial master prompt from active preset once loaded
-  useEffect(() => {
-    if (activePreset && !masterPrompt) {
-      setPresetName(activePreset.name);
-      setCategory(activePreset.category);
-      setDescription(activePreset.description || "");
-      setMasterPrompt(activePreset.master_prompt);
-      if (activePreset.negative_prompt) setNegativePrompt(activePreset.negative_prompt);
-      if (activePreset.reference_image_url) setReferenceImageUrl(activePreset.reference_image_url);
-      if (activePreset.preview_image_url) setPreviewImageUrl(activePreset.preview_image_url);
-      if (activePreset.user_text_input) setUserText(activePreset.user_text_input);
-      if (activePreset.style_attributes) setStyleAttributes(activePreset.style_attributes);
-    }
-  }, [activePreset, masterPrompt]);
-
-  // Mutation: Upload reference image
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => api.uploadReferenceImage(file),
-    onSuccess: (res) => {
-      setReferenceImageUrl(res.url);
-      setReferenceImagePath(res.file_path);
-      showToast("Gambar referensi berhasil diunggah!", "success");
+    mutationFn: api.uploadReferenceImage,
+    onSuccess: (image) => {
+      setReferenceImageUrl(image.url);
+      setReferenceImagePath(image.file_path);
+      setRepresentativeImageUrl("");
     },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal mengunggah gambar", "error");
-    },
-    onSettled: () => setIsUploading(false),
   });
-
-  // Mutation: Analyze & Synthesize Style
   const analyzeMutation = useMutation({
     mutationFn: () =>
       api.analyzeStylePreset({
         user_text: userText.trim(),
-        reference_image_url: referenceImageUrl,
+        preset_type: presetType,
+        reference_image_url: referenceImageUrl || undefined,
         reference_image_path: referenceImagePath || undefined,
       }),
-    onSuccess: (res) => {
-      setPresetName(res.name);
-      setCategory(res.category);
-      setDescription(res.description);
-      setMasterPrompt(res.master_prompt);
-      setNegativePrompt(res.negative_prompt);
-      setStyleAttributes(res.style_attributes);
-      showToast("Master Prompt & gaya visual berhasil disintesis oleh AI!", "success");
-    },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal menganalisis gaya visual", "error");
+    onSuccess: (result) => {
+      setPresetName(result.name);
+      setCategory(result.category);
+      setDescription(result.description);
+      setMasterPrompt(result.master_prompt);
+      setNegativePrompt(result.negative_prompt);
+      setStyleAttributes(result.style_attributes);
+      setAnalyzedInputKey(analysisKeyFor(presetType, userText, referenceImageUrl));
+      setStep("sample");
+      showToast("Rancangan preset siap ditinjau.", "success");
     },
   });
-
-  // Mutation: Generate Test Image
-  const testGenerateMutation = useMutation({
+  const representativeMutation = useMutation({
     mutationFn: () =>
       api.testGeneratePresetImage({
         master_prompt: masterPrompt.trim(),
+        negative_prompt: negativePrompt.trim() || undefined,
+        scene_prompt: representativePrompt.trim(),
+        aspect_ratio: "16:9",
+      }),
+    onSuccess: (result) => {
+      setRepresentativeImageUrl(result.image_url);
+      setSelectedTestImage(null);
+      showToast("Gambar contoh berhasil dibuat.", "success");
+    },
+  });
+  const testMutation = useMutation({
+    mutationFn: () =>
+      api.testGeneratePresetImage({
+        master_prompt: masterPrompt.trim(),
+        negative_prompt: negativePrompt.trim() || undefined,
         scene_prompt: scenePrompt.trim(),
         aspect_ratio: "16:9",
       }),
-    onSuccess: (res) => {
-      setPreviewImageUrl(res.image_url);
-      setTestImageHistory((prev) => [res.image_url, ...prev.filter((u) => u !== res.image_url)]);
-      showToast("Gambar uji coba 16:9 berhasil di-generate!", "success");
-    },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal generate gambar uji coba", "error");
+    onSuccess: (result) => {
+      const image = { url: result.image_url, prompt: result.prompt_used };
+      setTestImages((previous) => [image, ...previous]);
+      setSelectedTestImage(image);
+      showToast("Hasil uji prompt siap.", "success");
     },
   });
-
-  // Mutation: Save Preset
-  const savePresetMutation = useMutation({
-    mutationFn: (asActive: boolean) => {
-      const presetId =
-        saveTarget === "doodle-ilustrasi"
-          ? "doodle-ilustrasi"
-          : selectedPresetForEdit && saveTarget === "active_id"
-            ? selectedPresetForEdit.id
-            : `preset-${Date.now()}`;
-
-      return api.createImagePreset({
-        id: presetId,
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      api.createImagePreset({
+        id: editingPresetId ?? undefined,
         name: presetName.trim(),
-        category: category || "custom",
+        category,
+        preset_type: presetType,
         description: description.trim(),
         master_prompt: masterPrompt.trim(),
         negative_prompt: negativePrompt.trim(),
-        reference_image_url: referenceImageUrl,
-        preview_image_url: previewImageUrl,
+        reference_image_url: referenceImageUrl || null,
+        preview_image_url: representativeImageUrl || null,
         user_text_input: userText.trim(),
-        style_attributes: styleAttributes || undefined,
-        is_active: asActive,
-      });
-    },
+        style_attributes: styleAttributes ?? undefined,
+        is_active: false,
+      }),
     onSuccess: (saved) => {
-      queryClient.invalidateQueries({ queryKey: ["image-presets"] });
+      setEditingPresetId(saved.id);
+      void queryClient.invalidateQueries({ queryKey: ["image-presets"] });
+      setView("collection");
       showToast(
-        `Preset '${saved.name}' berhasil disimpan ${saved.is_active ? "dan diterapkan ke Ilustrasi AI!" : "!"}`,
+        saved.is_active
+          ? `“${saved.name}” tersimpan. Preset ini sudah aktif di storyboard.`
+          : `“${saved.name}” tersimpan. Aktifkan dari koleksi jika ingin memakainya di storyboard.`,
         "success"
       );
     },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal menyimpan preset", "error");
-    },
   });
-
-  // Mutation: Activate preset
   const activateMutation = useMutation({
-    mutationFn: (id: string) => api.activateImagePreset(id),
+    mutationFn: api.activateImagePreset,
     onSuccess: (preset) => {
-      queryClient.invalidateQueries({ queryKey: ["image-presets"] });
-      showToast(`Preset '${preset.name}' kini aktif untuk semua Ilustrasi AI!`, "success");
-    },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal mengaktifkan preset", "error");
+      void queryClient.invalidateQueries({ queryKey: ["image-presets"] });
+      showToast(`“${preset.name}” aktif untuk storyboard.`, "success");
     },
   });
-
-  // Mutation: Delete preset
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deleteImagePreset(id),
+    mutationFn: api.deleteImagePreset,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["image-presets"] });
-      showToast("Preset berhasil dihapus", "info");
-    },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal menghapus preset", "error");
+      void queryClient.invalidateQueries({ queryKey: ["image-presets"] });
+      setDeleteTarget(null);
+      showToast("Preset dihapus.", "success");
     },
   });
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    uploadMutation.mutate(file);
+  const resetDraft = () => {
+    setEditingPresetId(null);
+    setPresetType("style");
+    setAnalyzedInputKey(null);
+    setUserText("");
+    setReferenceImageUrl("");
+    setReferenceImagePath("");
+    setPresetName("");
+    setCategory("custom");
+    setDescription("");
+    setMasterPrompt("");
+    setNegativePrompt("");
+    setStyleAttributes(null);
+    setRepresentativePrompt(samplePromptFor("style"));
+    setRepresentativeImageUrl("");
+    setScenePrompt("");
+    setTestImages([]);
+    setSelectedTestImage(null);
+    setStep("design");
+    analyzeMutation.reset();
+    uploadMutation.reset();
+    representativeMutation.reset();
+    testMutation.reset();
+    saveMutation.reset();
   };
 
-  const handleCopyPrompt = () => {
-    if (!masterPrompt) return;
-    navigator.clipboard.writeText(masterPrompt);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-    showToast("Master Prompt disalin ke clipboard!", "info");
+  const createPreset = () => {
+    resetDraft();
+    setView("studio");
   };
 
-  const loadPresetIntoStudio = (p: ImagePreset) => {
-    setSelectedPresetForEdit(p);
-    setSaveTarget(p.id === "doodle-ilustrasi" ? "doodle-ilustrasi" : "active_id");
-    setPresetName(p.name);
-    setCategory(p.category);
-    setDescription(p.description || "");
-    setMasterPrompt(p.master_prompt);
-    if (p.negative_prompt) setNegativePrompt(p.negative_prompt);
-    if (p.reference_image_url) setReferenceImageUrl(p.reference_image_url);
-    if (p.preview_image_url) setPreviewImageUrl(p.preview_image_url);
-    if (p.user_text_input) setUserText(p.user_text_input);
-    if (p.style_attributes) setStyleAttributes(p.style_attributes);
-    setIsPresetListOpen(false);
-    showToast(`Preset '${p.name}' dimuat ke Studio!`, "info");
+  const editPreset = (preset: ImagePreset) => {
+    setEditingPresetId(preset.id);
+    setPresetType(preset.preset_type ?? "style");
+    setUserText(preset.user_text_input ?? "");
+    setReferenceImageUrl(preset.reference_image_url ?? "");
+    setReferenceImagePath("");
+    setPresetName(preset.name);
+    setCategory(preset.category);
+    setDescription(preset.description ?? "");
+    setMasterPrompt(preset.master_prompt);
+    setNegativePrompt(preset.negative_prompt ?? "");
+    setStyleAttributes(preset.style_attributes ?? null);
+    setRepresentativePrompt(samplePromptFor(preset.preset_type ?? "style"));
+    setRepresentativeImageUrl(preset.preview_image_url ?? "");
+    setAnalyzedInputKey(
+      analysisKeyFor(
+        preset.preset_type ?? "style",
+        preset.user_text_input ?? "",
+        preset.reference_image_url ?? ""
+      )
+    );
+    setScenePrompt("");
+    setTestImages([]);
+    setSelectedTestImage(null);
+    setStep("design");
+    analyzeMutation.reset();
+    representativeMutation.reset();
+    testMutation.reset();
+    saveMutation.reset();
+    setView("studio");
   };
 
-  const handleResetToDoodle = () => {
-    const doodle = presets.find((p) => p.id === "doodle-ilustrasi");
-    if (doodle) {
-      loadPresetIntoStudio(doodle);
-    }
+  const handleUpload = (file?: File) => {
+    if (file) uploadMutation.mutate(file);
   };
+  const handleSelectType = (type: PresetType) => {
+    setPresetType(type);
+    setRepresentativeImageUrl("");
+    setRepresentativePrompt(samplePromptFor(type));
+  };
+
+  const errorMessage = (error: Error | null) => error?.message;
+  const currentAnalysisKey = analysisKeyFor(presetType, userText, referenceImageUrl);
+  const canAnalyze = Boolean(userText.trim() || referenceImageUrl);
+  const hasCurrentAnalysis = Boolean(masterPrompt && analyzedInputKey === currentAnalysisKey);
+  const canSave = Boolean(presetName.trim() && masterPrompt.trim() && hasCurrentAnalysis);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#121212] text-foreground">
-      {/* Top Navbar */}
-      <header className="border-b border-[#2E2E2E] bg-[#171717]/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="w-9 h-9 rounded-xl bg-surface border border-surface-border flex items-center justify-center text-muted-foreground hover:text-white hover:bg-white/10 transition"
-              title="Kembali ke Dashboard"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-violet-500/20 text-white">
-              <Palette className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight text-white font-sans">
-                  AI Visual Image Studio
-                </span>
-                <Badge variant="supabase" className="text-[10px] uppercase font-mono tracking-wider">
-                  Preset Studio
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Sintesis Master Prompt & Preset Gaya Ilustrasi Storyboard AI
-              </p>
-            </div>
+    <WorkspaceShell activePage="image-studio">
+      <div className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-7 lg:px-10 lg:py-10">
+        <header className="mb-8 flex flex-col justify-between gap-5 border-b border-[#DCD6C8] pb-6 md:flex-row md:items-end">
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A7768]">
+              Visual development · Preset workshop
+            </p>
+            <h1 className="font-serif text-4xl tracking-tight text-[#26251F] sm:text-5xl">
+              Art Studio
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[#77766D]">
+              Bangun bahasa visual dan karakter, lihat hasilnya, lalu uji dengan adegan cerita.
+            </p>
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPresetListOpen(true)}
-              className="gap-2 text-xs border-border text-slate-300 hover:text-white"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-violet-400" />
-              <span>Daftar Preset</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-mono text-[10px]">
-                {presets.length}
-              </span>
+          {view === "collection" ? (
+            <Button variant="workspace-primary" onClick={createPreset} className="gap-2">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Buat preset
             </Button>
-
-            <Link href="/settings">
-              <Button variant="outline" size="sm" className="gap-2 text-xs border-border text-slate-300">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
-                <span>Model Settings</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="workspace-secondary" onClick={() => setView("collection")}>
+                <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                Koleksi
               </Button>
-            </Link>
+              <Button
+                variant="workspace-primary"
+                onClick={() => saveMutation.mutate()}
+                disabled={!canSave || saveMutation.isPending}
+              >
+                {saveMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                Simpan preset
+              </Button>
+            </div>
+          )}
+        </header>
 
-            <Button
-              variant="supabase"
-              size="sm"
-              onClick={() => savePresetMutation.mutate(true)}
-              disabled={savePresetMutation.isPending || !masterPrompt}
-              className="gap-2 text-xs font-semibold shadow-md shadow-primary/15"
-            >
-              {savePresetMutation.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
+        {view === "collection" ? (
+          <section aria-labelledby="collection-title">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="collection-title" className="text-xl font-semibold text-[#26251F]">
+                  Koleksi preset
+                </h2>
+                <p className="mt-1 text-sm text-[#77766D]">
+                  Gaya yang aktif dipakai saat membuat ilustrasi storyboard.
+                </p>
+              </div>
+              {activePreset && (
+                <Badge variant="workspace-success">Aktif · {activePreset.name}</Badge>
               )}
-              <span>Simpan & Terapkan Preset</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+            </div>
+            {presetsQuery.isLoading ? (
+              <div className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] py-16 text-center text-sm text-[#77766D]">
+                <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin" aria-hidden="true" />
+                Memuat koleksi preset…
+              </div>
+            ) : presetsQuery.isError ? (
+              <div className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6">
+                <InlineError
+                  message={`Koleksi preset tidak dapat dimuat: ${errorMessage(presetsQuery.error)}`}
+                />
+                <Button
+                  className="mt-3"
+                  variant="workspace-secondary"
+                  onClick={() => void presetsQuery.refetch()}
+                >
+                  Coba lagi
+                </Button>
+              </div>
+            ) : presets.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-[#CEC6B6] bg-[#FBFAF7] px-5 py-16 text-center">
+                <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[#F2E8DC] text-[#A9472C]">
+                  <Palette className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#26251F]">Mulai dari satu ide visual</h3>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#77766D]">
+                  Jelaskan gaya atau karakter dengan kata-kata, tambahkan referensi gambar bila ada,
+                  lalu lihat bagaimana AI menerjemahkannya.
+                </p>
+                <Button variant="workspace-primary" onClick={createPreset} className="mt-5">
+                  Buat preset pertama
+                </Button>
+              </div>
+            ) : (
+              <>
+                {(activateMutation.error || deleteMutation.error) && (
+                  <div className="mb-4">
+                    <InlineError
+                      message={
+                        errorMessage(activateMutation.error) ?? errorMessage(deleteMutation.error)
+                      }
+                    />
+                  </div>
+                )}
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {presets.map((preset) => (
+                    <PresetCard
+                      key={preset.id}
+                      preset={preset}
+                      onEdit={editPreset}
+                      onActivate={(id) => activateMutation.mutate(id)}
+                      onDelete={setDeleteTarget}
+                      isActivating={activateMutation.isPending}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        ) : (
+          <section className="mx-auto max-w-5xl">
+            <nav aria-label="Langkah membuat preset" className="mb-7 grid grid-cols-3">
+              {stepOptions.map((option, index) => {
+                const isCurrent = option.id === step;
+                const isComplete = index < currentStepIndex;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => index <= currentStepIndex && setStep(option.id)}
+                    disabled={index > currentStepIndex}
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={`border-b-2 px-2 pb-3 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] sm:text-sm ${
+                      isCurrent
+                        ? "border-[#C45B3A] text-[#A9472C]"
+                        : isComplete
+                          ? "border-[#A7B09A] text-[#5D6C54]"
+                          : "border-[#E5E1D7] text-[#99958A]"
+                    }`}
+                  >
+                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full border border-current text-[10px]">
+                      {isComplete ? <Check className="h-3 w-3" aria-hidden="true" /> : index + 1}
+                    </span>
+                    {option.label}
+                  </button>
+                );
+              })}
+            </nav>
 
-      {/* Active Preset Banner */}
-      <div className="bg-gradient-to-r from-violet-950/40 via-surface to-emerald-950/30 border-b border-border py-2.5 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-muted-foreground">Preset Aktif Saat Ini di Ilustrasi AI:</span>
-            <span className="font-semibold text-white bg-surface-border/40 px-2.5 py-0.5 rounded-full border border-surface-border">
-              ✨ {activePreset?.name || "Doodle Ilustrasi"}
-            </span>
-            <span className="text-slate-400 font-mono text-[11px] hidden md:inline">
-              ({activePreset?.category || "doodle"})
-            </span>
-          </div>
+            {step === "design" && (
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                    Rancang preset
+                  </p>
+                  <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
+                    Apa yang ingin Anda bangun?
+                  </h2>
+                  <p className="mt-1 text-sm text-[#77766D]">
+                    Pilih fokus preset. Anda dapat mengganti detailnya setelah AI menyusun
+                    rancangan.
+                  </p>
+                  <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    {typeOptions.map(({ value, label, description: detail, icon: Icon }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={presetType === value}
+                        onClick={() => handleSelectType(value)}
+                        className={`rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
+                          presetType === value
+                            ? "border-[#C45B3A] bg-[#F8EEEA]"
+                            : "border-[#E5E1D7] bg-[#FFFEFA] hover:border-[#CFC5B3]"
+                        }`}
+                      >
+                        <Icon className="mb-3 h-5 w-5 text-[#A9472C]" aria-hidden="true" />
+                        <span className="block text-sm font-semibold text-[#26251F]">{label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-[#77766D]">
+                          {detail}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
 
-          <div className="flex items-center gap-2 text-[11px]">
-            <button
-              onClick={handleResetToDoodle}
-              className="text-violet-400 hover:text-violet-300 font-mono flex items-center gap-1 transition"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Muat Preset Doodle Ilustrasi</span>
-            </button>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">
-              Master Prompt otomatis terpasang saat batch generate storyboard.
-            </span>
-          </div>
-        </div>
+                  <div className="mt-6 grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
+                    <div>
+                      <label
+                        htmlFor="art-concept"
+                        className="mb-2 block text-sm font-medium text-[#4B4941]"
+                      >
+                        Ceritakan ide visual
+                      </label>
+                      <Textarea
+                        id="art-concept"
+                        rows={6}
+                        value={userText}
+                        onChange={(event) => {
+                          setUserText(event.target.value);
+                          setRepresentativeImageUrl("");
+                        }}
+                        placeholder="Contoh: rubah penjelajah kecil dengan mantel biru, digambar seperti ilustrasi buku cerita dari potongan kertas…"
+                        className="resize-y bg-[#FFFEFA] text-sm"
+                      />
+                      <p className="mt-2 text-xs leading-5 text-[#858176]">
+                        {referenceImageUrl
+                          ? "Deskripsi dan gambar referensi akan dibaca bersama."
+                          : "Tulis deskripsi, unggah gambar referensi, atau gunakan keduanya."}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {QUICK_INSPIRATION_TAGS.map((tag) => (
+                          <WorkspaceChip key={tag.label} onClick={() => setUserText(tag.text)}>
+                            {tag.label}
+                          </WorkspaceChip>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="mb-2 block text-sm font-medium text-[#4B4941]">
+                        Gambar referensi{" "}
+                        <span className="font-normal text-[#858176]">· opsional</span>
+                      </span>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        aria-label="Pilih gambar referensi"
+                        onChange={(event) => {
+                          handleUpload(event.target.files?.[0]);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                      {referenceImageUrl ? (
+                        <div className="overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#FFFEFA]">
+                          <div className="aspect-[16/10] bg-[#171717]">
+                            <img
+                              src={referenceImageUrl}
+                              alt="Gambar referensi preset"
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 p-3">
+                            <span className="truncate text-xs text-[#77766D]">Referensi siap</span>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="workspace-quiet"
+                                size="workspace-sm"
+                                onClick={() => fileInputRef.current?.click()}
+                              >
+                                Ganti
+                              </Button>
+                              <Button
+                                variant="workspace-quiet"
+                                size="workspace-sm"
+                                className="text-rose-700"
+                                onClick={() => {
+                                  setReferenceImageUrl("");
+                                  setReferenceImagePath("");
+                                  setRepresentativeImageUrl("");
+                                }}
+                              >
+                                Hapus
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadMutation.isPending}
+                          className="flex aspect-[16/10] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[#CFC5B3] bg-[#FFFEFA] px-4 text-center transition hover:border-[#C45B3A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A]"
+                        >
+                          {uploadMutation.isPending ? (
+                            <Loader2
+                              className="mb-3 h-6 w-6 animate-spin text-[#A9472C]"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Upload className="mb-3 h-6 w-6 text-[#A9472C]" aria-hidden="true" />
+                          )}
+                          <span className="text-sm font-medium text-[#4B4941]">
+                            {uploadMutation.isPending
+                              ? "Mengunggah gambar…"
+                              : "Pilih gambar referensi"}
+                          </span>
+                          <span className="mt-1 text-xs text-[#858176]">PNG, JPG, atau WebP</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <InlineError message={errorMessage(uploadMutation.error)} />
+                  <div className="mt-5 flex flex-col justify-between gap-3 border-t border-[#E5E1D7] pt-5 sm:flex-row sm:items-center">
+                    <p className="max-w-lg text-xs leading-5 text-[#858176]">
+                      AI akan menyusun arahan yang bisa Anda sunting sebelum membuat gambar contoh.
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      {hasCurrentAnalysis && (
+                        <Button variant="workspace-secondary" onClick={() => setStep("sample")}>
+                          Lanjutkan rancangan
+                          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="workspace-primary"
+                        disabled={
+                          !canAnalyze || analyzeMutation.isPending || uploadMutation.isPending
+                        }
+                        onClick={() => analyzeMutation.mutate()}
+                      >
+                        {analyzeMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <WandSparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                        )}
+                        {masterPrompt ? "Analisis ulang" : "Susun preset"}
+                      </Button>
+                    </div>
+                  </div>
+                  <InlineError message={errorMessage(analyzeMutation.error)} />
+                </section>
+              </div>
+            )}
+
+            {step === "sample" && (
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                        Hasil rancangan · {typeLabel(presetType)}
+                      </p>
+                      <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
+                        Rapikan arahan visual
+                      </h2>
+                      <p className="mt-1 text-sm text-[#77766D]">
+                        Prompt ini menjadi resep visual untuk setiap gambar yang Anda uji.
+                      </p>
+                    </div>
+                    <Button variant="workspace-quiet" onClick={() => setStep("design")}>
+                      <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Ubah konsep
+                    </Button>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="preset-name"
+                        className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
+                      >
+                        Nama preset
+                      </label>
+                      <Input
+                        id="preset-name"
+                        value={presetName}
+                        onChange={(event) => setPresetName(event.target.value)}
+                        placeholder="Nama yang mudah dikenali"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="preset-category"
+                        className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
+                      >
+                        Kategori
+                      </label>
+                      <NativeSelect
+                        id="preset-category"
+                        value={category}
+                        onChange={(event) => setCategory(event.target.value)}
+                      >
+                        <option value="custom">Custom</option>
+                        <option value="doodle">Doodle</option>
+                        <option value="watercolor">Watercolor</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="comic">Comic</option>
+                        <option value="anime">Anime</option>
+                        <option value="cinematic">Cinematic</option>
+                        <option value="3d">3D / Claymation</option>
+                      </NativeSelect>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="preset-description"
+                        className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
+                      >
+                        Ringkasan
+                      </label>
+                      <Input
+                        id="preset-description"
+                        value={description}
+                        onChange={(event) => setDescription(event.target.value)}
+                        placeholder="Jelaskan ciri khas preset ini"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="master-prompt"
+                        className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
+                      >
+                        Arahan visual
+                      </label>
+                      <Textarea
+                        id="master-prompt"
+                        rows={7}
+                        value={masterPrompt}
+                        onChange={(event) => {
+                          setMasterPrompt(event.target.value);
+                          setRepresentativeImageUrl("");
+                        }}
+                        className="font-mono text-xs leading-5"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="negative-prompt"
+                        className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
+                      >
+                        Hal yang dihindari{" "}
+                        <span className="font-normal text-[#858176]">· opsional</span>
+                      </label>
+                      <Textarea
+                        id="negative-prompt"
+                        rows={2}
+                        value={negativePrompt}
+                        onChange={(event) => {
+                          setNegativePrompt(event.target.value);
+                          setRepresentativeImageUrl("");
+                        }}
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {styleAttributes && (
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-[#E5E1D7] pt-4">
+                      {styleAttributes.medium && (
+                        <Badge variant="workspace-accent">{styleAttributes.medium}</Badge>
+                      )}
+                      {styleAttributes.character_style && (
+                        <Badge variant="workspace">{styleAttributes.character_style}</Badge>
+                      )}
+                      {styleAttributes.palette?.map((color, index) => (
+                        <Badge key={`${color}-${index}`} variant="workspace">
+                          {color}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section className="grid gap-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7 lg:grid-cols-[0.8fr_1.2fr]">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                      Gambar utama preset · 16:9
+                    </p>
+                    <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
+                      Lihat seperti apa hasilnya
+                    </h2>
+                    <label
+                      htmlFor="representative-prompt"
+                      className="mb-1.5 mt-5 block text-xs font-medium text-[#5E5C54]"
+                    >
+                      Arahan gambar contoh
+                    </label>
+                    <Textarea
+                      id="representative-prompt"
+                      rows={4}
+                      value={representativePrompt}
+                      onChange={(event) => {
+                        setRepresentativePrompt(event.target.value);
+                        setRepresentativeImageUrl("");
+                      }}
+                      className="text-sm"
+                    />
+                    <p className="mt-2 text-xs leading-5 text-[#858176]">
+                      {presetType === "character"
+                        ? "Tampilkan satu tokoh secara utuh agar ciri-cirinya mudah dinilai."
+                        : "Pilih adegan sederhana yang memperlihatkan bahasa visual preset."}
+                    </p>
+                    <Button
+                      className="mt-4 w-full"
+                      variant="workspace-primary"
+                      disabled={
+                        !masterPrompt.trim() ||
+                        !representativePrompt.trim() ||
+                        representativeMutation.isPending
+                      }
+                      onClick={() => representativeMutation.mutate()}
+                    >
+                      {representativeMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+                      )}
+                      {representativeImageUrl ? "Buat ulang contoh" : "Buat gambar contoh"}
+                    </Button>
+                    <InlineError message={errorMessage(representativeMutation.error)} />
+                    <p className="mt-3 text-xs text-[#858176]">
+                      Gambar ini menjadi sampul preset setelah disimpan. Anda tetap bisa menyimpan
+                      tanpa gambar.
+                    </p>
+                  </div>
+                  <div className="workspace-image-canvas relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-[#333]">
+                    {representativeMutation.isPending ? (
+                      <div className="text-center text-sm text-white/70">
+                        <Loader2
+                          className="mx-auto mb-3 h-7 w-7 animate-spin text-[#D78162]"
+                          aria-hidden="true"
+                        />
+                        Sedang membuat gambar contoh…
+                      </div>
+                    ) : representativeImageUrl ? (
+                      <button
+                        type="button"
+                        aria-label="Perbesar gambar contoh preset"
+                        className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+                        onClick={() =>
+                          setZoomImage({
+                            url: representativeImageUrl,
+                            title: "Gambar contoh preset",
+                          })
+                        }
+                      >
+                        <img
+                          src={representativeImageUrl}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      </button>
+                    ) : (
+                      <div className="max-w-xs px-5 text-center text-sm leading-6 text-white/55">
+                        <ImageIcon
+                          className="mx-auto mb-3 h-8 w-8 text-[#D78162]"
+                          aria-hidden="true"
+                        />
+                        Buat gambar contoh untuk melihat bagaimana arahan visual diterjemahkan.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <div className="flex flex-col-reverse justify-between gap-3 sm:flex-row">
+                  <Button variant="workspace-secondary" onClick={() => setStep("design")}>
+                    Kembali ke rancangan
+                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      variant="workspace-secondary"
+                      disabled={!canSave || saveMutation.isPending}
+                      onClick={() => saveMutation.mutate()}
+                    >
+                      Simpan tanpa mengaktifkan
+                    </Button>
+                    <Button
+                      variant="workspace-primary"
+                      disabled={!canSave}
+                      onClick={() => setStep("test")}
+                    >
+                      Lanjut uji prompt
+                      <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+                <InlineError message={errorMessage(saveMutation.error)} />
+              </div>
+            )}
+
+            {step === "test" && (
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                        Uji konsistensi · {presetName || typeLabel(presetType)}
+                      </p>
+                      <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
+                        Coba pada adegan yang berbeda
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-[#77766D]">
+                        Hasil uji hanya tersimpan selama sesi ini dan tidak mengganti gambar sampul
+                        preset.
+                      </p>
+                      {presetType !== "style" && (
+                        <p className="mt-2 text-xs text-[#8A7768]">
+                          Ciri karakter dijelaskan lewat prompt; identitas persis dapat bervariasi
+                          di tiap gambar.
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="workspace">16:9 · storyboard</Badge>
+                  </div>
+                  <label
+                    htmlFor="scene-test-prompt"
+                    className="mb-1.5 mt-5 block text-xs font-medium text-[#5E5C54]"
+                  >
+                    Apa yang ingin digambarkan?
+                  </label>
+                  <Textarea
+                    id="scene-test-prompt"
+                    rows={3}
+                    value={scenePrompt}
+                    onChange={(event) => setScenePrompt(event.target.value)}
+                    placeholder="Tuliskan adegan yang ingin Anda coba…"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {SAMPLE_SCENES.slice(0, 4).map((scene) => (
+                      <WorkspaceChip key={scene} onClick={() => setScenePrompt(scene)}>
+                        {scene.length > 46 ? `${scene.slice(0, 46)}…` : scene}
+                      </WorkspaceChip>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#E5E1D7] pt-4">
+                    <p className="text-xs text-[#858176]">
+                      Gunakan adegan yang berbeda untuk menilai penerapan gaya.
+                    </p>
+                    <Button
+                      variant="workspace-primary"
+                      disabled={
+                        !masterPrompt.trim() || !scenePrompt.trim() || testMutation.isPending
+                      }
+                      onClick={() => testMutation.mutate()}
+                    >
+                      {testMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                      )}
+                      Hasilkan gambar uji
+                    </Button>
+                  </div>
+                  <InlineError message={errorMessage(testMutation.error)} />
+                </section>
+
+                <section className="grid gap-5 lg:grid-cols-[1fr_240px]">
+                  <div className="workspace-image-canvas relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-[#333]">
+                    {testMutation.isPending ? (
+                      <div className="text-center text-sm text-white/70">
+                        <Loader2
+                          className="mx-auto mb-3 h-7 w-7 animate-spin text-[#D78162]"
+                          aria-hidden="true"
+                        />
+                        Membuat variasi adegan…
+                      </div>
+                    ) : selectedTestImage ? (
+                      <button
+                        type="button"
+                        aria-label="Perbesar hasil uji prompt"
+                        className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+                        onClick={() =>
+                          setZoomImage({ url: selectedTestImage.url, title: "Hasil uji prompt" })
+                        }
+                      >
+                        <img
+                          src={selectedTestImage.url}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      </button>
+                    ) : representativeImageUrl ? (
+                      <div className="text-center text-sm text-white/70">
+                        <img
+                          src={representativeImageUrl}
+                          alt="Sampul preset"
+                          className="mx-auto mb-3 max-h-40 max-w-full object-contain opacity-70"
+                        />
+                        Gambar contoh preset · jalankan prompt untuk menguji adegan
+                      </div>
+                    ) : (
+                      <p className="px-5 text-center text-sm text-white/55">
+                        Hasil uji akan muncul di sini. Anda bisa membuatnya nanti dan menyimpan
+                        preset sekarang.
+                      </p>
+                    )}
+                  </div>
+                  <aside className="rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[#77766D]">
+                      Riwayat sesi
+                    </h3>
+                    {testImages.length === 0 ? (
+                      <p className="mt-3 text-xs leading-5 text-[#858176]">
+                        Belum ada gambar uji di sesi ini.
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-3">
+                        {testImages.map((image, index) => (
+                          <button
+                            key={`${image.url}-${index}`}
+                            type="button"
+                            onClick={() => setSelectedTestImage(image)}
+                            aria-pressed={selectedTestImage?.url === image.url}
+                            className={`w-full overflow-hidden rounded-lg border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
+                              selectedTestImage?.url === image.url
+                                ? "border-[#C45B3A] ring-1 ring-[#C45B3A]"
+                                : "border-[#E5E1D7]"
+                            }`}
+                          >
+                            <img
+                              src={image.url}
+                              alt={`Uji ${index + 1}: ${image.prompt}`}
+                              className="aspect-video w-full object-cover"
+                            />
+                            <span className="block truncate px-2 py-1.5 text-[10px] text-[#5E5C54]">
+                              {image.prompt}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </aside>
+                </section>
+
+                <div className="flex flex-col-reverse justify-between gap-3 sm:flex-row">
+                  <Button variant="workspace-secondary" onClick={() => setStep("sample")}>
+                    <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Kembali ke contoh
+                  </Button>
+                  <Button
+                    variant="workspace-primary"
+                    disabled={!canSave || saveMutation.isPending}
+                    onClick={() => saveMutation.mutate()}
+                  >
+                    {saveMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                    )}
+                    Simpan preset
+                  </Button>
+                </div>
+                <InlineError message={errorMessage(saveMutation.error)} />
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
-      {/* Main Studio Content: Two-Column Split */}
-      <main className="max-w-[1920px] mx-auto px-6 py-8 w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* LEFT COLUMN: Input & AI Synthesizer */}
-          <div className="lg:col-span-5">
-            <ImageStudioSynthesizer
-              userText={userText}
-              setUserText={setUserText}
-              referenceImageUrl={referenceImageUrl}
-              setReferenceImageUrl={setReferenceImageUrl}
-              setReferenceImagePath={setReferenceImagePath}
-              fileInputRef={fileInputRef}
-              isUploading={isUploading}
-              onFileUpload={handleFileUpload}
-              onAnalyze={() => analyzeMutation.mutate()}
-              isAnalyzing={analyzeMutation.isPending}
-              presetName={presetName}
-              setPresetName={setPresetName}
-              category={category}
-              setCategory={setCategory}
-              masterPrompt={masterPrompt}
-              setMasterPrompt={setMasterPrompt}
-              negativePrompt={negativePrompt}
-              setNegativePrompt={setNegativePrompt}
-              styleAttributes={styleAttributes}
-              onCopyPrompt={handleCopyPrompt}
-              isCopied={isCopied}
-              onZoomImage={setZoomImage}
-            />
-          </div>
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="workspace-dialog">
+          <DialogHeader>
+            <DialogTitle>Hapus preset ini?</DialogTitle>
+            <DialogDescription>
+              “{deleteTarget?.name}” akan dihapus dari koleksi. Tindakan ini tidak dapat dibatalkan.
+              {deleteTarget?.is_active &&
+                " Preset Doodle Ilustrasi akan digunakan kembali jika preset aktif dihapus."}
+            </DialogDescription>
+          </DialogHeader>
+          <InlineError message={errorMessage(deleteMutation.error)} />
+          <DialogFooter>
+            <Button variant="workspace-secondary" onClick={() => setDeleteTarget(null)}>
+              Batal
+            </Button>
+            <Button
+              variant="workspace-destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              Hapus preset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {/* RIGHT COLUMN: Live Test Studio & Comparison */}
-          <div className="lg:col-span-7">
-            <ImageStudioTester
-              referenceImageUrl={referenceImageUrl}
-              previewImageUrl={previewImageUrl}
-              setPreviewImageUrl={setPreviewImageUrl}
-              testImageHistory={testImageHistory}
-              scenePrompt={scenePrompt}
-              setScenePrompt={setScenePrompt}
-              onGenerateTest={() => testGenerateMutation.mutate()}
-              isGeneratingTest={testGenerateMutation.isPending}
-              masterPrompt={masterPrompt}
-              saveTarget={saveTarget}
-              setSaveTarget={setSaveTarget}
-              onSavePreset={(asActive) => savePresetMutation.mutate(asActive)}
-              isSavingPreset={savePresetMutation.isPending}
-              onZoomImage={setZoomImage}
-            />
-          </div>
-        </div>
-      </main>
-
-      {/* DIALOG: Saved Presets Manager */}
-      <ImagePresetsDialog
-        isOpen={isPresetListOpen}
-        onOpenChange={setIsPresetListOpen}
-        presets={presets}
-        isLoading={isLoadingPresets}
-        onActivatePreset={(id) => activateMutation.mutate(id)}
-        isActivating={activateMutation.isPending}
-        onLoadPreset={loadPresetIntoStudio}
-        onDeletePreset={(id) => deleteMutation.mutate(id)}
-      />
-
-      {/* MODAL: Fullscreen Image Zoom */}
       <ImageZoomModal zoomImage={zoomImage} onClose={() => setZoomImage(null)} />
-    </div>
+    </WorkspaceShell>
   );
 }

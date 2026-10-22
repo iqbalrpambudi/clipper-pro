@@ -80,6 +80,14 @@ prefills its saved values. Built-in presets remain non-deletable.
 - Present AI-produced name, description, category, master prompt, negative
   prompt, and structured visual attributes as editable results. Explain in
   plain language that the prompt can be refined before generating.
+- For a **Gaya ilustrasi** preset, treat a reference image only as a source of
+  reusable visual treatment (medium, linework, palette, lighting, shading,
+  detail level, and texture). Do not carry its particular subject, character,
+  clothing, pose, props, setting, background, or composition into the preset;
+  future scene prompts determine all image content and composition.
+- Prefer crisp, clean contours, clear edges, and controlled fills for style
+  presets. Preserve only intentional subtle texture and exclude unwanted film
+  grain, speckles, random noise, rough sketch strokes, fuzzy edges, and smudges.
 
 ### Studio: Buat contoh
 

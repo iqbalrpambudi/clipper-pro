@@ -67,6 +67,7 @@ async def generate_speech_audio(
                     model=model or "eleven_multilingual_v2",
                     rate=rate,
                     pitch=pitch,
+                    language=target_lang,
                 )
 
             # For extraordinarily long texts exceeding model capacity (>10,000 or >40,000 chars)
@@ -80,6 +81,7 @@ async def generate_speech_audio(
                     model=model or "eleven_multilingual_v2",
                     rate=rate,
                     pitch=pitch,
+                    language=target_lang,
                 )
 
             out_p = Path(output_path)
@@ -96,6 +98,7 @@ async def generate_speech_audio(
                             model=model or "eleven_multilingual_v2",
                             rate=rate,
                             pitch=pitch,
+                            language=target_lang,
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:
@@ -157,6 +160,7 @@ async def generate_speech_audio(
                     voice=voice,
                     rate=rate,
                     pitch=pitch,
+                    language=target_lang,
                 )
 
             # For scripts > 1200 chars, split into ~900-char blocks
@@ -170,6 +174,7 @@ async def generate_speech_audio(
                     voice=voice,
                     rate=rate,
                     pitch=pitch,
+                    language=target_lang,
                 )
 
             out_p = Path(output_path)
@@ -186,6 +191,7 @@ async def generate_speech_audio(
                             voice=voice,
                             rate=rate,
                             pitch=pitch,
+                            language=target_lang,
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:
@@ -235,6 +241,7 @@ async def generate_speech_audio(
                     rate=rate,
                     pitch=pitch,
                     model=model,
+                    language=target_lang,
                 )
 
             # Long-form narrations (> 2200 chars): split into balanced ~750-char blocks
@@ -248,6 +255,7 @@ async def generate_speech_audio(
                     rate=rate,
                     pitch=pitch,
                     model=model,
+                    language=target_lang,
                 )
 
             out_p = Path(output_path)
@@ -264,6 +272,7 @@ async def generate_speech_audio(
                             rate=rate,
                             pitch=pitch,
                             model=model,
+                            language=target_lang,
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:

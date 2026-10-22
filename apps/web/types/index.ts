@@ -391,6 +391,7 @@ export interface ImagePreset {
   name: string;
   description?: string | null;
   category: string;
+  preset_type: "style" | "character" | "combined";
   master_prompt: string;
   negative_prompt?: string | null;
   reference_image_url?: string | null;
@@ -406,6 +407,7 @@ export interface ImagePreset {
 export interface StudioAnalysisResult {
   name: string;
   category: string;
+  preset_type: "style" | "character" | "combined";
   description: string;
   master_prompt: string;
   negative_prompt: string;
@@ -531,4 +533,3 @@ export interface CostEstimateResponse {
 }
 
 export type JassubInstance = JASSUB;
-

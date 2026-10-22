@@ -21,6 +21,7 @@ import {
 import { api } from "@/lib/api";
 import { DEFAULT_IMAGE_STYLE_PROMPT } from "@/lib/constants";
 import { useStudioStore } from "@/lib/store";
+import { Badge, Button, Input, NativeSelect, Textarea, WorkspaceChip } from "@/components/ui";
 
 interface TestConnectionResult {
   success: boolean;
@@ -327,26 +328,22 @@ export function ModelsConfigTab() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-brand-400" />
-            <h3 className="text-sm font-bold text-white">
-              1. Konfigurasi LLM & Vision Model
-            </h3>
+            <h3 className="text-sm font-bold text-white">1. Konfigurasi LLM & Vision Model</h3>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-300 font-mono">
+          <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-[10px]">
             OpenAI & Gemini Compatible
-          </span>
+          </Badge>
         </div>
 
         <div className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              API Base URL
-            </label>
-            <input
+            <label className="block text-xs font-semibold text-slate-300 mb-1">API Base URL</label>
+            <Input
               type="text"
               placeholder="http://localhost:20128/v1 atau https://api.openai.com/v1"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+              className="text-xs font-mono"
             />
           </div>
 
@@ -371,11 +368,13 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-slate-300">
                   Chat Model (Naskah Narasi)
                 </label>
-                <button
+                <Button
                   type="button"
                   onClick={handleFetchModels}
                   disabled={isFetchingModels}
-                  className="text-[10px] text-brand-400 hover:text-brand-300 flex items-center gap-1 font-mono disabled:opacity-50"
+                  variant="workspace-quiet"
+                  size="workspace-sm"
+                  className="h-7 px-2 gap-1 font-mono text-[10px]"
                 >
                   {isFetchingModels ? (
                     <Loader2 className="w-2.5 h-2.5 animate-spin" />
@@ -383,20 +382,18 @@ export function ModelsConfigTab() {
                     <RefreshCw className="w-2.5 h-2.5" />
                   )}
                   <span>
-                    {availableModels.length > 0
-                      ? `${availableModels.length} Model`
-                      : "Tarik Model"}
+                    {availableModels.length > 0 ? `${availableModels.length} Model` : "Tarik Model"}
                   </span>
-                </button>
+                </Button>
               </div>
-              <input
+              <Input
                 type="text"
                 required
                 list="available-models-list"
                 placeholder="gemini atau gpt-4o-mini"
                 value={chatModel}
                 onChange={(e) => setChatModel(e.target.value)}
-                className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+                className="text-xs font-mono"
               />
             </div>
 
@@ -409,14 +406,14 @@ export function ModelsConfigTab() {
                   <span className="text-[10px] text-slate-400 font-mono">Datalist aktif</span>
                 )}
               </div>
-              <input
+              <Input
                 type="text"
                 required
                 list="available-models-list"
                 placeholder="gemini atau gpt-4o-mini"
                 value={visionModel}
                 onChange={(e) => setVisionModel(e.target.value)}
-                className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+                className="text-xs font-mono"
               />
             </div>
           </div>
@@ -430,7 +427,7 @@ export function ModelsConfigTab() {
                 </span>
               )}
             </div>
-            <input
+            <Input
               type="password"
               placeholder={
                 config?.has_api_key
@@ -439,18 +436,19 @@ export function ModelsConfigTab() {
               }
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-500"
+              className="text-xs font-mono"
             />
           </div>
         </div>
 
         {/* Test Connection Button */}
         <div className="pt-3 flex items-center justify-between border-t border-surface-border">
-          <button
+          <Button
             type="button"
             onClick={handleTestConnection}
             disabled={isTesting}
-            className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+            variant="workspace-secondary"
+            className="gap-2"
           >
             {isTesting ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -458,7 +456,7 @@ export function ModelsConfigTab() {
               <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
             )}
             <span>Test Connection</span>
-          </button>
+          </Button>
 
           {testResult && (
             <div
@@ -482,14 +480,12 @@ export function ModelsConfigTab() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Volume2 className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white">
-              2. Konfigurasi Text-to-Speech (TTS)
-            </h3>
+            <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-[10px]">
               Gemini / ElevenLabs / Runware
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -498,11 +494,7 @@ export function ModelsConfigTab() {
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Default TTS Provider
             </label>
-            <select
-              value={ttsProvider}
-              onChange={(e) => setTtsProvider(e.target.value)}
-              className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
-            >
+            <NativeSelect value={ttsProvider} onChange={(e) => setTtsProvider(e.target.value)}>
               <option value="gemini">Gemini TTS (Google AI High-Fidelity)</option>
               <option value="elevenlabs">
                 ElevenLabs TTS (Gold Standard — Zero Intonation Drift)
@@ -511,7 +503,7 @@ export function ModelsConfigTab() {
                 Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)
               </option>
               <option value="edge">Edge-TTS (Natural Indonesian Neural, Gratis)</option>
-            </select>
+            </NativeSelect>
           </div>
 
           {/* Gemini Model & Key */}
@@ -521,11 +513,7 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Gemini TTS Model
                 </label>
-                <select
-                  value={ttsModel}
-                  onChange={(e) => setTtsModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
-                >
+                <NativeSelect value={ttsModel} onChange={(e) => setTtsModel(e.target.value)}>
                   <option value="gemini-2.5-flash-preview-tts">
                     Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)
                   </option>
@@ -535,19 +523,17 @@ export function ModelsConfigTab() {
                   <option value="gemini-3.8-flash-tts">
                     Gemini 3.8 Flash TTS (kualitas studio)
                   </option>
-                  <option value="gemini-3.1-flash-tts-preview">
-                    Gemini 3.1 Flash TTS Preview
-                  </option>
+                  <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
                   <option value="gemini-flash-latest">
                     Gemini Flash Latest (auto versi terbaru)
                   </option>
                   <option value="gemini-2.5-pro-preview-tts">
                     Gemini 2.5 Pro TTS Preview (high-res)
                   </option>
-                </select>
+                </NativeSelect>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5
-                  menit) untuk intonasi vokal seragam.
+                  Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5 menit)
+                  untuk intonasi vokal seragam.
                 </p>
               </div>
 
@@ -562,7 +548,7 @@ export function ModelsConfigTab() {
                     </span>
                   )}
                 </div>
-                <input
+                <Input
                   type="password"
                   placeholder={
                     config?.has_tts_api_key
@@ -571,7 +557,7 @@ export function ModelsConfigTab() {
                   }
                   value={ttsApiKey}
                   onChange={(e) => setTtsApiKey(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  className="text-xs font-mono"
                 />
               </div>
             </>
@@ -584,10 +570,9 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   ElevenLabs Model
                 </label>
-                <select
+                <NativeSelect
                   value={elevenlabsModel}
                   onChange={(e) => setElevenlabsModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="eleven_v4_turbo">
                     Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)
@@ -601,13 +586,11 @@ export function ModelsConfigTab() {
                   <option value="eleven_flash_v2_5">
                     Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)
                   </option>
-                  <option value="eleven_turbo_v2_5">
-                    Eleven Turbo v2.5 (Generasi Sebelumnya)
-                  </option>
-                </select>
+                  <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Generasi Sebelumnya)</option>
+                </NativeSelect>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi
-                  vokal 100% konsisten dari awal hingga akhir.
+                  Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal
+                  100% konsisten dari awal hingga akhir.
                 </p>
               </div>
 
@@ -622,7 +605,7 @@ export function ModelsConfigTab() {
                     </span>
                   )}
                 </div>
-                <input
+                <Input
                   type="password"
                   placeholder={
                     config?.has_elevenlabs_api_key
@@ -631,7 +614,7 @@ export function ModelsConfigTab() {
                   }
                   value={elevenlabsApiKey}
                   onChange={(e) => setElevenlabsApiKey(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  className="text-xs font-mono"
                 />
               </div>
             </>
@@ -644,10 +627,9 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Runware TTS Model
                 </label>
-                <select
+                <NativeSelect
                   value={runwareTtsModel}
                   onChange={(e) => setRunwareTtsModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="fishaudio:s2.1@pro">
                     Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)
@@ -658,16 +640,14 @@ export function ModelsConfigTab() {
                   <option value="inworld:tts@2">
                     Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)
                   </option>
-                  <option value="xai:tts@0">
-                    xAI TTS Grok (Vokal ekspresif & speech tags)
-                  </option>
+                  <option value="xai:tts@0">xAI TTS Grok (Vokal ekspresif & speech tags)</option>
                   <option value="minimax:speech@2.8">
                     MiniMax Speech 2.8 (High-realism prosody & emosional)
                   </option>
-                </select>
+                </NativeSelect>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik)
-                  dan latensi tinggi.
+                  Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik) dan
+                  latensi tinggi.
                 </p>
               </div>
 
@@ -678,12 +658,11 @@ export function ModelsConfigTab() {
                   </label>
                   {(config?.has_runware_api_key || config?.has_image_api_key) && (
                     <span className="text-[10px] text-emerald-400 font-mono">
-                      Tersimpan:{" "}
-                      {config.runware_api_key_masked || config.image_api_key_masked}
+                      Tersimpan: {config.runware_api_key_masked || config.image_api_key_masked}
                     </span>
                   )}
                 </div>
-                <input
+                <Input
                   type="password"
                   placeholder={
                     config?.has_runware_api_key || config?.has_image_api_key
@@ -692,11 +671,11 @@ export function ModelsConfigTab() {
                   }
                   value={runwareApiKey}
                   onChange={(e) => setRunwareApiKey(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  className="text-xs font-mono"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware
-                  pada Section 3 di bawah.
+                  Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware pada
+                  Section 3 di bawah.
                 </p>
               </div>
             </>
@@ -716,11 +695,11 @@ export function ModelsConfigTab() {
                   Aktifkan Fallback Otomatis ke Edge-TTS saat Error / Limit Kuota
                 </span>
                 <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                  Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server
-                  timeout) pada model TTS utama akan otomatis dialihkan ke suara natural
-                  Edge-TTS sehingga audio tetap lengkap dan video tidak gagal. Jika
-                  dinonaktifkan, proses akan langsung berhenti dengan pesan error dan audio
-                  hanya tersimpan hingga bagian yang berhasil (terpotong).
+                  Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server timeout)
+                  pada model TTS utama akan otomatis dialihkan ke suara natural Edge-TTS sehingga
+                  audio tetap lengkap dan video tidak gagal. Jika dinonaktifkan, proses akan
+                  langsung berhenti dengan pesan error dan audio hanya tersimpan hingga bagian yang
+                  berhasil (terpotong).
                 </p>
               </div>
             </label>
@@ -729,11 +708,12 @@ export function ModelsConfigTab() {
 
         {/* TTS Test Connection Button & Result */}
         <div className="pt-3 border-t border-surface-border/50 flex flex-wrap items-center gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleTestTts}
             disabled={isTestingTts}
-            className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+            variant="workspace-secondary"
+            className="gap-2"
           >
             {isTestingTts ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -741,7 +721,7 @@ export function ModelsConfigTab() {
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             )}
             <span>Test Koneksi TTS ({ttsProvider.toUpperCase()})</span>
-          </button>
+          </Button>
 
           {testTtsResult && (
             <div
@@ -770,12 +750,12 @@ export function ModelsConfigTab() {
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono">
+            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-[10px]">
               Paralel {imageConcurrency}x Request
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 font-mono">
+            </Badge>
+            <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-[10px]">
               Runware / Gemini / OpenAI / SD
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -784,12 +764,12 @@ export function ModelsConfigTab() {
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Image API Base URL
             </label>
-            <input
+            <Input
               type="text"
               placeholder="https://api.runware.ai/v1, http://localhost:port/v1, atau https://api.openai.com/v1..."
               value={imageBaseUrl}
               onChange={(e) => setImageBaseUrl(e.target.value)}
-              className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
+              className="text-xs font-mono"
             />
           </div>
 
@@ -799,11 +779,13 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-slate-300">
                   Image Model Name
                 </label>
-                <button
+                <Button
                   type="button"
                   onClick={handleFetchImageModels}
                   disabled={isFetchingImageModels}
-                  className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono disabled:opacity-50"
+                  variant="workspace-quiet"
+                  size="workspace-sm"
+                  className="h-7 px-2 gap-1 font-mono text-[10px]"
                   title="Ambil model dari endpoint Image Base URL"
                 >
                   {isFetchingImageModels ? (
@@ -816,11 +798,11 @@ export function ModelsConfigTab() {
                       ? `${availableImageModels.length} Model`
                       : "Tarik Model dari Endpoint"}
                   </span>
-                </button>
+                </Button>
               </div>
 
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   list="available-image-models-list"
                   placeholder="Ketik atau cari model, misal: inferhub/cb/gemini-2.5-flash-image"
@@ -837,7 +819,7 @@ export function ModelsConfigTab() {
                       setIsImageDropdownOpen(true);
                     }
                   }}
-                  className="w-full pl-3.5 pr-9 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
+                  className="pr-9 text-xs font-mono"
                 />
                 <button
                   type="button"
@@ -869,15 +851,15 @@ export function ModelsConfigTab() {
 
               {/* Custom Searchable Autocomplete Dropdown */}
               {isImageDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[#141416] border border-violet-500/30 rounded-2xl shadow-2xl p-2.5 backdrop-blur-xl animate-scale-pop">
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0B0B0C] rounded-xl border border-[#27272A] mb-2">
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-2.5 shadow-xl animate-scale-pop">
+                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#E5E1D7] bg-[#F1EEE6] px-2.5 py-1.5">
                     <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <input
+                    <Input
                       type="text"
                       placeholder="Cari model dari endpoint..."
                       value={imageModelSearch}
                       onChange={(e) => setImageModelSearch(e.target.value)}
-                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
+                      className="h-8 border-0 bg-transparent text-xs font-mono shadow-none focus-visible:ring-0"
                     />
                     {imageModelSearch && (
                       <button
@@ -893,28 +875,22 @@ export function ModelsConfigTab() {
                   {/* Filter tabs */}
                   {featuredImageModels.length > 0 && (
                     <div className="flex items-center gap-1.5 mb-2 px-1">
-                      <button
+                      <WorkspaceChip
                         type="button"
                         onClick={() => setImageTabFilter("image_only")}
-                        className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
-                          imageTabFilter === "image_only"
-                            ? "bg-violet-600 text-white font-semibold"
-                            : "bg-[#222226] text-slate-400 hover:text-white"
-                        }`}
+                        selected={imageTabFilter === "image_only"}
+                        className="font-sans text-[10px]"
                       >
                         Khusus Gambar ({featuredImageModels.length})
-                      </button>
-                      <button
+                      </WorkspaceChip>
+                      <WorkspaceChip
                         type="button"
                         onClick={() => setImageTabFilter("all")}
-                        className={`text-[10px] px-2 py-0.5 rounded-full transition font-sans ${
-                          imageTabFilter === "all"
-                            ? "bg-violet-600 text-white font-semibold"
-                            : "bg-[#222226] text-slate-400 hover:text-white"
-                        }`}
+                        selected={imageTabFilter === "all"}
+                        className="font-sans text-[10px]"
                       >
                         Semua Model ({availableImageModels.length})
-                      </button>
+                      </WorkspaceChip>
                     </div>
                   )}
 
@@ -949,8 +925,8 @@ export function ModelsConfigTab() {
                         if (filtered.length === 0) {
                           return (
                             <div className="py-5 text-center text-slate-500 text-xs px-2">
-                              Tidak ada model yang cocok dengan pencarian. Anda tetap dapat
-                              mengetik nama model sendiri.
+                              Tidak ada model yang cocok dengan pencarian. Anda tetap dapat mengetik
+                              nama model sendiri.
                             </div>
                           );
                         }
@@ -968,20 +944,21 @@ export function ModelsConfigTab() {
                               }}
                               className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
                                 isSelected
-                                  ? "bg-violet-500/20 border-violet-500/40 text-violet-200 font-semibold"
-                                  : "border-transparent text-slate-300 hover:bg-[#1E1E22] hover:text-white"
+                                  ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] font-semibold"
+                                  : "border-transparent text-[#5E5C54] hover:bg-[#F1EEE6] hover:text-[#26251F]"
                               }`}
                             >
                               <span className="truncate">{m}</span>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {isImage && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-950/80 text-violet-300 border border-violet-800/40 font-sans">
+                                  <Badge
+                                    variant="workspace"
+                                    className="px-1.5 py-0.5 font-sans text-[9px]"
+                                  >
                                     Gambar
-                                  </span>
+                                  </Badge>
                                 )}
-                                {isSelected && (
-                                  <Check className="w-3.5 h-3.5 text-violet-400" />
-                                )}
+                                {isSelected && <Check className="w-3.5 h-3.5 text-[#C45B3A]" />}
                               </div>
                             </button>
                           );
@@ -1000,18 +977,14 @@ export function ModelsConfigTab() {
                   "dall-e-3",
                   "flux-schnell",
                 ].map((preset) => (
-                  <button
+                  <WorkspaceChip
                     key={preset}
-                    type="button"
                     onClick={() => setImageModel(preset)}
-                    className={`text-[10px] px-2 py-0.5 rounded font-mono border transition ${
-                      imageModel === preset
-                        ? "bg-violet-500/20 border-violet-500/40 text-violet-300 font-semibold"
-                        : "bg-surface border-surface-border text-slate-400 hover:text-white"
-                    }`}
+                    selected={imageModel === preset}
+                    className="font-mono text-[10px]"
                   >
                     {preset}
-                  </button>
+                  </WorkspaceChip>
                 ))}
               </div>
             </div>
@@ -1027,7 +1000,7 @@ export function ModelsConfigTab() {
                   </span>
                 )}
               </div>
-              <input
+              <Input
                 type="password"
                 placeholder={
                   config?.has_image_api_key
@@ -1036,7 +1009,7 @@ export function ModelsConfigTab() {
                 }
                 value={imageApiKey}
                 onChange={(e) => setImageApiKey(e.target.value)}
-                className="w-full px-3.5 py-2 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500"
+                className="text-xs font-mono"
               />
             </div>
           </div>
@@ -1073,30 +1046,31 @@ export function ModelsConfigTab() {
                 <button
                   key={opt.val}
                   type="button"
+                  aria-pressed={imageConcurrency === opt.val}
                   onClick={() => setImageConcurrency(opt.val)}
-                  className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                  className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
                     imageConcurrency === opt.val
-                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/30"
-                      : "bg-surface border-surface-border text-slate-400 hover:text-white hover:bg-white/5"
+                      ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] ring-1 ring-[#C45B3A]/30"
+                      : "bg-[#FBFAF7] border-[#E5E1D7] text-[#5E5C54] hover:text-[#26251F] hover:bg-[#F1EEE6]"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
                     <span
-                      className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-emerald-300" : "text-slate-200"}`}
+                      className={`text-xs font-bold font-mono ${imageConcurrency === opt.val ? "text-[#A9472C]" : "text-[#4D4A42]"}`}
                     >
                       {opt.label}
                     </span>
                     {imageConcurrency === opt.val && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="w-2 h-2 rounded-full bg-[#C45B3A]"></span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-500 leading-tight">{opt.desc}</span>
+                  <span className="text-[10px] text-[#77766D] leading-tight">{opt.desc}</span>
                 </button>
               ))}
             </div>
             <p className="text-[10px] text-slate-500 mt-1.5">
-              Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch.
-              Default adalah <strong>2</strong>.
+              Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch. Default
+              adalah <strong>2</strong>.
             </p>
           </div>
 
@@ -1111,7 +1085,7 @@ export function ModelsConfigTab() {
                   className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-semibold hover:underline"
                 >
                   <Sparkles className="w-3 h-3" />
-                  <span>Buka AI Visual Image Studio ➔</span>
+                  <span>Buka Art Studio ➔</span>
                 </Link>
                 <button
                   type="button"
@@ -1123,30 +1097,31 @@ export function ModelsConfigTab() {
                 </button>
               </div>
             </div>
-            <textarea
+            <Textarea
               rows={4}
               value={imageSystemPrompt}
               onChange={(e) => setImageSystemPrompt(e.target.value)}
               placeholder="Instruksi gaya visual yang akan digabungkan ke setiap adegan..."
-              className="w-full px-3.5 py-2.5 bg-surface rounded-xl border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
+              className="text-xs font-mono leading-relaxed"
             />
             <p className="text-[10px] text-slate-500 mt-1">
-              Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan
-              gaya visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta
-              hitam, parchment tea-stained watercolor) dari awal sampai akhir. Gunakan{" "}
-              <strong>AI Visual Image Studio</strong> untuk membuat preset baru dari gambar
-              referensi.
+              Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya
+              visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam,
+              parchment tea-stained watercolor) dari awal sampai akhir. Gunakan{" "}
+              <strong>Art Studio</strong> untuk membuat preset gaya ilustrasi dan karakter dari teks
+              maupun gambar referensi.
             </p>
           </div>
         </div>
 
         {/* Test Image Connection Button */}
         <div className="pt-3 flex items-center justify-between border-t border-surface-border">
-          <button
+          <Button
             type="button"
             onClick={handleTestImageConnection}
             disabled={isTestingImage}
-            className="px-4 py-2 rounded-xl bg-surface border border-surface-border hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+            variant="workspace-secondary"
+            className="gap-2"
           >
             {isTestingImage ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1154,7 +1129,7 @@ export function ModelsConfigTab() {
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             )}
             <span>Test Image API Connection</span>
-          </button>
+          </Button>
 
           {testImageResult && (
             <div
@@ -1174,10 +1149,11 @@ export function ModelsConfigTab() {
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="submit"
           disabled={saveMutation.isPending}
-          className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-black font-semibold text-xs shadow-xs transition flex items-center gap-2 disabled:opacity-50"
+          variant="workspace-primary"
+          className="gap-2"
         >
           {saveMutation.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -1185,7 +1161,7 @@ export function ModelsConfigTab() {
             <Check className="w-4 h-4" />
           )}
           <span>{saveMutation.isPending ? "Menyimpan..." : "Simpan Konfigurasi Model"}</span>
-        </button>
+        </Button>
       </div>
     </form>
   );

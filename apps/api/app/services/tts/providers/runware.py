@@ -18,6 +18,7 @@ async def generate_runware_tts(
     voice: Optional[str] = None,
     rate: str = "+0%",
     pitch: str = "+0Hz",
+    language: Optional[str] = None,
 ) -> float:
     """Generate audio via Runware API (taskType: audioInference)."""
     settings = get_settings()
@@ -39,12 +40,20 @@ async def generate_runware_tts(
     elif actual_model in ("minimax:speech", "minimax:speech-2.8"):
         actual_model = "minimax:speech@2.8"
 
+    # Language hint: Fish/Qwen3 default to voice accent without it.
+    target_lang = (language or "").strip().lower()
+    spoken_text = text
+    if target_lang == "en":
+        spoken_text = f"Read the following in natural English:\n{text}"
+    elif target_lang == "id":
+        spoken_text = f"Bacakan teks berikut dengan bahasa Indonesia yang natural:\n{text}"
+
     task_payload: Dict[str, Any] = {
         "taskType": "audioInference",
         "taskUUID": str(uuid.uuid4()),
         "model": actual_model,
-        "text": text,
-        "positivePrompt": text,
+        "text": spoken_text,
+        "positivePrompt": spoken_text,
         "outputType": "base64Data",
         "outputFormat": "MP3",
     }

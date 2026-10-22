@@ -1,5 +1,7 @@
 export * from "./button";
+export * from "./workspace-chip";
 export * from "./input";
+export * from "./native-select";
 export * from "./textarea";
 export * from "./badge";
 export * from "./card";

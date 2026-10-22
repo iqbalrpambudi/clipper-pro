@@ -1,13 +1,16 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+PresetType = Literal["style", "character", "combined"]
 
 
 class ImagePresetBase(BaseModel):
     name: str
     description: Optional[str] = None
     category: str = "custom"
+    preset_type: PresetType = "style"
     master_prompt: str
     negative_prompt: Optional[str] = None
     reference_image_url: Optional[str] = None
@@ -25,6 +28,7 @@ class ImagePresetUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
+    preset_type: Optional[PresetType] = None
     master_prompt: Optional[str] = None
     negative_prompt: Optional[str] = None
     reference_image_url: Optional[str] = None
@@ -46,6 +50,7 @@ class ImagePresetResponse(ImagePresetBase):
 
 class StudioAnalyzeRequest(BaseModel):
     user_text: str
+    preset_type: PresetType = "style"
     reference_image_url: Optional[str] = None
     reference_image_path: Optional[str] = None
 
@@ -53,6 +58,7 @@ class StudioAnalyzeRequest(BaseModel):
 class StudioAnalyzeResponse(BaseModel):
     name: str
     category: str
+    preset_type: PresetType = "style"
     description: str
     master_prompt: str
     negative_prompt: str
@@ -61,6 +67,7 @@ class StudioAnalyzeResponse(BaseModel):
 
 class StudioTestGenerateRequest(BaseModel):
     master_prompt: str
+    negative_prompt: Optional[str] = None
     scene_prompt: Optional[str] = None
     aspect_ratio: Optional[str] = "16:9"
 

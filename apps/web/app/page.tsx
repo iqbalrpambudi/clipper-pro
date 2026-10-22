@@ -3,13 +3,16 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Sparkles,
   Plus,
-  Settings as SettingsIcon,
-  Palette,
   Film,
   Search,
   RotateCcw,
+  ArrowRight,
+  Clock3,
+  Video,
+  Image as ImageIcon,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 import {
   useProjects,
@@ -18,7 +21,8 @@ import {
   useUpdateProject,
 } from "@/hooks/useProjects";
 import { Project } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { WorkspaceShell } from "@/components/layout";
 import {
   ProjectCard,
   ProjectFilter,
@@ -28,6 +32,28 @@ import {
   EditProjectDialog,
   DeleteProjectDialog,
 } from "@/components/dashboard";
+
+const projectDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+const projectStatusLabels: Record<string, string> = {
+  draft: "Draft",
+  processing: "Diproses",
+  ready: "Siap diedit",
+  rendering: "Sedang dirender",
+  completed: "Selesai",
+  failed: "Perlu diperiksa",
+};
+
+function formatProjectDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Tanggal tidak tersedia"
+    : projectDateFormatter.format(date);
+}
 
 export default function DashboardPage() {
   // Modal states
@@ -108,6 +134,21 @@ export default function DashboardPage() {
     return result;
   }, [projects, modeFilter, searchQuery, sortOption]);
 
+  const featuredProject = useMemo(
+    () =>
+      filteredProjects.reduce<Project | null>((latest, project) => {
+        if (!latest) return project;
+        return new Date(project.updated_at).getTime() > new Date(latest.updated_at).getTime()
+          ? project
+          : latest;
+      }, null),
+    [filteredProjects]
+  );
+
+  const otherProjects = featuredProject
+    ? filteredProjects.filter((project) => project.id !== featuredProject.id)
+    : filteredProjects;
+
   const handleOpenCreate = (mode: "short_video" | "long_storyboard" = "short_video") => {
     setCreateMode(mode);
     setAspectRatio(mode === "long_storyboard" ? "16:9" : "9:16");
@@ -179,167 +220,213 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#121212]">
-      {/* Top Navbar */}
-      <header className="border-b border-[#2E2E2E] bg-[#171717]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-8xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3ECF8E] to-[#2DA670] flex items-center justify-center shadow-lg shadow-[#3ECF8E]/20 text-[#032817]">
-              <Sparkles className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight text-white font-sans">
-                  Cliper Pro
-                </span>
-                <Badge
-                  variant="supabase"
-                  className="text-[10px] uppercase font-mono tracking-wider"
-                >
-                  v2.0 Dual-Mode
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">AI Video & Storyboard Studio</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link href="/image-studio">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-xs border-[#2E2E2E] text-violet-300 hover:text-white hover:border-violet-500/50"
-              >
-                <Palette className="w-4 h-4 text-violet-400" />
-                <span>Visual Image Studio</span>
-              </Button>
-            </Link>
-            <Link href="/settings">
-              <Button variant="outline" size="sm" className="gap-2 text-xs border-[#2E2E2E]">
-                <SettingsIcon className="w-4 h-4 text-muted-foreground" />
-                <span>Model Settings</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area: Project List & Filters Only */}
-      <main className="max-w-8xl mx-auto flex-1 w-full px-6 py-8">
-        {/* Dashboard Title & Quick Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <WorkspaceShell activePage="projects">
+      <div className="workspace-dashboard">
+        <header className="workspace-dashboard-intro">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Project Saya</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Kelola dan lanjutkan pembuatan video pendek & storyboard Anda
+            <p className="workspace-page-eyebrow">Ruang kerja kreatif</p>
+            <h1 className="workspace-page-title">
+              Bahan mentah,
+              <br />
+              cerita baru.
+            </h1>
+            <p className="workspace-page-description">
+              Semua project video Anda, dari klip pertama sampai siap tayang. Lanjutkan yang sudah
+              dimulai atau buka ruang cerita baru.
             </p>
           </div>
+          <Button
+            onClick={() => handleOpenCreate("short_video")}
+            className="workspace-create-button"
+          >
+            <Plus className="h-4 w-4" />
+            Buat project
+          </Button>
+        </header>
 
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => handleOpenCreate("short_video")}
-              variant="supabase"
-              size="sm"
-              className="gap-2 text-xs shadow-md shadow-[#3ECF8E]/10"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Project Baru</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Filter & Search Bar */}
-        <ProjectFilter
-          modeFilter={modeFilter}
-          onModeFilterChange={setModeFilter}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          sortOption={sortOption}
-          onSortOptionChange={setSortOption}
-          totalCount={projects.length}
-          shortCount={shortCount}
-          storyboardCount={storyboardCount}
-          filteredCount={filteredProjects.length}
-          onResetFilters={handleResetFilters}
-        />
-
-        {/* Projects Grid or States */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <div
-                key={n}
-                className="h-44 rounded-xl bg-[#1C1C1C] animate-pulse border border-[#2E2E2E]"
-              />
-            ))}
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          projects.length === 0 ? (
-            /* Empty State when zero total projects exist */
-            <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border-2 border-dashed border-[#2E2E2E] bg-[#181818]/40">
-              <div className="w-14 h-14 rounded-2xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-4 shadow-inner">
-                <Film className="w-7 h-7 text-[#3ECF8E]" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-1.5">Belum Ada Project</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
-                Mulai buat video pendek TikTok/Reels dari YouTube atau susun naskah storyboard
-                explainer dengan ilustrasi AI.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  onClick={() => handleOpenCreate("short_video")}
-                  variant="supabase"
-                  size="sm"
-                  className="gap-2 font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Buat Short Video (9:16)</span>
-                </Button>
-                <Button
-                  onClick={() => handleOpenCreate("long_storyboard")}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-violet-500/40 text-violet-300 hover:text-white hover:bg-violet-600/20 font-medium"
-                >
-                  <Plus className="w-4 h-4 text-violet-400" />
-                  <span>Buat Long Storyboard (16:9)</span>
-                </Button>
+        {featuredProject && !isLoading && (
+          <section className="workspace-featured-section" aria-labelledby="featured-project-title">
+            <div className="workspace-section-heading">
+              <div>
+                <h2 className="workspace-section-title">Lanjutkan dari sini</h2>
+                <p>Terakhir diperbarui {formatProjectDate(featuredProject.updated_at)}</p>
               </div>
             </div>
-          ) : (
-            /* Empty State when filters/search yield no matches */
-            <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border-2 border-dashed border-[#2E2E2E] bg-[#181818]/40">
-              <div className="w-12 h-12 rounded-xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-3.5">
-                <Search className="w-5 h-5 text-muted-foreground" />
+            <article className="workspace-featured-card">
+              <div className="workspace-featured-copy">
+                <span className="workspace-status-pill">
+                  <span className="workspace-status-dot" aria-hidden="true" />
+                  {projectStatusLabels[featuredProject.status] || featuredProject.status}
+                </span>
+                <div>
+                  <h3 id="featured-project-title">{featuredProject.name}</h3>
+                  <p>
+                    {featuredProject.description ||
+                      (featuredProject.project_type === "long_storyboard"
+                        ? "Lanjutkan menyusun storyboard dan ilustrasi project ini."
+                        : "Lanjutkan memilih media dan menyusun klip video project ini.")}
+                  </p>
+                </div>
+                <div className="workspace-featured-footer">
+                  <div className="workspace-project-facts">
+                    {featuredProject.project_type === "long_storyboard" ? (
+                      <span>
+                        <ImageIcon aria-hidden="true" /> {featuredProject.storyboard_count || 0}{" "}
+                        ilustrasi
+                      </span>
+                    ) : (
+                      <>
+                        <span>
+                          <Video aria-hidden="true" /> {featuredProject.source_video_count || 0}{" "}
+                          media
+                        </span>
+                        <span>
+                          <Film aria-hidden="true" /> {featuredProject.scene_count || 0} scene
+                        </span>
+                      </>
+                    )}
+                    <span>
+                      <Clock3 aria-hidden="true" /> Diperbarui
+                    </span>
+                  </div>
+                  <div className="workspace-featured-actions">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleOpenEdit(featuredProject)}
+                      className="workspace-featured-icon-action"
+                      title="Ubah nama project"
+                      aria-label={`Ubah nama project ${featuredProject.name}`}
+                    >
+                      <Edit3 aria-hidden="true" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setProjectToDelete(featuredProject)}
+                      className="workspace-featured-icon-action workspace-delete-project"
+                      title="Hapus project"
+                      aria-label={`Hapus project ${featuredProject.name}`}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                    <Button asChild className="workspace-open-project">
+                      <Link
+                        href={
+                          featuredProject.project_type === "long_storyboard"
+                            ? `/project/storyboard/${featuredProject.id}`
+                            : `/project/short/${featuredProject.id}`
+                        }
+                      >
+                        Buka project <ArrowRight aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-base font-bold text-white mb-1">Tidak ada project yang sesuai</h3>
-              <p className="text-xs text-muted-foreground max-w-sm mb-5 leading-relaxed">
-                Tidak ditemukan project yang cocok dengan filter atau kata kunci pencarian Anda.
-              </p>
-              <Button
-                onClick={handleResetFilters}
-                variant="outline"
-                size="sm"
-                className="gap-2 text-xs border-[#2E2E2E]"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-[#3ECF8E]" />
-                <span>Reset Semua Filter</span>
-              </Button>
-            </div>
-          )
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((proj) => (
-              <ProjectCard
-                key={proj.id}
-                project={proj}
-                onEdit={handleOpenEdit}
-                onDelete={setProjectToDelete}
-              />
-            ))}
-          </div>
+              <div className="workspace-featured-art" aria-hidden="true">
+                <span className="workspace-art-orb" />
+                <span className="workspace-art-frame">
+                  {featuredProject.project_type === "long_storyboard"
+                    ? "STORYBOARD"
+                    : "VIDEO PROJECT"}
+                  <small>
+                    {featuredProject.aspect_ratio} · {featuredProject.resolution}
+                  </small>
+                </span>
+              </div>
+            </article>
+          </section>
         )}
-      </main>
+
+        <section className="workspace-projects-section" aria-labelledby="projects-heading">
+          <div className="workspace-section-heading workspace-projects-heading">
+            <div>
+              <h2 id="projects-heading" className="workspace-section-title">
+                Project Anda
+              </h2>
+              <p>Tempat setiap potongan mulai menemukan bentuknya.</p>
+            </div>
+          </div>
+          <ProjectFilter
+            modeFilter={modeFilter}
+            onModeFilterChange={setModeFilter}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            sortOption={sortOption}
+            onSortOptionChange={setSortOption}
+            totalCount={projects.length}
+            shortCount={shortCount}
+            storyboardCount={storyboardCount}
+            filteredCount={filteredProjects.length}
+            onResetFilters={handleResetFilters}
+          />
+
+          {isLoading ? (
+            <div className="workspace-project-grid" aria-label="Memuat project">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="workspace-project-skeleton" />
+              ))}
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            projects.length === 0 ? (
+              <div className="workspace-empty-state">
+                <span className="workspace-empty-icon">
+                  <Film aria-hidden="true" />
+                </span>
+                <h3>Belum ada project</h3>
+                <p>
+                  Mulai buat video pendek dari koleksi media Anda atau susun naskah storyboard
+                  dengan ilustrasi AI.
+                </p>
+                <div className="workspace-empty-actions">
+                  <Button
+                    onClick={() => handleOpenCreate("short_video")}
+                    className="workspace-create-button"
+                  >
+                    <Plus className="h-4 w-4" /> Buat short video
+                  </Button>
+                  <Button
+                    onClick={() => handleOpenCreate("long_storyboard")}
+                    variant="outline"
+                    className="workspace-secondary-button"
+                  >
+                    <Plus className="h-4 w-4" /> Buat storyboard
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="workspace-empty-state workspace-empty-filtered">
+                <span className="workspace-empty-icon">
+                  <Search aria-hidden="true" />
+                </span>
+                <h3>Tidak ada project yang sesuai</h3>
+                <p>Tidak ditemukan project yang cocok dengan filter atau kata kunci Anda.</p>
+                <Button
+                  onClick={handleResetFilters}
+                  variant="outline"
+                  className="workspace-secondary-button"
+                >
+                  <RotateCcw className="h-4 w-4" /> Reset filter
+                </Button>
+              </div>
+            )
+          ) : (
+            <div className="workspace-project-grid">
+              {otherProjects.map((proj) => (
+                <ProjectCard
+                  key={proj.id}
+                  project={proj}
+                  onEdit={handleOpenEdit}
+                  onDelete={setProjectToDelete}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Dialog: Create Project */}
       <CreateProjectDialog
@@ -381,6 +468,6 @@ export default function DashboardPage() {
         onConfirm={handleDeleteConfirm}
         isPending={deleteMutation.isPending}
       />
-    </div>
+    </WorkspaceShell>
   );
 }

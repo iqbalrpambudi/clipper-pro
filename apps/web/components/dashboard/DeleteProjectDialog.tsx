@@ -30,7 +30,7 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="workspace-dialog max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
@@ -40,8 +40,8 @@ export function DeleteProjectDialog({
           </div>
           <DialogDescription>
             Apakah Anda yakin ingin menghapus project{" "}
-            <strong className="text-white font-medium">{project?.name}</strong>? Semua data media,
-            naskah, timeline, dan hasil render akan dihapus secara permanen.
+            <strong className="text-foreground font-medium">{project?.name}</strong>? Semua data
+            media, naskah, timeline, dan hasil render akan dihapus secara permanen.
           </DialogDescription>
         </DialogHeader>
 

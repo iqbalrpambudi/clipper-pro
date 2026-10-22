@@ -57,6 +57,7 @@ async def get_or_generate_voice_sample(
             api_key=api_key,
             voice=voice,
             model=model or "eleven_multilingual_v2",
+            language=target_lang,
         )
     elif clean_prov == "runware":
         await generate_runware_tts(
@@ -65,6 +66,7 @@ async def get_or_generate_voice_sample(
             api_key=api_key,
             voice=voice,
             model=model or "fishaudio:s2.1@pro",
+            language=target_lang,
         )
     elif clean_prov == "gemini":
         await generate_gemini_tts(
@@ -75,6 +77,7 @@ async def get_or_generate_voice_sample(
             rate="+0%",
             pitch="+0Hz",
             model=model,
+            language=target_lang,
         )
     else:
         await generate_edge_tts(

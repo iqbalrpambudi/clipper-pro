@@ -45,11 +45,11 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         surface: {
-          DEFAULT: "#181818",
-          hover: "#262626",
-          card: "#1C1C1C",
-          secondary: "#121212",
-          border: "#2E2E2E",
+          DEFAULT: "hsl(var(--surface))",
+          hover: "hsl(var(--surface-hover))",
+          card: "hsl(var(--surface-card))",
+          secondary: "hsl(var(--surface-secondary))",
+          border: "hsl(var(--surface-border))",
         },
         brand: {
           50: "#ECFDF5",

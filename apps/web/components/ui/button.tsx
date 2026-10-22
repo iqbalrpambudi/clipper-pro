@@ -10,6 +10,14 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-primary text-primary-foreground shadow hover:bg-primary/90 font-semibold active:scale-[0.98] transition-transform",
+        "workspace-primary":
+          "min-h-10 rounded-xl border border-[#C45B3A] bg-[#C45B3A] px-4 text-xs font-semibold text-[#FFFAF6] shadow-sm hover:border-[#A9472C] hover:bg-[#A9472C] active:scale-[0.98]",
+        "workspace-secondary":
+          "min-h-10 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] px-4 text-xs font-semibold text-[#4D4A42] shadow-sm hover:bg-[#F1EEE6] active:scale-[0.98]",
+        "workspace-quiet":
+          "min-h-9 rounded-lg px-3 text-xs font-semibold text-[#5E5C54] hover:bg-[#F1EEE6] hover:text-[#26251F]",
+        "workspace-destructive":
+          "min-h-9 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-3 text-xs font-semibold text-[#A9472C] hover:bg-[#F3E1D9]",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:scale-[0.98] transition-transform",
         outline:
@@ -28,6 +36,9 @@ const buttonVariants = cva(
         lg: "h-10 rounded-md px-6 text-base",
         icon: "h-9 w-9",
         "icon-sm": "h-7 w-7",
+        workspace: "h-10 px-4",
+        "workspace-sm": "h-9 px-3",
+        "workspace-icon": "h-9 w-9 p-0",
       },
     },
     defaultVariants: {

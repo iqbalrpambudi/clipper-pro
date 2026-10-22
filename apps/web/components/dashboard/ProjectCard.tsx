@@ -4,15 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Film, Video, Image as ImageIcon, Edit3, Trash2, ArrowRight, Calendar } from "lucide-react";
 import { Project } from "@/types";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  Badge,
-  Button,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter, Button } from "@/components/ui";
 
 interface ProjectCardProps {
   project: Project;
@@ -41,37 +33,29 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   }, [project.created_at]);
 
   return (
-    <Card
-      className={`group relative border-[#2E2E2E] bg-[#181818] transition-all duration-200 flex flex-col justify-between hover:bg-[#1C1C1C] hover:shadow-xl ${
-        isStoryboard
-          ? "hover:border-violet-500/50 hover:shadow-violet-500/5"
-          : "hover:border-[#3ECF8E]/50 hover:shadow-[#3ECF8E]/5"
-      }`}
-    >
-      <CardHeader className="p-5 pb-3">
-        {/* Top Badges & Actions */}
-        <div className="flex items-start justify-between gap-3 mb-2.5">
+    <Card className="workspace-project-card group relative flex flex-col justify-between">
+      <div
+        className={`workspace-project-art ${isStoryboard ? "workspace-project-art-storyboard" : ""}`}
+        aria-hidden="true"
+      >
+        <span>{isStoryboard ? "STORYBOARD" : "VIDEO PROJECT"}</span>
+      </div>
+      <CardHeader className="workspace-project-card-header">
+        <div className="mb-2.5 flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {isStoryboard ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/30 font-semibold">
-                <ImageIcon className="w-3 h-3 text-violet-400" />
-                Storyboard • 16:9 • {project.resolution}
-              </span>
-            ) : (
-              <Badge variant="supabase" className="font-mono text-[11px] font-semibold">
-                {project.aspect_ratio || "9:16"} • {project.resolution}
-              </Badge>
-            )}
+            <span className={`workspace-project-type ${isStoryboard ? "is-storyboard" : ""}`}>
+              {isStoryboard ? <ImageIcon aria-hidden="true" /> : <Video aria-hidden="true" />}
+              {isStoryboard ? "Storyboard" : "Clip pendek"}
+            </span>
+            <span className="workspace-project-format">
+              {project.aspect_ratio || (isStoryboard ? "16:9" : "9:16")} · {project.resolution}
+            </span>
 
             {project.language === "en" ? (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1 font-semibold">
-                🇬🇧 EN
-              </span>
-            ) : (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-semibold">
-                🇮🇩 ID
-              </span>
-            )}
+              <span className="workspace-language-tag">EN</span>
+            ) : project.language === "id" ? (
+              <span className="workspace-language-tag">ID</span>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-1">
@@ -83,10 +67,11 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
                 e.stopPropagation();
                 onEdit(project);
               }}
-              className="text-muted-foreground hover:text-white hover:bg-white/5 h-7 w-7"
-              title="Edit Nama Project"
+              className="workspace-card-action"
+              title="Ubah nama project"
+              aria-label={`Ubah nama project ${project.name}`}
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
@@ -96,81 +81,59 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
                 e.stopPropagation();
                 onDelete(project);
               }}
-              className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 h-7 w-7"
-              title="Hapus Project"
+              className="workspace-card-action is-destructive"
+              title="Hapus project"
+              aria-label={`Hapus project ${project.name}`}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Project Name */}
-        <Link href={projectUrl}>
-          <CardTitle
-            className={`text-base font-bold text-white transition leading-snug line-clamp-1 ${
-              isStoryboard ? "group-hover:text-violet-400" : "group-hover:text-[#3ECF8E]"
-            }`}
-          >
-            {project.name}
-          </CardTitle>
+        <Link href={projectUrl} className="workspace-project-title-link">
+          <CardTitle className="workspace-project-title">{project.name}</CardTitle>
         </Link>
 
-        {/* Project Description */}
         {project.description ? (
-          <CardDescription className="text-xs text-muted-foreground line-clamp-2 mt-1.5">
+          <CardDescription className="workspace-project-description">
             {project.description}
           </CardDescription>
         ) : (
-          <p className="text-xs text-muted-foreground/40 italic mt-1.5">
-            Tidak ada deskripsi tambahan
-          </p>
+          <p className="workspace-project-description is-empty">Tidak ada deskripsi tambahan</p>
         )}
 
-        {/* Date info if available */}
         {formattedDate && (
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-2 font-mono">
-            <Calendar className="w-3 h-3" />
-            <span>{formattedDate}</span>
+          <div className="workspace-project-date">
+            <Calendar aria-hidden="true" />
+            <span>Dibuat {formattedDate}</span>
           </div>
         )}
       </CardHeader>
 
-      {/* Card Footer: Metadata counts and Studio Link */}
-      <CardFooter className="p-5 pt-3 border-t border-[#2E2E2E]/60 flex items-center justify-between text-xs text-muted-foreground">
+      <CardFooter className="workspace-project-footer">
         <div className="flex items-center gap-3">
           {isStoryboard ? (
-            <>
-              <span className="flex items-center gap-1 text-violet-300">
-                <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
-                {project.storyboard_count || 0} Ilustrasi
-              </span>
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Film className="w-3.5 h-3.5" />
-                Long Explainer
-              </span>
-            </>
+            <span className="workspace-project-stat">
+              <ImageIcon aria-hidden="true" />
+              {project.storyboard_count || 0} ilustrasi
+            </span>
           ) : (
             <>
-              <span className="flex items-center gap-1">
-                <Video className="w-3.5 h-3.5 text-muted-foreground" />
-                {project.source_video_count || 0} Media
+              <span className="workspace-project-stat">
+                <Video aria-hidden="true" />
+                {project.source_video_count || 0} media
               </span>
-              <span className="flex items-center gap-1">
-                <Film className="w-3.5 h-3.5 text-muted-foreground" />
-                {project.scene_count || 0} Scene
+              <span className="workspace-project-stat">
+                <Film aria-hidden="true" />
+                {project.scene_count || 0} scene
               </span>
             </>
           )}
         </div>
 
-        <Link
-          href={projectUrl}
-          className={`flex items-center gap-1 font-semibold group-hover:translate-x-0.5 transition ${
-            isStoryboard ? "text-violet-400" : "text-[#3ECF8E]"
-          }`}
-        >
-          <span>{isStoryboard ? "Storyboard Studio" : "Clip Studio"}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+        <Link href={projectUrl} className="workspace-project-link">
+          <span>Buka</span>
+          <ArrowRight aria-hidden="true" />
         </Link>
       </CardFooter>
     </Card>
