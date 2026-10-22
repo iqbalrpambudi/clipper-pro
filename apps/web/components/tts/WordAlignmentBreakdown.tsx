@@ -1,14 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  AlignLeft,
-  Wand2,
-  Sliders,
-  CheckCircle2,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
+import { AlignLeft, Wand2, Sliders, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { SentenceSegment, WordTimestamp } from "@/types";
 import { Button } from "@/components/ui/button";
 import { formatAudioTime } from "./constants";
@@ -53,7 +46,7 @@ export function WordAlignmentBreakdown({
   const displaySegments = isEditTimingMode ? editableSegments : segments;
 
   return (
-    <div className="pt-2 border-t border-[#2E2E2E] space-y-3">
+    <div className="space-y-3 border-t border-border pt-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -72,7 +65,7 @@ export function WordAlignmentBreakdown({
           {/* Realignment Trigger Button */}
           <Button
             type="button"
-            variant="supabase"
+            variant="workspace-primary"
             size="xs"
             onClick={onRealign}
             disabled={isRealignPending || isGeneratingTTS || !hasAudioUrl}
@@ -88,24 +81,24 @@ export function WordAlignmentBreakdown({
           </Button>
 
           {/* Global Offset Calibration Box */}
-          <div className="flex items-center bg-[#181818] border border-[#2E2E2E] rounded-md px-1 py-0.5 text-[11px]">
+          <div className="flex items-center rounded-md border border-border bg-background px-1 py-0.5 text-[11px]">
             <button
               type="button"
               onClick={() => onGlobalOffsetShift(-50)}
               disabled={isRealignPending}
-              className="px-1.5 py-0.5 text-muted-foreground hover:text-foreground hover:bg-[#242424] rounded text-[10px] font-mono transition"
+              className="rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Geser semua kata 50ms lebih awal (-50ms)"
             >
               -50ms
             </button>
-            <span className="px-1.5 text-[10px] font-mono text-primary font-bold border-x border-[#2E2E2E]">
+            <span className="border-x border-border px-1.5 font-mono text-[10px] font-bold text-primary">
               {offsetMs >= 0 ? `+${offsetMs}` : offsetMs}ms
             </span>
             <button
               type="button"
               onClick={() => onGlobalOffsetShift(50)}
               disabled={isRealignPending}
-              className="px-1.5 py-0.5 text-muted-foreground hover:text-foreground hover:bg-[#242424] rounded text-[10px] font-mono transition"
+              className="rounded px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Geser semua kata 50ms lebih lambat (+50ms)"
             >
               +50ms
@@ -128,7 +121,7 @@ export function WordAlignmentBreakdown({
           {isEditTimingMode && (
             <Button
               type="button"
-              variant="supabase"
+              variant="workspace-primary"
               size="xs"
               onClick={onSaveSegments}
               disabled={isSaveSegmentsPending}
@@ -152,7 +145,7 @@ export function WordAlignmentBreakdown({
               className={`p-3 rounded-xl border transition-all ${
                 isSegActive
                   ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20"
-                  : "bg-[#141414] border-[#2E2E2E] hover:border-[#3E3E3E]"
+                  : "bg-background border-border hover:border-primary/40"
               }`}
             >
               <div className="flex justify-between font-mono text-[10px] text-muted-foreground mb-1.5">
@@ -173,17 +166,17 @@ export function WordAlignmentBreakdown({
                       return (
                         <div
                           key={wi}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-[#181818] border border-[#2E2E2E]"
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
                         >
                           <span className="font-semibold text-foreground">{w.word}</span>
-                          <span className="font-mono text-[9px] text-muted-foreground bg-[#121212] px-1 rounded border border-[#2E2E2E]">
+                          <span className="rounded border border-border bg-muted px-1 font-mono text-[9px] text-muted-foreground">
                             {w.start_ms}ms
                           </span>
                           <div className="flex items-center gap-0.5 ml-0.5">
                             <button
                               type="button"
                               onClick={() => onWordTimingNudge(i, wi, -50)}
-                              className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                              className="flex h-4 w-4 items-center justify-center rounded font-mono text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
                               title="Mundurkan 50ms"
                             >
                               -
@@ -191,7 +184,7 @@ export function WordAlignmentBreakdown({
                             <button
                               type="button"
                               onClick={() => onWordTimingNudge(i, wi, 50)}
-                              className="w-4 h-4 rounded flex items-center justify-center text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-[#242424]"
+                              className="flex h-4 w-4 items-center justify-center rounded font-mono text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
                               title="Majukan 50ms"
                             >
                               +
@@ -209,7 +202,7 @@ export function WordAlignmentBreakdown({
                         className={`px-2 py-0.5 rounded-md text-xs transition cursor-pointer ${
                           isWordActive
                             ? "bg-primary text-black font-semibold shadow-xs"
-                            : "bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground hover:border-primary/40"
+                            : "border border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
                         }`}
                         title={`${w.word} • ${w.start_ms}ms - ${w.end_ms}ms`}
                       >
@@ -227,12 +220,12 @@ export function WordAlignmentBreakdown({
       </div>
 
       {/* Next Tab Button */}
-      <div className="pt-4 border-t border-[#2E2E2E] flex items-center justify-between">
+      <div className="flex items-center justify-between border-t border-border pt-4">
         <span className="text-xs text-muted-foreground">
           Audio siap! Lanjutkan ke perakitan Timeline & Subtitle.
         </span>
         <Button
-          variant="supabase"
+          variant="workspace-primary"
           size="sm"
           onClick={onNavigateTimeline}
           className="gap-2 font-semibold"

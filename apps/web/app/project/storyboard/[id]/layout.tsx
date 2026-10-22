@@ -94,7 +94,8 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
     if (projectTask) return;
 
     const activeJob = project.render_jobs?.find(
-      (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+      (j: RenderJob) =>
+        j.status === "rendering" || j.status === "processing" || j.status === "queued"
     );
     if (activeJob) {
       setActiveTask(
@@ -137,7 +138,8 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
 
     if (activeTask.status === "progress" && activeTask.task_type === "render") {
       const activeJob = project.render_jobs?.find(
-        (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+        (j: RenderJob) =>
+          j.status === "rendering" || j.status === "processing" || j.status === "queued"
       );
       if (!activeJob) {
         setActiveTask(null, id);
@@ -147,26 +149,24 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
 
   if (isLoading) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white"
-        style={{ backgroundColor: "#121212", color: "#ffffff" }}
-      >
-        <Loader2 className="w-8 h-8 text-violet-400 animate-spin mb-3" />
-        <p className="text-sm text-slate-400">Memuat Studio Long Storyboard...</p>
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#C45B3A]" aria-hidden="true" />
+        <p role="status" className="text-sm text-[#77766D]">
+          Memuat Studio Long Storyboard...
+        </p>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white"
-        style={{ backgroundColor: "#121212", color: "#ffffff" }}
-      >
-        <p className="text-sm text-rose-400 mb-4">Project tidak ditemukan atau gagal dimuat.</p>
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
+        <p role="alert" className="mb-4 text-sm text-rose-700">
+          Project tidak ditemukan atau gagal dimuat.
+        </p>
         <Link href="/">
-          <Button variant="outline" size="sm" className="border-[#2E2E2E]">
-            Kembali ke Dashboard
+          <Button variant="workspace-secondary" size="workspace-sm">
+            Kembali ke Project
           </Button>
         </Link>
       </div>
@@ -204,9 +204,7 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
       id: "storyboard_render",
       label: "5. Render 16:9",
       icon: Download,
-      badge: project.render_jobs?.length
-        ? `${project.render_jobs.length} Job`
-        : undefined,
+      badge: project.render_jobs?.length ? `${project.render_jobs.length} Job` : undefined,
     },
     {
       id: "storyboard_youtube",

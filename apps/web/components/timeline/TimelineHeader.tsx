@@ -1,15 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Film,
-  Sparkles,
-  Loader2,
-  Trash2,
-  ArrowRight,
-  CheckCircle2,
-  Subtitles,
-} from "lucide-react";
+import { Film, Sparkles, Loader2, Trash2, ArrowRight, CheckCircle2, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -135,7 +127,7 @@ export function TimelineHeader({
 
           <Button
             type="button"
-            variant="supabase"
+            variant="workspace-primary"
             size="xs"
             onClick={onRender}
             className="text-xs font-semibold flex items-center gap-1 h-7"

@@ -61,8 +61,8 @@ export function AiThumbnailGenerator({
   return (
     <div className="space-y-4">
       {/* SECTION 1: Formula Prompt Viral */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-red-500" />
             <h4 className="text-xs font-bold text-white">Formula Hook Visual AI</h4>
@@ -115,10 +115,10 @@ export function AiThumbnailGenerator({
 
       {/* SECTION 2: Prompt Input & Action */}
       <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <Wand2 className="w-4 h-4 text-amber-400" />
-            <h4 className="text-xs font-bold text-white">Prompt Ilustrasi Thumbnail AI</h4>
+            <h4 className="text-xs font-semibold text-[#26251F]">Prompt Ilustrasi Thumbnail AI</h4>
           </div>
 
           <div className="flex items-center gap-2">
@@ -164,7 +164,8 @@ export function AiThumbnailGenerator({
           <Button
             onClick={onGenerateThumbnail}
             disabled={isGenerating}
-            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md shadow-red-600/20 shrink-0 h-8 px-3"
+            variant="workspace-primary"
+            className="h-9 shrink-0 px-3 text-xs"
           >
             {isGenerating ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -178,7 +179,7 @@ export function AiThumbnailGenerator({
 
       {/* SECTION 3: History Variations */}
       {thumbnailHistory.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-2.5">
+        <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
           <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
               <History className="w-3.5 h-3.5 text-slate-400" />

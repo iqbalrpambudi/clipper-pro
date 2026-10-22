@@ -421,10 +421,10 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
         actions={
           <>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setActiveTab("storyboard_script")}
-              className="h-8 border-[#2E2E2E] text-xs"
+              variant="workspace-secondary"
+              className="h-9 text-xs"
             >
               Kembali ke Naskah
             </Button>
@@ -433,7 +433,8 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
               <Button
                 size="sm"
                 onClick={() => setActiveTab("storyboard_images")}
-                className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+                variant="workspace-primary"
+                className="h-9 gap-1.5 text-xs"
               >
                 <span>Lanjut ke Ilustrasi AI</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -447,714 +448,721 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
       <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Voiceover Controls (5 Cols) */}
-          <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-5 shadow-xl">
+          <div className="space-y-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6 shadow-sm lg:col-span-5">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] text-[#456A4E]">
                 <Mic className="w-4 h-4" />
               </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Pengaturan Suara Narasi</h3>
-              <p className="text-[11px] text-muted-foreground">Pilih provider dan karakter suara</p>
-            </div>
-          </div>
-
-          {/* Preset Selector & Save Bar */}
-          <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Bookmark className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="text-xs font-semibold text-slate-300 shrink-0">Preset:</span>
-                <select
-                  value={selectedVoicePresetId}
-                  onChange={(e) => handleLoadVoicePreset(e.target.value)}
-                  className="bg-[#1C1C1C] border border-[#333] hover:border-emerald-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-emerald-500 font-medium truncate max-w-[200px]"
-                >
-                  <option value="" disabled>
-                    -- Muat Preset Suara --
-                  </option>
-                  {voicePresets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
-                    </option>
-                  ))}
-                </select>
-                {selectedVoicePresetId &&
-                  !voicePresets.find((p) => p.id === selectedVoicePresetId)?.isBuiltin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cur = voicePresets.find((p) => p.id === selectedVoicePresetId);
-                        if (cur) handleDeleteVoicePreset(cur.id, cur.name);
-                      }}
-                      title="Hapus Preset Kustom Ini"
-                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
-                className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white transition flex items-center gap-1 font-medium shrink-0"
-              >
-                <BookmarkPlus className="w-3.5 h-3.5" />
-                <span>Simpan Preset</span>
-              </button>
-            </div>
-
-            {/* Save Voice Preset Inline Form */}
-            {showSaveVoiceModal && (
-              <form
-                onSubmit={handleSaveVoicePreset}
-                className="flex items-center gap-2 pt-2 border-t border-[#222]"
-              >
-                <Input
-                  type="text"
-                  placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
-                  value={newVoicePresetName}
-                  onChange={(e) => setNewVoicePresetName(e.target.value)}
-                  autoFocus
-                  className="h-8 text-xs bg-[#1A1A1A] border-[#333] flex-1 text-white"
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 gap-1 shrink-0"
-                >
-                  <Save className="w-3 h-3" />
-                  <span>Simpan</span>
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setShowSaveVoiceModal(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            {/* Provider */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Provider TTS
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProvider("gemini");
-                    setVoice("Puck");
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "gemini"
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-bold">Gemini TTS</div>
-                  <div className="text-[10px] text-muted-foreground">Natural Studio Voice</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProvider("elevenlabs");
-                    setVoice("Adam");
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "elevenlabs"
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-bold">ElevenLabs</div>
-                  <div className="text-[10px] text-muted-foreground">Zero Tone Drift (Gold)</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProvider("runware");
-                    setVoice("fishaudio:s2.1@pro");
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "runware"
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-bold">Runware TTS</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Fish / Qwen3 / xAI / MiniMax
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProvider("edge");
-                    setVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
-                  }}
-                  className={`p-2.5 rounded-xl border text-left transition ${
-                    provider === "edge"
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-bold">Edge-TTS</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Multi-Language Neural (Free)
-                  </div>
-                </button>
+              <div>
+                <h3 className="text-sm font-semibold text-[#26251F]">Pengaturan Suara Narasi</h3>
+                <p className="text-xs text-[#77766D]">Pilih provider dan karakter suara</p>
               </div>
             </div>
 
-            {/* Model Selection Dropdown */}
-            {provider === "gemini" && (
-              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-300">Model Gemini TTS</span>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+            {/* Preset Selector & Save Bar */}
+            <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Bookmark className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset:</span>
+                  <select
+                    value={selectedVoicePresetId}
+                    onChange={(e) => handleLoadVoicePreset(e.target.value)}
+                    className="max-w-[200px] truncate rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs font-medium text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                   >
-                    2.5 Flash Utama
-                  </Badge>
-                </div>
-                <select
-                  value={geminiModel}
-                  onChange={(e) => setGeminiModel(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
-                >
-                  {GEMINI_TTS_MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} — {m.badge}
+                    <option value="" disabled>
+                      -- Muat Preset Suara --
                     </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {provider === "elevenlabs" && (
-              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-300">Model ElevenLabs</span>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] py-0 text-violet-300 border-violet-500/40"
-                  >
-                    Multilingual v2
-                  </Badge>
-                </div>
-                <select
-                  value={elevenlabsModel}
-                  onChange={(e) => setElevenlabsModel(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
-                >
-                  {ELEVENLABS_TTS_MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} — {m.badge}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Custom Voice ID Input */}
-                <div className="pt-2 border-t border-[#2E2E2E] space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>Atau masukkan Voice ID dari elevenlabs.io:</span>
-                    <a
-                      href="https://elevenlabs.io/voice-library"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-violet-400 hover:underline flex items-center gap-0.5"
-                    >
-                      Voice Library <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={customVoiceInput}
-                      onChange={(e) => setCustomVoiceInput(e.target.value)}
-                      placeholder="Contoh: pNInz6obpgDQGcFmaJgB"
-                      className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
-                    />
-                    <button
-                      type="button"
-                      disabled={!customVoiceInput.trim()}
-                      onClick={() => {
-                        const clean = customVoiceInput.trim();
-                        setVoice(clean);
-                        showToast(`Voice ID '${clean}' dipilih!`, "success");
-                      }}
-                      className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded text-xs font-medium"
-                    >
-                      Gunakan
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!customVoiceInput.trim()}
-                      onClick={() => playVoiceSample(customVoiceInput.trim())}
-                      className="p-1.5 bg-[#222] hover:bg-[#333] text-slate-300 rounded border border-[#333]"
-                      title="Tes sampel suara"
-                    >
-                      {sampleAudioPlaying === customVoiceInput.trim() ? (
-                        <Pause className="w-3.5 h-3.5 text-violet-400" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                  {voice &&
-                    !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
-                      <div className="text-[10px] text-violet-300 font-mono">
-                        Voice ID Aktif: {voice}
-                      </div>
+                    {voicePresets.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedVoicePresetId &&
+                    !voicePresets.find((p) => p.id === selectedVoicePresetId)?.isBuiltin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = voicePresets.find((p) => p.id === selectedVoicePresetId);
+                          if (cur) handleDeleteVoicePreset(cur.id, cur.name);
+                        }}
+                        title="Hapus Preset Kustom Ini"
+                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
                 </div>
-              </div>
-            )}
 
-            {provider === "runware" && (
-              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#2E2E2E] space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-300">Model Runware TTS</span>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] py-0 text-violet-300 border-violet-500/40"
-                  >
-                    Audio Engine
-                  </Badge>
-                </div>
-                <select
-                  value={runwareModel}
-                  onChange={(e) => {
-                    const newM = e.target.value;
-                    setRunwareModel(newM);
-                    setVoice(newM);
-                  }}
-                  className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                <button
+                  type="button"
+                  onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
+                  className="flex shrink-0 items-center gap-1 rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] px-2.5 py-1 text-xs font-medium text-[#456A4E] transition hover:bg-[#DFEBDD]"
                 >
-                  {RUNWARE_TTS_MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} — {m.badge}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Custom Voice ID / Speaker Input */}
-                <div className="pt-2 border-t border-[#2E2E2E] space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>Custom Voice ID / Speaker Name:</span>
-                    <span className="text-violet-400 text-[10px]">Opsional</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={runwareCustomVoiceInput}
-                      onChange={(e) => setRunwareCustomVoiceInput(e.target.value)}
-                      placeholder="Contoh: Ashley, Eve, Leo, presenter_male"
-                      className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
-                    />
-                    <button
-                      type="button"
-                      disabled={!runwareCustomVoiceInput.trim()}
-                      onClick={() => {
-                        const clean = runwareCustomVoiceInput.trim();
-                        setVoice(clean);
-                        showToast(`Voice '${clean}' dipilih untuk Runware!`, "success");
-                      }}
-                      className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded text-xs font-medium"
-                    >
-                      Gunakan
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!runwareCustomVoiceInput.trim()}
-                      onClick={() => playVoiceSample(runwareCustomVoiceInput.trim())}
-                      className="p-1.5 bg-[#222] hover:bg-[#333] text-slate-300 rounded border border-[#333]"
-                      title="Tes sampel audio"
-                    >
-                      {sampleAudioPlaying === runwareCustomVoiceInput.trim() ? (
-                        <Pause className="w-3.5 h-3.5 text-violet-400" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                  {voice &&
-                    !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
-                      <div className="text-[10px] text-violet-300 font-mono">
-                        Voice Aktif: {voice}
-                      </div>
-                    )}
-                </div>
-              </div>
-            )}
-
-            {/* Voice Characters Selection (with Audio Sample Tester) */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-300">
-                  Pustaka Suara ({filteredVoices.length} Karakter)
-                </label>
-                {/* Locked Language Status Badge */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
-                  {projectLanguage === "en" ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
-                      <span>🇬🇧</span> English (Terkunci)
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
-                      <span>🇮🇩</span> Indonesia (Terkunci)
-                    </span>
-                  )}
-                </div>
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  <span>Simpan Preset</span>
+                </button>
               </div>
 
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                {filteredVoices.map((v) => {
-                  const isSelected = voice === v.id;
-                  const isPlayingSample = sampleAudioPlaying === v.id;
-                  const isEn = v.id.startsWith("en-");
-                  const isId = v.id.startsWith("id-");
-                  const isJa = v.id.startsWith("ja-");
-                  return (
-                    <div
-                      key={v.id}
-                      onClick={() => setVoice(v.id)}
-                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? "bg-violet-500/20 border-violet-500 text-violet-200 ring-1 ring-violet-500/40"
-                          : "bg-[#141414] border-[#2E2E2E] text-slate-300 hover:bg-[#1A1A1A] hover:border-[#3E3E3E]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                          <span className="text-xs font-bold truncate">{v.name}</span>
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] py-0 px-1 text-muted-foreground"
-                          >
-                            {v.gender}
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className={`text-[9px] py-0 px-1 font-mono ${
-                              isEn
-                                ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
-                                : isId
-                                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                                  : isJa
-                                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                                    : "bg-purple-500/15 text-purple-300 border-purple-500/30"
-                            }`}
-                          >
-                            {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
-                          </Badge>
-                        </div>
-                        {isSelected && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                        )}
-                      </div>
-
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2">
-                        {v.description}
-                      </p>
-
-                      <div className="flex items-center justify-between pt-1.5 border-t border-[#2E2E2E]/60 text-xs">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playVoiceSample(v.id);
-                          }}
-                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] transition ${
-                            isPlayingSample
-                              ? "bg-violet-600 text-white font-medium"
-                              : "bg-[#222] hover:bg-[#333] text-slate-300 border border-[#333]"
-                          }`}
-                        >
-                          {loadingSampleVoiceId === v.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : isPlayingSample ? (
-                            <Pause className="w-3 h-3 fill-current" />
-                          ) : (
-                            <Play className="w-3 h-3 fill-current" />
-                          )}
-                          <span>{isPlayingSample ? "Jeda" : "Dengar Sampel"}</span>
-                        </button>
-                        <span className="text-[9px] text-muted-foreground font-mono">{v.id}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Speed & Pitch Slider */}
-            <div className="space-y-3 pt-2">
-              <div>
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <span className="text-slate-300 font-semibold">Kecepatan Bicara</span>
-                  <span className="font-mono text-violet-400">
-                    {rate >= 0 ? `+${rate}%` : `${rate}%`}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-20}
-                  max={30}
-                  step={5}
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value))}
-                  className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <span className="text-slate-300 font-semibold">Pitch Nada</span>
-                  <span className="font-mono text-violet-400">
-                    {pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-15}
-                  max={15}
-                  step={3}
-                  value={pitch}
-                  onChange={(e) => setPitch(Number(e.target.value))}
-                  className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg"
-                />
-              </div>
-            </div>
-
-            {/* Fallback Checkbox */}
-            <div className="pt-2 border-t border-[#2E2E2E]">
-              <label className="flex items-start gap-2 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  checked={fallbackEnabled}
-                  onChange={(e) => setFallbackEnabled(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 rounded border-[#2E2E2E] bg-[#141414] text-violet-500 focus:ring-violet-500 focus:ring-offset-0 cursor-pointer"
-                />
-                <div>
-                  <span className="text-[11px] font-medium text-slate-300 group-hover:text-white transition-colors">
-                    Fallback otomatis ke Edge-TTS saat error/kuota habis
-                  </span>
-                  <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
-                    Jika tidak dicentang, proses berhenti dengan error dan audio terpotong pada
-                    bagian yang gagal.
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <Button
-              type="button"
-              onClick={() => ttsMutation.mutate()}
-              disabled={ttsMutation.isPending || segments.length === 0}
-              className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-lg shadow-violet-500/20 gap-2 mt-2"
-            >
-              {ttsMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Mensintesis Audio & Alignment (15–30s)...</span>
-                </>
-              ) : (
-                <>
-                  <Volume2 className="w-4 h-4" />
-                  <span>{audio ? "Generate Ulang Suara TTS" : "Generate Suara Narasi (TTS)"}</span>
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Right Column: Audio Playback & Alignment Status (7 Cols) */}
-        <div className="lg:col-span-7 space-y-5">
-          {!audio ? (
-            <div className="rounded-2xl border border-dashed border-[#2E2E2E] bg-[#181818]/60 p-12 text-center">
-              <Volume2 className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white mb-1.5">Audio Belum Dibuat</h3>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4 leading-relaxed">
-                Pilih karakter vokal di panel sebelah kiri lalu klik tombol{" "}
-                <strong>Generate Suara Narasi</strong>. Sistem akan mensintesis audio lengkap dan
-                memetakan waktu kemunculan tiap gambar.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xl">
-              {/* Audio Player Card */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-[#171717] to-[#141414] border border-[#2E2E2E] space-y-4">
-                <audio
-                  ref={audioRef}
-                  src={audio.audio_url || audio.file_url || undefined}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={() => setIsPlaying(false)}
-                />
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="w-12 h-12 rounded-xl bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 transition"
-                    >
-                      {isPlaying ? (
-                        <Pause className="w-5 h-5" />
-                      ) : (
-                        <Play className="w-5 h-5 ml-0.5" />
-                      )}
-                    </button>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-2">
-                        <span>Audio Narasi Storyboard</span>
-                        <Badge variant="supabase" className="text-[10px] uppercase font-mono">
-                          {audio.provider} • {audio.voice}
-                        </Badge>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Durasi Total: {formatTime(duration || audio.duration || 0)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-xs font-mono font-bold text-violet-400">
-                    {formatTime(currentTime)} / {formatTime(duration || audio.duration || 0)}
-                  </span>
-                </div>
-
-                {/* Seekbar */}
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || audio.duration || 1}
-                  step={0.1}
-                  value={currentTime}
-                  onChange={handleSeek}
-                  className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
-                />
-              </div>
-
-              {/* Timing Alignment Status */}
-              <div className="p-4 rounded-xl border border-[#2E2E2E] bg-[#141414] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-xs font-bold text-white">
-                      Status Sinkronisasi Waktu (Whisper Alignment)
-                    </h4>
-                  </div>
-
+              {/* Save Voice Preset Inline Form */}
+              {showSaveVoiceModal && (
+                <form
+                  onSubmit={handleSaveVoicePreset}
+                  className="flex items-center gap-2 border-t border-[#E5E1D7] pt-2"
+                >
+                  <Input
+                    type="text"
+                    placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
+                    value={newVoicePresetName}
+                    onChange={(e) => setNewVoicePresetName(e.target.value)}
+                    autoFocus
+                    className="h-9 flex-1 text-xs"
+                  />
                   <Button
-                    variant="outline"
+                    type="submit"
                     size="sm"
-                    onClick={() => syncTimingMutation.mutate()}
-                    disabled={syncTimingMutation.isPending}
-                    className="border-[#2E2E2E] text-[11px] gap-1.5 h-7"
+                    variant="workspace-primary"
+                    className="h-9 shrink-0 gap-1 px-3 text-xs"
                   >
-                    {syncTimingMutation.isPending ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-3 h-3" />
-                    )}
-                    <span>Sinkronkan Ulang</span>
+                    <Save className="w-3 h-3" />
+                    <span>Simpan</span>
                   </Button>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveVoiceModal(false)}
+                    className="shrink-0 rounded-lg p-1.5 text-[#77766D] transition hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              )}
+            </div>
 
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {hasTimingSynced
-                    ? `Waktu naskah berhasil disinkronkan. Sebanyak ${items.length} slot ilustrasi gambar telah memiliki durasi detik yang presisi sesuai ucapan narator.`
-                    : "Klik tombol sinkronkan untuk memetakan timestamp narasi audio ke setiap slot gambar."}
-                </p>
+            <div className="space-y-4">
+              {/* Provider */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#4D4A42]">
+                  Provider TTS
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProvider("gemini");
+                      setVoice("Puck");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition ${
+                      provider === "gemini"
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Gemini TTS</div>
+                    <div className="text-[10px] text-muted-foreground">Natural Studio Voice</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProvider("elevenlabs");
+                      setVoice("Adam");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition ${
+                      provider === "elevenlabs"
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">ElevenLabs</div>
+                    <div className="text-[10px] text-muted-foreground">Zero Tone Drift (Gold)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProvider("runware");
+                      setVoice("fishaudio:s2.1@pro");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition ${
+                      provider === "runware"
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Runware TTS</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Fish / Qwen3 / xAI / MiniMax
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProvider("edge");
+                      setVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition ${
+                      provider === "edge"
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Edge-TTS</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Multi-Language Neural (Free)
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Segments Live Highlights */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Naskah Berjalan Sesuai Audio:
-                  </h4>
-                  {(segments.length > 0 || narration?.raw_text) && (
-                    <Button
-                      type="button"
+              {/* Model Selection Dropdown */}
+              {provider === "gemini" && (
+                <div className="space-y-1.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[#4D4A42]">Model Gemini TTS</span>
+                    <Badge
                       variant="outline"
-                      size="sm"
-                      onClick={handleCopyAllNarration}
-                      className="h-7 px-2.5 text-[11px] font-medium border-[#333] bg-[#181818] hover:bg-violet-600/20 hover:text-violet-300 hover:border-violet-500/50 transition-all flex items-center gap-1.5"
+                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
                     >
-                      {hasCopiedNarration ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400 font-semibold">Tersalin!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Salin Semua Narasi</span>
-                        </>
-                      )}
-                    </Button>
-                  )}
+                      2.5 Flash Utama
+                    </Badge>
+                  </div>
+                  <select
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                  >
+                    {GEMINI_TTS_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} — {m.badge}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                  {segments.map((seg: SentenceSegment, idx: number) => {
-                    const segStart = (seg.start_ms || 0) / 1000;
-                    const segEnd = (seg.end_ms || 0) / 1000;
-                    const isActive = currentTime >= segStart && currentTime <= segEnd;
+              )}
 
+              {provider === "elevenlabs" && (
+                <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[#4D4A42]">Model ElevenLabs</span>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+                    >
+                      Multilingual v2
+                    </Badge>
+                  </div>
+                  <select
+                    value={elevenlabsModel}
+                    onChange={(e) => setElevenlabsModel(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                  >
+                    {ELEVENLABS_TTS_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} — {m.badge}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Custom Voice ID Input */}
+                  <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Atau masukkan Voice ID dari elevenlabs.io:</span>
+                      <a
+                        href="https://elevenlabs.io/voice-library"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-violet-400 hover:underline flex items-center gap-0.5"
+                      >
+                        Voice Library <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={customVoiceInput}
+                        onChange={(e) => setCustomVoiceInput(e.target.value)}
+                        placeholder="Contoh: pNInz6obpgDQGcFmaJgB"
+                        className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        disabled={!customVoiceInput.trim()}
+                        onClick={() => {
+                          const clean = customVoiceInput.trim();
+                          setVoice(clean);
+                          showToast(`Voice ID '${clean}' dipilih!`, "success");
+                        }}
+                        className="rounded bg-[#C45B3A] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#A9472C] disabled:opacity-50"
+                      >
+                        Gunakan
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!customVoiceInput.trim()}
+                        onClick={() => playVoiceSample(customVoiceInput.trim())}
+                        className="rounded border border-[#E5E1D7] bg-[#FBFAF7] p-1.5 text-[#5E5C54] hover:bg-[#F1EEE6]"
+                        title="Tes sampel suara"
+                      >
+                        {sampleAudioPlaying === customVoiceInput.trim() ? (
+                          <Pause className="w-3.5 h-3.5 text-violet-400" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    {voice &&
+                      !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
+                        <div className="text-[10px] text-violet-300 font-mono">
+                          Voice ID Aktif: {voice}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {provider === "runware" && (
+                <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[#4D4A42]">Model Runware TTS</span>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+                    >
+                      Audio Engine
+                    </Badge>
+                  </div>
+                  <select
+                    value={runwareModel}
+                    onChange={(e) => {
+                      const newM = e.target.value;
+                      setRunwareModel(newM);
+                      setVoice(newM);
+                    }}
+                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                  >
+                    {RUNWARE_TTS_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} — {m.badge}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Custom Voice ID / Speaker Input */}
+                  <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Custom Voice ID / Speaker Name:</span>
+                      <span className="text-violet-400 text-[10px]">Opsional</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={runwareCustomVoiceInput}
+                        onChange={(e) => setRunwareCustomVoiceInput(e.target.value)}
+                        placeholder="Contoh: Ashley, Eve, Leo, presenter_male"
+                        className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        disabled={!runwareCustomVoiceInput.trim()}
+                        onClick={() => {
+                          const clean = runwareCustomVoiceInput.trim();
+                          setVoice(clean);
+                          showToast(`Voice '${clean}' dipilih untuk Runware!`, "success");
+                        }}
+                        className="rounded bg-[#C45B3A] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#A9472C] disabled:opacity-50"
+                      >
+                        Gunakan
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!runwareCustomVoiceInput.trim()}
+                        onClick={() => playVoiceSample(runwareCustomVoiceInput.trim())}
+                        className="rounded border border-[#E5E1D7] bg-[#FBFAF7] p-1.5 text-[#5E5C54] hover:bg-[#F1EEE6]"
+                        title="Tes sampel audio"
+                      >
+                        {sampleAudioPlaying === runwareCustomVoiceInput.trim() ? (
+                          <Pause className="w-3.5 h-3.5 text-violet-400" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    {voice &&
+                      !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
+                        <div className="text-[10px] text-violet-300 font-mono">
+                          Voice Aktif: {voice}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {/* Voice Characters Selection (with Audio Sample Tester) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Pustaka Suara ({filteredVoices.length} Karakter)
+                  </label>
+                  {/* Locked Language Status Badge */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
+                    {projectLanguage === "en" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+                        <span>🇬🇧</span> English (Terkunci)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                        <span>🇮🇩</span> Indonesia (Terkunci)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {filteredVoices.map((v) => {
+                    const isSelected = voice === v.id;
+                    const isPlayingSample = sampleAudioPlaying === v.id;
+                    const isEn = v.id.startsWith("en-");
+                    const isId = v.id.startsWith("id-");
+                    const isJa = v.id.startsWith("ja-");
                     return (
                       <div
-                        key={seg.id || idx}
-                        onClick={() => {
-                          if (audioRef.current && segStart > 0) {
-                            audioRef.current.currentTime = segStart;
-                          }
-                        }}
-                        className={`p-3 rounded-xl border cursor-pointer transition text-xs leading-relaxed ${
-                          isActive
-                            ? "border-violet-500 bg-violet-500/10 text-white font-medium shadow-md shadow-violet-500/5 ring-1 ring-violet-500/30"
-                            : "border-[#2E2E2E] bg-[#141414] text-slate-300 hover:border-slate-600"
+                        key={v.id}
+                        onClick={() => setVoice(v.id)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-violet-500/20 border-violet-500 text-violet-200 ring-1 ring-violet-500/40"
+                            : "bg-[#FFFEFA] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#F1EEE6] hover:border-[#C9C3B6]"
                         }`}
                       >
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                          <span className="font-mono font-bold text-violet-300">
-                            Segmen #{idx + 1}
-                          </span>
-                          <span className="font-mono">
-                            {formatTime(segStart)} - {formatTime(segEnd)}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <span className="text-xs font-bold truncate">{v.name}</span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] py-0 px-1 text-muted-foreground"
+                            >
+                              {v.gender}
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className={`text-[9px] py-0 px-1 font-mono ${
+                                isEn
+                                  ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                                  : isId
+                                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                    : isJa
+                                      ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                      : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                              }`}
+                            >
+                              {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
+                            </Badge>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          )}
                         </div>
-                        <p>{seg.text}</p>
+
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2">
+                          {v.description}
+                        </p>
+
+                        <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-1.5 text-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playVoiceSample(v.id);
+                            }}
+                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] transition ${
+                              isPlayingSample
+                                ? "bg-[#C45B3A] font-medium text-white"
+                                : "border border-[#E5E1D7] bg-[#FBFAF7] text-[#4D4A42] hover:bg-[#F1EEE6]"
+                            }`}
+                          >
+                            {loadingSampleVoiceId === v.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : isPlayingSample ? (
+                              <Pause className="w-3 h-3 fill-current" />
+                            ) : (
+                              <Play className="w-3 h-3 fill-current" />
+                            )}
+                            <span>{isPlayingSample ? "Jeda" : "Dengar Sampel"}</span>
+                          </button>
+                          <span className="text-[9px] text-muted-foreground font-mono">{v.id}</span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Bottom Action */}
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={() => setActiveTab("storyboard_images")}
-                  className="bg-violet-600 hover:bg-violet-500 text-white gap-2 font-semibold text-xs shadow-lg shadow-violet-500/20"
-                >
-                  <span>Langkah Berikutnya: Studio Ilustrasi AI ➔</span>
-                </Button>
+              {/* Speed & Pitch Slider */}
+              <div className="space-y-3 pt-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1 text-xs">
+                    <span className="font-semibold text-[#4D4A42]">Kecepatan Bicara</span>
+                    <span className="font-mono text-violet-400">
+                      {rate >= 0 ? `+${rate}%` : `${rate}%`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-20}
+                    max={30}
+                    step={5}
+                    value={rate}
+                    onChange={(e) => setRate(Number(e.target.value))}
+                    className="h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1 text-xs">
+                    <span className="font-semibold text-[#4D4A42]">Pitch Nada</span>
+                    <span className="font-mono text-violet-400">
+                      {pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-15}
+                    max={15}
+                    step={3}
+                    value={pitch}
+                    onChange={(e) => setPitch(Number(e.target.value))}
+                    className="h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
+                  />
+                </div>
               </div>
+
+              {/* Fallback Checkbox */}
+              <div className="border-t border-[#E5E1D7] pt-2">
+                <label className="flex items-start gap-2 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    checked={fallbackEnabled}
+                    onChange={(e) => setFallbackEnabled(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-[#D2CDBF] bg-[#FFFEFA] text-[#C45B3A] focus:ring-[#C45B3A] focus:ring-offset-0"
+                  />
+                  <div>
+                    <span className="text-[11px] font-medium text-[#4D4A42] transition-colors group-hover:text-[#26251F]">
+                      Fallback otomatis ke Edge-TTS saat error/kuota habis
+                    </span>
+                    <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
+                      Jika tidak dicentang, proses berhenti dengan error dan audio terpotong pada
+                      bagian yang gagal.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => ttsMutation.mutate()}
+                disabled={ttsMutation.isPending || segments.length === 0}
+                variant="workspace-primary"
+                className="mt-2 w-full gap-2 py-2.5 text-xs"
+              >
+                {ttsMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Mensintesis Audio & Alignment (15–30s)...</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4" />
+                    <span>
+                      {audio ? "Generate Ulang Suara TTS" : "Generate Suara Narasi (TTS)"}
+                    </span>
+                  </>
+                )}
+              </Button>
             </div>
-          )}
+          </div>
+
+          {/* Right Column: Audio Playback & Alignment Status (7 Cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            {!audio ? (
+              <div className="rounded-2xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-12 text-center">
+                <Volume2 className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                <h3 className="mb-1.5 text-base font-semibold text-[#26251F]">
+                  Audio Belum Dibuat
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4 leading-relaxed">
+                  Pilih karakter vokal di panel sebelah kiri lalu klik tombol{" "}
+                  <strong>Generate Suara Narasi</strong>. Sistem akan mensintesis audio lengkap dan
+                  memetakan waktu kemunculan tiap gambar.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6 shadow-sm">
+                {/* Audio Player Card */}
+                <div className="space-y-4 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-4">
+                  <audio
+                    ref={audioRef}
+                    src={audio.audio_url || audio.file_url || undefined}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onEnded={() => setIsPlaying(false)}
+                  />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={togglePlay}
+                        className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#C45B3A] text-white shadow-sm transition hover:bg-[#A9472C]"
+                      >
+                        {isPlaying ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5 ml-0.5" />
+                        )}
+                      </button>
+                      <div>
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[#26251F]">
+                          <span>Audio Narasi Storyboard</span>
+                          <Badge variant="supabase" className="text-[10px] uppercase font-mono">
+                            {audio.provider} • {audio.voice}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Durasi Total: {formatTime(duration || audio.duration || 0)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="text-xs font-mono font-bold text-violet-400">
+                      {formatTime(currentTime)} / {formatTime(duration || audio.duration || 0)}
+                    </span>
+                  </div>
+
+                  {/* Seekbar */}
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || audio.duration || 1}
+                    step={0.1}
+                    value={currentTime}
+                    onChange={handleSeek}
+                    className="h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
+                  />
+                </div>
+
+                {/* Timing Alignment Status */}
+                <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-semibold text-[#26251F]">
+                        Status Sinkronisasi Waktu (Whisper Alignment)
+                      </h4>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncTimingMutation.mutate()}
+                      disabled={syncTimingMutation.isPending}
+                      className="border-[#2E2E2E] text-[11px] gap-1.5 h-7"
+                    >
+                      {syncTimingMutation.isPending ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      <span>Sinkronkan Ulang</span>
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {hasTimingSynced
+                      ? `Waktu naskah berhasil disinkronkan. Sebanyak ${items.length} slot ilustrasi gambar telah memiliki durasi detik yang presisi sesuai ucapan narator.`
+                      : "Klik tombol sinkronkan untuk memetakan timestamp narasi audio ke setiap slot gambar."}
+                  </p>
+                </div>
+
+                {/* Segments Live Highlights */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[#26251F]">
+                      Naskah Berjalan Sesuai Audio:
+                    </h4>
+                    {(segments.length > 0 || narration?.raw_text) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyAllNarration}
+                        className="flex h-8 items-center gap-1.5 border-[#E5E1D7] bg-[#FFFEFA] px-2.5 text-[11px] font-medium transition-all hover:border-[#C45B3A] hover:bg-[#F8EEEA] hover:text-[#A9472C]"
+                      >
+                        {hasCopiedNarration ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Tersalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Salin Semua Narasi</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {segments.map((seg: SentenceSegment, idx: number) => {
+                      const segStart = (seg.start_ms || 0) / 1000;
+                      const segEnd = (seg.end_ms || 0) / 1000;
+                      const isActive = currentTime >= segStart && currentTime <= segEnd;
+
+                      return (
+                        <div
+                          key={seg.id || idx}
+                          onClick={() => {
+                            if (audioRef.current && segStart > 0) {
+                              audioRef.current.currentTime = segStart;
+                            }
+                          }}
+                          className={`p-3 rounded-xl border cursor-pointer transition text-xs leading-relaxed ${
+                            isActive
+                              ? "border-[#C45B3A] bg-[#F8EEEA] font-medium text-[#A9472C] ring-1 ring-[#E9C9BD]"
+                              : "border-[#E5E1D7] bg-[#FFFEFA] text-[#4D4A42] hover:border-[#C9C3B6]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                            <span className="font-mono font-bold text-violet-300">
+                              Segmen #{idx + 1}
+                            </span>
+                            <span className="font-mono">
+                              {formatTime(segStart)} - {formatTime(segEnd)}
+                            </span>
+                          </div>
+                          <p>{seg.text}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Action */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={() => setActiveTab("storyboard_images")}
+                    variant="workspace-primary"
+                    className="gap-2 text-xs"
+                  >
+                    <span>Langkah Berikutnya: Studio Ilustrasi AI ➔</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

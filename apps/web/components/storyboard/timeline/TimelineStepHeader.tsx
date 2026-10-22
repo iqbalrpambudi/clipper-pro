@@ -24,10 +24,10 @@ export function TimelineStepHeader({
       actions={
         <>
           <Button
-            variant="outline"
             size="sm"
             onClick={onNavigateImages}
-            className="h-8 border-[#2E2E2E] text-xs"
+            variant="workspace-secondary"
+            className="h-9 text-xs"
           >
             Kembali ke Ilustrasi
           </Button>
@@ -35,7 +35,8 @@ export function TimelineStepHeader({
           <Button
             size="sm"
             onClick={onNavigateRender}
-            className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+            variant="workspace-primary"
+            className="h-9 gap-1.5 text-xs"
           >
             <span>Lanjut ke Render 16:9</span>
             <ArrowRight className="w-3.5 h-3.5" />

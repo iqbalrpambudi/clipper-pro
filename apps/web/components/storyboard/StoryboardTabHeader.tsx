@@ -19,11 +19,11 @@ export interface StoryboardTabHeaderProps {
 
 export function StoryboardTabHeader({
   icon: Icon,
-  iconColor = "text-violet-400",
-  iconBg = "bg-violet-600/10 border-violet-500/20",
+  iconColor = "text-[#A9472C]",
+  iconBg = "bg-[#F8EEEA] border-[#E9C9BD]",
   title,
   badge,
-  badgeColor = "bg-violet-500/10 text-violet-300 border-violet-500/30",
+  badgeColor = "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]",
   secondaryBadge,
   description,
   actions,
@@ -35,26 +35,25 @@ export function StoryboardTabHeader({
   return (
     <div
       className={
-        className ||
-        "border-b border-[#222222] bg-[#141414]/95 backdrop-blur-md shrink-0 w-full"
+        className || "w-full shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7]/95 backdrop-blur-md"
       }
     >
-      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-2.5 sm:h-14 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col justify-between gap-3 px-4 py-3 sm:h-[4.5rem] sm:flex-row sm:items-center sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${iconBg} ${iconColor}`}
           >
             <Icon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-sm font-bold text-white tracking-tight truncate">
+              <h1 className="truncate font-serif text-base font-semibold tracking-tight text-[#26251F]">
                 {title}
               </h1>
               {badge && (
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-medium shrink-0 ${badgeColor}`}
+                  className={`shrink-0 text-[10px] font-medium ${badgeColor}`}
                 >
                   {badge}
                 </Badge>
@@ -62,20 +61,18 @@ export function StoryboardTabHeader({
               {secondaryBadge && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] border-[#2E2E2E] text-slate-400 font-mono hidden md:inline-flex shrink-0"
+                  className="hidden shrink-0 border-[#E5E1D7] font-mono text-[10px] text-[#77766D] md:inline-flex"
                 >
                   {secondaryBadge}
                 </Badge>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground truncate sm:line-clamp-none">
-              {description}
-            </p>
+            <p className="truncate text-xs text-[#77766D] sm:line-clamp-none">{description}</p>
           </div>
         </div>
 
         {rightContent && (
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
             {rightContent}
           </div>
         )}

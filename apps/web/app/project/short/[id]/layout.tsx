@@ -77,7 +77,9 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
     const projectTask = tasksByProject[id];
     if (projectTask) return;
 
-    const downloadingVid = project.source_videos?.find((v: SourceVideo) => v.status === "downloading");
+    const downloadingVid = project.source_videos?.find(
+      (v: SourceVideo) => v.status === "downloading"
+    );
     if (downloadingVid) {
       setActiveTask(
         {
@@ -95,9 +97,7 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
       return;
     }
 
-    const detectingVid = project.source_videos?.find(
-      (v: SourceVideo) => v.status === "processing"
-    );
+    const detectingVid = project.source_videos?.find((v: SourceVideo) => v.status === "processing");
     if (detectingVid) {
       setActiveTask(
         {
@@ -116,7 +116,8 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
     }
 
     const activeJob = project.render_jobs?.find(
-      (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+      (j: RenderJob) =>
+        j.status === "rendering" || j.status === "processing" || j.status === "queued"
     );
     if (activeJob) {
       setActiveTask(
@@ -177,7 +178,8 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
     if (activeTask.status === "progress") {
       if (activeTask.task_type === "render") {
         const activeJob = project.render_jobs?.find(
-          (j: RenderJob) => j.status === "rendering" || j.status === "processing" || j.status === "queued"
+          (j: RenderJob) =>
+            j.status === "rendering" || j.status === "processing" || j.status === "queued"
         );
         if (!activeJob) {
           setActiveTask(null, id);
@@ -203,20 +205,24 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-        <Loader2 className="w-8 h-8 text-[#3ECF8E] animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">Memuat Studio Short Clipper...</p>
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#C45B3A]" aria-hidden="true" />
+        <p role="status" className="text-sm text-[#77766D]">
+          Memuat Studio Short Clipper...
+        </p>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-        <p className="text-sm text-rose-400 mb-4">Project tidak ditemukan atau gagal dimuat.</p>
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
+        <p role="alert" className="mb-4 text-sm text-rose-700">
+          Project tidak ditemukan atau gagal dimuat.
+        </p>
         <Link href="/">
-          <Button variant="outline" size="sm" className="border-[#2E2E2E]">
-            Kembali ke Dashboard
+          <Button variant="workspace-secondary" size="workspace-sm">
+            Kembali ke Project
           </Button>
         </Link>
       </div>
@@ -246,17 +252,13 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
       id: "timeline",
       label: "4. Timeline & Subtitle",
       icon: Layers,
-      badge: project.timeline?.clips?.length
-        ? `${project.timeline.clips.length} Klip`
-        : undefined,
+      badge: project.timeline?.clips?.length ? `${project.timeline.clips.length} Klip` : undefined,
     },
     {
       id: "render",
       label: "5. Render & Export",
       icon: Download,
-      badge: project.render_jobs?.length
-        ? `${project.render_jobs.length} Job`
-        : undefined,
+      badge: project.render_jobs?.length ? `${project.render_jobs.length} Job` : undefined,
     },
   ];
 
@@ -278,6 +280,7 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
       tabs={shortTabs}
       onRenameProject={handleRenameProject}
       isRenaming={updateProjectMutation.isPending}
+      onRenderClick={() => setActiveTab("render")}
     >
       {children}
     </StudioLayout>

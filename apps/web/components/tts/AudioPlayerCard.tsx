@@ -62,7 +62,7 @@ export function AudioPlayerCard({
       )}
 
       {/* MODERN SLEEK AUDIO PLAYER CARD */}
-      <div className="p-4 rounded-xl bg-[#121212] border border-[#2E2E2E] shadow-sm space-y-4">
+      <div className="space-y-4 rounded-xl border border-border bg-background p-4 shadow-sm">
         {/* Top Info with Visualizer */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ export function AudioPlayerCard({
         {/* Progress / Seekbar */}
         <div className="space-y-1.5">
           <div
-            className="relative w-full h-2.5 bg-[#1E1E1E] rounded-full cursor-pointer overflow-hidden border border-[#2E2E2E]"
+            className="relative h-2.5 w-full cursor-pointer overflow-hidden rounded-full border border-border bg-muted"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const clickX = e.clientX - rect.left;
@@ -138,7 +138,7 @@ export function AudioPlayerCard({
 
             <Button
               type="button"
-              variant="supabase"
+              variant="workspace-primary"
               size="icon"
               onClick={onTogglePlay}
               className="h-9 w-9 rounded-full shadow-sm"
@@ -182,7 +182,7 @@ export function AudioPlayerCard({
               step={0.05}
               value={isMuted ? 0 : volume}
               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              className="w-20 h-1.5 bg-[#1E1E1E] accent-primary rounded-lg cursor-pointer"
+              className="h-1.5 w-20 cursor-pointer rounded-lg bg-muted accent-primary"
             />
           </div>
         </div>

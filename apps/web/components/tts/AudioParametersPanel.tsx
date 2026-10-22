@@ -46,6 +46,8 @@ export function AudioParametersPanel({
       title="Parameter Suara & Estimasi"
       description="Sesuaikan tempo, intonasi, dan pantau estimasi biaya"
       icon={<Sliders className="w-4 h-4 text-primary" />}
+      className="!border-surface-border !bg-card"
+      headerClassName="!border-surface-border !bg-muted"
       actions={
         costEstimate ? (
           <Badge variant="outline" className="text-primary border-primary/30 font-mono text-[10px]">
@@ -63,7 +65,7 @@ export function AudioParametersPanel({
             <select
               value={rate}
               onChange={(e) => setRate(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs focus:outline-none focus:border-primary transition"
+              className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
             >
               <option value="-10%">Lambat (-10%)</option>
               <option value="+0%">Normal (+0%)</option>
@@ -79,7 +81,7 @@ export function AudioParametersPanel({
             <select
               value={pitch}
               onChange={(e) => setPitch(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-[#121212] rounded-lg border border-[#2E2E2E] text-foreground text-xs focus:outline-none focus:border-primary transition"
+              className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
             >
               <option value="-5Hz">Lebih Berat (-5Hz)</option>
               <option value="+0Hz">Standar (+0Hz)</option>
@@ -95,15 +97,15 @@ export function AudioParametersPanel({
               type="checkbox"
               checked={fallbackEnabled}
               onChange={(e) => setFallbackEnabled(e.target.checked)}
-              className="mt-0.5 w-3.5 h-3.5 rounded border-[#2E2E2E] bg-[#141414] text-primary focus:ring-primary focus:ring-offset-0 cursor-pointer"
+              className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-input bg-control-background text-primary focus:ring-primary focus:ring-offset-0"
             />
             <div>
-              <span className="text-[11px] font-medium text-slate-300 group-hover:text-white transition-colors">
+              <span className="text-[11px] font-medium text-foreground transition-colors">
                 Fallback otomatis ke Edge-TTS jika API error / kuota habis
               </span>
               <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
-                Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada bagian
-                yang gagal.
+                Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada
+                bagian yang gagal.
               </p>
             </div>
           </label>
@@ -111,33 +113,31 @@ export function AudioParametersPanel({
 
         {/* Live Progress Card for TTS */}
         {isGeneratingTTS && (
-          <div className="p-3.5 rounded-xl bg-[#141414] border border-primary/40 space-y-2 shadow-sm">
+          <div className="space-y-2 rounded-xl border border-primary/30 bg-accent p-3.5 shadow-sm">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-primary font-medium truncate max-w-[200px]">
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                <span className="truncate">
-                  {generationStepText || "Memproses audio TTS..."}
-                </span>
+                <span className="truncate">{generationStepText || "Memproses audio TTS..."}</span>
               </div>
               <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground shrink-0">
                 <span>
                   {Math.floor(generationElapsed / 60)}:
                   {String(generationElapsed % 60).padStart(2, "0")}
                 </span>
-                <Badge variant="supabase" className="text-[10px] py-0 px-1.5 font-bold">
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-bold">
                   {Math.round(generationProgress)}%
                 </Badge>
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
                   title="Batalkan proses TTS"
                 >
                   Batal
                 </button>
               </div>
             </div>
-            <div className="w-full bg-[#1C1C1C] rounded-full h-1.5 overflow-hidden border border-[#2E2E2E]">
+            <div className="h-1.5 w-full overflow-hidden rounded-full border border-border bg-muted">
               <div
                 className="bg-primary h-full transition-all duration-300 rounded-full"
                 style={{ width: `${Math.max(5, generationProgress)}%` }}
@@ -150,7 +150,7 @@ export function AudioParametersPanel({
         {isGeneratingTTS ? (
           <div className="flex items-center gap-2">
             <Button
-              variant="supabase"
+              variant="workspace-primary"
               size="lg"
               className="flex-1 h-11 text-xs font-semibold gap-2 cursor-wait opacity-85"
               disabled
@@ -159,9 +159,9 @@ export function AudioParametersPanel({
               <span>Membuat Audio ({Math.round(generationProgress)}%)...</span>
             </Button>
             <Button
-              variant="destructive"
+              variant="workspace-destructive"
               size="lg"
-              className="h-11 px-4 text-xs font-bold gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+              className="h-11 gap-1.5 px-4 text-xs font-bold shadow-sm"
               onClick={onCancel}
               title="Batalkan pembuatan audio & alignment"
             >
@@ -171,7 +171,7 @@ export function AudioParametersPanel({
           </div>
         ) : (
           <Button
-            variant="supabase"
+            variant="workspace-primary"
             size="lg"
             className="w-full h-11 text-xs font-semibold gap-2"
             onClick={onGenerate}

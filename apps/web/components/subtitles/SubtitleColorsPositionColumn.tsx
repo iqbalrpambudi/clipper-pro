@@ -45,7 +45,7 @@ export function SubtitleColorsPositionColumn({
                 className={`p-1.5 rounded-lg border text-center transition flex flex-col items-center gap-1 cursor-pointer ${
                   isActive
                     ? "border-primary bg-primary/10 ring-1 ring-primary/40 text-foreground font-semibold"
-                    : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-white"
+                    : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
                 }`}
               >
                 <div className="flex items-center gap-1">
@@ -258,9 +258,7 @@ export function SubtitleColorsPositionColumn({
 
           <button
             type="button"
-            onClick={() =>
-              onCommitStyle({ ...style, position: "top", offset_y: 120, offset_x: 0 })
-            }
+            onClick={() => onCommitStyle({ ...style, position: "top", offset_y: 120, offset_x: 0 })}
             className={`py-2 px-2.5 rounded-lg border text-center transition flex flex-col items-center gap-1 cursor-pointer ${
               style.position === "top"
                 ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 font-semibold"
@@ -282,7 +280,7 @@ export function SubtitleColorsPositionColumn({
               <button
                 type="button"
                 onClick={() => onCommitStyle({ ...style, offset_y: -120 })}
-                className="text-[9px] bg-muted hover:bg-surface-hover text-muted-foreground hover:text-white px-1.5 py-0.5 rounded"
+                className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="Reset ke -120px"
               >
                 Reset
@@ -311,7 +309,7 @@ export function SubtitleColorsPositionColumn({
                   key={n}
                   type="button"
                   onClick={() => onCommitStyle({ ...style, offset_y: (style.offset_y || 0) + n })}
-                  className="px-2 py-0.5 rounded bg-muted hover:bg-surface-hover text-[10px] text-muted-foreground hover:text-white font-mono"
+                  className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 >
                   {n}px
                 </button>
@@ -323,7 +321,7 @@ export function SubtitleColorsPositionColumn({
                   key={n}
                   type="button"
                   onClick={() => onCommitStyle({ ...style, offset_y: (style.offset_y || 0) + n })}
-                  className="px-2 py-0.5 rounded bg-muted hover:bg-surface-hover text-[10px] text-muted-foreground hover:text-white font-mono"
+                  className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 >
                   +{n}px
                 </button>
@@ -341,7 +339,7 @@ export function SubtitleColorsPositionColumn({
               <button
                 type="button"
                 onClick={() => onCommitStyle({ ...style, offset_x: 0 })}
-                className="text-[9px] bg-muted hover:bg-surface-hover text-muted-foreground hover:text-white px-1.5 py-0.5 rounded"
+                className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="Center X: 0px"
               >
                 Center

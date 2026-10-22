@@ -85,8 +85,10 @@ export function VoiceSelectorPanel({
       title="Pilih Karakter Suara"
       description="Pilih narrator voice yang sesuai dengan tema video"
       icon={<Mic className="w-4 h-4 text-primary" />}
+      className="!border-surface-border !bg-card"
+      headerClassName="!border-surface-border !bg-muted"
       actions={
-        <div className="flex items-center gap-1 p-0.5 bg-[#121212] rounded-lg border border-[#2E2E2E]">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
           <button
             type="button"
             onClick={() => {
@@ -95,7 +97,7 @@ export function VoiceSelectorPanel({
             }}
             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
               provider === "gemini"
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -109,7 +111,7 @@ export function VoiceSelectorPanel({
             }}
             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
               provider === "elevenlabs"
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -123,7 +125,7 @@ export function VoiceSelectorPanel({
             }}
             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
               provider === "runware"
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -137,7 +139,7 @@ export function VoiceSelectorPanel({
             }}
             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
               provider === "edge"
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -148,7 +150,7 @@ export function VoiceSelectorPanel({
     >
       {/* Gemini Model Selection Box */}
       {provider === "gemini" && (
-        <div className="mb-3.5 p-3 rounded-xl bg-[#121212] border border-[#2E2E2E] space-y-2">
+        <div className="mb-3.5 space-y-2 rounded-xl border border-border bg-background p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -165,7 +167,7 @@ export function VoiceSelectorPanel({
           <select
             value={geminiModel}
             onChange={(e) => setGeminiModel(e.target.value)}
-            className="w-full px-2.5 py-1.5 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-primary transition"
+            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
           >
             {GEMINI_TTS_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -188,7 +190,7 @@ export function VoiceSelectorPanel({
 
       {/* ElevenLabs Model Selection Box */}
       {provider === "elevenlabs" && (
-        <div className="mb-3.5 p-3 rounded-xl bg-[#121212] border border-[#2E2E2E] space-y-2">
+        <div className="mb-3.5 space-y-2 rounded-xl border border-border bg-background p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -205,7 +207,7 @@ export function VoiceSelectorPanel({
           <select
             value={elevenlabsModel}
             onChange={(e) => setElevenlabsModel(e.target.value)}
-            className="w-full px-2.5 py-1.5 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-primary transition"
+            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
           >
             {ELEVENLABS_TTS_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -225,9 +227,9 @@ export function VoiceSelectorPanel({
           </div>
 
           {/* ElevenLabs Voice Sync & Custom Voice ID Box */}
-          <div className="pt-2.5 border-t border-[#2E2E2E]/80 space-y-2.5">
+          <div className="space-y-2.5 border-t border-border pt-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-300">
+              <span className="text-[11px] font-medium text-foreground">
                 Suara Akun / Web Library:
               </span>
               <Button
@@ -272,11 +274,11 @@ export function VoiceSelectorPanel({
                   value={customVoiceInput}
                   onChange={(e) => setCustomVoiceInput(e.target.value)}
                   placeholder="Contoh: pNInz6obpgDQGcFmaJgB (20 karakter ID)"
-                  className="flex-1 px-2.5 py-1 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-violet-500 font-mono"
+                  className="flex-1 rounded-lg border border-input bg-control-background px-2.5 py-1 font-mono text-xs text-foreground focus:border-primary focus:outline-none"
                 />
                 <Button
                   type="button"
-                  variant="supabase"
+                  variant="workspace-primary"
                   size="xs"
                   disabled={!customVoiceInput.trim()}
                   onClick={() => {
@@ -330,7 +332,7 @@ export function VoiceSelectorPanel({
 
       {/* Runware Model Selection Box */}
       {provider === "runware" && (
-        <div className="mb-3.5 p-3 rounded-xl bg-[#121212] border border-[#2E2E2E] space-y-2">
+        <div className="mb-3.5 space-y-2 rounded-xl border border-border bg-background p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <Cpu className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -347,7 +349,7 @@ export function VoiceSelectorPanel({
           <select
             value={runwareModel}
             onChange={(e) => setRunwareModel(e.target.value)}
-            className="w-full px-2.5 py-1.5 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-primary transition"
+            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
           >
             {RUNWARE_TTS_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -367,7 +369,7 @@ export function VoiceSelectorPanel({
           </div>
 
           {/* Runware Custom Voice / Speaker ID Input */}
-          <div className="pt-2.5 border-t border-[#2E2E2E]/80 space-y-1.5">
+          <div className="space-y-1.5 border-t border-border pt-2.5">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span>Custom Voice ID / Speaker Name:</span>
               <span className="text-violet-400 text-[10px]">Opsional / Voice Library</span>
@@ -378,11 +380,11 @@ export function VoiceSelectorPanel({
                 value={runwareCustomVoiceInput}
                 onChange={(e) => setRunwareCustomVoiceInput(e.target.value)}
                 placeholder="Contoh: Ashley, Eve, Leo, presenter_male, atau ID kustom"
-                className="flex-1 px-2.5 py-1 bg-[#181818] rounded-lg border border-[#333] text-foreground text-xs focus:outline-none focus:border-violet-500 font-mono"
+                className="flex-1 rounded-lg border border-input bg-control-background px-2.5 py-1 font-mono text-xs text-foreground focus:border-primary focus:outline-none"
               />
               <Button
                 type="button"
-                variant="supabase"
+                variant="workspace-primary"
                 size="xs"
                 disabled={!runwareCustomVoiceInput.trim()}
                 onClick={() => {
@@ -432,7 +434,7 @@ export function VoiceSelectorPanel({
       )}
 
       {/* Locked Language Status Banner */}
-      <div className="flex items-center justify-between gap-2 mb-2 px-3 py-1.5 rounded-lg bg-[#141414] border border-[#262626]">
+      <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-1.5">
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-muted-foreground">Katalog Suara Terkunci:</span>
           {projectLanguage === "en" ? (
@@ -465,7 +467,7 @@ export function VoiceSelectorPanel({
               className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                 isSelected
                   ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                  : "border-[#2E2E2E] bg-[#141414] hover:bg-[#1A1A1A] hover:border-[#3E3E3E]"
+                  : "border-border bg-background hover:border-primary/40 hover:bg-muted"
               }`}
             >
               <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
@@ -504,7 +506,7 @@ export function VoiceSelectorPanel({
                 {v.description}
               </p>
 
-              <div className="pt-2 border-t border-[#2E2E2E]/60 flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between border-t border-border pt-2 text-xs">
                 <Button
                   type="button"
                   variant={isPlayingSample ? "supabase" : "outline"}

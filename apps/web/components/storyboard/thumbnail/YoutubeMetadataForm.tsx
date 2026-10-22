@@ -42,20 +42,22 @@ export function YoutubeMetadataForm({
   return (
     <div className="space-y-4">
       {/* Generate Metadata AI Box */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-400" />
-            <h4 className="text-xs font-bold text-white">Generate Metadata YouTube dengan AI</h4>
+            <h4 className="text-xs font-semibold text-[#26251F]">
+              Generate Metadata YouTube dengan AI
+            </h4>
           </div>
-          <Badge variant="outline" className="text-[10px] border-[#333] text-slate-400">
+          <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-[#77766D]">
             SEO & Algoritma YouTube
           </Badge>
         </div>
 
         <div className="space-y-2">
           <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+            <label className="mb-1 block text-[11px] font-semibold text-[#4D4A42]">
               Fokus Sudut Pandang (Angle)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -71,8 +73,8 @@ export function YoutubeMetadataForm({
                   onClick={() => setFocusAngle(angle.id)}
                   className={`p-2 rounded-lg border text-left text-[11px] transition-all font-semibold ${
                     focusAngle === angle.id
-                      ? "bg-emerald-500/20 border-emerald-500/50 text-white"
-                      : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525]"
+                      ? "bg-[#ECF3EB] border-[#C9DDCF] text-[#456A4E]"
+                      : "bg-[#F3F0E8] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#EAE6DD]"
                   }`}
                 >
                   {angle.label}
@@ -82,14 +84,14 @@ export function YoutubeMetadataForm({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+            <label className="mb-1 block text-[11px] font-semibold text-[#4D4A42]">
               Instruksi Tambahan (Opsional)
             </label>
             <Input
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="Contoh: Tekankan fakta sejarah abad ke-14, gunakan gaya Vox..."
-              className="bg-black/50 border-[#333] text-xs"
+              className="border-[#E5E1D7] bg-[#FFFEFA] text-xs"
             />
           </div>
 
@@ -97,7 +99,8 @@ export function YoutubeMetadataForm({
             <Button
               onClick={onGenerateMetadata}
               disabled={isGenerating}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 h-8 px-3"
+              variant="workspace-primary"
+              className="h-9 px-3 text-xs"
             >
               {isGenerating ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -113,11 +116,11 @@ export function YoutubeMetadataForm({
       </div>
 
       {/* Title & Title Options */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-emerald-400" />
-            <h4 className="text-xs font-bold text-white">Judul Video YouTube</h4>
+            <h4 className="text-xs font-semibold text-[#26251F]">Judul Video YouTube</h4>
           </div>
           <Button
             size="sm"
@@ -138,7 +141,7 @@ export function YoutubeMetadataForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Judul video YouTube yang memikat penonton..."
-          className="bg-black/50 border-[#333] text-xs font-bold"
+          className="border-[#E5E1D7] bg-[#FFFEFA] text-xs font-bold"
         />
 
         {titleOptions.length > 0 && (
@@ -151,7 +154,7 @@ export function YoutubeMetadataForm({
                 <div
                   key={i}
                   onClick={() => setTitle(opt)}
-                  className="p-2 rounded-lg bg-[#202020] hover:bg-[#262626] border border-[#2E2E2E] text-xs cursor-pointer text-slate-300 hover:text-white transition-colors"
+                  className="cursor-pointer rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 text-xs text-[#4D4A42] transition-colors hover:bg-[#F1EEE6] hover:text-[#26251F]"
                 >
                   {opt}
                 </div>
@@ -162,9 +165,9 @@ export function YoutubeMetadataForm({
       </div>
 
       {/* Description */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
-          <h4 className="text-xs font-bold text-white">Deskripsi Video & Bab Timestamp</h4>
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
+          <h4 className="text-xs font-semibold text-[#26251F]">Deskripsi Video & Bab Timestamp</h4>
           <Button
             size="sm"
             variant="ghost"
@@ -184,16 +187,16 @@ export function YoutubeMetadataForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Deskripsi video lengkap, link, dan sinopsis..."
-          className="bg-black/50 border-[#333] text-xs font-sans min-h-[140px] resize-y"
+          className="min-h-[140px] resize-y border-[#E5E1D7] bg-[#FFFEFA] font-sans text-xs"
         />
       </div>
 
       {/* Tags */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-emerald-400" />
-            <h4 className="text-xs font-bold text-white">Tags Video (Pisahkan Koma)</h4>
+            <h4 className="text-xs font-semibold text-[#26251F]">Tags Video (Pisahkan Koma)</h4>
           </div>
           <Button
             size="sm"
@@ -214,7 +217,7 @@ export function YoutubeMetadataForm({
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           placeholder="sejarah, fakta menarik, misteri, dokumenter..."
-          className="bg-black/50 border-[#333] text-xs font-mono min-h-[70px] resize-y"
+          className="min-h-[70px] resize-y border-[#E5E1D7] bg-[#FFFEFA] font-mono text-xs"
         />
       </div>
     </div>

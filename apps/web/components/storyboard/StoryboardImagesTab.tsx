@@ -102,7 +102,7 @@ function renderTokenizedPrompt(promptText: string) {
         return (
           <span
             key={pIdx}
-            className="inline-flex items-center mx-0.5 px-1.5 py-0.2 rounded bg-white/10 text-slate-200 border border-white/15 font-mono text-[10px] font-semibold align-baseline"
+            className="inline-flex items-center mx-0.5 rounded border border-[#E5E1D7] bg-[#F3F0E8] px-1.5 py-0.2 font-mono text-[10px] font-semibold text-[#4D4A42] align-baseline"
           >
             {part}
           </span>
@@ -251,10 +251,10 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         actions={
           <>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setActiveTab("storyboard_voice")}
-              className="h-8 border-[#2E2E2E] text-xs"
+              variant="workspace-secondary"
+              className="h-9 text-xs"
             >
               Kembali ke Suara
             </Button>
@@ -262,7 +262,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             <Button
               size="sm"
               onClick={() => setActiveTab("storyboard_timeline")}
-              className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+              variant="workspace-primary"
+              className="h-9 gap-1.5 text-xs"
             >
               <span>Lanjut ke Timeline & Motion</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -272,45 +273,45 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
       />
 
       {/* Main Tab Content */}
-      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+      <div className="mx-auto w-full max-w-[1920px] space-y-5 px-4 py-5 sm:px-6">
         {/* Preset Indicator Ribbon */}
-        <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-[#181818] to-[#181818] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5 text-xs sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-violet-400" />
-            <span className="text-slate-400">Preset Gaya Visual:</span>
-          <select
-            value={activePreset?.id || ""}
-            onChange={(e) => activatePresetMutation.mutate(e.target.value)}
-            disabled={activatePresetMutation.isPending}
-            className="px-2.5 py-1 rounded-lg bg-[#141414] border border-[#2E2E2E] text-white font-semibold text-xs focus:border-violet-500"
+            <span className="text-[#5E5C54]">Preset Gaya Visual:</span>
+            <select
+              value={activePreset?.id || ""}
+              onChange={(e) => activatePresetMutation.mutate(e.target.value)}
+              disabled={activatePresetMutation.isPending}
+              className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs font-semibold text-[#26251F] focus:border-[#C45B3A]"
+            >
+              {presets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.is_active ? "(Aktif)" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="hidden font-mono text-[10px] text-[#77766D] md:inline">
+              • 16:9 Landscape Storyboard
+            </span>
+          </div>
+
+          <Link
+            href="/image-studio"
+            className="text-violet-400 hover:text-violet-300 flex items-center gap-1 font-medium text-xs hover:underline"
           >
-            {presets.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.is_active ? "(Aktif)" : ""}
-              </option>
-            ))}
-          </select>
-          <span className="text-slate-500 font-mono text-[10px] hidden md:inline">
-            • 16:9 Landscape Storyboard
-          </span>
+            <span>Sesuaikan Gaya di AI Visual Studio</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        <Link
-          href="/image-studio"
-          className="text-violet-400 hover:text-violet-300 flex items-center gap-1 font-medium text-xs hover:underline"
-        >
-          <span>Sesuaikan Gaya di AI Visual Studio</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-
-      {/* Continuity Bible Locked Bar (Characters & Variants, Locations, Era) */}
-      {((project.characters && project.characters.length > 0) ||
-        (project.locations && project.locations.length > 0) ||
-        project.world_setting?.era) && (
-          <div className="p-3.5 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-950/20 via-black/40 to-black/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Continuity Bible Locked Bar (Characters & Variants, Locations, Era) */}
+        {((project.characters && project.characters.length > 0) ||
+          (project.locations && project.locations.length > 0) ||
+          project.world_setting?.era) && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 text-violet-300 font-semibold shrink-0">
+              <div className="flex shrink-0 items-center gap-1.5 font-semibold text-[#A9472C]">
                 <Users className="w-4 h-4 text-violet-400" />
                 <span>Continuity Bible:</span>
               </div>
@@ -322,7 +323,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                 return (
                   <span
                     key={`char-${i}`}
-                    className="px-2.5 py-1 rounded-lg bg-black/50 border border-violet-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#E9C9BD] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                     title={char.visual_anchor}
                   >
                     <span className="font-bold text-violet-300">👤 {char.name}</span>
@@ -344,7 +345,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                 return (
                   <span
                     key={`loc-${i}`}
-                    className="px-2.5 py-1 rounded-lg bg-black/50 border border-sky-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#D7E2E3] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                     title={loc.environment_anchor}
                   >
                     <span className="font-bold text-sky-300">🗺️ {loc.name}</span>
@@ -358,7 +359,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
               {/* World Setting Era */}
               {project.world_setting?.era && (
                 <span
-                  className="px-2.5 py-1 rounded-lg bg-black/50 border border-emerald-500/30 text-[11px] text-slate-200 flex items-center gap-1.5 font-mono"
+                  className="flex items-center gap-1.5 rounded-lg border border-[#C9DDCF] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                   title={project.world_setting.atmosphere}
                 >
                   <span className="font-bold text-emerald-300">⏳ {project.world_setting.era}</span>
@@ -369,508 +370,520 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
               )}
             </div>
 
-            <span className="text-[11px] text-slate-400 italic">
+            <span className="text-[11px] italic text-[#77766D]">
               Deskripsi visual disinkronkan otomatis saat generate
             </span>
           </div>
         )}
 
-      {/* Top Banner Action Bar */}
-      <div className="p-5 rounded-2xl border border-[#2E2E2E] bg-gradient-to-r from-[#181818] via-[#1C1824] to-[#181818] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
-              <ImageIcon className="w-5 h-5" />
+        {/* Top Banner Action Bar */}
+        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 shadow-sm md:flex-row md:items-center">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]">
+                <ImageIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-[#26251F]">
+                  {items.length} Total Ilustrasi Sketsa
+                </div>
+                <p className="text-xs text-[#77766D]">
+                  Format 16:9 Landscape • Gaya Hand-drawn Ink & Paper
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-bold text-white">
-                {items.length} Total Ilustrasi Sketsa
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Format 16:9 Landscape • Gaya Hand-drawn Ink & Paper
-              </p>
+
+            <div className="flex items-center gap-2 border-l border-[#E5E1D7] pl-2">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                ✓ {readyCount} Siap
+              </span>
+              {pendingCount > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                  ⏳ {pendingCount} Belum
+                </span>
+              )}
+              {failedCount > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">
+                  ⚠ {failedCount} Gagal
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pl-2 border-l border-[#2E2E2E]">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-              ✓ {readyCount} Siap
-            </span>
-            {pendingCount > 0 && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
-                ⏳ {pendingCount} Belum
-              </span>
-            )}
-            {failedCount > 0 && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">
-                ⚠ {failedCount} Gagal
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Prompt Mode Toggle (Clean Variables vs Full Compiled Prompt) */}
-          <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#2E2E2E]">
-            <button
-              type="button"
-              onClick={() => setShowCompiledPrompt(false)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${!showCompiledPrompt
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <Code className="w-3.5 h-3.5" />
-              <span>Prompt Variabel</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCompiledPrompt(true)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${showCompiledPrompt
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Preview Lengkap (Compiled)</span>
-            </button>
-          </div>
-
-          <Button
-            onClick={() => batchGenerateMutation.mutate()}
-            disabled={batchGenerateMutation.isPending || items.length === 0}
-            className="bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-lg shadow-violet-500/20 gap-2 shrink-0 py-2.5"
-          >
-            {batchGenerateMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>
-                  Menghasilkan Semua Gambar ({readyCount}/{items.length})...
-                </span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>
-                  {pendingCount > 0
-                    ? `Generate Semua Gambar (${pendingCount} Slot)`
-                    : "Regenerate Semua Gambar"}
-                </span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Items Gallery Grouped by Segment */}
-      {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#2E2E2E] bg-[#181818]/60 p-12 text-center">
-          <ImageIcon className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-white mb-1.5">Belum Ada Slot Gambar</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
-            Buat naskah storyboard terlebih dahulu pada langkah pertama agar adegan dan prompt
-            visual terbentuk.
-          </p>
-          <Button onClick={() => setActiveTab("storyboard_script")} variant="supabase" size="sm">
-            Buka Tab Naskah
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 grid-flow-row-dense gap-5">
-          {segments.map((seg: SentenceSegment, segIdx: number) => {
-            const segItems = items.filter((it) => it.segment_id === seg.id);
-            if (segItems.length === 0) return null;
-
-            // Segments with multiple images span more columns so each image keeps a usable width
-            const spanClass =
-              segItems.length >= 3
-                ? "md:col-span-2 xl:col-span-3"
-                : segItems.length === 2
-                  ? "md:col-span-2"
-                  : "";
-            const innerGridClass =
-              segItems.length >= 3
-                ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-                : segItems.length === 2
-                  ? "grid-cols-1 sm:grid-cols-2"
-                  : "grid-cols-1";
-
-            return (
-              <div
-                key={seg.id || segIdx}
-                className={`rounded-2xl border border-[#2E2E2E] bg-[#181818] p-4 flex flex-col gap-3 shadow-lg min-w-0 ${spanClass}`}
-              >
-                {/* Segment Header */}
-                <div className="flex items-center justify-between gap-2 border-b border-[#2E2E2E] pb-2.5 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="shrink-0 text-[10px] font-mono font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
-                      #{segIdx + 1}
-                    </span>
-                    <h3
-                      className="text-xs font-bold text-white truncate"
-                      title={seg.chapter || `Babak ${segIdx + 1}`}
-                    >
-                      {seg.chapter || `Babak ${segIdx + 1}`}
-                    </h3>
-                  </div>
-                  <span className="shrink-0 text-[10px] text-slate-400 font-mono">
-                    {segItems.length} Gambar
-                  </span>
-                </div>
-
-                {/* Narration script line context */}
-                <div
-                  className="p-2.5 rounded-lg bg-black/40 border border-[#262626] text-[11px] text-slate-300 leading-relaxed font-sans line-clamp-3"
-                  title={seg.text}
-                >
-                  &ldquo;{seg.text}&rdquo;
-                </div>
-
-                {/* Grid of Images in this segment */}
-                <div className={`grid ${innerGridClass} gap-3 flex-1`}>
-                  {segItems.map((item, imgIdx) => {
-                    const isGeneratingThis = generatingItemId === item.id;
-                    const isEditingThis = editingItemId === item.id;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-xl border border-[#2E2E2E] bg-[#141414] overflow-hidden flex flex-col justify-between hover:border-violet-500/30 transition group"
-                      >
-                        {/* Image Preview / Skeleton Area (16:9 Aspect) */}
-                        <div className="relative aspect-video bg-[#0D0D0D] border-b border-[#2E2E2E] overflow-hidden flex items-center justify-center">
-                          {isGeneratingThis ? (
-                            <div className="flex flex-col items-center gap-2 p-4 text-center">
-                              <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
-                              <span className="text-[11px] text-violet-300 font-mono">
-                                Menggambar sketsa AI...
-                              </span>
-                            </div>
-                          ) : item.status === "ready" && item.image_url ? (
-                            <>
-                              <img
-                                key={item.image_url}
-                                src={item.image_url}
-                                alt={item.image_prompt}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                              {/* Overlay zoom button */}
-                              <button
-                                type="button"
-                                onClick={() => setPreviewImage(item)}
-                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition shadow-lg"
-                                title="Lihat Layar Penuh"
-                              >
-                                <Maximize2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : item.status === "failed" ? (
-                            <div className="flex flex-col items-center gap-1.5 p-4 text-center">
-                              <AlertCircle className="w-6 h-6 text-rose-400" />
-                              <span className="text-[11px] text-rose-300 font-mono">
-                                Gagal generate gambar
-                              </span>
-                              <span className="text-[10px] text-slate-500 line-clamp-2">
-                                {item.error_message || "Kesalahan API"}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-2 p-4 text-center">
-                              <ImageIcon className="w-8 h-8 text-slate-600" />
-                              <span className="text-[11px] text-slate-400 font-mono">
-                                Belum Digenerate
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Order & Motion Badge */}
-                          <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/80 text-white font-bold backdrop-blur-xs">
-                              Gambar #{imgIdx + 1}
-                            </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-900/80 text-violet-200 border border-violet-500/30 backdrop-blur-xs">
-                              {item.motion_effect}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Card Body: Prompt & Controls */}
-                        <div className="p-3.5 space-y-3 flex-1 flex flex-col justify-between">
-                          {isEditingThis ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                rows={3}
-                                value={editPromptText}
-                                onChange={(e) => setEditPromptText(e.target.value)}
-                                className="text-[11px] bg-[#181818] border-violet-500/50 text-white leading-normal font-mono"
-                                placeholder="Tulis visual prompt..."
-                              />
-
-                              {/* Quick Token Insertion Chips */}
-                              <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                                <span className="text-[9px] text-slate-500 font-mono">
-                                  Sisipkan:
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditPromptText((prev) => `${prev} [preset:style]`)
-                                  }
-                                  className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono transition"
-                                >
-                                  + [preset:style]
-                                </button>
-                                {project.characters?.map((c: StoryboardCharacter, ci: number) => {
-                                  const cId = c.id || c.name?.toLowerCase().replace(/\s+/g, "");
-                                  return (
-                                    <React.Fragment key={`tok-c-${ci}`}>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setEditPromptText((prev) => `${prev} [char:${cId}]`)
-                                        }
-                                        className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
-                                      >
-                                        + [char:{cId}]
-                                      </button>
-                                      {c.variants?.map((v: StoryboardCharacterVariant, vi: number) => (
-                                        <button
-                                          key={`tok-v-${ci}-${vi}`}
-                                          type="button"
-                                          onClick={() =>
-                                            setEditPromptText(
-                                              (prev) => `${prev} [char:${cId}:${v.variant_id}]`
-                                            )
-                                          }
-                                          className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
-                                        >
-                                          + [char:{cId}:{v.variant_id}]
-                                        </button>
-                                      ))}
-                                    </React.Fragment>
-                                  );
-                                })}
-                                {project.locations?.map((l: StoryboardLocation, li: number) => {
-                                  const lId = l.id || l.name?.toLowerCase().replace(/\s+/g, "");
-                                  return (
-                                    <button
-                                      key={`tok-l-${li}`}
-                                      type="button"
-                                      onClick={() =>
-                                        setEditPromptText((prev) => `${prev} [loc:${lId}]`)
-                                      }
-                                      className="px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] font-mono transition"
-                                    >
-                                      + [loc:{lId}]
-                                    </button>
-                                  );
-                                })}
-                                {project.world_setting?.era && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditPromptText((prev) => `${prev} [era]`)}
-                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-mono transition"
-                                  >
-                                    + [era]
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="flex justify-end gap-1.5 pt-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditingItemId(null)}
-                                  className="text-[10px] h-6 px-2 text-slate-400"
-                                >
-                                  Batal
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSavePrompt(item.id)}
-                                  className="text-[10px] h-6 px-2 bg-violet-600 hover:bg-violet-500 text-white"
-                                >
-                                  Simpan
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] uppercase font-semibold text-slate-500 font-mono">
-                                    Visual Prompt
-                                  </span>
-                                  {showCompiledPrompt && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono font-medium">
-                                      Compiled
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleCopyPrompt(
-                                        item.id,
-                                        showCompiledPrompt
-                                          ? item.resolved_prompt || item.image_prompt
-                                          : item.image_prompt
-                                      )
-                                    }
-                                    className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-mono transition p-0.5"
-                                    title="Salin Prompt"
-                                  >
-                                    {copiedPromptId === item.id ? (
-                                      <Check className="w-2.5 h-2.5 text-emerald-400" />
-                                    ) : (
-                                      <Copy className="w-2.5 h-2.5" />
-                                    )}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingItemId(item.id);
-                                      setEditPromptText(item.image_prompt);
-                                    }}
-                                    className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
-                                  >
-                                    <Edit3 className="w-2.5 h-2.5" />
-                                    <span>Edit</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {showCompiledPrompt ? (
-                                <p className="text-[11px] text-slate-200 font-mono leading-relaxed line-clamp-4 bg-black/40 p-2 rounded-lg border border-[#222]">
-                                  {item.resolved_prompt || item.image_prompt}
-                                </p>
-                              ) : (
-                                <div className="text-[11px] text-slate-300 font-mono leading-relaxed line-clamp-3">
-                                  {renderTokenizedPrompt(item.image_prompt)}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Voiceover Narration sentence */}
-                          {item.script_text && (
-                            <div className="bg-black/40 px-2.5 py-1.5 rounded-lg border border-[#222]">
-                              <span className="text-[9px] uppercase font-semibold text-violet-400 font-mono block mb-0.5">
-                                Narasi Suara:
-                              </span>
-                              <p className="text-[11px] text-slate-200 font-sans italic line-clamp-2 leading-relaxed">
-                                &ldquo;{item.script_text}&rdquo;
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Motion Effect Selector & Action Button */}
-                          <div className="space-y-2 pt-2 border-t border-[#262626]">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-slate-400 font-medium">Ken Burns Motion:</span>
-                              <select
-                                value={item.motion_effect || "zoom_in"}
-                                onChange={(e) =>
-                                  handleUpdateMotion(
-                                    item.id,
-                                    e.target.value as StoryboardItem["motion_effect"]
-                                  )
-                                }
-                                className="bg-[#181818] border border-[#2E2E2E] text-slate-200 text-[10px] rounded px-1.5 py-0.5 focus:outline-none"
-                              >
-                                <option value="zoom_in">Slow Zoom In</option>
-                                <option value="zoom_out">Slow Zoom Out</option>
-                                <option value="pan_left">Pan Left</option>
-                                <option value="pan_right">Pan Right</option>
-                                <option value="static">Statis (Diam)</option>
-                              </select>
-                            </div>
-
-                            <Button
-                              type="button"
-                              onClick={() => handleGenerateSingle(item)}
-                              disabled={isGeneratingThis || batchGenerateMutation.isPending}
-                              variant={item.status === "ready" ? "outline" : "supabase"}
-                              className={`w-full text-xs h-8 gap-1.5 ${item.status === "ready"
-                                  ? "border-[#2E2E2E] hover:border-violet-500 hover:text-violet-300"
-                                  : "bg-violet-600 hover:bg-violet-500 text-white"
-                                }`}
-                            >
-                              {isGeneratingThis ? (
-                                <>
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  <span>Menggambar...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <RefreshCw className="w-3 h-3" />
-                                  <span>
-                                    {item.status === "ready"
-                                      ? "Regenerate Gambar Ini"
-                                      : "Generate Gambar Ini"}
-                                  </span>
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Fullscreen Preview Modal */}
-      {previewImage && (
-        <div
-          onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 cursor-pointer"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-w-4xl w-full bg-[#181818] rounded-2xl border border-[#2E2E2E] overflow-hidden shadow-2xl cursor-default"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[#2E2E2E]">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-violet-400" />
-                <span className="text-xs font-bold text-white font-mono">
-                  Preview Ilustrasi 16:9 • Efek {previewImage.motion_effect}
-                </span>
-              </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Prompt Mode Toggle (Clean Variables vs Full Compiled Prompt) */}
+            <div className="flex items-center gap-1 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
               <button
                 type="button"
-                onClick={() => setPreviewImage(null)}
-                className="p-1.5 rounded-lg bg-surface hover:bg-white/10 text-slate-400 hover:text-white"
+                onClick={() => setShowCompiledPrompt(false)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                  !showCompiledPrompt
+                    ? "bg-[#C45B3A] text-white shadow-sm"
+                    : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                }`}
               >
-                <X className="w-4 h-4" />
+                <Code className="w-3.5 h-3.5" />
+                <span>Prompt Variabel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCompiledPrompt(true)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                  showCompiledPrompt
+                    ? "bg-[#C45B3A] text-white shadow-sm"
+                    : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview Lengkap (Compiled)</span>
               </button>
             </div>
 
-            <div className="relative aspect-video bg-black flex items-center justify-center">
-              <img
-                key={previewImage.image_url}
-                src={previewImage.image_url!}
-                alt={previewImage.image_prompt}
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div className="p-4 bg-[#141414] border-t border-[#2E2E2E] space-y-1">
-              <span className="text-[10px] font-mono uppercase text-slate-500 block">
-                Prompt Ilustrasi:
-              </span>
-              <p className="text-xs text-slate-200 font-mono leading-relaxed">
-                {previewImage.image_prompt}
-              </p>
-            </div>
+            <Button
+              onClick={() => batchGenerateMutation.mutate()}
+              disabled={batchGenerateMutation.isPending || items.length === 0}
+              variant="workspace-primary"
+              className="shrink-0 gap-2 py-2.5 text-xs"
+            >
+              {batchGenerateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>
+                    Menghasilkan Semua Gambar ({readyCount}/{items.length})...
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>
+                    {pendingCount > 0
+                      ? `Generate Semua Gambar (${pendingCount} Slot)`
+                      : "Regenerate Semua Gambar"}
+                  </span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
-      )}
+
+        {/* Main Items Gallery Grouped by Segment */}
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-12 text-center">
+            <ImageIcon className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+            <h3 className="mb-1.5 text-base font-semibold text-[#26251F]">Belum Ada Slot Gambar</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
+              Buat naskah storyboard terlebih dahulu pada langkah pertama agar adegan dan prompt
+              visual terbentuk.
+            </p>
+            <Button
+              onClick={() => setActiveTab("storyboard_script")}
+              variant="workspace-primary"
+              size="sm"
+            >
+              Buka Tab Naskah
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 grid-flow-row-dense gap-5">
+            {segments.map((seg: SentenceSegment, segIdx: number) => {
+              const segItems = items.filter((it) => it.segment_id === seg.id);
+              if (segItems.length === 0) return null;
+
+              // Segments with multiple images span more columns so each image keeps a usable width
+              const spanClass =
+                segItems.length >= 3
+                  ? "md:col-span-2 xl:col-span-3"
+                  : segItems.length === 2
+                    ? "md:col-span-2"
+                    : "";
+              const innerGridClass =
+                segItems.length >= 3
+                  ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                  : segItems.length === 2
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1";
+
+              return (
+                <div
+                  key={seg.id || segIdx}
+                  className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-4 shadow-sm ${spanClass}`}
+                >
+                  {/* Segment Header */}
+                  <div className="flex min-w-0 items-center justify-between gap-2 border-b border-[#E5E1D7] pb-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="shrink-0 text-[10px] font-mono font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                        #{segIdx + 1}
+                      </span>
+                      <h3
+                        className="truncate text-xs font-semibold text-[#26251F]"
+                        title={seg.chapter || `Babak ${segIdx + 1}`}
+                      >
+                        {seg.chapter || `Babak ${segIdx + 1}`}
+                      </h3>
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-[#77766D]">
+                      {segItems.length} Gambar
+                    </span>
+                  </div>
+
+                  {/* Narration script line context */}
+                  <div
+                    className="line-clamp-3 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2.5 font-sans text-[11px] leading-relaxed text-[#4D4A42]"
+                    title={seg.text}
+                  >
+                    &ldquo;{seg.text}&rdquo;
+                  </div>
+
+                  {/* Grid of Images in this segment */}
+                  <div className={`grid ${innerGridClass} gap-3 flex-1`}>
+                    {segItems.map((item, imgIdx) => {
+                      const isGeneratingThis = generatingItemId === item.id;
+                      const isEditingThis = editingItemId === item.id;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="group flex flex-col justify-between overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] transition hover:border-[#C45B3A]"
+                        >
+                          {/* Image Preview / Skeleton Area (16:9 Aspect) */}
+                          <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-[#E5E1D7] bg-[#F3F0E8]">
+                            {isGeneratingThis ? (
+                              <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                                <span className="text-[11px] text-violet-300 font-mono">
+                                  Menggambar sketsa AI...
+                                </span>
+                              </div>
+                            ) : item.status === "ready" && item.image_url ? (
+                              <>
+                                <img
+                                  key={item.image_url}
+                                  src={item.image_url}
+                                  alt={item.image_prompt}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                {/* Overlay zoom button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage(item)}
+                                  className="absolute right-2 top-2 rounded-lg bg-[#26251F]/75 p-1.5 text-white opacity-0 shadow-lg transition hover:bg-[#26251F] group-hover:opacity-100"
+                                  title="Lihat Layar Penuh"
+                                >
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            ) : item.status === "failed" ? (
+                              <div className="flex flex-col items-center gap-1.5 p-4 text-center">
+                                <AlertCircle className="w-6 h-6 text-rose-400" />
+                                <span className="text-[11px] text-rose-300 font-mono">
+                                  Gagal generate gambar
+                                </span>
+                                <span className="line-clamp-2 text-[10px] text-[#77766D]">
+                                  {item.error_message || "Kesalahan API"}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                <ImageIcon className="w-8 h-8 text-slate-600" />
+                                <span className="font-mono text-[11px] text-[#77766D]">
+                                  Belum Digenerate
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Order & Motion Badge */}
+                            <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+                              <span className="rounded bg-[#26251F]/80 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white backdrop-blur-xs">
+                                Gambar #{imgIdx + 1}
+                              </span>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-900/80 text-violet-200 border border-violet-500/30 backdrop-blur-xs">
+                                {item.motion_effect}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Card Body: Prompt & Controls */}
+                          <div className="p-3.5 space-y-3 flex-1 flex flex-col justify-between">
+                            {isEditingThis ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  rows={3}
+                                  value={editPromptText}
+                                  onChange={(e) => setEditPromptText(e.target.value)}
+                                  className="border-[#E5E1D7] bg-[#FFFEFA] font-mono text-[11px] leading-normal text-[#26251F] focus:border-[#C45B3A]"
+                                  placeholder="Tulis visual prompt..."
+                                />
+
+                                {/* Quick Token Insertion Chips */}
+                                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                                  <span className="font-mono text-[9px] text-[#77766D]">
+                                    Sisipkan:
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditPromptText((prev) => `${prev} [preset:style]`)
+                                    }
+                                    className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono transition"
+                                  >
+                                    + [preset:style]
+                                  </button>
+                                  {project.characters?.map((c: StoryboardCharacter, ci: number) => {
+                                    const cId = c.id || c.name?.toLowerCase().replace(/\s+/g, "");
+                                    return (
+                                      <React.Fragment key={`tok-c-${ci}`}>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setEditPromptText((prev) => `${prev} [char:${cId}]`)
+                                          }
+                                          className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                        >
+                                          + [char:{cId}]
+                                        </button>
+                                        {c.variants?.map(
+                                          (v: StoryboardCharacterVariant, vi: number) => (
+                                            <button
+                                              key={`tok-v-${ci}-${vi}`}
+                                              type="button"
+                                              onClick={() =>
+                                                setEditPromptText(
+                                                  (prev) => `${prev} [char:${cId}:${v.variant_id}]`
+                                                )
+                                              }
+                                              className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                            >
+                                              + [char:{cId}:{v.variant_id}]
+                                            </button>
+                                          )
+                                        )}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                  {project.locations?.map((l: StoryboardLocation, li: number) => {
+                                    const lId = l.id || l.name?.toLowerCase().replace(/\s+/g, "");
+                                    return (
+                                      <button
+                                        key={`tok-l-${li}`}
+                                        type="button"
+                                        onClick={() =>
+                                          setEditPromptText((prev) => `${prev} [loc:${lId}]`)
+                                        }
+                                        className="px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] font-mono transition"
+                                      >
+                                        + [loc:{lId}]
+                                      </button>
+                                    );
+                                  })}
+                                  {project.world_setting?.era && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditPromptText((prev) => `${prev} [era]`)}
+                                      className="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-mono transition"
+                                    >
+                                      + [era]
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="flex justify-end gap-1.5 pt-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingItemId(null)}
+                                    className="h-6 px-2 text-[10px] text-[#77766D]"
+                                  >
+                                    Batal
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSavePrompt(item.id)}
+                                    className="h-6 bg-[#C45B3A] px-2 text-[10px] text-white hover:bg-[#A9472C]"
+                                  >
+                                    Simpan
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono text-[10px] font-semibold uppercase text-[#77766D]">
+                                      Visual Prompt
+                                    </span>
+                                    {showCompiledPrompt && (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono font-medium">
+                                        Compiled
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleCopyPrompt(
+                                          item.id,
+                                          showCompiledPrompt
+                                            ? item.resolved_prompt || item.image_prompt
+                                            : item.image_prompt
+                                        )
+                                      }
+                                      className="flex items-center gap-1 p-0.5 font-mono text-[10px] text-[#77766D] transition hover:text-[#26251F]"
+                                      title="Salin Prompt"
+                                    >
+                                      {copiedPromptId === item.id ? (
+                                        <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="w-2.5 h-2.5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingItemId(item.id);
+                                        setEditPromptText(item.image_prompt);
+                                      }}
+                                      className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
+                                    >
+                                      <Edit3 className="w-2.5 h-2.5" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {showCompiledPrompt ? (
+                                  <p className="line-clamp-4 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
+                                    {item.resolved_prompt || item.image_prompt}
+                                  </p>
+                                ) : (
+                                  <div className="line-clamp-3 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
+                                    {renderTokenizedPrompt(item.image_prompt)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Voiceover Narration sentence */}
+                            {item.script_text && (
+                              <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] px-2.5 py-1.5">
+                                <span className="text-[9px] uppercase font-semibold text-violet-400 font-mono block mb-0.5">
+                                  Narasi Suara:
+                                </span>
+                                <p className="line-clamp-2 font-sans text-[11px] italic leading-relaxed text-[#4D4A42]">
+                                  &ldquo;{item.script_text}&rdquo;
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Motion Effect Selector & Action Button */}
+                            <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="font-medium text-[#77766D]">
+                                  Ken Burns Motion:
+                                </span>
+                                <select
+                                  value={item.motion_effect || "zoom_in"}
+                                  onChange={(e) =>
+                                    handleUpdateMotion(
+                                      item.id,
+                                      e.target.value as StoryboardItem["motion_effect"]
+                                    )
+                                  }
+                                  className="rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 py-0.5 text-[10px] text-[#26251F] focus:outline-none"
+                                >
+                                  <option value="zoom_in">Slow Zoom In</option>
+                                  <option value="zoom_out">Slow Zoom Out</option>
+                                  <option value="pan_left">Pan Left</option>
+                                  <option value="pan_right">Pan Right</option>
+                                  <option value="static">Statis (Diam)</option>
+                                </select>
+                              </div>
+
+                              <Button
+                                type="button"
+                                onClick={() => handleGenerateSingle(item)}
+                                disabled={isGeneratingThis || batchGenerateMutation.isPending}
+                                variant={item.status === "ready" ? "outline" : "supabase"}
+                                className={`w-full text-xs h-8 gap-1.5 ${
+                                  item.status === "ready"
+                                    ? "border-[#E5E1D7] hover:border-[#C45B3A] hover:text-[#A9472C]"
+                                    : "bg-violet-600 hover:bg-violet-500 text-white"
+                                }`}
+                              >
+                                {isGeneratingThis ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Menggambar...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>
+                                      {item.status === "ready"
+                                        ? "Regenerate Gambar Ini"
+                                        : "Generate Gambar Ini"}
+                                    </span>
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Fullscreen Preview Modal */}
+        {previewImage && (
+          <div
+            onClick={() => setPreviewImage(null)}
+            className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-[#26251F]/70 p-6 backdrop-blur-sm"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-4xl cursor-default overflow-hidden rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[#E5E1D7] p-4">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-violet-400" />
+                  <span className="font-mono text-xs font-semibold text-[#26251F]">
+                    Preview Ilustrasi 16:9 • Efek {previewImage.motion_effect}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="rounded-lg bg-[#F3F0E8] p-1.5 text-[#5E5C54] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="relative flex aspect-video items-center justify-center bg-[#26251F]">
+                <img
+                  key={previewImage.image_url}
+                  src={previewImage.image_url!}
+                  alt={previewImage.image_prompt}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              <div className="space-y-1 border-t border-[#E5E1D7] bg-[#F3F0E8] p-4">
+                <span className="block font-mono text-[10px] uppercase text-[#77766D]">
+                  Prompt Ilustrasi:
+                </span>
+                <p className="font-mono text-xs leading-relaxed text-[#4D4A42]">
+                  {previewImage.image_prompt}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

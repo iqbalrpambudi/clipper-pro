@@ -89,7 +89,7 @@ export function SubtitlePresetsColumn({
             variant="ghost"
             size="sm"
             onClick={onOpenSavePreset}
-            className="h-6 text-[11px] text-primary hover:text-white px-2 gap-1"
+            className="h-6 gap-1 px-2 text-[11px] text-primary hover:text-foreground"
           >
             <Plus className="w-3 h-3" />
             <span>Buat Baru</span>
@@ -98,13 +98,15 @@ export function SubtitlePresetsColumn({
 
         {customPresets.length === 0 ? (
           <div className="p-3 rounded-lg border border-dashed border-border bg-background text-center space-y-1.5">
-            <p className="text-[11px] text-muted-foreground">Belum ada preset kustom yang dibuat.</p>
+            <p className="text-[11px] text-muted-foreground">
+              Belum ada preset kustom yang dibuat.
+            </p>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onOpenSavePreset}
-              className="h-6 text-[10px] font-medium text-primary hover:text-white border-primary/30"
+              className="h-6 border-primary/30 text-[10px] font-medium text-primary hover:text-foreground"
             >
               + Simpan Gaya Ini Sebagai Preset
             </Button>

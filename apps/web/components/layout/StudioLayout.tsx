@@ -9,7 +9,7 @@ import {
   Check,
   X,
   Loader2,
-  ChevronRight,
+  Download,
   LucideIcon,
 } from "lucide-react";
 import { Button, Input, Badge } from "@/components/ui";
@@ -47,7 +47,7 @@ export function StudioLayout({
   tabs,
   onRenameProject,
   isRenaming = false,
-  onRenderClick: _onRenderClick,
+  onRenderClick,
   children,
 }: StudioLayoutProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -67,37 +67,28 @@ export function StudioLayout({
 
   return (
     <div
-      className={`flex flex-col bg-[#121212] text-foreground ${
+      className={`workspace-theme flex flex-col bg-[#F3F0E8] text-[#26251F] ${
         isFullHeightTab ? "h-screen overflow-hidden" : "min-h-screen"
       }`}
     >
-      {/* ========================================================================= */}
-      {/* 1. SUPABASE STUDIO TOP HEADER                                              */}
-      {/* ========================================================================= */}
-      <header className="border-b border-[#2E2E2E] bg-[#171717]/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          {/* Left: Breadcrumbs & Inline Title Edit */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:text-white hover:bg-white/5 h-8 w-8"
-                title="Kembali ke Dashboard"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 hidden sm:flex">
-              <Link href="/" className="hover:text-foreground transition">
-                Projects
+      <header className="sticky top-0 z-40 border-b border-[#DCD6C8] bg-[#FBFAF7]/95 backdrop-blur-md">
+        <div className="mx-auto flex min-h-16 max-w-[1920px] items-center gap-3 px-3 py-2 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <Button
+              asChild
+              variant="workspace-quiet"
+              size="icon-sm"
+              className="h-9 w-9 shrink-0"
+              title="Kembali ke daftar project"
+              aria-label="Kembali ke daftar project"
+            >
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </Link>
-              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
-            </div>
+            </Button>
 
             {isEditingTitle ? (
-              <form onSubmit={handleTitleSubmit} className="flex items-center gap-1.5">
+              <form onSubmit={handleTitleSubmit} className="flex min-w-0 items-center gap-1.5">
                 <Input
                   type="text"
                   required
@@ -106,116 +97,146 @@ export function StudioLayout({
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setIsEditingTitle(false);
                   }}
-                  className="h-7 text-xs font-semibold max-w-xs"
+                  aria-label="Nama project"
+                  className="h-9 max-w-xs text-sm font-semibold"
                   autoFocus
                 />
                 <Button
                   type="submit"
-                  variant="supabase"
-                  size="icon-sm"
+                  variant="workspace-primary"
+                  size="workspace-icon"
                   disabled={isRenaming}
-                  className="h-7 w-7"
-                  title="Simpan Nama"
+                  aria-label="Simpan nama project"
+                  title="Simpan nama project"
                 >
                   {isRenaming ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <Check className="w-3 h-3" />
+                    <Check className="h-4 w-4" aria-hidden="true" />
                   )}
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="icon-sm"
+                  variant="workspace-secondary"
+                  size="workspace-icon"
                   onClick={() => setIsEditingTitle(false)}
-                  className="h-7 w-7 border-[#2E2E2E]"
+                  aria-label="Batalkan perubahan nama"
                   title="Batal"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </form>
             ) : (
-              <div className="flex items-center gap-2 group min-w-0">
-                <span
+              <div className="group flex min-w-0 items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
                   onClick={() => {
                     setEditTitle(projectName);
                     setIsEditingTitle(true);
                   }}
-                  className="text-sm font-semibold text-white tracking-tight truncate max-w-xs sm:max-w-md cursor-pointer hover:text-[#3ECF8E] transition"
-                  title="Klik untuk mengubah nama project"
+                  className="max-w-[min(42vw,20rem)] truncate rounded text-left font-serif text-lg text-[#26251F] transition-colors hover:text-[#A9472C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] sm:max-w-md sm:text-xl"
+                  title="Ubah nama project"
                 >
                   {projectName}
-                </span>
+                </button>
 
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="workspace-quiet"
                   size="icon-sm"
                   onClick={() => {
                     setEditTitle(projectName);
                     setIsEditingTitle(true);
                   }}
-                  className="text-muted-foreground hover:text-[#3ECF8E] opacity-50 group-hover:opacity-100 h-6 w-6"
-                  title="Edit Nama Project"
+                  className="hidden h-8 w-8 shrink-0 sm:inline-flex"
+                  aria-label={`Ubah nama project ${projectName}`}
+                  title="Ubah nama project"
                 >
-                  <Edit3 className="w-3 h-3" />
+                  <Edit3 className="h-4 w-4" aria-hidden="true" />
                 </Button>
 
-                <Badge variant="supabase" className="font-mono text-[10px] py-0 shrink-0">
-                  {aspectRatio} • {resolution}
+                <Badge
+                  variant="workspace"
+                  className="hidden shrink-0 font-mono text-[10px] sm:inline-flex"
+                >
+                  {aspectRatio} · {resolution}
                 </Badge>
               </div>
             )}
           </div>
 
-          {/* Right: Studio Utilities & Render CTA */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/settings">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Badge variant="workspace" className="font-mono text-[10px] sm:hidden">
+              {aspectRatio}
+            </Badge>
+            <Button
+              asChild
+              variant="workspace-secondary"
+              size="workspace-sm"
+              className="gap-2 px-2 sm:px-3"
+              aria-label="Pengaturan"
+              title="Pengaturan"
+            >
+              <Link href="/settings">
+                <SettingsIcon className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden md:inline">Pengaturan</span>
+              </Link>
+            </Button>
+            {onRenderClick && (
               <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-xs border-[#2E2E2E] h-8"
-                title="Model Settings"
+                type="button"
+                variant="workspace-primary"
+                size="workspace-sm"
+                className="gap-2 px-2 sm:px-3"
+                onClick={onRenderClick}
+                aria-label="Buka tahap render dan ekspor"
+                title="Render dan ekspor"
               >
-                <SettingsIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="hidden md:inline">Settings</span>
+                <Download className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Render</span>
               </Button>
-            </Link>
+            )}
           </div>
         </div>
 
-        {/* ======================================================================= */}
-        {/* 2. SUPABASE STUDIO SUB-NAVIGATION TABS                                  */}
-        {/* ======================================================================= */}
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto border-t border-[#2E2E2E]/60 py-1 no-scrollbar">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${isActive
-                    ? "bg-[#242424] text-white border-b-2 border-[#3ECF8E] shadow-sm font-semibold"
-                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+        <nav
+          aria-label="Tahap project"
+          className="project-studio-stage-nav border-t border-[#E5E1D7] bg-[#FBFAF7]"
+        >
+          <div className="mx-auto flex max-w-[1920px] gap-1 overflow-x-auto px-3 py-2 sm:px-6">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => onTabChange(tab.id)}
+                  aria-current={isActive ? "step" : undefined}
+                  className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] focus-visible:ring-offset-2 ${
+                    isActive
+                      ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
+                      : "border-transparent text-[#77766D] hover:border-[#E5E1D7] hover:bg-[#F3F0E8] hover:text-[#26251F]"
                   }`}
-              >
-                <Icon
-                  className={`w-3.5 h-3.5 ${isActive ? "text-[#3ECF8E]" : "text-muted-foreground"}`}
-                />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <Badge
-                    variant={isActive ? "supabase" : "secondary"}
-                    className="text-[9px] px-1.5 py-0 h-4"
-                  >
-                    {tab.badge}
-                  </Badge>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                >
+                  <Icon
+                    className={`h-4 w-4 shrink-0 ${isActive ? "text-[#A9472C]" : "text-[#858176]"}`}
+                    aria-hidden="true"
+                  />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <Badge
+                      variant={isActive ? "workspace-accent" : "workspace"}
+                      className="px-2 py-0 text-[10px]"
+                    >
+                      {tab.badge}
+                    </Badge>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </header>
 
       {/* Real-time Global Worker Task Floating Indicator */}

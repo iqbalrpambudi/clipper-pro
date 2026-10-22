@@ -119,6 +119,36 @@
     sans-serif;
 }
 
+.workspace-portal-surface {
+  --background: 40 20% 95%;
+  --foreground: 45 10% 15%;
+  --popover: 40 50% 99%;
+  --popover-foreground: 45 10% 15%;
+  --primary: 15 55% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 18% 91%;
+  --secondary-foreground: 45 10% 20%;
+  --muted: 40 18% 91%;
+  --muted-foreground: 50 5% 45%;
+  --accent: 15 55% 94%;
+  --accent-foreground: 15 50% 35%;
+  --border: 40 18% 88%;
+  --input: 40 18% 84%;
+  --control-background: 40 50% 99%;
+  --ring: 15 55% 50%;
+  --surface-hover: 40 25% 94%;
+  --surface: 40 50% 99%;
+  color-scheme: light;
+}
+
+.project-studio-stage-nav > div {
+  scrollbar-width: none;
+}
+
+.project-studio-stage-nav > div::-webkit-scrollbar {
+  display: none;
+}
+
 .workspace-theme :is(input, textarea, select, button) {
   color-scheme: light;
 }

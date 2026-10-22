@@ -9,10 +9,7 @@ interface SubtitleTypographyColumnProps {
   onCommitStyle: (updated: SubtitleStyle, persist?: boolean) => void;
 }
 
-export function SubtitleTypographyColumn({
-  style,
-  onCommitStyle,
-}: SubtitleTypographyColumnProps) {
+export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypographyColumnProps) {
   return (
     <div className="lg:col-span-4 space-y-4">
       {/* Typography Controls */}
@@ -52,7 +49,7 @@ export function SubtitleTypographyColumn({
                 onClick={() =>
                   onCommitStyle({ ...style, font_size: Math.max(28, style.font_size - 4) })
                 }
-                className="px-1.5 py-0.5 bg-muted hover:bg-surface-hover rounded text-[10px] text-muted-foreground hover:text-white"
+                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="-4px"
               >
                 -4px
@@ -65,7 +62,7 @@ export function SubtitleTypographyColumn({
                 onClick={() =>
                   onCommitStyle({ ...style, font_size: Math.min(96, style.font_size + 4) })
                 }
-                className="px-1.5 py-0.5 bg-muted hover:bg-surface-hover rounded text-[10px] text-muted-foreground hover:text-white"
+                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="+4px"
               >
                 +4px
@@ -151,7 +148,9 @@ export function SubtitleTypographyColumn({
               }`}
             >
               <span className="text-xs font-bold text-foreground">Kalimat</span>
-              <span className="text-[9px] text-muted-foreground leading-tight">Satu baris penuh</span>
+              <span className="text-[9px] text-muted-foreground leading-tight">
+                Satu baris penuh
+              </span>
             </button>
           </div>
         </div>
@@ -169,7 +168,7 @@ export function SubtitleTypographyColumn({
                   className={`px-3 py-1 rounded text-xs font-bold transition ${
                     (style.burst_word_count || 2) === count
                       ? "bg-primary text-black"
-                      : "bg-muted text-muted-foreground hover:text-white"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {count} Kata

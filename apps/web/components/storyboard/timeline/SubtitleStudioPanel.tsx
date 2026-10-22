@@ -54,7 +54,7 @@ export function SubtitleStudioPanel({
   return (
     <div className="space-y-4">
       {/* Checklist Toggle: Enable / Disable Subtitle */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#2A2A2A] shadow-sm space-y-2">
+      <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <label
             htmlFor="subtitle-enable-check"
@@ -82,7 +82,7 @@ export function SubtitleStudioPanel({
               className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
             />
             <div>
-              <span className="text-xs font-bold text-white block">
+              <span className="block text-xs font-semibold text-[#26251F]">
                 Gunakan Subtitle pada Video
               </span>
               <span className="text-[10px] text-muted-foreground block">
@@ -116,15 +116,15 @@ export function SubtitleStudioPanel({
       )}
 
       {/* Preset Subtitle Kustom Tersimpan */}
-      <div className="p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] space-y-2.5">
+      <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Bookmark className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-            <span className="text-xs font-semibold text-slate-300 shrink-0">Preset Kustom:</span>
+            <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset Kustom:</span>
             <select
               value={selectedSubtitlePresetId}
               onChange={(e) => handleLoadSubtitlePreset(e.target.value)}
-              className="bg-[#1C1C1C] border border-[#333] hover:border-violet-500/50 text-xs text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-violet-500 font-medium truncate max-w-[200px]"
+              className="max-w-[200px] truncate rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs font-medium text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
             >
               <option value="" disabled>
                 -- Muat Preset Subtitle --
@@ -159,7 +159,7 @@ export function SubtitleStudioPanel({
           <button
             type="button"
             onClick={() => setShowSaveSubtitleModal(!showSaveSubtitleModal)}
-            className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium shrink-0"
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-2.5 py-1 text-xs font-medium text-[#A9472C] transition hover:bg-[#F3E1D9]"
           >
             <BookmarkPlus className="w-3.5 h-3.5" />
             <span>Simpan Preset</span>
@@ -170,7 +170,7 @@ export function SubtitleStudioPanel({
         {showSaveSubtitleModal && (
           <form
             onSubmit={handleSaveSubtitlePreset}
-            className="flex items-center gap-2 pt-2 border-t border-[#222]"
+            className="flex items-center gap-2 border-t border-[#E5E1D7] pt-2"
           >
             <Input
               type="text"
@@ -178,12 +178,13 @@ export function SubtitleStudioPanel({
               value={newSubtitlePresetName}
               onChange={(e) => setNewSubtitlePresetName(e.target.value)}
               autoFocus
-              className="h-8 text-xs bg-[#1A1A1A] border-[#333] flex-1 text-white"
+              className="h-9 flex-1 text-xs"
             />
             <Button
               type="submit"
               size="sm"
-              className="h-8 bg-violet-600 hover:bg-violet-500 text-white text-xs px-3 gap-1 shrink-0"
+              variant="workspace-primary"
+              className="h-9 shrink-0 gap-1 px-3 text-xs"
             >
               <Save className="w-3 h-3" />
               <span>Simpan</span>
@@ -191,7 +192,7 @@ export function SubtitleStudioPanel({
             <button
               type="button"
               onClick={() => setShowSaveSubtitleModal(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition shrink-0"
+              className="shrink-0 rounded-lg p-1.5 text-[#77766D] transition hover:bg-[#EAE6DD] hover:text-[#26251F]"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -237,7 +238,7 @@ export function SubtitleStudioPanel({
                 className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
                   isSelected
                     ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
-                    : "bg-[#141414] border-[#2A2A2A] text-slate-300 hover:border-violet-500/40"
+                    : "bg-[#FFFEFA] border-[#E5E1D7] text-[#4D4A42] hover:border-[#C45B3A]"
                 }`}
               >
                 <div className="flex items-center gap-1.5 truncate">
@@ -266,8 +267,8 @@ export function SubtitleStudioPanel({
       </div>
 
       {/* Mode Tampilan Kata */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-2.5">
-        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+      <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
           <Type className="w-3.5 h-3.5 text-violet-400" />
           <span>Mode Tampilan Kata</span>
         </span>
@@ -289,7 +290,7 @@ export function SubtitleStudioPanel({
               className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${
                 subtitleStyle.display_mode === m.id
                   ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
-                  : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
+                  : "bg-[#F3F0E8] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
               }`}
             >
               <span className="text-xs font-bold">{m.label}</span>
@@ -300,8 +301,8 @@ export function SubtitleStudioPanel({
 
         {/* Kata per Kelompok untuk Mode Burst */}
         {subtitleStyle.display_mode === "burst" && (
-          <div className="flex items-center justify-between p-2 rounded-lg bg-[#181818] border border-[#2E2E2E] mt-1">
-            <span className="text-xs font-semibold text-slate-300">Kata per Kelompok Burst</span>
+          <div className="mt-1 flex items-center justify-between rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2">
+            <span className="text-xs font-semibold text-[#4D4A42]">Kata per Kelompok Burst</span>
             <div className="flex gap-1.5">
               {[2, 3].map((count) => (
                 <button
@@ -315,8 +316,8 @@ export function SubtitleStudioPanel({
                   }
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                     (subtitleStyle.burst_word_count || 2) === count
-                      ? "bg-violet-600 text-white shadow-sm"
-                      : "bg-[#242424] text-slate-400 hover:text-white"
+                      ? "bg-[#C45B3A] text-white shadow-sm"
+                      : "bg-[#FFFEFA] text-[#77766D] hover:text-[#26251F]"
                   }`}
                 >
                   {count} Kata
@@ -328,9 +329,9 @@ export function SubtitleStudioPanel({
       </div>
 
       {/* Animasi & Efek Gerak Highlight */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
             <Zap className="w-3.5 h-3.5 text-violet-400" />
             <span>Animasi & Efek Gerak Highlight</span>
           </span>
@@ -349,8 +350,8 @@ export function SubtitleStudioPanel({
             onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "color" }))}
             className={`p-2 rounded-xl border text-left cursor-pointer transition ${
               subtitleStyle.highlight_animation === "color" || !subtitleStyle.highlight_animation
-                ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
-                : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                ? "border-[#C45B3A] bg-[#F8EEEA] font-semibold text-[#A9472C]"
+                : "border-[#E5E1D7] bg-[#F3F0E8] text-[#77766D] hover:text-[#26251F]"
             }`}
           >
             <span className="text-xs font-bold block">Warna Glow</span>
@@ -362,8 +363,8 @@ export function SubtitleStudioPanel({
             onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "scale" }))}
             className={`p-2 rounded-xl border text-left cursor-pointer transition ${
               subtitleStyle.highlight_animation === "scale"
-                ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
-                : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                ? "border-[#C45B3A] bg-[#F8EEEA] font-semibold text-[#A9472C]"
+                : "border-[#E5E1D7] bg-[#F3F0E8] text-[#77766D] hover:text-[#26251F]"
             }`}
           >
             <span className="text-xs font-bold block">Scale Pop</span>
@@ -375,8 +376,8 @@ export function SubtitleStudioPanel({
             onClick={() => setSubtitleStyle((prev) => ({ ...prev, highlight_animation: "none" }))}
             className={`p-2 rounded-xl border text-left cursor-pointer transition ${
               subtitleStyle.highlight_animation === "none"
-                ? "border-violet-500 bg-violet-500/20 text-white font-semibold"
-                : "border-[#2A2A2A] bg-[#101010] text-slate-400 hover:text-white"
+                ? "border-[#C45B3A] bg-[#F8EEEA] font-semibold text-[#A9472C]"
+                : "border-[#E5E1D7] bg-[#F3F0E8] text-[#77766D] hover:text-[#26251F]"
             }`}
           >
             <span className="text-xs font-bold block">Statis</span>
@@ -405,7 +406,7 @@ export function SubtitleStudioPanel({
                   scale_factor: parseFloat(e.target.value),
                 }))
               }
-              className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg mt-1"
+              className="mt-1 h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
             />
             <div className="flex justify-between text-[10px] text-slate-500">
               <span>Halus (1.05x)</span>
@@ -417,8 +418,8 @@ export function SubtitleStudioPanel({
       </div>
 
       {/* Tipografi: Jenis Font & Ketebalan */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
-        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
           <Sliders className="w-3.5 h-3.5 text-violet-400" />
           <span>Tipografi & Ukuran Teks</span>
         </span>
@@ -489,7 +490,7 @@ export function SubtitleStudioPanel({
                 font_size: Number(e.target.value),
               }))
             }
-            className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg mt-1"
+            className="mt-1 h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
           <div className="flex justify-between text-[10px] text-slate-500">
             <span>Kecil (24px)</span>
@@ -500,8 +501,8 @@ export function SubtitleStudioPanel({
       </div>
 
       {/* Palet Warna, Garis Luar (Outer Text), & Kotak Latar */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3.5">
-        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+      <div className="space-y-3.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
           <Palette className="w-3.5 h-3.5 text-violet-400" />
           <span>Warna Teks & Garis Luar (Outer Text)</span>
         </span>
@@ -621,7 +622,7 @@ export function SubtitleStudioPanel({
                   outline_width: parseInt(e.target.value) || 0,
                 }))
               }
-              className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+              className="h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
             />
           </div>
 
@@ -644,7 +645,7 @@ export function SubtitleStudioPanel({
                   box_opacity: parseFloat(e.target.value),
                 }))
               }
-              className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+              className="h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
             />
           </div>
         </div>
@@ -720,7 +721,7 @@ export function SubtitleStudioPanel({
                 offset_y: parseInt(e.target.value) || 0,
               }))
             }
-            className="w-full accent-violet-500 cursor-pointer h-2 bg-[#262626] rounded-lg"
+            className="h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
           <div className="flex justify-between text-[10px] text-slate-500 mt-1">
             <span>Lebih Rendah</span>
@@ -734,7 +735,8 @@ export function SubtitleStudioPanel({
       <Button
         onClick={() => updateStyleMutation.mutate(subtitleStyle)}
         disabled={updateStyleMutation.isPending}
-        className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 mt-2 py-2.5"
+        variant="workspace-primary"
+        className="mt-2 w-full gap-2 py-2.5 text-xs"
       >
         {updateStyleMutation.isPending ? (
           <span>Menyimpan...</span>

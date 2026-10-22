@@ -2,7 +2,14 @@
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Move } from "lucide-react";
-import { Project, TimelineClip, Narration, AudioTrack, SubtitleStyle, JassubInstance } from "@/types";
+import {
+  Project,
+  TimelineClip,
+  Narration,
+  AudioTrack,
+  SubtitleStyle,
+  JassubInstance,
+} from "@/types";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 import {
   COMPOSITION_FPS,
@@ -1036,7 +1043,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
         {/* If no clips in timeline */}
         {clips.length === 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center text-slate-600 text-xs text-center p-4">
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-4 text-center text-xs text-white/60">
             Belum ada video di timeline
           </div>
         )}
@@ -1068,8 +1075,8 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
               })`,
             }}
           >
-            <div className="w-full max-w-[260px] h-14 rounded-xl border border-dashed border-transparent group-hover:border-brand-400/60 transition-all flex items-center justify-center pointer-events-auto">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-brand-300 px-2 py-0.5 rounded font-mono flex items-center gap-1 shadow-lg pointer-events-none">
+            <div className="pointer-events-auto flex h-14 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">
+              <div className="pointer-events-none flex items-center gap-1 rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] text-white transition-opacity group-hover:opacity-100">
                 <Move className="w-2.5 h-2.5" />
                 <span>Geser Posisi Subtitle</span>
               </div>
@@ -1235,7 +1242,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       <div
         className={`w-full ${
           compact ? "max-w-[240px] sm:max-w-[260px] p-2.5 mt-2.5" : "max-w-sm p-3.5 mt-3.5"
-        } bg-[#141414] rounded-xl border border-[#2E2E2E] shadow-sm space-y-2`}
+        } space-y-2 rounded-xl border border-border bg-card shadow-sm`}
       >
         {/* Scrubber */}
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
@@ -1247,7 +1254,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             step="0.0333"
             value={currentTimeSec}
             onChange={handleSeek}
-            className="flex-1 accent-primary cursor-pointer h-1.5 bg-[#1E1E1E] rounded-lg"
+            className="h-1.5 flex-1 cursor-pointer rounded-lg bg-muted accent-primary"
           />
           <span>{formatTime(durationSec)}</span>
         </div>
@@ -1258,7 +1265,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             <button
               type="button"
               onClick={handleReset}
-              className="p-1.5 rounded-lg bg-[#181818] border border-[#2E2E2E] text-muted-foreground hover:text-foreground transition"
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground transition hover:text-foreground"
               title="Reset ke Awal"
             >
               <RotateCcw className="w-4 h-4" />
@@ -1281,10 +1288,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
             <button
               type="button"
               onClick={toggleMute}
-              className={`p-1.5 rounded-lg border border-[#2E2E2E] text-xs transition ${
+              className={`rounded-lg border border-border p-1.5 text-xs transition ${
                 isMuted
                   ? "text-destructive bg-destructive/10"
-                  : "text-muted-foreground hover:text-foreground bg-[#181818]"
+                  : "bg-background text-muted-foreground hover:text-foreground"
               }`}
               title={isMuted ? "Unmute" : "Mute"}
             >

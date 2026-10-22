@@ -22,16 +22,16 @@ export function LocationsTab({
   if (!locationsList || locationsList.length === 0) {
     return (
       <div className="flex flex-col space-y-3 mt-3.5">
-        <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
-          <p className="text-xs text-slate-400">Belum ada latar tempat terkunci.</p>
+        <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
+          <p className="text-xs text-[#77766D]">Belum ada latar tempat terkunci.</p>
           <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-            Latar tempat (arsitektur, kios pasar, pantai, istana) akan dikunci otomatis agar
-            latar belakang dan sudut tempat tetap konsisten antar babak.
+            Latar tempat (arsitektur, kios pasar, pantai, istana) akan dikunci otomatis agar latar
+            belakang dan sudut tempat tetap konsisten antar babak.
           </p>
           <button
             type="button"
             onClick={onAddLocation}
-            className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium inline-flex items-center gap-1.5 transition shadow"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-[#C45B3A] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-[#A9472C]"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Tempat Pertama</span>
@@ -47,10 +47,10 @@ export function LocationsTab({
       <div className="p-2.5 rounded-xl bg-sky-950/20 border border-sky-500/20 flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5 text-[11px] text-sky-200/90 leading-relaxed">
-          <span className="font-semibold text-sky-300">Tips Kontinuitas Latar Spasial:</span>{" "}
-          Agar toko atau latar tidak berpindah tempat (misal toko pedagang tiba-tiba berpindah ke bawah pohon),
-          kuncilah <strong>Micro-Set</strong> (bentuk fisik kios/ruangan spesifik), <strong>Anchor Props</strong> (2-3 benda patokan tetap),
-          dan <strong>Arah Cahaya</strong>.
+          <span className="font-semibold text-sky-300">Tips Kontinuitas Latar Spasial:</span> Agar
+          toko atau latar tidak berpindah tempat (misal toko pedagang tiba-tiba berpindah ke bawah
+          pohon), kuncilah <strong>Micro-Set</strong> (bentuk fisik kios/ruangan spesifik),{" "}
+          <strong>Anchor Props</strong> (2-3 benda patokan tetap), dan <strong>Arah Cahaya</strong>.
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export function LocationsTab({
         {locationsList.map((loc, lIdx) => (
           <div
             key={lIdx}
-            className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] hover:border-sky-500/40 transition space-y-2.5"
+            className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5 transition hover:border-[#C45B3A]"
           >
             {editingBible ? (
               <div className="space-y-2.5">
@@ -72,7 +72,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, name: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="flex-1 px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs font-semibold focus:outline-none focus:border-sky-500"
+                    className="flex-1 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 text-xs font-semibold text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                   />
                   <input
                     type="text"
@@ -83,7 +83,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, id: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="w-32 px-2 py-1.5 bg-[#181818] rounded border border-[#333] text-sky-300 font-mono text-[11px] focus:outline-none focus:border-sky-500"
+                    className="w-32 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -96,7 +96,7 @@ export function LocationsTab({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 flex items-center gap-1">
+                  <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
                     <span>Arsitektur & Micro-Setting (English)</span>
                   </label>
                   <textarea
@@ -108,7 +108,7 @@ export function LocationsTab({
                       setLocationsList(updated);
                     }}
                     rows={2}
-                    className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-[11px] font-mono focus:outline-none focus:border-sky-500 leading-relaxed"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                   />
                 </div>
 
@@ -126,7 +126,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, focal_props: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-sky-200 text-[11px] font-mono focus:outline-none focus:border-sky-500"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
                   />
                 </div>
               </div>
@@ -140,13 +140,15 @@ export function LocationsTab({
                     [loc:{loc.id || loc.name.toLowerCase().replace(/\s+/g, "")}]
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
+                <p className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
                   {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
                 </p>
                 {loc.focal_props && (
                   <div className="flex items-center gap-1.5 text-[11px] font-mono bg-sky-950/30 text-sky-300 px-2.5 py-1.5 rounded-lg border border-sky-500/20">
                     <Anchor className="w-3 h-3 text-sky-400 shrink-0" />
-                    <span className="text-[10px] uppercase text-sky-400 font-bold shrink-0">Anchor Props:</span>
+                    <span className="text-[10px] uppercase text-sky-400 font-bold shrink-0">
+                      Anchor Props:
+                    </span>
                     <span className="truncate">{loc.focal_props}</span>
                   </div>
                 )}

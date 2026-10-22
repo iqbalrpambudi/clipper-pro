@@ -2,7 +2,13 @@
 
 import React from "react";
 import { Image as ImageIcon, Move } from "lucide-react";
-import { StoryboardItem, SentenceSegment, SubtitleStyle, WordTimestamp, WatermarkConfig } from "@/types";
+import {
+  StoryboardItem,
+  SentenceSegment,
+  SubtitleStyle,
+  WordTimestamp,
+  WatermarkConfig,
+} from "@/types";
 import { WatermarkOverlay } from "@/components/watermark/WatermarkOverlay";
 import { hexToRgba } from "./constants";
 import { BurstGroupItem } from "./hooks/useStoryboardTimelineState";
@@ -94,7 +100,7 @@ export function VideoPreviewScreen({
       ref={videoFrameRef}
       className={
         className ||
-        "relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
+        "group relative flex aspect-video h-full w-auto max-h-full max-w-full shrink-0 select-none items-center justify-center overflow-hidden rounded-xl border-2 border-[#E5E1D7] bg-[#FFFEFA] shadow-lg"
       }
       style={style}
     >
@@ -110,7 +116,7 @@ export function VideoPreviewScreen({
           />
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 p-8 text-center text-slate-500">
+        <div className="flex flex-col items-center gap-2 p-8 text-center text-[#77766D]">
           <ImageIcon className="w-12 h-12 stroke-[1.5]" />
           <span className="text-xs font-mono">
             {itemsLength === 0 ? "Belum ada gambar" : "Gambar sedang diproses"}
@@ -130,9 +136,7 @@ export function VideoPreviewScreen({
                   ? "50%"
                   : undefined,
             bottom:
-              subtitleStyle.position === "bottom" || !subtitleStyle.position
-                ? "12%"
-                : undefined,
+              subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
             transform: `translate(${scaledOffsetX}px, ${
               subtitleStyle.position === "center"
                 ? `calc(-50% + ${scaledOffsetY}px)`
@@ -269,9 +273,7 @@ export function VideoPreviewScreen({
                   ? "50%"
                   : undefined,
             bottom:
-              subtitleStyle.position === "bottom" || !subtitleStyle.position
-                ? "12%"
-                : undefined,
+              subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
             transform: `translate(${scaledOffsetX}px, ${
               subtitleStyle.position === "center"
                 ? `calc(-50% + ${scaledOffsetY}px)`

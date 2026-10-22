@@ -80,13 +80,15 @@ export function PresetManager({
   return (
     <div className="space-y-4">
       {/* Save Preset Card */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <BookmarkPlus className="w-4 h-4 text-amber-400" />
-            <h4 className="text-xs font-bold text-white">Simpan Gaya Teks Sebagai Preset</h4>
+            <h4 className="text-xs font-semibold text-[#26251F]">
+              Simpan Gaya Teks Sebagai Preset
+            </h4>
           </div>
-          <Badge variant="outline" className="text-[10px] border-[#333] text-slate-400">
+          <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-[#77766D]">
             {currentLayers.length} Gaya Layer
           </Badge>
         </div>

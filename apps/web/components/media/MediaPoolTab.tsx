@@ -50,7 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui";
-import { PageHeader, Toolbar, Dropzone, EmptyState } from "@/components/fragments";
+import { Toolbar, Dropzone, EmptyState } from "@/components/fragments";
 
 interface MediaPoolTabProps {
   project: Project & {
@@ -252,34 +252,37 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
       {/* ========================================================================= */}
       {/* 1. FRAGMENT: PAGE HEADER & ACTION TOOLBAR                                  */}
       {/* ========================================================================= */}
-      <PageHeader
-        title="Media Pool"
-        subtitle="Kelola materi video mentah dan hasil ekstraksi visual AI untuk naskah video"
-        badges={
-          <>
-            <Badge variant="supabase" className="font-mono text-xs">
+      <header className="flex flex-col gap-3 border-b border-surface-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+            Sumber video
+          </p>
+          <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-foreground">
+            Media Pool
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Kelola materi video mentah dan hasil ekstraksi visual AI untuk naskah video.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs">
               {project.source_videos.length} Video
             </Badge>
             <Badge variant="secondary" className="font-mono text-xs">
               {project.scenes.length} Scenes
             </Badge>
-          </>
-        }
-        actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsYTOpen(true)}
-              className="gap-1.5 border-[#2E2E2E] hover:border-rose-500/50 hover:bg-rose-500/10 text-xs h-8"
-            >
-              <Youtube className="w-4 h-4 text-rose-500" />
-              <span>Impor YouTube</span>
-            </Button>
-          </>
-        }
-      />
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="workspace-secondary"
+          size="workspace-sm"
+          onClick={() => setIsYTOpen(true)}
+          className="gap-1.5"
+        >
+          <Youtube className="h-4 w-4 text-rose-600" />
+          <span>Impor YouTube</span>
+        </Button>
+      </header>
 
       {/* ========================================================================= */}
       {/* 2. FRAGMENT: DROPZONE COMPONENT                                           */}
@@ -301,7 +304,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           description="Upload materi video mentah atau impor dari YouTube di atas untuk memulai deteksi visual AI."
           action={
             <Button
-              variant="supabase"
+              variant="workspace-primary"
               size="sm"
               onClick={() => setIsYTOpen(true)}
               className="gap-1.5"
@@ -316,7 +319,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           <Toolbar
             left={
               <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Film className="w-3.5 h-3.5 text-[#3ECF8E]" />
+                <Film className="w-3.5 h-3.5 text-primary" />
                 <span>Video Sumber Terdaftar</span>
               </span>
             }
@@ -353,7 +356,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               return (
                 <Card
                   key={vid.id}
-                  className="border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/30 transition-all p-3.5 flex flex-col justify-between"
+                  className="flex flex-col justify-between border-border bg-card p-3.5 transition-all hover:border-primary/40"
                 >
                   <div>
                     {/* Header Row: Origin, Status, Delete */}
@@ -374,7 +377,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         )}
                         {vid.status === "processing" && (
                           <Badge
-                            variant="supabase"
+                            variant="secondary"
                             className="text-[10px] py-0 gap-1 animate-pulse"
                           >
                             <Loader2 className="w-2.5 h-2.5 animate-spin" />
@@ -382,7 +385,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           </Badge>
                         )}
                         {vid.status === "ready" && (
-                          <Badge variant="supabase" className="text-[10px] py-0 gap-1">
+                          <Badge variant="secondary" className="text-[10px] py-0 gap-1">
                             <CheckCircle2 className="w-2.5 h-2.5" />
                             <span>Siap</span>
                           </Badge>
@@ -405,7 +408,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                               cancelMediaMutation.isPending &&
                               cancelMediaMutation.variables === vid.id
                             }
-                            className="h-6 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1 px-2 shadow-sm"
+                            className="h-7 gap-1 px-2 text-[10px] font-semibold"
                             title="Batalkan proses video ini"
                           >
                             {cancelMediaMutation.isPending &&
@@ -447,12 +450,12 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         </span>
                       )}
                       {vid.width && vid.height && (
-                        <span className="font-mono bg-black/40 px-1 rounded text-[10px]">
+                        <span className="rounded bg-muted px-1 font-mono text-[10px]">
                           {vid.height}p
                         </span>
                       )}
                       {vid.status === "ready" && (
-                        <span className="text-[#3ECF8E] font-medium text-[10px]">
+                        <span className="text-primary font-medium text-[10px]">
                           {sceneCount} scene
                         </span>
                       )}
@@ -479,7 +482,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                             </button>
                           </div>
                         </div>
-                        <div className="w-full bg-black/40 rounded-full h-1 overflow-hidden">
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                           <div
                             className="bg-amber-400 h-full rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(5, dlProgress)}%` }}
@@ -491,7 +494,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     {/* Inline Progress for AI Processing */}
                     {vid.status === "processing" && (
                       <div className="mb-2 space-y-1 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                        <div className="flex items-center justify-between text-[10px] text-[#3ECF8E]">
+                        <div className="flex items-center justify-between text-[10px] text-primary">
                           <span className="truncate">{detectMessage}</span>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold">{detectProgress}%</span>
@@ -509,9 +512,9 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                             </button>
                           </div>
                         </div>
-                        <div className="w-full bg-black/40 rounded-full h-1 overflow-hidden">
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className="bg-[#3ECF8E] h-full rounded-full transition-all duration-300"
+                            className="h-full rounded-full bg-primary transition-all duration-300"
                             style={{ width: `${Math.max(5, detectProgress)}%` }}
                           />
                         </div>
@@ -540,8 +543,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
         <Toolbar
           left={
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#3ECF8E]" />
+              <h3 className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
                 <span>Scene AI ({project.scenes.length})</span>
               </h3>
 
@@ -564,11 +567,11 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               {/* Quick Tagging CTA */}
               <Button
                 type="button"
-                variant="supabase"
+                variant="workspace-primary"
                 size="sm"
                 onClick={() => handleRetag("quick")}
                 disabled={retagMutation.isPending || untaggedCount === 0}
-                className="gap-1.5 text-xs h-8"
+                className="h-8 gap-1.5 text-xs"
                 title="Tagging otomatis hanya scene yang belum memiliki deskripsi AI"
               >
                 {retagMutation.isPending && retaggingMode === "quick" ? (
@@ -596,7 +599,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   transcribeMutation.mutate("id");
                 }}
                 disabled={transcribeMutation.isPending || project.scenes.length === 0}
-                className="gap-1.5 text-xs h-8 border-[#2E2E2E]"
+                className="h-8 gap-1.5 border-border text-xs"
                 title="Ekstrak dialog audio percakapan menggunakan Whisper"
               >
                 {transcribeMutation.isPending ? (
@@ -617,11 +620,11 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               {/* More Options Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 px-2 border-[#2E2E2E]">
+                  <Button variant="outline" size="sm" className="h-8 border-border px-2">
                     <MoreVertical className="w-4 h-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent appearance="workspace" align="end" className="w-48">
                   <DropdownMenuItem
                     onClick={() => {
                       if (
@@ -662,9 +665,9 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
         {/* Live Progress Bar for Retagging */}
         {retagMutation.isPending && (
-          <div className="p-3 rounded-lg bg-[#181818] border border-[#3ECF8E]/30 space-y-2 animate-fadeIn">
+          <div className="animate-fadeIn space-y-2 rounded-lg border border-primary/30 bg-card p-3">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-[#3ECF8E] font-medium">
+              <div className="flex items-center gap-2 font-medium text-primary">
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 <span className="truncate max-w-sm sm:max-w-md">
                   {retagStepText || "Sedang menganalisis scene visual..."}
@@ -674,20 +677,20 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 <span>
                   {Math.floor(retagElapsed / 60)}:{String(retagElapsed % 60).padStart(2, "0")}
                 </span>
-                <span className="text-[#3ECF8E] font-bold">{Math.round(retagProgress)}%</span>
+                <span className="font-bold text-primary">{Math.round(retagProgress)}%</span>
                 <button
                   type="button"
                   onClick={() => api.cancelProjectTasks(project.id)}
-                  className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
                   title="Batalkan proses tagging"
                 >
                   Batal
                 </button>
               </div>
             </div>
-            <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="bg-[#3ECF8E] h-full transition-all duration-300 rounded-full"
+                className="h-full rounded-full bg-primary transition-all duration-300"
                 style={{ width: `${Math.max(5, retagProgress)}%` }}
               />
             </div>
@@ -696,7 +699,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
         {/* Live Progress Bar for Transcribing */}
         {transcribeMutation.isPending && (
-          <div className="p-3 rounded-lg bg-[#181818] border border-sky-500/30 space-y-2 animate-fadeIn">
+          <div className="animate-fadeIn space-y-2 rounded-lg border border-sky-500/30 bg-card p-3">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-sky-400 font-medium">
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -713,14 +716,14 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 <button
                   type="button"
                   onClick={() => api.cancelProjectTasks(project.id)}
-                  className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-semibold transition cursor-pointer"
+                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
                   title="Batalkan proses transkripsi"
                 >
                   Batal
                 </button>
               </div>
             </div>
-            <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className="bg-sky-400 h-full transition-all duration-300 rounded-full"
                 style={{ width: `${Math.max(5, transcribeProgress)}%` }}
@@ -742,10 +745,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               <div
                 key={scene.id}
                 onClick={() => setPreviewScene(scene)}
-                className="group relative rounded-lg overflow-hidden border border-[#2E2E2E] bg-[#181818] hover:border-[#3ECF8E]/50 transition cursor-pointer flex flex-col justify-between hover:shadow-lg hover:shadow-black/40"
+                className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary/50 hover:shadow-lg"
               >
                 {/* Thumbnail Container */}
-                <div className="relative aspect-video bg-black/60 overflow-hidden">
+                <div className="relative aspect-video overflow-hidden bg-black">
                   {scene.thumbnail_url && !brokenThumbnails[scene.id] ? (
                     <img
                       src={scene.thumbnail_url}
@@ -762,7 +765,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                   {/* Play hover overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="w-8 h-8 rounded-full bg-[#3ECF8E] text-[#032817] flex items-center justify-center shadow-md transform group-hover:scale-110 transition-transform">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-110">
                       <Play className="w-4 h-4 ml-0.5 fill-current" />
                     </span>
                   </div>
@@ -807,7 +810,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       {scene.tags.slice(0, 2).map((t, i) => (
                         <span
                           key={i}
-                          className="text-[9px] px-1 py-0.2 rounded bg-surface border border-[#2E2E2E] text-muted-foreground"
+                          className="rounded border border-border bg-surface px-1 py-0.5 text-[9px] text-muted-foreground"
                         >
                           #{t}
                         </span>
@@ -825,7 +828,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
       {/* 5. MODAL: YOUTUBE IMPORTER                                                */}
       {/* ========================================================================= */}
       <Dialog open={isYTOpen} onOpenChange={setIsYTOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent appearance="workspace" className="max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Youtube className="w-5 h-5 text-rose-500" />
@@ -866,13 +869,13 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
           {/* Inspect Result */}
           {ytInfo && (
-            <div className="border border-[#2E2E2E] rounded-xl p-3 bg-[#181818] space-y-3 mt-2">
+            <div className="mt-2 space-y-3 rounded-xl border border-border bg-card p-3">
               <div className="flex gap-3">
                 {ytInfo.thumbnail && (
                   <img
                     src={ytInfo.thumbnail}
                     alt={ytInfo.title}
-                    className="w-24 h-16 object-cover rounded-lg shrink-0 border border-[#2E2E2E]"
+                    className="h-16 w-24 shrink-0 rounded-lg border border-border object-cover"
                   />
                 )}
                 <div className="min-w-0">
@@ -885,7 +888,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-[#2E2E2E]">
+              <div className="space-y-1.5 border-t border-border pt-2">
                 <p className="text-xs font-semibold text-muted-foreground mb-1.5">
                   Pilih Resolusi Download:
                 </p>
@@ -900,7 +903,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         size="sm"
                         disabled={Boolean(downloadingFormatId)}
                         onClick={() => handleDownloadYT(fmt.format_id)}
-                        className="justify-between h-auto py-2 text-xs border-[#2E2E2E]"
+                        className="h-auto justify-between border-border py-2 text-xs"
                       >
                         <span className="font-semibold flex items-center gap-1.5">
                           {isSelected && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -944,13 +947,13 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
         open={Boolean(videoToDelete)}
         onOpenChange={(open) => !open && setVideoToDelete(null)}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent appearance="workspace" className="max-w-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0">
               <Trash2 className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-bold text-white">
+              <DialogTitle className="text-base font-bold text-foreground">
                 Hapus Video dari Media Pool?
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
@@ -961,8 +964,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
           <p className="text-sm text-foreground/80 leading-relaxed py-2">
             Apakah Anda yakin ingin menghapus{" "}
-            <span className="font-semibold text-white">"{videoToDelete?.filename}"</span>? Seluruh
-            scene visual AI hasil analisis video ini juga akan dihapus dari project.
+            <span className="font-semibold text-foreground">"{videoToDelete?.filename}"</span>?
+            Seluruh scene visual AI hasil analisis video ini juga akan dihapus dari project.
           </p>
 
           <DialogFooter className="pt-2">

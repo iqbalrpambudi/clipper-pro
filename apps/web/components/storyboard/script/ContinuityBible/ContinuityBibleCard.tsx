@@ -13,11 +13,7 @@ import {
   Edit2,
   Loader2,
 } from "lucide-react";
-import {
-  StoryboardCharacter,
-  StoryboardLocation,
-  StoryboardWorldSetting,
-} from "@/types";
+import { StoryboardCharacter, StoryboardLocation, StoryboardWorldSetting } from "@/types";
 import {
   Button,
   DropdownMenu,
@@ -78,17 +74,17 @@ export function ContinuityBibleCard({
   onDeleteLocation,
 }: ContinuityBibleCardProps) {
   return (
-    <div className="rounded-2xl border border-violet-500/30 bg-[#161616] p-5 shadow-xl flex flex-col">
+    <div className="flex flex-col rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 shadow-sm">
       {/* Bible Header & Sub-tabs */}
-      <div className="space-y-3 pb-3 border-b border-[#2A2A2A] shrink-0">
+      <div className="shrink-0 space-y-3 border-b border-[#E5E1D7] pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-violet-400" />
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#26251F]">
                 Story Continuity Bible
               </h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="mt-0.5 text-[10px] text-[#77766D]">
                 Penguncian konsistensi karakter & varian wujud, latar tempat, dan era waktu
               </p>
             </div>
@@ -106,7 +102,7 @@ export function ContinuityBibleCard({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="p-1.5 rounded-lg border border-[#333] hover:border-violet-500/50 bg-[#141414] hover:bg-[#202020] text-slate-300 hover:text-white transition flex items-center justify-center focus:outline-none"
+                  className="flex items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] p-1.5 text-[#5E5C54] transition hover:bg-[#F1EEE6] hover:text-[#26251F] focus:outline-none"
                   title="Opsi Story Continuity Bible"
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -114,7 +110,7 @@ export function ContinuityBibleCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-56 bg-[#161616] border border-[#2E2E2E] text-slate-200 shadow-2xl p-1 z-50"
+                className="z-50 w-56 border border-[#E5E1D7] bg-[#FFFEFA] p-1 text-[#4D4A42] shadow-lg"
               >
                 <DropdownMenuItem
                   onClick={onExtractBible}
@@ -127,8 +123,8 @@ export function ContinuityBibleCard({
                     <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white">Ekstrak dari Naskah</span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="font-semibold text-[#26251F]">Ekstrak dari Naskah</span>
+                    <span className="text-[10px] text-[#77766D]">
                       Analisis naskah untuk sinkron profil
                     </span>
                   </div>
@@ -145,8 +141,8 @@ export function ContinuityBibleCard({
                 >
                   <Users className="w-4 h-4 text-violet-400 shrink-0" />
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white">Tambah Karakter</span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="font-semibold text-[#26251F]">Tambah Karakter</span>
+                    <span className="text-[10px] text-[#77766D]">
                       Tambah profil tokoh & varian wujud
                     </span>
                   </div>
@@ -161,14 +157,14 @@ export function ContinuityBibleCard({
                 >
                   <MapPin className="w-4 h-4 text-sky-400 shrink-0" />
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white">Tambah Tempat</span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="font-semibold text-[#26251F]">Tambah Tempat</span>
+                    <span className="text-[10px] text-[#77766D]">
                       Kunci konsistensi latar arsitektur
                     </span>
                   </div>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="bg-[#262626] my-1" />
+                <DropdownMenuSeparator className="my-1 bg-[#E5E1D7]" />
 
                 <DropdownMenuItem
                   onClick={() => setEditingBible(!editingBible)}
@@ -180,10 +176,10 @@ export function ContinuityBibleCard({
                     <Edit2 className="w-4 h-4 text-violet-400 shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-[#26251F]">
                       {editingBible ? "Selesai Edit Bible" : "Edit Bible Manual"}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-[#77766D]">
                       {editingBible ? "Tutup formulir edit" : "Edit teks deskripsi & slug ID"}
                     </span>
                   </div>
@@ -194,19 +190,19 @@ export function ContinuityBibleCard({
         </div>
 
         {/* 3 Sub-tabs navigation */}
-        <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-[#262626]">
+        <div className="flex items-center gap-1.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
           <button
             type="button"
             onClick={() => setBibleTab("characters")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
               bibleTab === "characters"
-                ? "bg-violet-600 text-white shadow-md shadow-violet-900/30"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
+                ? "bg-[#C45B3A] text-white shadow-sm"
+                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
             }`}
           >
             <Users className="w-3.5 h-3.5" />
             <span>Karakter & Varian</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
               {charactersList.length}
             </span>
           </button>
@@ -216,13 +212,13 @@ export function ContinuityBibleCard({
             onClick={() => setBibleTab("locations")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
               bibleTab === "locations"
-                ? "bg-sky-600 text-white shadow-md shadow-sky-900/30"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
+                ? "bg-[#76816B] text-white shadow-sm"
+                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
             <span>Latar Tempat</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
               {locationsList.length}
             </span>
           </button>
@@ -232,13 +228,13 @@ export function ContinuityBibleCard({
             onClick={() => setBibleTab("world")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
               bibleTab === "world"
-                ? "bg-amber-600 text-white shadow-md shadow-amber-900/30"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
+                ? "bg-[#8A6B3E] text-white shadow-sm"
+                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
             <span>Era & Atmosfer</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
               {worldSetting.era ? "Aktif" : "-"}
             </span>
           </button>
@@ -278,11 +274,11 @@ export function ContinuityBibleCard({
 
       {/* Bottom Actions for Story Continuity Bible */}
       {editingBible && (
-        <div className="flex items-center justify-between pt-3 border-t border-[#262626] shrink-0 mt-3">
+        <div className="mt-3 flex shrink-0 items-center justify-between border-t border-[#E5E1D7] pt-3">
           <button
             type="button"
             onClick={onCancelBible}
-            className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition"
+            className="px-3 py-1.5 text-xs text-[#77766D] transition hover:text-[#26251F]"
           >
             Batal
           </button>
@@ -290,7 +286,8 @@ export function ContinuityBibleCard({
             size="sm"
             disabled={isUpdating}
             onClick={onSaveBible}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5"
+            variant="workspace-primary"
+            className="gap-1.5 text-xs"
           >
             {isUpdating ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

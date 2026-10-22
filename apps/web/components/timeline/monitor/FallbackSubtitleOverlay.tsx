@@ -288,8 +288,8 @@ export function FallbackSubtitleOverlay({
             })`,
           }}
         >
-          <div className="w-full max-w-[260px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-brand-400/60 transition-all flex items-center justify-center pointer-events-auto">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-brand-300 px-2 py-0.5 rounded font-mono flex items-center gap-1 shadow-lg pointer-events-none">
+          <div className="pointer-events-auto flex h-12 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">
+            <div className="pointer-events-none flex items-center gap-1 rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] text-white transition-opacity group-hover:opacity-100">
               <Move className="w-2.5 h-2.5" />
               <span>Geser Posisi Subtitle</span>
             </div>

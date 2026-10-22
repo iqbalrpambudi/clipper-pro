@@ -260,7 +260,7 @@ export function TimelineTracks({
     scrubbingRef.current = false;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch { }
+    } catch {}
   };
 
   // Edge (roll / extend) drag
@@ -303,7 +303,7 @@ export function TimelineTracks({
     if (!dragRef.current) return;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch { }
+    } catch {}
     dragRef.current = null;
     setDragEdge(null);
     setSnapLine(null);
@@ -343,9 +343,9 @@ export function TimelineTracks({
   const trackTotalH = RULER_H + S_H + V_H + A_H;
 
   return (
-    <div className="flex flex-col h-full border border-[#2E2E2E] bg-[#121212] overflow-hidden select-none shadow-sm">
+    <div className="flex h-full flex-col select-none overflow-hidden border border-surface-border bg-card shadow-sm">
       {/* Timeline Controls Toolbar */}
-      <div className="flex items-center justify-between gap-3 px-3.5 py-2 border-b border-[#2E2E2E] bg-[#181818] flex-wrap text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border bg-muted px-3.5 py-2 text-xs">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-foreground text-[11px] uppercase tracking-wider flex items-center gap-1.5">
             <Film className="w-3.5 h-3.5 text-primary" /> Tracks
@@ -360,22 +360,23 @@ export function TimelineTracks({
           <button
             type="button"
             onClick={() => setSnapEnabled((s) => !s)}
-            className={`h-6 px-2 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition border ${snapEnabled
+            className={`h-6 px-2 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition border ${
+              snapEnabled
                 ? "bg-primary/20 text-primary border-primary/40"
-                : "text-muted-foreground border-[#2E2E2E] hover:text-foreground"
-              }`}
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
             title="Snap ke batas kata narasi & cut (Alt = bebas)"
             id="timeline-snap-toggle"
           >
             <Magnet className="w-3 h-3" /> Snap
           </button>
 
-          <div className="w-px h-4 bg-[#2E2E2E] mx-1" />
+          <div className="mx-1 h-4 w-px bg-border" />
 
           <button
             type="button"
             onClick={() => zoomTo(scale / 1.25)}
-            className="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E] flex items-center justify-center transition"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
             title="Zoom out (-)"
           >
             <ZoomOut className="w-3 h-3" />
@@ -387,13 +388,13 @@ export function TimelineTracks({
             step={0.01}
             value={Math.log(scale)}
             onChange={(e) => zoomTo(Math.exp(parseFloat(e.target.value)))}
-            className="w-20 h-1 bg-[#1E1E1E] accent-primary cursor-pointer"
+            className="h-1 w-20 cursor-pointer bg-muted accent-primary"
             aria-label="Zoom timeline"
           />
           <button
             type="button"
             onClick={() => zoomTo(scale * 1.25)}
-            className="w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E] flex items-center justify-center transition"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
             title="Zoom in (+)"
           >
             <ZoomIn className="w-3 h-3" />
@@ -404,7 +405,7 @@ export function TimelineTracks({
               setPps(null);
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
-            className="h-6 px-1.5 rounded-md text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E] flex items-center gap-1 transition"
+            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
             title="Fit seluruh timeline di layar"
           >
             <Maximize className="w-3 h-3" /> Fit
@@ -415,13 +416,13 @@ export function TimelineTracks({
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Track Headers (Left sidebar) */}
         <div
-          className="shrink-0 border-r border-[#2E2E2E] bg-[#161616]"
+          className="shrink-0 border-r border-surface-border bg-muted"
           style={{ width: HEADER_W }}
         >
           {/* Ruler header */}
           <div
             style={{ height: RULER_H }}
-            className="border-b border-[#2E2E2E] px-2 flex items-center"
+            className="flex items-center border-b border-border px-2"
           >
             <span className="text-[9px] font-mono text-muted-foreground font-semibold">TIME</span>
           </div>
@@ -429,7 +430,7 @@ export function TimelineTracks({
           {/* S1: Subtitle track header */}
           <div
             style={{ height: S_H }}
-            className="px-2 flex items-center justify-between border-b border-[#2E2E2E]"
+            className="flex items-center justify-between border-b border-border px-2"
           >
             <div className="flex items-center gap-1.5">
               <Subtitles className="w-3.5 h-3.5 text-primary" />
@@ -470,7 +471,7 @@ export function TimelineTracks({
           {/* A1: Audio track header */}
           <div
             style={{ height: A_H }}
-            className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]"
+            className="flex flex-col justify-center gap-0.5 border-b border-border px-2"
           >
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
@@ -498,7 +499,7 @@ export function TimelineTracks({
           <div className="relative" style={{ width: contentW, height: trackTotalH }}>
             {/* Time Ruler */}
             <div
-              className="absolute left-0 right-0 top-0 border-b border-[#2E2E2E] bg-[#181818] cursor-col-resize select-none"
+              className="absolute left-0 right-0 top-0 cursor-col-resize select-none border-b border-border bg-muted"
               style={{ height: RULER_H }}
               onPointerDown={handleRulerDown}
               onPointerMove={handleRulerMove}
@@ -520,14 +521,14 @@ export function TimelineTracks({
               ))}
               {/* End of content boundary marker */}
               <div
-                className="absolute top-0 bottom-0 w-px bg-[#2E2E2E]"
+                className="absolute bottom-0 top-0 w-px bg-border"
                 style={{ left: x(safeDuration) }}
               />
             </div>
 
             {/* S1: Subtitle karaoke track */}
             <div
-              className="absolute left-0 right-0 border-b border-[#2E2E2E] bg-[#121212]"
+              className="absolute left-0 right-0 border-b border-border bg-background"
               style={{ top: RULER_H, height: S_H }}
             >
               {hasSubtitles && segments.length > 0 ? (
@@ -542,10 +543,11 @@ export function TimelineTracks({
                         e.stopPropagation();
                         onSeek(st);
                       }}
-                      className={`absolute top-1 bottom-1 rounded-md px-2 flex items-center overflow-hidden cursor-pointer transition border shadow-xs ${active
+                      className={`absolute top-1 bottom-1 rounded-md px-2 flex items-center overflow-hidden cursor-pointer transition border shadow-xs ${
+                        active
                           ? "bg-primary text-black border-primary font-semibold shadow-xs ring-1 ring-primary/40"
-                          : "bg-[#181818] text-foreground/80 border-[#2E2E2E] hover:border-primary/40"
-                        }`}
+                          : "border-border bg-card text-foreground/80 hover:border-primary/40"
+                      }`}
                       style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
                       title={seg.text}
                     >
@@ -558,7 +560,7 @@ export function TimelineTracks({
                 })
               ) : (
                 <div
-                  className="absolute inset-y-1 left-2 right-2 rounded-lg border border-dashed border-[#2E2E2E] flex items-center justify-between px-3 text-[10px] text-muted-foreground"
+                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-[10px] text-muted-foreground"
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Subtitle dinonaktifkan atau kosong</span>
@@ -591,10 +593,11 @@ export function TimelineTracks({
             >
               {clips.length === 0 && (
                 <div
-                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-center gap-2 text-xs transition px-4 py-2 text-center ${dropHover
-                      ? "border-brand-400 bg-brand-500/10 text-brand-200"
-                      : "border-surface-border text-slate-500"
-                    }`}
+                  className={`absolute inset-2 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-center gap-2 text-xs transition px-4 py-2 text-center ${
+                    dropHover
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-surface-border text-muted-foreground"
+                  }`}
                   style={{ maxWidth: Math.max(320, viewportW - 24) }}
                 >
                   <span>Seret scene dari Media Pool ke sini untuk mulai menyusun timeline</span>
@@ -626,10 +629,11 @@ export function TimelineTracks({
                 return (
                   <div
                     key={clip.id || idx}
-                    className={`absolute top-1 bottom-1 rounded-lg overflow-hidden cursor-pointer group transition-shadow ${isSel
+                    className={`absolute top-1 bottom-1 rounded-lg overflow-hidden cursor-pointer group transition-shadow ${
+                      isSel
                         ? "ring-2 ring-accent-yellow shadow-lg shadow-accent-yellow/20 z-10"
-                        : "ring-1 ring-brand-500/40 hover:ring-brand-400"
-                      } ${isDropTarget ? "ring-2 ring-emerald-400" : ""}`}
+                        : "ring-1 ring-primary/40 hover:ring-primary"
+                    } ${isDropTarget ? "ring-2 ring-emerald-400" : ""}`}
                     style={{ left, width }}
                     onPointerDown={(e) => {
                       if (e.button !== 0) return;
@@ -647,10 +651,10 @@ export function TimelineTracks({
                       style={
                         thumbOk
                           ? {
-                            backgroundImage: `url(${clip.thumbnail_url})`,
-                            backgroundSize: "auto 100%",
-                            backgroundRepeat: "repeat-x",
-                          }
+                              backgroundImage: `url(${clip.thumbnail_url})`,
+                              backgroundSize: "auto 100%",
+                              backgroundRepeat: "repeat-x",
+                            }
                           : undefined
                       }
                     />
@@ -663,17 +667,19 @@ export function TimelineTracks({
                       />
                     )}
                     <div
-                      className={`absolute inset-0 ${isSel
+                      className={`absolute inset-0 ${
+                        isSel
                           ? "bg-gradient-to-t from-black/85 via-black/20 to-accent-yellow/15"
                           : "bg-gradient-to-t from-black/85 via-black/25 to-transparent"
-                        }`}
+                      }`}
                     />
 
                     {width > 24 && (
                       <div className="absolute top-1 left-1 right-1 flex items-center gap-1">
                         <span
-                          className={`px-1 rounded text-[9px] font-bold ${isSel ? "bg-accent-yellow text-black" : "bg-black/75 text-white"
-                            }`}
+                          className={`px-1 rounded text-[9px] font-bold ${
+                            isSel ? "bg-accent-yellow text-black" : "bg-black/75 text-white"
+                          }`}
                         >
                           {idx + 1}
                         </span>
@@ -713,8 +719,9 @@ export function TimelineTracks({
 
                     {/* Right edge handle: roll with next clip, or extend when last */}
                     <div
-                      className={`absolute top-0 bottom-0 -right-1 w-3 cursor-ew-resize z-20 flex items-center justify-center ${dragEdge === idx ? "" : "opacity-0 group-hover:opacity-100"
-                        }`}
+                      className={`absolute top-0 bottom-0 -right-1 w-3 cursor-ew-resize z-20 flex items-center justify-center ${
+                        dragEdge === idx ? "" : "opacity-0 group-hover:opacity-100"
+                      }`}
                       onPointerDown={(e) => handleEdgeDown(e, idx)}
                       onPointerMove={handleEdgeMove}
                       onPointerUp={handleEdgeUp}
@@ -777,7 +784,7 @@ export function TimelineTracks({
                 </div>
               ) : (
                 <div
-                  className="absolute inset-y-1 left-2 right-2 rounded-lg border border-dashed border-[#2E2E2E] flex items-center justify-between px-3 text-[10px] text-muted-foreground"
+                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-[10px] text-muted-foreground"
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Audio narasi dinonaktifkan atau belum ada</span>
@@ -821,7 +828,7 @@ export function TimelineTracks({
             {/* Drag tooltip */}
             {draggingClip && (
               <div
-                className="absolute z-40 -translate-x-1/2 px-2 py-1 rounded-md bg-black/95 border border-white/15 text-[10px] font-mono text-white whitespace-nowrap pointer-events-none shadow-xl"
+                className="pointer-events-none absolute z-40 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 font-mono text-[10px] text-foreground shadow-xl"
                 style={{ left: x(draggingClip.timeline_end), top: RULER_H + 2 }}
               >
                 #{(dragEdge ?? 0) + 1} {tlDur(draggingClip).toFixed(2)}s
@@ -864,7 +871,7 @@ function TrackHeader({
   return (
     <div
       style={{ height }}
-      className="px-2 flex flex-col justify-center gap-0.5 border-b border-[#2E2E2E]"
+      className="flex flex-col justify-center gap-0.5 border-b border-border px-2"
     >
       <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
         {icon} {label}

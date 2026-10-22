@@ -16,9 +16,9 @@ export function WorldSettingTab({
 }: WorldSettingTabProps) {
   return (
     <div className="flex flex-col space-y-3 mt-3.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
-      <div className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] space-y-3">
+      <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5">
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
             Era & Masa Sejarah:
           </label>
           {editingBible ? (
@@ -26,20 +26,18 @@ export function WorldSettingTab({
               type="text"
               value={worldSetting.era || ""}
               placeholder="mis. Zaman Kerajaan Nusantara Abad ke-14 (Pra-modern, tanpa teknologi mesin/listrik)"
-              onChange={(e) =>
-                setWorldSetting((prev) => ({ ...prev, era: e.target.value }))
-              }
-              className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
+              onChange={(e) => setWorldSetting((prev) => ({ ...prev, era: e.target.value }))}
+              className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
             />
           ) : (
-            <p className="text-xs text-amber-300 font-semibold bg-black/40 p-2 rounded-lg border border-[#222]">
+            <p className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 text-xs font-semibold text-[#8A6B3E]">
               {worldSetting.era || "Belum ditentukan (default: Pra-modern/Historis)"}
             </p>
           )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
             Garis Waktu (Time Setting):
           </label>
           {editingBible ? (
@@ -50,38 +48,36 @@ export function WorldSettingTab({
               onChange={(e) =>
                 setWorldSetting((prev) => ({ ...prev, time_setting: e.target.value }))
               }
-              className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs focus:outline-none focus:border-amber-500"
+              className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
             />
           ) : (
-            <p className="text-xs text-slate-300 bg-black/40 p-2 rounded-lg border border-[#222]">
+            <p className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 text-xs text-[#4D4A42]">
               {worldSetting.time_setting || "Masa Lalu Tradisional"}
             </p>
           )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
             Atmosfer Visual & Pencahayaan:
           </label>
           {editingBible ? (
             <textarea
               value={worldSetting.atmosphere || ""}
               placeholder="mis. Cinematic warm vintage tone, golden sunset lighting, dramatic stormy sky in climax"
-              onChange={(e) =>
-                setWorldSetting((prev) => ({ ...prev, atmosphere: e.target.value }))
-              }
+              onChange={(e) => setWorldSetting((prev) => ({ ...prev, atmosphere: e.target.value }))}
               rows={2}
-              className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-500"
+              className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
             />
           ) : (
-            <p className="text-[11px] text-slate-300 font-mono bg-black/40 p-2 rounded-lg border border-[#222] leading-relaxed">
+            <p className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
               {worldSetting.atmosphere ||
                 "Pencahayaan dramatis dan atmosfer visual sesuai tone naskah."}
             </p>
           )}
         </div>
 
-        <div className="pt-2 border-t border-[#222] flex items-center justify-between text-[10px] text-slate-400">
+        <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-2 text-[10px] text-[#77766D]">
           <span>Variabel Prompt:</span>
           <span className="font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
             [era]

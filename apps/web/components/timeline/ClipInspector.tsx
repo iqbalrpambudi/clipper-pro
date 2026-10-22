@@ -155,9 +155,9 @@ function SelectedInspector({
   };
 
   return (
-    <div className="flex flex-col h-full border-r border-[#2E2E2E] bg-[#141414] overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
       {/* Header */}
-      <div className="px-3.5 py-2.5 border-b border-[#2E2E2E] bg-[#181818] flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-surface-border bg-muted px-3.5 py-2.5">
         <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Klip #{index + 1}
           <span className="text-muted-foreground normal-case font-normal">/ {total}</span>
@@ -192,7 +192,7 @@ function SelectedInspector({
           <button
             type="button"
             onClick={onPreviewSource}
-            className="relative w-24 shrink-0 aspect-video rounded-lg overflow-hidden bg-black border border-[#2E2E2E] group"
+            className="group relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg border border-border bg-black"
             title="Preview potongan sumber"
           >
             {clip.thumbnail_url && (
@@ -216,7 +216,7 @@ function SelectedInspector({
         </div>
 
         {clip.text && (
-          <p className="text-[10px] text-foreground bg-[#181818] rounded-lg border border-[#2E2E2E] px-2.5 py-2 leading-snug line-clamp-3">
+          <p className="line-clamp-3 rounded-lg border border-border bg-background px-2.5 py-2 text-[10px] leading-snug text-foreground">
             <span className="text-muted-foreground font-medium">Narasi: </span>“{clip.text}”
           </p>
         )}
@@ -245,7 +245,7 @@ function SelectedInspector({
               onChange={(e) => setDurDraft(e.target.value)}
               onBlur={commitDuration}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              className="flex-1 min-w-0 h-7 rounded-lg bg-[#121212] border border-[#2E2E2E] text-center text-xs font-mono text-foreground focus:outline-none focus:border-primary transition"
+              className="h-7 min-w-0 flex-1 rounded-lg border border-input bg-control-background text-center font-mono text-xs text-foreground transition focus:border-primary focus:outline-none"
               aria-label="Durasi klip (detik)"
             />
             <StepBtn onClick={() => onSetDuration(dur + 1 / 30)}>+1f</StepBtn>
@@ -261,7 +261,7 @@ function SelectedInspector({
         >
           <div
             ref={barRef}
-            className="relative h-9 rounded-lg bg-[#121212] border border-[#2E2E2E] overflow-hidden"
+            className="relative h-9 overflow-hidden rounded-lg border border-border bg-background"
           >
             {clip.thumbnail_url && (
               <div
@@ -318,7 +318,7 @@ function SelectedInspector({
           title="Kecepatan"
           hint={`${clip.speed || 1}x`}
         >
-          <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-lg border border-[#2E2E2E]">
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
             {SPEEDS.map((s) => {
               const ok = canUseSpeed(clip, s, sceneMap);
               const active = Math.abs((clip.speed || 1) - s) < 0.01;
@@ -332,7 +332,7 @@ function SelectedInspector({
                   className={`flex-1 h-7 rounded-md text-[10px] font-mono font-semibold transition disabled:opacity-25 disabled:cursor-not-allowed ${
                     active
                       ? "bg-primary text-black shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-[#1E1E1E]"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   {s}
@@ -393,8 +393,8 @@ function EmptyInspector() {
     ["⌘/Ctrl S", "Simpan timeline"],
   ];
   return (
-    <div className="flex flex-col h-full border-r border-[#2E2E2E] bg-[#141414] overflow-hidden">
-      <div className="px-3.5 py-2.5 border-b border-[#2E2E2E] bg-[#181818]">
+    <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
+      <div className="border-b border-surface-border bg-muted px-3.5 py-2.5">
         <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Inspector
         </span>
@@ -403,14 +403,14 @@ function EmptyInspector() {
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Klik klip di timeline untuk mengatur durasi, bagian scene, kecepatan, atau memotongnya.
         </p>
-        <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-3 space-y-2">
+        <div className="space-y-2 rounded-xl border border-border bg-background p-3">
           <p className="text-[10px] font-semibold text-foreground flex items-center gap-1.5">
             <Keyboard className="w-3 h-3 text-primary" /> Shortcut
           </p>
           <div className="space-y-1">
             {rows.map(([k, v]) => (
               <div key={k} className="flex items-center justify-between text-[10px]">
-                <kbd className="px-1.5 py-0.5 rounded bg-[#121212] border border-[#2E2E2E] font-mono text-foreground">
+                <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-foreground">
                   {k}
                 </kbd>
                 <span className="text-muted-foreground">{v}</span>
@@ -454,7 +454,7 @@ function StepBtn({ children, onClick }: { children: React.ReactNode; onClick: ()
       variant="outline"
       size="xs"
       onClick={onClick}
-      className="h-7 px-2 font-mono text-[10px] bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:text-foreground"
+      className="h-7 border-border bg-background px-2 font-mono text-[10px] text-muted-foreground hover:text-foreground"
     >
       {children}
     </Button>
@@ -484,7 +484,7 @@ function ActionBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      variant={danger ? "destructive" : active ? "supabase" : "outline"}
+      variant={danger ? "workspace-destructive" : active ? "workspace-primary" : "outline"}
       size="xs"
       className="h-7 px-2.5 text-[11px] gap-1.5 font-medium"
     >

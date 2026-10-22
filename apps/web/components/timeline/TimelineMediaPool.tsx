@@ -121,20 +121,20 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
   ];
 
   return (
-    <div className="flex flex-col h-full border-r border-[#2E2E2E] bg-[#141414] overflow-hidden">
-      <div className="px-3.5 py-2.5 border-b border-[#2E2E2E] bg-[#181818] flex items-center justify-between">
+    <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
+      <div className="flex items-center justify-between border-b border-surface-border bg-muted px-3.5 py-2.5">
         <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <Film className="w-3.5 h-3.5 text-primary" /> Media Pool
         </span>
         <Badge
           variant="outline"
-          className="text-[10px] text-muted-foreground font-mono border-[#2E2E2E]"
+          className="border-border font-mono text-[10px] text-muted-foreground"
         >
           {list.length} scene
         </Badge>
       </div>
 
-      <div className="p-2.5 border-b border-[#2E2E2E] relative bg-[#161616]">
+      <div className="relative border-b border-surface-border bg-background p-2.5">
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1 min-w-0">
             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -143,7 +143,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari deskripsi, tag, #"
-              className="w-full h-7 pl-8 pr-6 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition"
+              className="h-7 w-full rounded-lg border border-input bg-control-background pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none"
             />
             {query && (
               <button
@@ -172,12 +172,12 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
             </Button>
 
             {isFilterOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 rounded-xl bg-[#181818] border border-[#2E2E2E] shadow-2xl z-50 space-y-3">
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-64 space-y-3 rounded-xl border border-surface-border bg-card p-3 shadow-xl">
                 <div>
                   <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     Status Scene
                   </div>
-                  <div className="grid grid-cols-3 gap-1 bg-[#121212] p-0.5 rounded-lg border border-[#2E2E2E]">
+                  <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-0.5">
                     {pills.map((p) => (
                       <button
                         key={p.id}
@@ -204,7 +204,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     <select
                       value={videoId}
                       onChange={(e) => setVideoId(e.target.value)}
-                      className="w-full h-7 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground px-2 focus:outline-none focus:border-primary transition"
+                      className="h-7 w-full rounded-lg border border-input bg-control-background px-2 text-xs text-foreground transition focus:border-primary focus:outline-none"
                     >
                       <option value="all">Semua video</option>
                       {sourceVideos.map((v) => (
@@ -223,7 +223,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as Sort)}
-                    className="w-full h-7 rounded-lg bg-[#121212] border border-[#2E2E2E] text-xs text-foreground px-2 focus:outline-none focus:border-primary transition"
+                    className="h-7 w-full rounded-lg border border-input bg-control-background px-2 text-xs text-foreground transition focus:border-primary focus:outline-none"
                   >
                     <option value="order">Urutan asli (scene index)</option>
                     <option value="longest">Durasi terpanjang</option>
@@ -231,7 +231,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   </select>
                 </div>
 
-                <div className="flex justify-end pt-1 border-t border-[#2E2E2E]">
+                <div className="flex justify-end border-t border-border pt-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -269,12 +269,12 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   onDoubleClick={() => (selectedClipNumber !== null ? onReplace(sc) : onAppend(sc))}
-                  className={`group rounded-xl overflow-hidden border bg-[#161616] transition cursor-grab active:cursor-grabbing ${
+                  className={`group cursor-grab overflow-hidden rounded-xl border bg-background transition active:cursor-grabbing ${
                     isCurrent
                       ? "border-primary ring-1 ring-primary/50"
                       : used
                         ? "border-primary/40 hover:border-primary"
-                        : "border-[#2E2E2E] hover:border-[#3E3E3E]"
+                        : "border-border hover:border-primary/40"
                   }`}
                   title={`${sc.description || "Scene"}\nSeret ke timeline • Double-click: ${selectedClipNumber !== null ? `ganti klip #${selectedClipNumber}` : "tambah di akhir"}`}
                 >
@@ -350,7 +350,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         )}
       </div>
 
-      <div className="px-3 py-1.5 border-t border-[#2E2E2E] text-[9px] text-muted-foreground flex items-center justify-between bg-[#161616]">
+      <div className="flex items-center justify-between border-t border-surface-border bg-background px-3 py-1.5 text-[9px] text-muted-foreground">
         <span>
           <Replace className="inline w-2.5 h-2.5" /> Ganti •{" "}
           <PlusSquare className="inline w-2.5 h-2.5" /> Sisip •{" "}
@@ -387,7 +387,7 @@ function PoolAction({
       className={`h-6 rounded-md flex items-center justify-center border transition disabled:opacity-25 disabled:cursor-not-allowed ${
         tone === "brand"
           ? "bg-primary/20 border-primary/40 text-primary hover:bg-primary hover:text-black"
-          : "bg-[#121212] border-[#2E2E2E] text-muted-foreground hover:border-primary/50 hover:text-foreground"
+          : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
       }`}
     >
       {children}

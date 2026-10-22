@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Music2, Sparkles, CheckCircle2, Sliders, Play, Pause, UploadCloud, Info } from "lucide-react";
+import {
+  Music2,
+  Sparkles,
+  CheckCircle2,
+  Sliders,
+  Play,
+  Pause,
+  UploadCloud,
+  Info,
+} from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 
 export interface BgmMood {
@@ -67,12 +76,12 @@ export function BgmCustomizePanel({
   return (
     <div className="space-y-4">
       {/* Header Banner */}
-      <div className="p-3.5 rounded-xl bg-gradient-to-r from-violet-900/30 via-indigo-900/20 to-transparent border border-violet-500/20 space-y-1.5">
+      <div className="space-y-1.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]">
             <Music2 className="w-3.5 h-3.5" />
           </div>
-          <h4 className="text-xs font-bold text-white">Musik Latar (BGM) & Mixer</h4>
+          <h4 className="text-xs font-semibold text-[#26251F]">Musik Latar (BGM) & Mixer</h4>
           <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[9px] px-1.5 py-0">
             Auto-Duck
           </Badge>
@@ -85,7 +94,7 @@ export function BgmCustomizePanel({
       {/* Mood Selector Grid */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
             <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             Pustaka Mood Sinematik
           </span>
@@ -104,8 +113,8 @@ export function BgmCustomizePanel({
                 }}
                 className={`p-3 rounded-xl border transition cursor-pointer flex flex-col justify-between group ${
                   isSelected
-                    ? "bg-[#18181F] border-violet-500 shadow-md shadow-violet-500/10 ring-1 ring-violet-500/30"
-                    : "bg-[#141414] border-[#262626] hover:border-[#383838]"
+                    ? "bg-[#F8EEEA] border-[#C45B3A] ring-1 ring-[#E9C9BD]"
+                    : "bg-[#FBFAF7] border-[#E5E1D7] hover:border-[#BEB6A5]"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -122,7 +131,7 @@ export function BgmCustomizePanel({
                           "info"
                         );
                       }}
-                      className="w-7 h-7 rounded-lg bg-violet-600/15 group-hover:bg-violet-600 border border-violet-500/30 group-hover:border-violet-500 flex items-center justify-center text-violet-400 group-hover:text-white transition shrink-0"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] transition group-hover:border-[#C45B3A] group-hover:bg-[#C45B3A] group-hover:text-white"
                       title="Putar sampel audio"
                     >
                       {isSelected && isPlayingPreview ? (
@@ -134,7 +143,9 @@ export function BgmCustomizePanel({
                     <div className="min-w-0">
                       <div className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate">
                         <span>{bgm.name}</span>
-                        {isSelected && <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />}
+                        {isSelected && (
+                          <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />
+                        )}
                       </div>
                       <span className="text-[9.5px] text-muted-foreground font-mono">
                         {bgm.genre} • {bgm.duration}
@@ -152,8 +163,8 @@ export function BgmCustomizePanel({
       </div>
 
       {/* Mixer & Auto-Ducking Controls */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3.5">
-        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+      <div className="space-y-3.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
           <Sliders className="w-3.5 h-3.5 text-violet-400" />
           Kontrol Mixer BGM
         </h4>
@@ -161,7 +172,7 @@ export function BgmCustomizePanel({
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span className="text-muted-foreground text-[11px]">Volume Musik Latar</span>
-            <span className="font-mono text-white font-semibold text-[11px]">{bgmVolume}%</span>
+            <span className="font-mono text-[11px] font-semibold text-[#26251F]">{bgmVolume}%</span>
           </div>
           <input
             type="range"
@@ -170,14 +181,14 @@ export function BgmCustomizePanel({
             step="1"
             value={bgmVolume}
             onChange={(e) => setBgmVolume(Number(e.target.value))}
-            className="w-full accent-violet-600 h-1.5 bg-[#2A2A2A] rounded-lg cursor-pointer block"
+            className="block h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
           <span className="text-[10px] text-muted-foreground mt-1 block">
             Disarankan 12% - 18% agar suara narasi utama tetap dominan.
           </span>
         </div>
 
-        <label className="flex items-center justify-between p-2.5 rounded-lg bg-[#1A1A1A] border border-[#2E2E2E] cursor-pointer">
+        <label className="flex cursor-pointer items-center justify-between rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
           <div>
             <div className="font-semibold text-xs text-foreground">Smart Auto-Ducking</div>
             <div className="text-[10px] text-muted-foreground">
@@ -194,19 +205,21 @@ export function BgmCustomizePanel({
       </div>
 
       {/* Upload Custom Audio CTA */}
-      <div className="p-3 rounded-xl border border-dashed border-[#333] hover:border-violet-500/50 bg-[#121212] transition text-center space-y-1.5">
-        <div className="flex items-center justify-center gap-2 text-slate-400">
+      <div className="space-y-1.5 rounded-xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-3 text-center transition hover:border-[#C45B3A]">
+        <div className="flex items-center justify-center gap-2 text-[#77766D]">
           <UploadCloud className="w-4 h-4 text-violet-400" />
-          <span className="text-xs font-semibold text-slate-200">Unggah Audio BGM Sendiri</span>
+          <span className="text-xs font-semibold text-[#4D4A42]">Unggah Audio BGM Sendiri</span>
         </div>
         <p className="text-[10px] text-muted-foreground">
           Format didukung: MP3, WAV, AAC (Maks. 25MB)
         </p>
         <Button
-          variant="outline"
           size="sm"
-          onClick={() => showToast("Unggah kustom audio BGM akan segera hadir di update mendatang", "info")}
-          className="h-7 text-xs border-[#333]"
+          onClick={() =>
+            showToast("Unggah kustom audio BGM akan segera hadir di update mendatang", "info")
+          }
+          variant="workspace-secondary"
+          className="h-8 text-xs"
         >
           Pilih File Audio
         </Button>
@@ -216,7 +229,8 @@ export function BgmCustomizePanel({
       <div className="p-3 rounded-xl bg-violet-600/5 border border-violet-500/20 text-xs text-muted-foreground flex items-start gap-2">
         <Info className="w-3.5 h-3.5 text-violet-400 shrink-0 mt-0.5" />
         <span className="text-[11px] leading-relaxed">
-          Musik latar akan digabungkan secara otomatis pada tahap Render 16:9 sesuai volume mixer di atas.
+          Musik latar akan digabungkan secara otomatis pada tahap Render 16:9 sesuai volume mixer di
+          atas.
         </span>
       </div>
     </div>

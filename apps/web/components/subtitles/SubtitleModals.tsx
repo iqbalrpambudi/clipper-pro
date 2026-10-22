@@ -76,7 +76,7 @@ export function SubtitleModals({
               </Button>
               <Button
                 type="button"
-                variant="supabase"
+                variant="workspace-primary"
                 size="sm"
                 disabled={!newPresetName.trim() || isSavingPreset}
                 onClick={onSavePreset}

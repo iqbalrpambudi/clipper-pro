@@ -205,7 +205,7 @@ export function VideoLayoutCustomizePanel({
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-surface-secondary overflow-hidden">
       {/* Header Panel */}
-      <div className="p-3 border-b border-[#2E2E2E] bg-[#141414] shrink-0 flex items-center justify-between">
+      <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-muted p-3">
         <div className="flex items-center gap-2">
           <Maximize2 className="w-4 h-4 text-primary" />
           <h3 className="text-xs font-semibold text-foreground tracking-tight">
@@ -251,7 +251,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
                 aspectRatio === "9:16"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <Smartphone
@@ -270,7 +270,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
                 aspectRatio === "16:9"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <Monitor
@@ -289,7 +289,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
                 aspectRatio === "1:1"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <Square
@@ -324,7 +324,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
                 activePreset === "cover"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <div className="flex items-center justify-center">
@@ -347,7 +347,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
                 activePreset === "fit"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <div className="flex items-center justify-center">
@@ -370,7 +370,7 @@ export function VideoLayoutCustomizePanel({
               className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center text-center gap-1.5 transition ${
                 activePreset === "custom"
                   ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground shadow-xs"
-                  : "bg-[#141414] border-[#2E2E2E] text-muted-foreground hover:border-[#3E3E3E] hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
               <div className="flex items-center justify-center">
@@ -390,12 +390,12 @@ export function VideoLayoutCustomizePanel({
 
         {/* Section 3: Checklist Background Blur */}
         <div className="space-y-1.5">
-          <label className="flex items-start gap-3 p-3 rounded-xl bg-[#141414] border border-[#2E2E2E] cursor-pointer hover:border-primary/40 transition select-none">
+          <label className="flex cursor-pointer select-none items-start gap-3 rounded-xl border border-border bg-background p-3 transition hover:border-primary/40">
             <input
               type="checkbox"
               checked={isBlur}
               onChange={(e) => handleBlurToggle(e.target.checked)}
-              className="mt-0.5 rounded border-[#2E2E2E] text-primary focus:ring-primary/30 w-4 h-4 cursor-pointer"
+              className="mt-0.5 h-4 w-4 cursor-pointer rounded border-input text-primary focus:ring-primary/30"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -405,7 +405,7 @@ export function VideoLayoutCustomizePanel({
                   className={`text-[9px] font-mono ${
                     isBlur
                       ? "text-primary border-primary/30 bg-primary/10"
-                      : "text-muted-foreground border-[#2E2E2E] bg-[#1a1a1a]"
+                      : "border-border bg-background text-muted-foreground"
                   }`}
                 >
                   {isBlur ? "Blur Aktif" : "Hitam Solid"}
@@ -422,7 +422,7 @@ export function VideoLayoutCustomizePanel({
 
         {/* Section 4: Sub-Panel Slider Custom Zoom (Hanya Tampil Jika Custom Zoom Aktif) */}
         {activePreset === "custom" && (
-          <div className="p-3.5 rounded-xl bg-[#121212] border border-[#2E2E2E] space-y-3">
+          <div className="space-y-3 rounded-xl border border-border bg-background p-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <ZoomIn className="w-3.5 h-3.5 text-primary" />
@@ -441,7 +441,7 @@ export function VideoLayoutCustomizePanel({
                 step="0.05"
                 value={customZoom}
                 onChange={(e) => handleZoomSliderChange(parseFloat(e.target.value))}
-                className="w-full accent-primary cursor-pointer h-1.5 bg-[#1E1E1E] rounded-lg"
+                className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
               />
               <div className="flex items-center justify-between text-[9px] text-muted-foreground font-mono">
                 <span>100%</span>

@@ -48,7 +48,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col w-full overflow-hidden bg-[#0A0A0A] text-white">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#F3F0E8] text-[#26251F]">
       {/* 1. Step Navigation Header - Menempel pada Header Stepper */}
       <TimelineStepHeader
         onNavigateImages={() => state.setActiveTab("storyboard_images")}
@@ -69,9 +69,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
       {/* 3. Main Split View: Left Studio Panel (Media Player + Bottom Scenes) + Right Inner-Scrollable Option Configuration */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Column: Media Player in Panel & Bottom Scenes Filmstrip */}
-        <div className="flex-1 min-h-0 flex flex-col border-r border-[#222] bg-[#0A0A0A] p-4 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-[#E5E1D7] bg-[#F3F0E8] p-4">
           {/* Top Preview Toolbar */}
-          <div className="shrink-0 flex items-center justify-between mb-3 bg-[#141414] px-3.5 py-2 rounded-xl border border-[#222]">
+          <div className="mb-3 flex shrink-0 items-center justify-between rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] px-3.5 py-2">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -91,7 +91,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                     const target = state.items[Number(e.target.value)];
                     if (target) state.handleSeek(target.start_time || 0);
                   }}
-                  className="bg-[#1C1C1C] border border-[#333] text-xs rounded-lg px-2.5 py-1 text-foreground focus:outline-none focus:border-violet-500 max-w-[260px] sm:max-w-[340px] truncate"
+                  className="max-w-[260px] truncate rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none sm:max-w-[340px]"
                 >
                   {state.items.length > 0 ? (
                     state.items.map((it, idx) => (
@@ -139,7 +139,9 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 variant="outline"
                 className="text-[10px] text-muted-foreground border-[#333] hidden sm:inline-flex"
               >
-                {state.activeRightTab === "watermark" ? "Drag Watermark Bebas" : "Drag Subtitle Bebas"}
+                {state.activeRightTab === "watermark"
+                  ? "Drag Watermark Bebas"
+                  : "Drag Subtitle Bebas"}
               </Badge>
             </div>
           </div>
@@ -178,7 +180,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 isWatermarkDraggable={state.activeRightTab === "watermark"}
                 onCustomWatermarkPositionChange={state.handleCustomWatermarkPositionChange}
                 onWatermarkDragEnd={state.handleWatermarkDragEnd}
-                className="relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
+                className="group relative flex aspect-video h-full w-auto max-h-full max-w-full shrink-0 select-none items-center justify-center overflow-hidden rounded-xl border-2 border-[#E5E1D7] bg-[#FFFEFA] shadow-lg"
               />
             </div>
 
@@ -223,17 +225,17 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
         </div>
 
         {/* Right Column: Option Configuration Berada di Kanan Innerscroll (4 Tabs: Subtitle, Motion, Watermark, BGM) */}
-        <div className="w-full lg:w-[420px] xl:w-[460px] 2xl:w-[500px] shrink-0 h-full min-h-0 bg-[#121212] flex flex-col border-t lg:border-t-0 border-[#222]">
+        <div className="flex h-full min-h-0 w-full shrink-0 flex-col border-t border-[#E5E1D7] bg-[#FBFAF7] lg:w-[420px] lg:border-t-0 xl:w-[460px] 2xl:w-[500px]">
           {/* Pinned Tab Switcher Header */}
-          <div className="p-2.5 border-b border-[#222] bg-[#161616] shrink-0">
-            <div className="flex items-center gap-1 p-1 bg-[#121212] rounded-xl border border-[#2A2A2A]">
+          <div className="shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7] p-2.5">
+            <div className="flex items-center gap-1 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
               <button
                 type="button"
                 onClick={() => state.setActiveRightTab("subtitles")}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   state.activeRightTab === "subtitles"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
                 title="Pengaturan Subtitle & Karaoke"
               >
@@ -245,8 +247,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 onClick={() => state.setActiveRightTab("motion")}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   state.activeRightTab === "motion"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
                 title="Pengaturan Efek Ken Burns Motion"
               >
@@ -258,8 +260,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 onClick={() => state.setActiveRightTab("watermark")}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   state.activeRightTab === "watermark"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
                 title="Watermark & Branding"
               >
@@ -274,8 +276,8 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 onClick={() => state.setActiveRightTab("bgm")}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   state.activeRightTab === "bgm"
-                    ? "bg-violet-600 text-white font-semibold shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
                 title="Musik Latar (BGM) & Auto-Ducking"
               >
@@ -286,7 +288,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
           </div>
 
           {/* Inner Scrollable Option Configuration */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-5 space-y-4 scrollbar-thin scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-[#D2CDBF] hover:scrollbar-thumb-[#BFB9A9] lg:p-5">
             {state.activeRightTab === "subtitles" && (
               <SubtitleStudioPanel
                 subtitleStyle={state.subtitleStyle}

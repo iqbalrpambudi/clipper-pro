@@ -29,22 +29,26 @@ export function VideoPlayerControls({
   formatTime,
 }: VideoPlayerControlsProps) {
   return (
-    <div className="px-3.5 py-2 rounded-xl bg-[#141414] border border-[#222] space-y-1.5 shadow-md">
+    <div className="space-y-1.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] px-3.5 py-2 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={togglePlay}
-            className="w-8 h-8 rounded-lg bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center shadow-md shadow-violet-500/20 transition shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#C45B3A] text-white shadow-sm transition hover:bg-[#A9472C]"
             title={isPlaying ? "Jeda" : "Putar"}
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5" />
+            ) : (
+              <Play className="w-3.5 h-3.5 ml-0.5" />
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => handleSeek(Math.max(0, currentTime - 5))}
-            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
             title="Mundur 5 detik"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -53,7 +57,7 @@ export function VideoPlayerControls({
           <button
             type="button"
             onClick={() => handleSeek(Math.min(duration, currentTime + 5))}
-            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
             title="Maju 5 detik"
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -66,8 +70,8 @@ export function VideoPlayerControls({
             onClick={onToggleSubtitle}
             className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 text-xs font-mono font-semibold border ${
               subtitleEnabled
-                ? "bg-violet-600/20 text-violet-300 border-violet-500/40"
-                : "bg-[#222222] text-slate-500 border-[#2E2E2E]"
+                ? "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
+                : "bg-[#F3F0E8] text-[#77766D] border-[#E5E1D7]"
             }`}
             title={subtitleEnabled ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
           >
@@ -80,7 +84,7 @@ export function VideoPlayerControls({
           <button
             type="button"
             onClick={toggleMute}
-            className="h-8 w-8 rounded-lg bg-[#222222] hover:bg-white/10 text-slate-300 transition flex items-center justify-center shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
             title={isMuted ? "Unmute Audio" : "Mute Audio"}
           >
             {isMuted ? (
@@ -104,7 +108,7 @@ export function VideoPlayerControls({
         step={0.1}
         value={currentTime}
         onChange={(e) => handleSeek(Number(e.target.value))}
-        className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg block"
+        className="block h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
       />
     </div>
   );

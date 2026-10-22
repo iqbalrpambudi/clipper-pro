@@ -38,7 +38,7 @@ import type { ThumbnailCanvasRef } from "./thumbnail/ThumbnailKonvaCanvas";
 const ThumbnailKonvaCanvas = dynamic(() => import("./thumbnail/ThumbnailKonvaCanvas"), {
   ssr: false,
   loading: () => (
-    <div className="w-full aspect-video rounded-2xl bg-[#121212] border border-[#2A2A2A] flex items-center justify-center text-slate-500 text-xs">
+    <div className="flex aspect-video w-full items-center justify-center rounded-2xl border border-[#E5E1D7] bg-[#F3F0E8] text-xs text-[#77766D]">
       <div className="flex items-center gap-2">
         <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
         <span>Memuat Canvas Thumbnail...</span>
@@ -495,10 +495,10 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
         actions={
           <>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setActiveTab("storyboard_render")}
-              className="h-8 border-[#2E2E2E] text-xs"
+              variant="workspace-secondary"
+              className="h-9 text-xs"
             >
               Kembali ke Render
             </Button>
@@ -507,7 +507,8 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               size="sm"
               onClick={() => saveMetadataMutation.mutate()}
               disabled={isSaving}
-              className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20"
+              variant="workspace-primary"
+              className="h-9 text-xs"
             >
               {isSaving ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -520,264 +521,266 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
         }
       />
 
-      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6 pb-16">
+      <div className="mx-auto w-full max-w-[1920px] space-y-6 px-4 py-5 pb-16 sm:px-6">
         {/* Main 2-Column Split: STICKY CANVAS (Left 6 Cols) + CLEAN CONTROLS (Right 6 Cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: Sticky React-Konva Canvas & Real-time Mockup (6 Cols) */}
-        <div className="lg:col-span-6 space-y-4 lg:sticky lg:top-4 self-start">
-          <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-4 space-y-3.5 shadow-xl">
-            {/* Canvas Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400">
-                  <Youtube className="w-4 h-4 fill-current" />
+          {/* LEFT COLUMN: Sticky React-Konva Canvas & Real-time Mockup (6 Cols) */}
+          <div className="lg:col-span-6 space-y-4 lg:sticky lg:top-4 self-start">
+            <div className="space-y-3.5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-4 shadow-sm">
+              {/* Canvas Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]">
+                    <Youtube className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-semibold text-[#26251F]">
+                      Interactive Thumbnail Canvas
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground">
+                      Drag teks langsung di gambar • Putar & ubah ukuran via handle seleksi
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xs font-bold text-white">Interactive Thumbnail Canvas</h3>
-                  <p className="text-[10px] text-muted-foreground">
-                    Drag teks langsung di gambar • Putar & ubah ukuran via handle seleksi
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleDownloadHd}
-                  className="bg-red-600 hover:bg-red-500 text-white text-[11px] font-semibold h-7 px-2.5 shadow-md shadow-red-600/20 flex items-center gap-1"
-                  title="Unduh Full HD 1920x1080 langsung dari canvas"
-                >
-                  <Download className="w-3 h-3" />
-                  <span>Unduh PNG HD</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* YouTube Card & Interactive Konva Canvas Container */}
-            <div className="rounded-xl overflow-hidden bg-black border border-[#262626] shadow-2xl transition-all">
-              <div className="relative w-full aspect-video">
-                <ThumbnailKonvaCanvas
-                  ref={canvasRef}
-                  imageUrl={thumbnailUrl}
-                  layers={layers}
-                  selectedLayerId={selectedLayerId}
-                  onSelectLayer={(id) => {
-                    setSelectedLayerId(id);
-                    if (id && activeSettingsTab !== "layers") {
-                      setActiveSettingsTab("layers");
-                    }
-                  }}
-                  onUpdateLayer={handleUpdateLayer}
-                />
-
-                {/* Duration Badge */}
-                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-white font-mono text-[10px] font-bold tracking-wider backdrop-blur-sm shadow-md z-10 pointer-events-none">
-                  {formatBadgeDuration(durationSec)}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleDownloadHd}
+                    className="flex h-8 items-center gap-1 rounded-lg bg-[#C45B3A] px-2.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#A9472C]"
+                    title="Unduh Full HD 1920x1080 langsung dari canvas"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Unduh PNG HD</span>
+                  </Button>
                 </div>
               </div>
 
-              {/* YouTube Video Info Block Simulation */}
-              <div className="p-3 flex items-start gap-2.5 bg-[#0F0F0F] border-t border-[#202020]">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-md">
-                  C
+              {/* YouTube Card & Interactive Konva Canvas Container */}
+              <div className="overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#26251F] shadow-lg transition-all">
+                <div className="relative w-full aspect-video">
+                  <ThumbnailKonvaCanvas
+                    ref={canvasRef}
+                    imageUrl={thumbnailUrl}
+                    layers={layers}
+                    selectedLayerId={selectedLayerId}
+                    onSelectLayer={(id) => {
+                      setSelectedLayerId(id);
+                      if (id && activeSettingsTab !== "layers") {
+                        setActiveSettingsTab("layers");
+                      }
+                    }}
+                    onUpdateLayer={handleUpdateLayer}
+                  />
+
+                  {/* Duration Badge */}
+                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-white font-mono text-[10px] font-bold tracking-wider backdrop-blur-sm shadow-md z-10 pointer-events-none">
+                    {formatBadgeDuration(durationSec)}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-semibold text-white line-clamp-2 leading-snug">
-                    {title || project.name || "Judul Video YouTube Belum Dibuat"}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Cliper Pro Studio</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    148K x ditonton • 2 jam yang lalu
-                  </p>
+
+                {/* YouTube Video Info Block Simulation */}
+                <div className="flex items-start gap-2.5 border-t border-[#E5E1D7] bg-[#FBFAF7] p-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-md">
+                    C
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="line-clamp-2 text-xs font-semibold leading-snug text-[#26251F]">
+                      {title || project.name || "Judul Video YouTube Belum Dibuat"}
+                    </h4>
+                    <p className="mt-0.5 text-[11px] text-[#77766D]">Cliper Pro Studio</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      148K x ditonton • 2 jam yang lalu
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Canvas Quick Action Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pt-1 border-t border-[#262626]">
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const newLayer = createDefaultTextLayer({
-                      y: 120 + layers.length * 60,
-                      text: `HOOK BARIS ${layers.length + 1}`,
-                    });
-                    handleAddLayer(newLayer);
-                    setActiveSettingsTab("layers");
-                  }}
-                  className="h-7 text-[11px] border-[#333] hover:border-amber-400 text-slate-300 font-semibold"
-                >
-                  <Plus className="w-3 h-3 mr-1 text-amber-400" />
-                  <span>Tambah Teks</span>
-                </Button>
-
-                {selectedLayerId && (
+              {/* Canvas Quick Action Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E1D7] pt-1 text-[11px]">
+                <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    onClick={() => handleDeleteLayer(selectedLayerId)}
-                    className="h-7 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={() => {
+                      const newLayer = createDefaultTextLayer({
+                        y: 120 + layers.length * 60,
+                        text: `HOOK BARIS ${layers.length + 1}`,
+                      });
+                      handleAddLayer(newLayer);
+                      setActiveSettingsTab("layers");
+                    }}
+                    variant="workspace-secondary"
+                    className="h-8 text-[11px] font-semibold"
                   >
-                    <Trash2 className="w-3 h-3 mr-1" />
-                    <span>Hapus Layer</span>
+                    <Plus className="w-3 h-3 mr-1 text-amber-400" />
+                    <span>Tambah Teks</span>
                   </Button>
+
+                  {selectedLayerId && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteLayer(selectedLayerId)}
+                      className="h-7 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      <span>Hapus Layer</span>
+                    </Button>
+                  )}
+                </div>
+
+                <div className="text-[10px] text-muted-foreground font-mono">
+                  {selectedLayerId
+                    ? "🎯 Layer Terpilih Aktif"
+                    : "💡 Klik teks di kanvas untuk mengedit"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Clean Tabbed Settings (6 Cols) */}
+          <div className="lg:col-span-6 space-y-4">
+            <div className="space-y-4 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-4 shadow-sm">
+              {/* Top Tab Switcher */}
+              <div className="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveSettingsTab("generator")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                    activeSettingsTab === "generator"
+                      ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>AI Thumbnail Prompt</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSettingsTab("layers")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                    activeSettingsTab === "layers"
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                  }`}
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  <span>Editor Teks & Layer</span>
+                  <span className="w-4 h-4 rounded-full bg-amber-500/30 text-[10px] font-mono flex items-center justify-center text-amber-300 ml-0.5">
+                    {layers.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSettingsTab("presets")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                    activeSettingsTab === "presets"
+                      ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                  }`}
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                  <span>Preset Style</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSettingsTab("metadata")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                    activeSettingsTab === "metadata"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Metadata YouTube</span>
+                </button>
+              </div>
+
+              {/* Tab Contents with Inner-scroll */}
+              <div className="lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto pr-1">
+                {activeSettingsTab === "generator" && (
+                  <AiThumbnailGenerator
+                    thumbnailPrompt={thumbnailPrompt}
+                    setThumbnailPrompt={setThumbnailPrompt}
+                    thumbnailUrl={thumbnailUrl}
+                    setThumbnailUrl={setThumbnailUrl}
+                    thumbnailHistory={thumbnailHistory}
+                    isGenerating={isThumbnailGenerating}
+                    onGenerateThumbnail={() => generateThumbnailMutation.mutate()}
+                    formulas={VIRAL_FORMULAS}
+                    activeFormula={activeFormula}
+                    onSelectFormula={handleSelectFormula}
+                    activePresetName={activePreset?.name}
+                    mainCharName={mainCharName}
+                    mainLocName={mainLoc?.name}
+                    onResyncWithCurrentStory={handleResyncWithCurrentStory}
+                    onInjectPresetStyle={() => {
+                      if (!activePreset?.master_prompt) {
+                        showToast("Belum ada preset aktif dengan master prompt.", "info");
+                        return;
+                      }
+                      const addition = `, rendered in ${activePreset.name} style (${activePreset.master_prompt.trim()})`;
+                      if (!thumbnailPrompt.includes(activePreset.name)) {
+                        setThumbnailPrompt((prev) =>
+                          prev ? `${prev.trim()}${addition}` : addition.replace(/^,\s*/, "")
+                        );
+                        showToast(`Gaya preset '${activePreset.name}' disisipkan.`, "info");
+                      }
+                    }}
+                  />
+                )}
+
+                {activeSettingsTab === "layers" && (
+                  <TextLayerInspector
+                    layers={layers}
+                    selectedLayerId={selectedLayerId}
+                    onSelectLayer={setSelectedLayerId}
+                    onUpdateLayer={handleUpdateLayer}
+                    onAddLayer={handleAddLayer}
+                    onDeleteLayer={handleDeleteLayer}
+                    onDuplicateLayer={handleDuplicateLayer}
+                    onReorderLayer={handleReorderLayer}
+                  />
+                )}
+
+                {activeSettingsTab === "presets" && (
+                  <PresetManager
+                    currentLayers={layers}
+                    customPresets={customPresets}
+                    onApplyPreset={handleApplyPreset}
+                    onSaveCustomPreset={handleSaveCustomPreset}
+                    onDeleteCustomPreset={handleDeleteCustomPreset}
+                    showToast={showToast}
+                  />
+                )}
+
+                {activeSettingsTab === "metadata" && (
+                  <YoutubeMetadataForm
+                    title={title}
+                    setTitle={setTitle}
+                    titleOptions={titleOptions}
+                    description={description}
+                    setDescription={setDescription}
+                    tagsInput={tagsInput}
+                    setTagsInput={setTagsInput}
+                    isGenerating={isMetadataGenerating}
+                    onGenerateMetadata={() => generateMetadataMutation.mutate()}
+                    focusAngle={focusAngle}
+                    setFocusAngle={setFocusAngle}
+                    customPrompt={customPrompt}
+                    setCustomPrompt={setCustomPrompt}
+                    onCopy={handleCopy}
+                    copiedKey={copiedKey}
+                  />
                 )}
               </div>
-
-              <div className="text-[10px] text-muted-foreground font-mono">
-                {selectedLayerId
-                  ? "🎯 Layer Terpilih Aktif"
-                  : "💡 Klik teks di kanvas untuk mengedit"}
-              </div>
             </div>
           </div>
         </div>
-
-        {/* RIGHT COLUMN: Clean Tabbed Settings (6 Cols) */}
-        <div className="lg:col-span-6 space-y-4">
-          <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-4 space-y-4 shadow-xl">
-            {/* Top Tab Switcher */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-[#2E2E2E] overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setActiveSettingsTab("generator")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "generator"
-                    ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>AI Thumbnail Prompt</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSettingsTab("layers")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "layers"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Type className="w-3.5 h-3.5" />
-                <span>Editor Teks & Layer</span>
-                <span className="w-4 h-4 rounded-full bg-amber-500/30 text-[10px] font-mono flex items-center justify-center text-amber-300 ml-0.5">
-                  {layers.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSettingsTab("presets")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "presets"
-                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Palette className="w-3.5 h-3.5" />
-                <span>Preset Style</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSettingsTab("metadata")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeSettingsTab === "metadata"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Metadata YouTube</span>
-              </button>
-            </div>
-
-            {/* Tab Contents with Inner-scroll */}
-            <div className="lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto pr-1">
-              {activeSettingsTab === "generator" && (
-                <AiThumbnailGenerator
-                  thumbnailPrompt={thumbnailPrompt}
-                  setThumbnailPrompt={setThumbnailPrompt}
-                  thumbnailUrl={thumbnailUrl}
-                  setThumbnailUrl={setThumbnailUrl}
-                  thumbnailHistory={thumbnailHistory}
-                  isGenerating={isThumbnailGenerating}
-                  onGenerateThumbnail={() => generateThumbnailMutation.mutate()}
-                  formulas={VIRAL_FORMULAS}
-                  activeFormula={activeFormula}
-                  onSelectFormula={handleSelectFormula}
-                  activePresetName={activePreset?.name}
-                  mainCharName={mainCharName}
-                  mainLocName={mainLoc?.name}
-                  onResyncWithCurrentStory={handleResyncWithCurrentStory}
-                  onInjectPresetStyle={() => {
-                    if (!activePreset?.master_prompt) {
-                      showToast("Belum ada preset aktif dengan master prompt.", "info");
-                      return;
-                    }
-                    const addition = `, rendered in ${activePreset.name} style (${activePreset.master_prompt.trim()})`;
-                    if (!thumbnailPrompt.includes(activePreset.name)) {
-                      setThumbnailPrompt((prev) =>
-                        prev ? `${prev.trim()}${addition}` : addition.replace(/^,\s*/, "")
-                      );
-                      showToast(`Gaya preset '${activePreset.name}' disisipkan.`, "info");
-                    }
-                  }}
-                />
-              )}
-
-              {activeSettingsTab === "layers" && (
-                <TextLayerInspector
-                  layers={layers}
-                  selectedLayerId={selectedLayerId}
-                  onSelectLayer={setSelectedLayerId}
-                  onUpdateLayer={handleUpdateLayer}
-                  onAddLayer={handleAddLayer}
-                  onDeleteLayer={handleDeleteLayer}
-                  onDuplicateLayer={handleDuplicateLayer}
-                  onReorderLayer={handleReorderLayer}
-                />
-              )}
-
-              {activeSettingsTab === "presets" && (
-                <PresetManager
-                  currentLayers={layers}
-                  customPresets={customPresets}
-                  onApplyPreset={handleApplyPreset}
-                  onSaveCustomPreset={handleSaveCustomPreset}
-                  onDeleteCustomPreset={handleDeleteCustomPreset}
-                  showToast={showToast}
-                />
-              )}
-
-              {activeSettingsTab === "metadata" && (
-                <YoutubeMetadataForm
-                  title={title}
-                  setTitle={setTitle}
-                  titleOptions={titleOptions}
-                  description={description}
-                  setDescription={setDescription}
-                  tagsInput={tagsInput}
-                  setTagsInput={setTagsInput}
-                  isGenerating={isMetadataGenerating}
-                  onGenerateMetadata={() => generateMetadataMutation.mutate()}
-                  focusAngle={focusAngle}
-                  setFocusAngle={setFocusAngle}
-                  customPrompt={customPrompt}
-                  setCustomPrompt={setCustomPrompt}
-                  onCopy={handleCopy}
-                  copiedKey={copiedKey}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
       </div>
     </div>
   );

@@ -34,10 +34,9 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           state.segments.length > 0 ? (
             <>
               <Button
-                variant="outline"
                 size="sm"
                 onClick={() => state.handleOpenNarrationAnalysis()}
-                className="h-8 text-xs font-semibold gap-1.5 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 transition shadow-sm"
+                className="h-9 gap-1.5 border-[#E9C9BD] bg-[#F8EEEA] text-xs font-semibold text-[#A9472C] shadow-sm transition hover:bg-[#F3E1D9]"
                 title="Analisis Skor Narasi untuk Retensi YouTube"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -45,10 +44,10 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               </Button>
 
               <Button
-                variant="outline"
                 size="sm"
                 onClick={state.handleCopyAllNarration}
-                className="h-8 text-xs font-semibold gap-1.5 border-[#333] bg-[#202020] hover:bg-[#2A2A2A] text-slate-200 hover:text-white transition shadow-sm"
+                variant="workspace-secondary"
+                className="h-9 gap-1.5 text-xs"
                 title="Salin seluruh teks narasi ke clipboard"
               >
                 {state.hasCopiedNarration ? (
@@ -62,7 +61,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               <Button
                 size="sm"
                 onClick={() => state.setActiveTab("storyboard_voice")}
-                className="h-8 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs font-semibold shadow-md shadow-violet-500/20"
+                variant="workspace-primary"
+                className="h-9 gap-1.5 text-xs"
               >
                 <span>Lanjut ke Suara & Sync</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -73,125 +73,125 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
       />
 
       {/* Main Tab Content */}
-      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
+      <div className="mx-auto w-full max-w-[1920px] space-y-5 px-4 py-5 sm:px-6">
         {/* Top Grid: Form on Left (6 Cols), Stats & Karakter Terkunci on Right (6 Cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Form: Parameters (6 Cols) */}
           <ScriptParametersForm
-          topic={state.topic}
-          setTopic={state.setTopic}
-          language={state.language}
-          onLanguageSelect={state.handleLanguageSelect}
-          durationMins={state.durationMins}
-          setDurationMins={state.setDurationMins}
-          tone={state.tone}
-          setTone={state.setTone}
-          selectedPresetId={state.selectedPresetId}
-          setSelectedPresetId={state.setSelectedPresetId}
-          presets={state.presets}
-          activePreset={state.activePreset}
-          imagesPerSegment={state.imagesPerSegment}
-          setImagesPerSegment={state.setImagesPerSegment}
-          customInstructions={state.customInstructions}
-          setCustomInstructions={state.setCustomInstructions}
-          resetBibleOnGenerate={state.resetBibleOnGenerate}
-          setResetBibleOnGenerate={state.setResetBibleOnGenerate}
-          hasSegments={state.segments.length > 0}
-          isGenerating={state.generateScriptMutation.isPending}
-          onGenerate={state.handleGenerate}
-          scriptPresets={state.scriptPresets}
-          selectedScriptPresetId={state.selectedScriptPresetId}
-          onLoadScriptPreset={state.handleLoadScriptPreset}
-          onDeleteScriptPreset={state.handleDeleteScriptPreset}
-          showSaveScriptModal={state.showSaveScriptModal}
-          setShowSaveScriptModal={state.setShowSaveScriptModal}
-          newScriptPresetName={state.newScriptPresetName}
-          setNewScriptPresetName={state.setNewScriptPresetName}
-          onSaveScriptPreset={state.handleSaveScriptPreset}
+            topic={state.topic}
+            setTopic={state.setTopic}
+            language={state.language}
+            onLanguageSelect={state.handleLanguageSelect}
+            durationMins={state.durationMins}
+            setDurationMins={state.setDurationMins}
+            tone={state.tone}
+            setTone={state.setTone}
+            selectedPresetId={state.selectedPresetId}
+            setSelectedPresetId={state.setSelectedPresetId}
+            presets={state.presets}
+            activePreset={state.activePreset}
+            imagesPerSegment={state.imagesPerSegment}
+            setImagesPerSegment={state.setImagesPerSegment}
+            customInstructions={state.customInstructions}
+            setCustomInstructions={state.setCustomInstructions}
+            resetBibleOnGenerate={state.resetBibleOnGenerate}
+            setResetBibleOnGenerate={state.setResetBibleOnGenerate}
+            hasSegments={state.segments.length > 0}
+            isGenerating={state.generateScriptMutation.isPending}
+            onGenerate={state.handleGenerate}
+            scriptPresets={state.scriptPresets}
+            selectedScriptPresetId={state.selectedScriptPresetId}
+            onLoadScriptPreset={state.handleLoadScriptPreset}
+            onDeleteScriptPreset={state.handleDeleteScriptPreset}
+            showSaveScriptModal={state.showSaveScriptModal}
+            setShowSaveScriptModal={state.setShowSaveScriptModal}
+            newScriptPresetName={state.newScriptPresetName}
+            setNewScriptPresetName={state.setNewScriptPresetName}
+            onSaveScriptPreset={state.handleSaveScriptPreset}
+          />
+
+          {/* Right Column: Stats (Top) & Continuity Bible (Bottom) (6 Cols) */}
+          <div className="lg:col-span-6 flex flex-col gap-5">
+            <VideoMetricsCard
+              durationMins={state.durationMins}
+              imagesPerSegment={state.imagesPerSegment}
+              wordCount={state.wordCount}
+              charCount={state.charCount}
+              resultDurationFormatted={state.resultDurationFormatted}
+              hasSegments={state.segments.length > 0}
+              hasCopiedNarration={state.hasCopiedNarration}
+              onCopyAllNarration={state.handleCopyAllNarration}
+              onOpenNarrationAnalysis={state.handleOpenNarrationAnalysis}
+              itemsCount={state.items.length}
+            />
+
+            <ContinuityBibleCard
+              charactersList={state.charactersList}
+              setCharactersList={state.setCharactersList}
+              locationsList={state.locationsList}
+              setLocationsList={state.setLocationsList}
+              worldSetting={state.worldSetting}
+              setWorldSetting={state.setWorldSetting}
+              editingBible={state.editingBible}
+              setEditingBible={state.setEditingBible}
+              bibleTab={state.bibleTab}
+              setBibleTab={state.setBibleTab}
+              isExtracting={state.extractBibleMutation.isPending}
+              onExtractBible={() => state.extractBibleMutation.mutate({})}
+              isUpdating={state.updateBibleMutation.isPending}
+              onSaveBible={() => state.updateBibleMutation.mutate()}
+              onCancelBible={state.handleCancelBible}
+              onAddCharacter={state.handleAddCharacter}
+              onDeleteCharacter={state.handleDeleteCharacter}
+              onAddVariant={state.handleAddVariant}
+              onDeleteVariant={state.handleDeleteVariant}
+              onAddLocation={state.handleAddLocation}
+              onDeleteLocation={state.handleDeleteLocation}
+            />
+          </div>
+        </div>
+
+        {/* Bottom Section: Full-Width Daftar Babak & Segmen Naskah */}
+        <SegmentsList
+          segments={state.segments}
+          items={state.items}
+          language={project.narration?.language || state.language}
+          hasCopiedNarration={state.hasCopiedNarration}
+          copiedSegmentId={state.copiedSegmentId}
+          onCopyAllNarration={state.handleCopyAllNarration}
+          onCopySegment={state.handleCopySegment}
+          onNextStep={() => state.setActiveTab("storyboard_voice")}
+          editingSegmentId={state.editingSegmentId}
+          editingSegmentIndex={state.editingSegmentIndex}
+          editChapter={state.editChapter}
+          setEditChapter={state.setEditChapter}
+          editText={state.editText}
+          setEditText={state.setEditText}
+          editItemPrompts={state.editItemPrompts}
+          setEditItemPrompts={state.setEditItemPrompts}
+          onStartEditSegment={state.handleStartEditSegment}
+          onCancelEditSegment={state.handleCancelEditSegment}
+          onSaveEditSegment={state.handleSaveEditSegment}
+          isUpdatingSegment={state.updateSegmentMutation.isPending}
         />
 
-        {/* Right Column: Stats (Top) & Continuity Bible (Bottom) (6 Cols) */}
-        <div className="lg:col-span-6 flex flex-col gap-5">
-          <VideoMetricsCard
-            durationMins={state.durationMins}
-            imagesPerSegment={state.imagesPerSegment}
-            wordCount={state.wordCount}
-            charCount={state.charCount}
-            resultDurationFormatted={state.resultDurationFormatted}
-            hasSegments={state.segments.length > 0}
-            hasCopiedNarration={state.hasCopiedNarration}
-            onCopyAllNarration={state.handleCopyAllNarration}
-            onOpenNarrationAnalysis={state.handleOpenNarrationAnalysis}
-            itemsCount={state.items.length}
-          />
-
-          <ContinuityBibleCard
-            charactersList={state.charactersList}
-            setCharactersList={state.setCharactersList}
-            locationsList={state.locationsList}
-            setLocationsList={state.setLocationsList}
-            worldSetting={state.worldSetting}
-            setWorldSetting={state.setWorldSetting}
-            editingBible={state.editingBible}
-            setEditingBible={state.setEditingBible}
-            bibleTab={state.bibleTab}
-            setBibleTab={state.setBibleTab}
-            isExtracting={state.extractBibleMutation.isPending}
-            onExtractBible={() => state.extractBibleMutation.mutate({})}
-            isUpdating={state.updateBibleMutation.isPending}
-            onSaveBible={() => state.updateBibleMutation.mutate()}
-            onCancelBible={state.handleCancelBible}
-            onAddCharacter={state.handleAddCharacter}
-            onDeleteCharacter={state.handleDeleteCharacter}
-            onAddVariant={state.handleAddVariant}
-            onDeleteVariant={state.handleDeleteVariant}
-            onAddLocation={state.handleAddLocation}
-            onDeleteLocation={state.handleDeleteLocation}
-          />
-        </div>
-      </div>
-
-      {/* Bottom Section: Full-Width Daftar Babak & Segmen Naskah */}
-      <SegmentsList
-        segments={state.segments}
-        items={state.items}
-        language={project.narration?.language || state.language}
-        hasCopiedNarration={state.hasCopiedNarration}
-        copiedSegmentId={state.copiedSegmentId}
-        onCopyAllNarration={state.handleCopyAllNarration}
-        onCopySegment={state.handleCopySegment}
-        onNextStep={() => state.setActiveTab("storyboard_voice")}
-        editingSegmentId={state.editingSegmentId}
-        editingSegmentIndex={state.editingSegmentIndex}
-        editChapter={state.editChapter}
-        setEditChapter={state.setEditChapter}
-        editText={state.editText}
-        setEditText={state.setEditText}
-        editItemPrompts={state.editItemPrompts}
-        setEditItemPrompts={state.setEditItemPrompts}
-        onStartEditSegment={state.handleStartEditSegment}
-        onCancelEditSegment={state.handleCancelEditSegment}
-        onSaveEditSegment={state.handleSaveEditSegment}
-        isUpdatingSegment={state.updateSegmentMutation.isPending}
-      />
-
-      {/* Modal Analisis Skor Narasi YouTube */}
-      <NarrationAnalysisModal
-        isOpen={state.showNarrationAnalysisModal}
-        onClose={() => state.setShowNarrationAnalysisModal(false)}
-        analysisData={state.analysisData}
-        isLoading={state.analyzeNarrationMutation.isPending}
-        isApplying={state.applyImprovementsMutation.isPending}
-        onAnalyze={(focusAspect, customInstructions) =>
-          state.analyzeNarrationMutation.mutate({ focusAspect, customInstructions })
-        }
-        onApplyImprovements={(selectedSegments, updateVisualPrompts) =>
-          state.applyImprovementsMutation.mutate({
-            segments: selectedSegments,
-            updateVisualPrompts,
-          })
-        }
-      />
+        {/* Modal Analisis Skor Narasi YouTube */}
+        <NarrationAnalysisModal
+          isOpen={state.showNarrationAnalysisModal}
+          onClose={() => state.setShowNarrationAnalysisModal(false)}
+          analysisData={state.analysisData}
+          isLoading={state.analyzeNarrationMutation.isPending}
+          isApplying={state.applyImprovementsMutation.isPending}
+          onAnalyze={(focusAspect, customInstructions) =>
+            state.analyzeNarrationMutation.mutate({ focusAspect, customInstructions })
+          }
+          onApplyImprovements={(selectedSegments, updateVisualPrompts) =>
+            state.applyImprovementsMutation.mutate({
+              segments: selectedSegments,
+              updateVisualPrompts,
+            })
+          }
+        />
       </div>
     </div>
   );

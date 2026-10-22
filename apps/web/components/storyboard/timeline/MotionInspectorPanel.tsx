@@ -19,10 +19,10 @@ export function MotionInspectorPanel({
 }: MotionInspectorPanelProps) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between pb-2 border-b border-[#2A2A2A]">
-        <span className="text-xs font-semibold text-white">Adegan Saat Ini</span>
+      <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
+        <span className="text-xs font-semibold text-[#26251F]">Adegan Saat Ini</span>
         {activeItem && (
-          <span className="text-[11px] font-mono text-slate-400">
+          <span className="font-mono text-[11px] text-[#77766D]">
             Detik {activeItem.start_time}s – {activeItem.end_time}s
           </span>
         )}
@@ -31,25 +31,25 @@ export function MotionInspectorPanel({
       {activeItem ? (
         <div className="space-y-4">
           <div>
-            <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+            <span className="mb-1 block font-mono text-[10px] uppercase text-[#77766D]">
               Naskah Narasi Suara:
             </span>
-            <p className="text-xs text-slate-200 bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
+            <p className="rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 text-xs leading-relaxed text-[#4D4A42]">
               &ldquo;{activeItem.script_text}&rdquo;
             </p>
           </div>
 
           <div>
-            <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+            <span className="mb-1 block font-mono text-[10px] uppercase text-[#77766D]">
               Prompt Gambar Ilustrasi:
             </span>
-            <p className="text-xs text-slate-300 font-mono bg-black/40 p-3 rounded-xl border border-[#262626] leading-relaxed">
+            <p className="rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 font-mono text-xs leading-relaxed text-[#4D4A42]">
               {activeItem.image_prompt}
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="mb-1.5 block text-xs font-semibold text-[#4D4A42]">
               Efek Gerakan Ken Burns:
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -74,7 +74,7 @@ export function MotionInspectorPanel({
                   className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
                     activeItem.motion_effect === m.id
                       ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                      : "bg-[#FBFAF7] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                   }`}
                 >
                   {m.label}
@@ -84,7 +84,7 @@ export function MotionInspectorPanel({
           </div>
         </div>
       ) : (
-        <div className="p-8 text-center text-slate-500 text-xs">
+        <div className="p-8 text-center text-xs text-[#77766D]">
           Pilih titik timeline untuk melihat detail adegan.
         </div>
       )}

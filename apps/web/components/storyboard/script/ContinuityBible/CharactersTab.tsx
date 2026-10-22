@@ -26,11 +26,11 @@ export function CharactersTab({
   if (!charactersList || charactersList.length === 0) {
     return (
       <div className="flex flex-col space-y-3 mt-3.5">
-        <div className="rounded-xl border border-dashed border-[#2E2E2E] bg-black/20 p-5 text-center space-y-2">
+        <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
           <p className="text-xs text-slate-400">Belum ada profil karakter terkunci.</p>
           <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-            Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah,
-            atau Anda dapat menambahkannya manual sekarang.
+            Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda
+            dapat menambahkannya manual sekarang.
           </p>
           <button
             type="button"
@@ -52,8 +52,9 @@ export function CharactersTab({
         <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
         <div className="space-y-0.5 text-[11px] text-violet-200/90 leading-relaxed">
           <span className="font-semibold text-violet-300">Tips Kontinuitas Tokoh Interaksi:</span>{" "}
-          Jika tokoh utama berinteraksi dengan orang lain (seperti pedagang pasar, guru, atau pengawal),
-          pastikan tokoh tersebut didaftarkan juga di sini agar wujud wajah, busana, dan kiosnya konsisten antar adegan.
+          Jika tokoh utama berinteraksi dengan orang lain (seperti pedagang pasar, guru, atau
+          pengawal), pastikan tokoh tersebut didaftarkan juga di sini agar wujud wajah, busana, dan
+          kiosnya konsisten antar adegan.
         </div>
       </div>
 
@@ -62,7 +63,7 @@ export function CharactersTab({
           {charactersList.map((char, cIdx) => (
             <div
               key={cIdx}
-              className="p-3.5 rounded-xl bg-[#121212] border border-[#262626] hover:border-violet-500/40 transition space-y-2.5"
+              className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5 transition hover:border-[#C45B3A]"
             >
               {editingBible ? (
                 <div className="space-y-2.5">
@@ -76,7 +77,7 @@ export function CharactersTab({
                         updated[cIdx] = { ...char, name: e.target.value };
                         setCharactersList(updated);
                       }}
-                      className="flex-1 px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-white text-xs font-semibold focus:outline-none focus:border-violet-500"
+                      className="flex-1 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 text-xs font-semibold text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                     />
                     <input
                       type="text"
@@ -87,7 +88,7 @@ export function CharactersTab({
                         updated[cIdx] = { ...char, id: e.target.value };
                         setCharactersList(updated);
                       }}
-                      className="w-28 px-2 py-1.5 bg-[#181818] rounded border border-[#333] text-violet-300 font-mono text-[11px] focus:outline-none focus:border-violet-500"
+                      className="w-28 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                     />
                     <button
                       type="button"
@@ -108,7 +109,7 @@ export function CharactersTab({
                       updated[cIdx] = { ...char, role: e.target.value };
                       setCharactersList(updated);
                     }}
-                    className="w-full px-2.5 py-1 bg-[#181818] rounded border border-[#333] text-slate-300 text-[11px] focus:outline-none focus:border-violet-500"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-[11px] text-[#4D4A42] focus:border-[#C45B3A] focus:outline-none"
                   />
 
                   <textarea
@@ -120,11 +121,11 @@ export function CharactersTab({
                       setCharactersList(updated);
                     }}
                     rows={2}
-                    className="w-full px-2.5 py-1.5 bg-[#181818] rounded border border-[#333] text-slate-200 text-[11px] font-mono focus:outline-none focus:border-violet-500 leading-relaxed"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                   />
 
                   {/* Variants Sub-list */}
-                  <div className="pt-2 border-t border-[#222] space-y-2">
+                  <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider">
                         Varian Bentuk / Usia:
@@ -144,7 +145,7 @@ export function CharactersTab({
                         {char.variants.map((v, vIdx) => (
                           <div
                             key={vIdx}
-                            className="p-2 rounded-lg bg-[#0e0e0e] border border-[#2a2a2a] space-y-1.5"
+                            className="space-y-1.5 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2"
                           >
                             <div className="flex items-center gap-1.5">
                               <input
@@ -158,7 +159,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="flex-1 px-2 py-1 bg-[#161616] rounded border border-[#333] text-white text-[11px] focus:outline-none"
+                                className="flex-1 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 text-[11px] text-[#26251F] focus:outline-none"
                               />
                               <input
                                 type="text"
@@ -203,9 +204,8 @@ export function CharactersTab({
                       </div>
                     ) : (
                       <p className="text-[10px] text-slate-500 italic">
-                        Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot;
-                        untuk menambahkan versi muda, dewasa, atau bentuk perubahan
-                        wujud.
+                        Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot; untuk
+                        menambahkan versi muda, dewasa, atau bentuk perubahan wujud.
                       </p>
                     )}
                   </div>
@@ -250,8 +250,8 @@ export function CharactersTab({
                               </span>
                               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
                                 [char:
-                                {char.id || char.name.toLowerCase().replace(/\s+/g, "")}
-                                :{v.variant_id}]
+                                {char.id || char.name.toLowerCase().replace(/\s+/g, "")}:
+                                {v.variant_id}]
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-300 font-mono leading-relaxed">

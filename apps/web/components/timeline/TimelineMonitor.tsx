@@ -2,7 +2,14 @@
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Film } from "lucide-react";
-import { SentenceSegment, TimelineClip, SubtitleStyle, WatermarkConfig, JassubInstance, BackgroundFill } from "@/types";
+import {
+  SentenceSegment,
+  TimelineClip,
+  SubtitleStyle,
+  WatermarkConfig,
+  JassubInstance,
+  BackgroundFill,
+} from "@/types";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 import { generateAssSubtitles } from "@/lib/assGenerator";
 import {
@@ -924,8 +931,8 @@ export function TimelineMonitor({
 
           {/* Empty timeline state */}
           {clips.length === 0 && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-slate-500 text-xs text-center px-4">
-              <Film className="w-8 h-8 opacity-40 text-slate-400" />
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-white/70">
+              <Film className="h-8 w-8 text-white/60" />
               <span>Timeline kosong — seret scene dari Media Pool</span>
             </div>
           )}

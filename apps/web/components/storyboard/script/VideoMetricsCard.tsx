@@ -29,11 +29,11 @@ export function VideoMetricsCard({
   itemsCount,
 }: VideoMetricsCardProps) {
   return (
-    <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-5 shadow-xl space-y-3">
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#2A2A2A]">
+    <div className="space-y-3 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 shadow-sm">
+      <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2.5">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-violet-400" />
-          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-[#26251F]">
             Ringkasan Metrik Video
           </h4>
         </div>
@@ -53,7 +53,7 @@ export function VideoMetricsCard({
             <button
               type="button"
               onClick={onCopyAllNarration}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-[#222] hover:bg-[#2B2B2B] border border-[#333] transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] px-2.5 py-1 text-[11px] font-semibold text-[#4D4A42] transition hover:bg-[#F1EEE6] hover:text-[#26251F]"
               title="Salin seluruh teks narasi ke clipboard"
             >
               {hasCopiedNarration ? (
@@ -69,7 +69,7 @@ export function VideoMetricsCard({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-[#131313] border border-[#262626]">
+      <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5">
         {/* Metric 1: Durasi */}
         <div className="text-center">
           <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
@@ -86,11 +86,11 @@ export function VideoMetricsCard({
         </div>
 
         {/* Metric 2: Panjang Karakter & Kata */}
-        <div className="text-center border-x border-[#262626]">
+        <div className="border-x border-[#E5E1D7] text-center">
           <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
             Panjang Teks
           </span>
-          <div className="text-sm font-bold text-white mt-1 font-mono">
+          <div className="mt-1 font-mono text-sm font-bold text-[#26251F]">
             {charCount > 0 ? `${charCount.toLocaleString()} Karakter` : "0 Karakter"}
           </div>
           <span className="text-[10px] text-slate-500 font-mono block mt-0.5">

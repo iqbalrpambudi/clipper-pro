@@ -149,7 +149,7 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
     return (
       <div
         ref={containerRef}
-        className={`relative w-full aspect-video rounded-2xl overflow-hidden bg-[#0A0A0A] border border-[#2A2A2A] shadow-2xl select-none ${containerClassName}`}
+        className={`relative w-full aspect-video overflow-hidden rounded-2xl border border-[#E5E1D7] bg-[#FFFEFA] shadow-lg select-none ${containerClassName}`}
       >
         {/* Loading overlay for image */}
         {isImageLoading && (

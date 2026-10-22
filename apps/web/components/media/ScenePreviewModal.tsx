@@ -227,10 +227,10 @@ export function ScenePreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-4 backdrop-blur-xs">
+      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#2E2E2E] bg-[#141414]">
+        <div className="flex items-center justify-between border-b border-border bg-muted px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <span className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
               <Film className="w-4 h-4" />
@@ -241,7 +241,7 @@ export function ScenePreviewModal({
                   (sceneIndex !== undefined ? `Preview Scene #${sceneIndex + 1}` : "Preview Scene")}
                 <Badge
                   variant="outline"
-                  className="font-mono text-[10px] py-0 text-muted-foreground border-[#2E2E2E]"
+                  className="border-border py-0 font-mono text-[10px] text-muted-foreground"
                 >
                   {duration.toFixed(1)}s Snippet
                 </Badge>
@@ -296,14 +296,14 @@ export function ScenePreviewModal({
           {!isPlaying && !isLoading && (
             <button
               onClick={togglePlay}
-              className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-black/60 hover:bg-primary hover:text-black border border-white/20 text-white flex items-center justify-center transition shadow-2xl backdrop-blur-xs group"
+              className="group absolute inset-0 m-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-2xl backdrop-blur-xs transition hover:bg-primary hover:text-primary-foreground"
             >
               <Play className="w-6 h-6 ml-1 group-hover:scale-105 transition fill-current" />
             </button>
           )}
 
           {/* Snippet Badge */}
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-[#2E2E2E] text-[10px] font-mono text-foreground flex items-center gap-1.5">
+          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-md border border-white/20 bg-black/80 px-2.5 py-1 font-mono text-[10px] text-white backdrop-blur-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             <span>
               CLIP [{currentOffset.toFixed(1)}s / {duration.toFixed(1)}s]
@@ -319,7 +319,7 @@ export function ScenePreviewModal({
         </div>
 
         {/* Scrubber & Controls */}
-        <div className="p-4 bg-[#141414] space-y-3 border-t border-[#2E2E2E]">
+        <div className="space-y-3 border-t border-border bg-card p-4">
           {/* Progress Bar */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
@@ -333,7 +333,7 @@ export function ScenePreviewModal({
               step={0.05}
               value={currentOffset}
               onChange={handleSeek}
-              className="w-full h-1.5 bg-[#1E1E1E] rounded-lg cursor-pointer accent-primary"
+              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
             />
           </div>
 
@@ -341,7 +341,7 @@ export function ScenePreviewModal({
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <Button
-                variant="supabase"
+                variant="workspace-primary"
                 size="icon"
                 onClick={togglePlay}
                 className="w-8 h-8 rounded-lg shadow-sm"
@@ -423,7 +423,7 @@ export function ScenePreviewModal({
 
           {/* Description & Tags */}
           {(description || tags.length > 0) && (
-            <div className="pt-2 border-t border-[#2E2E2E] text-xs space-y-1.5">
+            <div className="space-y-1.5 border-t border-border pt-2 text-xs">
               {description && (
                 <p className="text-foreground text-xs leading-relaxed line-clamp-2">
                   <span className="text-muted-foreground font-semibold mr-1">Deskripsi AI:</span>
@@ -436,7 +436,7 @@ export function ScenePreviewModal({
                     <Badge
                       key={i}
                       variant="outline"
-                      className="text-[10px] py-0 text-muted-foreground border-[#2E2E2E]"
+                      className="border-border py-0 text-[10px] text-muted-foreground"
                     >
                       #{tag}
                     </Badge>

@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Palette,
-  FileCode,
-  Bookmark,
-} from "lucide-react";
+import { Palette, FileCode, Bookmark } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, SubtitleStyle, SubtitlePreset, Narration, AudioTrack } from "@/types";
@@ -207,10 +203,7 @@ export function SubtitleCustomizePanel({
       setAssContent(res.ass_content);
       setIsAssModalOpen(true);
     } catch (err: unknown) {
-      showToast(
-        err instanceof Error ? err.message : "Gagal menghasilkan preview ASS",
-        "error"
-      );
+      showToast(err instanceof Error ? err.message : "Gagal menghasilkan preview ASS", "error");
     }
   };
 
@@ -223,7 +216,7 @@ export function SubtitleCustomizePanel({
           <span className="font-bold text-xs text-foreground uppercase tracking-wider">
             Pengaturan Gaya Subtitle
           </span>
-          <Badge variant="supabase" className="text-[10px] px-2 py-0 font-mono capitalize">
+          <Badge variant="workspace-success" className="px-2 py-0 font-mono text-[10px] capitalize">
             {style.preset_name ? style.preset_name.replace(/_/g, " ") : "Custom"}
           </Badge>
         </div>
@@ -235,7 +228,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "ass")}
               download
-              className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-primary hover:text-white bg-primary/10 hover:bg-primary/20 transition"
+              className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary transition hover:bg-primary/20"
               title="Download File .ASS (Full styling & effects)"
             >
               .ASS
@@ -243,7 +236,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "srt")}
               download
-              className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition"
+              className="rounded px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Download File .SRT"
             >
               .SRT
@@ -251,7 +244,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "vtt")}
               download
-              className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition"
+              className="rounded px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Download File .VTT"
             >
               .VTT
@@ -284,7 +277,7 @@ export function SubtitleCustomizePanel({
 
           <Button
             type="button"
-            variant="supabase"
+            variant="workspace-primary"
             size="sm"
             onClick={() => commitStyle(style, true)}
             disabled={updateStyleMutation.isPending}
@@ -323,10 +316,7 @@ export function SubtitleCustomizePanel({
           />
 
           {/* KOLOM 2: TIPOGRAFI, DISPLAY MODE & ANIMASI HIGHLIGHT */}
-          <SubtitleTypographyColumn
-            style={style}
-            onCommitStyle={commitStyle}
-          />
+          <SubtitleTypographyColumn style={style} onCommitStyle={commitStyle} />
 
           {/* KOLOM 3: PALET WARNA, OUTLINE, BOX, & POSISI LAYAR */}
           <SubtitleColorsPositionColumn

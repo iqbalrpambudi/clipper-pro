@@ -98,7 +98,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
   } = useTimelineState(project);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-130px)] min-h-[640px] max-h-[calc(100vh-120px)] w-full border border-[#2E2E2E] bg-[#121212] overflow-hidden shadow-xl">
+    <div className="flex h-[calc(100vh-130px)] max-h-[calc(100vh-120px)] min-h-[640px] w-full flex-col overflow-hidden border border-surface-border bg-surface-secondary shadow-md">
       {/* Top Header Bar */}
       <TimelineHeader
         clipsCount={clips.length}
@@ -174,10 +174,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
             {/* Resizer Handle: Tracks Height */}
             <div
               onMouseDown={() => setIsResizingTracks(true)}
-              className="h-1.5 shrink-0 bg-transparent hover:bg-brand-500/50 active:bg-brand-500 cursor-row-resize transition flex items-center justify-center group z-10 select-none"
+              className="group z-10 flex h-1.5 shrink-0 cursor-row-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
               title="Drag to resize tracks"
             >
-              <div className="h-[1px] w-12 bg-surface-border group-hover:bg-brand-400" />
+              <div className="h-[1px] w-12 bg-surface-border group-hover:bg-primary" />
             </div>
 
             {/* Lower row: Multi-Track Timeline */}
@@ -216,16 +216,16 @@ export function TimelineTab({ project }: TimelineTabProps) {
           {/* Resizer Handle: Vertical Preview Column Width */}
           <div
             onMouseDown={() => setIsResizingVerticalPreview(true)}
-            className="w-1.5 shrink-0 bg-transparent hover:bg-brand-500/50 active:bg-brand-500 cursor-col-resize transition flex items-center justify-center group z-10 select-none"
+            className="group z-10 flex w-1.5 shrink-0 cursor-col-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
             title="Drag to resize preview monitor"
           >
-            <div className="w-[1px] h-12 bg-surface-border group-hover:bg-brand-400" />
+            <div className="w-[1px] h-12 bg-surface-border group-hover:bg-primary" />
           </div>
 
           {/* Right Column: Full-Height Vertical Program Monitor */}
           <div
             style={{ width: verticalPreviewWidth }}
-            className="shrink-0 flex flex-col p-2 bg-black/40 border-l border-surface-border/70 overflow-hidden"
+            className="shrink-0 flex flex-col p-2 bg-surface-secondary border-l border-surface-border/70 overflow-hidden"
           >
             <TimelineMonitor
               clips={clips}
@@ -307,15 +307,15 @@ export function TimelineTab({ project }: TimelineTabProps) {
             {!isDrawerCollapsed && (
               <div
                 onMouseDown={() => setIsResizingDrawer(true)}
-                className="w-1.5 shrink-0 bg-transparent hover:bg-brand-500/50 active:bg-brand-500 cursor-col-resize transition flex items-center justify-center group z-10 select-none"
+                className="group z-10 flex w-1.5 shrink-0 cursor-col-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
                 title="Drag to resize panel"
               >
-                <div className="w-[1px] h-8 bg-surface-border group-hover:bg-brand-400" />
+                <div className="w-[1px] h-8 bg-surface-border group-hover:bg-primary" />
               </div>
             )}
 
             {/* Right Main Area: Program Monitor */}
-            <div className="flex-1 min-h-0 flex flex-col p-2 bg-black/40 overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col p-2 bg-surface-secondary overflow-hidden">
               <TimelineMonitor
                 clips={clips}
                 audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
@@ -353,10 +353,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
           {/* Resizer Handle: Tracks Height */}
           <div
             onMouseDown={() => setIsResizingTracks(true)}
-            className="h-1.5 shrink-0 bg-transparent hover:bg-brand-500/50 active:bg-brand-500 cursor-row-resize transition flex items-center justify-center group z-10 select-none"
+            className="group z-10 flex h-1.5 shrink-0 cursor-row-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
             title="Drag to resize tracks"
           >
-            <div className="h-[1px] w-12 bg-surface-border group-hover:bg-brand-400" />
+            <div className="h-[1px] w-12 bg-surface-border group-hover:bg-primary" />
           </div>
 
           {/* Lower Section: Full-Width Multi-Track Timeline */}

@@ -46,13 +46,12 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
   ).length;
 
   if (!currentTask) {
-    // If no task for this project, but another project is working, show a subtle unobtrusive Supabase pill
     if (otherProjectsCount > 0) {
       return (
-        <div className="fixed bottom-5 right-5 z-50 animate-scale-pop pointer-events-auto">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2E2E2E] bg-[#181818]/95 backdrop-blur-md shadow-lg text-xs text-muted-foreground font-mono">
-            <span className="w-2 h-2 rounded-full bg-[#3ECF8E] animate-pulse" />
-            <span className="text-foreground text-[11px] font-sans font-medium">
+        <div className="fixed bottom-5 left-3 right-3 z-50 animate-scale-pop pointer-events-auto sm:left-auto sm:right-5">
+          <div className="flex items-center gap-2 rounded-full border border-[#E5E1D7] bg-[#FBFAF7]/95 px-3 py-1.5 font-mono text-xs text-[#77766D] shadow-lg backdrop-blur-md">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#76816B]" />
+            <span className="font-sans text-[11px] font-medium text-[#26251F]">
               {otherProjectsCount} worker aktif di project lain
             </span>
           </div>
@@ -70,8 +69,10 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
     if (!currentTask || isCancelling) return;
     setIsCancelling(true);
     try {
-      const vidId = typeof currentTask.data?.video_id === "string" ? currentTask.data.video_id : undefined;
-      const jobId = typeof currentTask.data?.job_id === "string" ? currentTask.data.job_id : undefined;
+      const vidId =
+        typeof currentTask.data?.video_id === "string" ? currentTask.data.video_id : undefined;
+      const jobId =
+        typeof currentTask.data?.job_id === "string" ? currentTask.data.job_id : undefined;
       if (currentTask.task_type === "youtube_download" && vidId) {
         await api.cancelMedia(currentTask.project_id, vidId);
       } else if (currentTask.task_type === "render" && jobId) {
@@ -94,43 +95,43 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         return {
           label: "Download YouTube",
           icon: Youtube,
-          badgeColor: "text-rose-400 border-rose-500/30 bg-rose-500/10",
+          badgeColor: "text-rose-700 border-rose-200 bg-rose-50",
         };
       case "scene_detect":
         return {
           label: "Deteksi Visual AI",
           icon: Film,
-          badgeColor: "text-[#3ECF8E] border-[#3ECF8E]/30 bg-[#3ECF8E]/10",
+          badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
         };
       case "scene_retag":
         return {
           label: "Tagging Visual AI",
           icon: Sparkles,
-          badgeColor: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+          badgeColor: "text-amber-800 border-amber-200 bg-amber-50",
         };
       case "scene_transcribe":
         return {
           label: "Transkripsi Dialog",
           icon: Mic,
-          badgeColor: "text-sky-400 border-sky-500/30 bg-sky-500/10",
+          badgeColor: "text-sky-800 border-sky-200 bg-sky-50",
         };
       case "tts_align":
         return {
           label: "Suara & Alignment",
           icon: Volume2,
-          badgeColor: "text-purple-400 border-purple-500/30 bg-purple-500/10",
+          badgeColor: "text-violet-800 border-violet-200 bg-violet-50",
         };
       case "render":
         return {
           label: "Render Video FFmpeg",
           icon: Download,
-          badgeColor: "text-[#3ECF8E] border-[#3ECF8E]/30 bg-[#3ECF8E]/10",
+          badgeColor: "text-[#456A4E] border-[#C9DDCF] bg-[#ECF3EB]",
         };
       default:
         return {
           label: "Worker Task",
           icon: Sparkles,
-          badgeColor: "text-[#3ECF8E] border-[#3ECF8E]/30 bg-[#3ECF8E]/10",
+          badgeColor: "text-[#456A4E] border-[#C9DDCF] bg-[#ECF3EB]",
         };
     }
   };
@@ -138,25 +139,25 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
   const meta = getTaskMeta(currentTask.task_type);
   const IconComponent = meta.icon;
 
-  // Minimized Compact Pill Mode (Supabase Status Pill)
   if (isMinimized) {
     return (
-      <div className="fixed bottom-5 right-5 z-50 animate-scale-pop pointer-events-auto flex items-center gap-1.5">
+      <div className="fixed bottom-5 left-3 right-3 z-50 flex items-center justify-end gap-1.5 animate-scale-pop pointer-events-auto sm:left-auto sm:right-5">
         <button
           type="button"
           onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-[#2E2E2E] hover:border-[#3ECF8E]/40 bg-[#1C1C1C]/95 backdrop-blur-md shadow-xl transition-all hover:scale-[1.02] text-xs"
+          className="flex items-center gap-2.5 rounded-full border border-[#E5E1D7] bg-[#FBFAF7]/95 px-3 py-1.5 text-xs shadow-xl backdrop-blur-md transition-all hover:scale-[1.02] hover:border-[#C45B3A]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A]"
           title="Klik untuk membuka detail task"
+          aria-label={`Buka detail ${meta.label}, progres ${currentTask.progress}%`}
         >
           {isError ? (
-            <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-700" />
           ) : isSuccess ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#3ECF8E] shrink-0" />
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#456A4E]" />
           ) : (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#3ECF8E] shrink-0" />
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#A9472C]" />
           )}
-          <span className="font-medium text-foreground tracking-tight">{meta.label}</span>
-          <span className="font-mono font-bold text-[#3ECF8E] text-[11px]">
+          <span className="font-medium tracking-tight text-[#26251F]">{meta.label}</span>
+          <span className="font-mono text-[11px] font-bold text-[#A9472C]">
             {currentTask.progress}%
           </span>
         </button>
@@ -166,8 +167,9 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             type="button"
             onClick={handleCancel}
             disabled={isCancelling}
-            className="flex items-center justify-center w-7 h-7 rounded-full border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition shadow-lg hover:scale-105 disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 shadow-lg transition hover:scale-105 hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50"
             title="Batalkan proses worker"
+            aria-label="Batalkan proses worker"
           >
             {isCancelling ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -180,56 +182,54 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
     );
   }
 
-  // Expanded Floating Card (Authentic Supabase Studio Design)
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-full max-w-xs sm:max-w-md animate-scale-pop pointer-events-auto">
+    <div className="fixed bottom-5 left-3 right-3 z-50 mx-auto w-auto animate-scale-pop pointer-events-auto sm:left-auto sm:right-5 sm:mx-0 sm:w-full sm:max-w-xs md:max-w-md">
       <div
         className={`relative overflow-hidden rounded-xl border p-3.5 shadow-2xl backdrop-blur-md transition-all duration-300 ${
           isError
-            ? "bg-[#181315] border-rose-500/30 shadow-rose-950/20"
+            ? "border-rose-200 bg-rose-50 shadow-rose-950/10"
             : isSuccess
-              ? "bg-[#121915] border-[#3ECF8E]/30 shadow-emerald-950/20"
-              : "bg-[#1C1C1C]/95 border-[#2E2E2E] shadow-black/40"
+              ? "border-[#C9DDCF] bg-[#ECF3EB] shadow-emerald-950/10"
+              : "border-[#E5E1D7] bg-[#FBFAF7]/95 shadow-black/10"
         }`}
       >
         {/* Header Row */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            {/* Supabase Styled Status Icon Box */}
             <div
-              className={`w-7 h-7 rounded-md flex items-center justify-center border shrink-0 ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
                 isError
-                  ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                  ? "border-rose-200 bg-rose-100 text-rose-700"
                   : isSuccess
-                    ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/30 text-[#3ECF8E]"
-                    : "bg-[#242424] border-[#2E2E2E] text-[#3ECF8E]"
+                    ? "border-[#C9DDCF] bg-white text-[#456A4E]"
+                    : "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
               }`}
             >
               {isError ? (
-                <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                <AlertCircle className="h-4 w-4 text-rose-700" />
               ) : isSuccess ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#3ECF8E]" />
+                <CheckCircle2 className="h-4 w-4 text-[#456A4E]" />
               ) : (
-                <IconComponent className="w-3.5 h-3.5 animate-pulse text-[#3ECF8E]" />
+                <IconComponent className="h-4 w-4 animate-pulse text-[#A9472C]" />
               )}
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`text-[9px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded border font-semibold ${meta.badgeColor}`}
+                  className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${meta.badgeColor}`}
                 >
                   {meta.label}
                 </span>
 
                 {isActive && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[#3ECF8E]">
-                    <Loader2 className="w-2.5 h-2.5 animate-spin text-[#3ECF8E]" />
+                  <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[#A9472C]">
+                    <Loader2 className="h-3 w-3 animate-spin text-[#A9472C]" />
                     <span>{currentTask.progress}%</span>
                   </span>
                 )}
                 {isSuccess && (
-                  <Badge variant="supabase" className="text-[9px] py-0 px-1.5">
+                  <Badge variant="workspace-success" className="px-1.5 py-0 text-[9px]">
                     Selesai
                   </Badge>
                 )}
@@ -242,7 +242,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
               {/* Message text */}
               <p
-                className="text-xs text-foreground/90 font-medium truncate mt-0.5"
+                className="mt-0.5 truncate text-xs font-medium text-[#26251F]"
                 title={currentTask.message || ""}
               >
                 {currentTask.message || "Memproses background task..."}
@@ -250,15 +250,15 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             </div>
           </div>
 
-          {/* Action Buttons in Supabase Style */}
           <div className="flex items-center gap-1 shrink-0">
             {isActive && (
               <button
                 type="button"
                 onClick={handleCancel}
                 disabled={isCancelling}
-                className="h-6 px-2 text-[10px] font-medium rounded border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[10px] font-medium text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50"
                 title="Batalkan proses worker ini"
+                aria-label="Batalkan proses worker ini"
               >
                 {isCancelling ? (
                   <Loader2 className="w-2.5 h-2.5 animate-spin" />
@@ -273,7 +273,8 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
               <button
                 type="button"
                 onClick={() => setShowDetails(!showDetails)}
-                className="h-6 px-2 text-[10px] font-medium rounded border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 flex items-center gap-1 transition-colors"
+                className="flex h-8 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[10px] font-medium text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                aria-label={showDetails ? "Sembunyikan detail error" : "Lihat detail error"}
               >
                 <span>Detail</span>
                 {showDetails ? (
@@ -287,8 +288,9 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             <button
               type="button"
               onClick={() => setIsMinimized(true)}
-              className="h-6 w-6 rounded text-muted-foreground hover:text-white hover:bg-[#2A2A2A] transition-colors flex items-center justify-center cursor-pointer"
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[#77766D] transition-colors hover:bg-[#F1EEE6] hover:text-[#26251F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A]"
               title="Kecilkan Notifikasi"
+              aria-label="Kecilkan notifikasi"
             >
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
@@ -302,29 +304,29 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                   setActiveTask(null, targetProjectId || undefined);
                 }
               }}
-              className="h-6 w-6 rounded text-muted-foreground hover:text-white hover:bg-[#2A2A2A] transition-colors flex items-center justify-center cursor-pointer"
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[#77766D] transition-colors hover:bg-[#F1EEE6] hover:text-[#26251F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A]"
               title={isActive ? "Batalkan dan Tutup" : "Tutup Notifikasi"}
+              aria-label={isActive ? "Batalkan dan tutup notifikasi" : "Tutup notifikasi"}
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Supabase Crisp Progress Bar */}
         {!isError && (
           <div className="mt-2.5">
-            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-1">
+            <div className="mb-1 flex items-center justify-between font-mono text-[10px] text-[#77766D]">
               <span className="truncate max-w-[240px]">
                 Tahap:{" "}
-                <span className="text-foreground font-sans font-medium">
+                <span className="font-sans font-medium text-[#26251F]">
                   {currentTask.stage || "processing"}
                 </span>
               </span>
-              <span className="font-bold text-[#3ECF8E]">{currentTask.progress}%</span>
+              <span className="font-bold text-[#A9472C]">{currentTask.progress}%</span>
             </div>
-            <div className="w-full bg-[#242424] rounded-full h-1.5 overflow-hidden border border-[#2E2E2E]/60">
+            <div className="h-1.5 w-full overflow-hidden rounded-full border border-[#E5E1D7] bg-[#F1EEE6]">
               <div
-                className={`h-full bg-[#3ECF8E] rounded-full transition-all duration-300 ease-out ${
+                className={`h-full rounded-full bg-[#C45B3A] transition-all duration-300 ease-out ${
                   currentTask.status === "progress" ? "opacity-95" : ""
                 }`}
                 style={{ width: `${Math.max(currentTask.progress, 3)}%` }}
@@ -335,12 +337,12 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
         {/* Expandable Error Details Box */}
         {showDetails && currentTask.error && (
-          <div className="mt-2.5 p-2.5 rounded-lg bg-[#141414] border border-rose-500/30 text-rose-300 text-xs font-mono space-y-1 overflow-x-auto max-h-36">
-            <div className="font-semibold flex items-center gap-1.5 text-rose-400 text-[10px] uppercase tracking-wider">
+          <div className="mt-2.5 max-h-36 space-y-1 overflow-x-auto rounded-lg border border-rose-200 bg-white/70 p-2.5 font-mono text-xs text-rose-800">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-rose-700">
               <AlertCircle className="w-3 h-3 shrink-0" />
               <span>Detail Kesalahan dari Worker:</span>
             </div>
-            <p className="whitespace-pre-wrap break-all text-[11px] leading-relaxed text-rose-200">
+            <p className="whitespace-pre-wrap break-all text-[11px] leading-relaxed">
               {currentTask.error}
             </p>
           </div>
@@ -348,12 +350,12 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
         {/* Other Projects Running Indicator */}
         {otherProjectsCount > 0 && (
-          <div className="mt-2.5 pt-2 border-t border-[#262626] flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+          <div className="mt-2.5 flex items-center justify-between border-t border-[#E5E1D7] pt-2 font-mono text-[10px] text-[#77766D]">
             <span className="flex items-center gap-1.5">
-              <Layers className="w-3 h-3 text-[#3ECF8E]" />
+              <Layers className="h-3 w-3 text-[#76816B]" />
               <span>Project lain di background:</span>
             </span>
-            <span className="text-[#3ECF8E] font-semibold">{otherProjectsCount} job berjalan</span>
+            <span className="font-semibold text-[#456A4E]">{otherProjectsCount} job berjalan</span>
           </div>
         )}
       </div>

@@ -125,10 +125,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
         actions={
           <>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setActiveTab("storyboard_timeline")}
-              className="h-8 border-[#2E2E2E] text-xs"
+              variant="workspace-secondary"
+              className="h-9 text-xs"
             >
               Kembali ke Timeline Studio
             </Button>
@@ -136,7 +136,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             <Button
               size="sm"
               onClick={() => setActiveTab("storyboard_youtube")}
-              className="h-8 bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5 font-semibold shadow-md shadow-red-600/20"
+              variant="workspace-primary"
+              className="h-9 gap-1.5 text-xs"
             >
               <Youtube className="w-3.5 h-3.5 fill-current" />
               <span>Lanjut ke YouTube & Thumbnail</span>
@@ -146,374 +147,378 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
         }
       />
 
-      <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6 pb-16">
+      <div className="mx-auto w-full max-w-[1920px] space-y-6 px-4 py-5 pb-16 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Render Settings & CTA (5 Cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xl">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
-              <Download className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Pengaturan Render Final</h3>
-              <p className="text-[11px] text-muted-foreground">Format 16:9 Landscape Full HD</p>
-            </div>
-          </div>
-
-          {/* Video Specs Checklist */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-black/40 border border-[#262626] text-xs">
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Aspect Ratio:</span>
-              <span className="font-mono font-bold text-violet-400">16:9 (Landscape)</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Durasi Audio:</span>
-              <span className="font-mono font-bold text-white">
-                {audio?.duration ? `${Math.round(audio.duration)} detik` : "Belum ada audio"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Kesiapan Gambar:</span>
-              <span className="font-mono font-bold text-emerald-400">
-                {readyItemsCount} dari {items.length} Siap
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Efek Transisi:</span>
-              <span className="font-mono font-bold text-white">Ken Burns Zoom/Pan</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300 pt-1 border-t border-[#222222]">
-              <span>Status Subtitle:</span>
-              <span
-                className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}
-              >
-                {project.subtitle_style?.enabled !== false
-                  ? "Aktif (Burn-in)"
-                  : "Nonaktif (Tanpa Subtitle)"}
-              </span>
-            </div>
-          </div>
-
-          {/* Subtitle Option Toggle Checklist */}
-          <div className="p-3.5 rounded-xl bg-black/40 border border-[#262626] flex items-center justify-between text-xs">
-            <label
-              htmlFor="render-subtitles-toggle"
-              className="flex items-center gap-2.5 cursor-pointer select-none"
-            >
-              <input
-                id="render-subtitles-toggle"
-                type="checkbox"
-                checked={project.subtitle_style?.enabled !== false}
-                onChange={async (e) => {
-                  const checked = e.target.checked;
-                  await api.updateSubtitleStyle(project.id, {
-                    ...(project.subtitle_style || {}),
-                    enabled: checked,
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-                  showToast(
-                    checked
-                      ? "Subtitle diaktifkan untuk render."
-                      : "Subtitle dinonaktifkan (render tanpa subtitle).",
-                    "info"
-                  );
-                }}
-                className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
-              />
-              <span className="font-semibold text-white">Sertakan Subtitle pada Render Video</span>
-            </label>
-            <Badge
-              variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
-              className={`text-[10px] font-mono ${
-                project.subtitle_style?.enabled !== false
-                  ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
-                  : "bg-[#222222] text-slate-400 border border-[#333333]"
-              }`}
-            >
-              {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
-            </Badge>
-          </div>
-
-          {/* Resolution Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Resolusi Video
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: "1080p", label: "1080p (Full HD)", desc: "1920 × 1080 • Kualitas Terbaik" },
-                {
-                  id: "720p",
-                  label: "720p (HD)",
-                  desc: "1280 × 720 • Render Cepat (2.5x lebih cepat)",
-                },
-              ].map((res) => (
-                <button
-                  key={res.id}
-                  type="button"
-                  onClick={() => {
-                    setResolution(res.id);
-                    updateProjectMutation.mutate({ resolution: res.id });
-                  }}
-                  className={`p-3 rounded-xl border text-left transition ${
-                    resolution === res.id
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                      : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-bold">{res.label}</div>
-                  <div className="text-[10px] text-muted-foreground">{res.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Render CTA */}
-          <div className="space-y-3 pt-2">
-            <Button
-              onClick={() => renderFinalMutation.mutate()}
-              disabled={isRendering || renderFinalMutation.isPending || !audio}
-              className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xl shadow-violet-500/20 gap-2"
-            >
-              {isRendering || renderFinalMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Sedang Me-render Video Final 16:9 ({resolution})...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Render Video Storyboard 16:9 ({resolution.toUpperCase()})</span>
-                </>
-              )}
-            </Button>
-
-            {!audio && (
-              <p className="text-[11px] text-amber-400/90 text-center">
-                ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum
-                me-render.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Active Jobs & Render History (7 Cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Active Job Live Progress */}
-          {isRendering && (
-            <div className="p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                  <h4 className="text-xs font-bold text-white font-mono">
-                    Sedang Me-render Video Final (
-                    {activeTask?.task_type === "render" && activeTask.progress !== undefined
-                      ? activeTask.progress
-                      : activeRenderJob?.progress || 10}
-                    %)
-                  </h4>
-                </div>
-                {activeRenderJob && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => cancelJobMutation.mutate(activeRenderJob.id)}
-                    disabled={cancelJobMutation.isPending}
-                    className="text-rose-400 hover:text-rose-300 text-xs h-7 gap-1"
-                  >
-                    {cancelJobMutation.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <StopCircle className="w-3.5 h-3.5" />
-                    )}
-                    <span>Batalkan Render</span>
-                  </Button>
-                )}
+          {/* Left Column: Render Settings & CTA (5 Cols) */}
+          <div className="space-y-6 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6 shadow-sm lg:col-span-5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]">
+                <Download className="w-4 h-4" />
               </div>
-
-              {/* Progress bar */}
-              <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-300"
-                  style={{
-                    width: `${Math.max(
-                      5,
-                      activeTask?.task_type === "render" && activeTask.progress !== undefined
-                        ? activeTask.progress
-                        : activeRenderJob?.progress || 10
-                    )}%`,
-                  }}
-                />
+              <div>
+                <h3 className="text-sm font-semibold text-[#26251F]">Pengaturan Render Final</h3>
+                <p className="text-[11px] text-muted-foreground">Format 16:9 Landscape Full HD</p>
               </div>
-
-              <p className="text-xs text-muted-foreground font-mono">
-                {(activeTask?.task_type === "render" && activeTask.message) ||
-                  activeRenderJob?.log_output ||
-                  "FFmpeg sedang menggabungkan ilustrasi hand-drawn, audio, dan subtitle..."}
-              </p>
             </div>
-          )}
 
-          {/* Video Player for Selected Output */}
-          {activePlaybackUrl && (
-            <div className="rounded-2xl border border-[#2E2E2E] bg-black p-4 space-y-3 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white font-mono">
-                  Pemutar Hasil Render Final
+            {/* Video Specs Checklist */}
+            <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5 text-xs">
+              <div className="flex items-center justify-between text-[#4D4A42]">
+                <span>Aspect Ratio:</span>
+                <span className="font-mono font-bold text-violet-400">16:9 (Landscape)</span>
+              </div>
+              <div className="flex items-center justify-between text-[#4D4A42]">
+                <span>Durasi Audio:</span>
+                <span className="font-mono font-semibold text-[#26251F]">
+                  {audio?.duration ? `${Math.round(audio.duration)} detik` : "Belum ada audio"}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setActivePlaybackUrl(null)}
-                  className="text-xs text-slate-400 hover:text-white"
+              </div>
+              <div className="flex items-center justify-between text-[#4D4A42]">
+                <span>Kesiapan Gambar:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {readyItemsCount} dari {items.length} Siap
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[#4D4A42]">
+                <span>Efek Transisi:</span>
+                <span className="font-mono font-semibold text-[#26251F]">Ken Burns Zoom/Pan</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-1 text-[#4D4A42]">
+                <span>Status Subtitle:</span>
+                <span
+                  className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}
                 >
-                  Tutup
-                </button>
-              </div>
-              <video
-                src={activePlaybackUrl}
-                controls
-                autoPlay
-                className="w-full aspect-video rounded-xl bg-black"
-              />
-            </div>
-          )}
-
-          {/* Render History List */}
-          <div className="rounded-2xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#2E2E2E]">
-              <div className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-violet-400" />
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Riwayat File Render ({renderJobs.length})
-                </h4>
+                  {project.subtitle_style?.enabled !== false
+                    ? "Aktif (Burn-in)"
+                    : "Nonaktif (Tanpa Subtitle)"}
+                </span>
               </div>
             </div>
 
-            {renderJobs.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs">
-                Belum ada video yang dirender untuk project ini. Klik tombol render di samping untuk
-                memulai.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {renderJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="p-4 rounded-xl border border-[#2E2E2E] bg-[#141414] hover:border-violet-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            {/* Subtitle Option Toggle Checklist */}
+            <div className="flex items-center justify-between rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5 text-xs">
+              <label
+                htmlFor="render-subtitles-toggle"
+                className="flex items-center gap-2.5 cursor-pointer select-none"
+              >
+                <input
+                  id="render-subtitles-toggle"
+                  type="checkbox"
+                  checked={project.subtitle_style?.enabled !== false}
+                  onChange={async (e) => {
+                    const checked = e.target.checked;
+                    await api.updateSubtitleStyle(project.id, {
+                      ...(project.subtitle_style || {}),
+                      enabled: checked,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+                    showToast(
+                      checked
+                        ? "Subtitle diaktifkan untuk render."
+                        : "Subtitle dinonaktifkan (render tanpa subtitle).",
+                      "info"
+                    );
+                  }}
+                  className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                />
+                <span className="font-semibold text-[#26251F]">
+                  Sertakan Subtitle pada Render Video
+                </span>
+              </label>
+              <Badge
+                variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
+                className={`text-[10px] font-mono ${
+                  project.subtitle_style?.enabled !== false
+                    ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                    : "bg-[#222222] text-slate-400 border border-[#333333]"
+                }`}
+              >
+                {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
+              </Badge>
+            </div>
+
+            {/* Resolution Selector */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[#4D4A42]">
+                Resolusi Video
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "1080p", label: "1080p (Full HD)", desc: "1920 × 1080 • Kualitas Terbaik" },
+                  {
+                    id: "720p",
+                    label: "720p (HD)",
+                    desc: "1280 × 720 • Render Cepat (2.5x lebih cepat)",
+                  },
+                ].map((res) => (
+                  <button
+                    key={res.id}
+                    type="button"
+                    onClick={() => {
+                      setResolution(res.id);
+                      updateProjectMutation.mutate({ resolution: res.id });
+                    }}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      resolution === res.id
+                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      {job.status === "completed" ? (
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-                          <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                      ) : job.status === "rendering" || job.status === "queued" ? (
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 shrink-0">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
-                          <AlertCircle className="w-5 h-5" />
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white">
-                            Video Storyboard 16:9
-                          </span>
-                          <span
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                              job.status === "completed"
-                                ? "bg-emerald-500/10 text-emerald-400"
-                                : job.status === "rendering"
-                                  ? "bg-violet-500/10 text-violet-300"
-                                  : "bg-rose-500/10 text-rose-400"
-                            }`}
-                          >
-                            {job.status}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                          Ukuran: {formatBytes(job.file_size_bytes)} •{" "}
-                          {new Date(job.created_at).toLocaleString("id-ID")}
-                        </p>
-                        {job.status === "failed" && job.error_message && (
-                          <p className="text-[11px] text-rose-400/90 mt-1 max-w-md">
-                            {job.error_message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {(job.status === "rendering" || job.status === "queued") && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => cancelJobMutation.mutate(job.id)}
-                          disabled={
-                            cancelJobMutation.isPending && cancelJobMutation.variables === job.id
-                          }
-                          className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5 px-3 font-semibold shadow-sm"
-                          title="Batalkan proses render ini"
-                        >
-                          {cancelJobMutation.isPending && cancelJobMutation.variables === job.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <StopCircle className="w-3.5 h-3.5" />
-                          )}
-                          <span>Batalkan</span>
-                        </Button>
-                      )}
-
-                      {job.status === "completed" && job.output_url && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActivePlaybackUrl(job.output_url!)}
-                            className="border-[#2E2E2E] text-xs h-8 gap-1.5"
-                          >
-                            <Play className="w-3.5 h-3.5 text-violet-400" />
-                            <span>Putar</span>
-                          </Button>
-
-                          <a
-                            href={job.output_url}
-                            download={`storyboard_${project.id}.mp4`}
-                            className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-violet-500/20"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Unduh MP4</span>
-                          </a>
-
-                          <Button
-                            size="sm"
-                            onClick={() => setActiveTab("storyboard_youtube")}
-                            className="bg-red-600/90 hover:bg-red-500 text-white text-xs h-8 gap-1.5 font-semibold"
-                          >
-                            <Youtube className="w-3.5 h-3.5 fill-current" />
-                            <span>YouTube & Thumbnail</span>
-                          </Button>
-                        </>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => deleteJobMutation.mutate(job.id)}
-                        className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
-                        title="Hapus riwayat render"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                    <div className="text-xs font-bold">{res.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{res.desc}</div>
+                  </button>
                 ))}
               </div>
+            </div>
+
+            {/* Render CTA */}
+            <div className="space-y-3 pt-2">
+              <Button
+                onClick={() => renderFinalMutation.mutate()}
+                disabled={isRendering || renderFinalMutation.isPending || !audio}
+                variant="workspace-primary"
+                className="w-full gap-2 py-3 text-xs"
+              >
+                {isRendering || renderFinalMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sedang Me-render Video Final 16:9 ({resolution})...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Render Video Storyboard 16:9 ({resolution.toUpperCase()})</span>
+                  </>
+                )}
+              </Button>
+
+              {!audio && (
+                <p className="text-[11px] text-amber-400/90 text-center">
+                  ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum
+                  me-render.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Active Jobs & Render History (7 Cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Active Job Live Progress */}
+            {isRendering && (
+              <div className="p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                    <h4 className="text-xs font-bold text-white font-mono">
+                      Sedang Me-render Video Final (
+                      {activeTask?.task_type === "render" && activeTask.progress !== undefined
+                        ? activeTask.progress
+                        : activeRenderJob?.progress || 10}
+                      %)
+                    </h4>
+                  </div>
+                  {activeRenderJob && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => cancelJobMutation.mutate(activeRenderJob.id)}
+                      disabled={cancelJobMutation.isPending}
+                      className="text-rose-400 hover:text-rose-300 text-xs h-7 gap-1"
+                    >
+                      {cancelJobMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <StopCircle className="w-3.5 h-3.5" />
+                      )}
+                      <span>Batalkan Render</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${Math.max(
+                        5,
+                        activeTask?.task_type === "render" && activeTask.progress !== undefined
+                          ? activeTask.progress
+                          : activeRenderJob?.progress || 10
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground font-mono">
+                  {(activeTask?.task_type === "render" && activeTask.message) ||
+                    activeRenderJob?.log_output ||
+                    "FFmpeg sedang menggabungkan ilustrasi hand-drawn, audio, dan subtitle..."}
+                </p>
+              </div>
             )}
+
+            {/* Video Player for Selected Output */}
+            {activePlaybackUrl && (
+              <div className="space-y-3 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-semibold text-[#26251F]">
+                    Pemutar Hasil Render Final
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActivePlaybackUrl(null)}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Tutup
+                  </button>
+                </div>
+                <video
+                  src={activePlaybackUrl}
+                  controls
+                  autoPlay
+                  className="w-full aspect-video rounded-xl border border-[#E5E1D7] bg-[#26251F]"
+                />
+              </div>
+            )}
+
+            {/* Render History List */}
+            <div className="space-y-4 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6">
+              <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-3">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-violet-400" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[#26251F]">
+                    Riwayat File Render ({renderJobs.length})
+                  </h4>
+                </div>
+              </div>
+
+              {renderJobs.length === 0 ? (
+                <div className="p-8 text-center text-xs text-[#77766D]">
+                  Belum ada video yang dirender untuk project ini. Klik tombol render di samping
+                  untuk memulai.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {renderJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex flex-col justify-between gap-4 rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-4 transition hover:border-[#C45B3A] sm:flex-row sm:items-center"
+                    >
+                      <div className="flex items-center gap-3">
+                        {job.status === "completed" ? (
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                        ) : job.status === "rendering" || job.status === "queued" ? (
+                          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 shrink-0">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
+                            <AlertCircle className="w-5 h-5" />
+                          </div>
+                        )}
+
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-[#26251F]">
+                              Video Storyboard 16:9
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                                job.status === "completed"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : job.status === "rendering"
+                                    ? "bg-violet-500/10 text-violet-300"
+                                    : "bg-rose-500/10 text-rose-400"
+                              }`}
+                            >
+                              {job.status}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                            Ukuran: {formatBytes(job.file_size_bytes)} •{" "}
+                            {new Date(job.created_at).toLocaleString("id-ID")}
+                          </p>
+                          {job.status === "failed" && job.error_message && (
+                            <p className="text-[11px] text-rose-400/90 mt-1 max-w-md">
+                              {job.error_message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {(job.status === "rendering" || job.status === "queued") && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => cancelJobMutation.mutate(job.id)}
+                            disabled={
+                              cancelJobMutation.isPending && cancelJobMutation.variables === job.id
+                            }
+                            className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5 px-3 font-semibold shadow-sm"
+                            title="Batalkan proses render ini"
+                          >
+                            {cancelJobMutation.isPending &&
+                            cancelJobMutation.variables === job.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <StopCircle className="w-3.5 h-3.5" />
+                            )}
+                            <span>Batalkan</span>
+                          </Button>
+                        )}
+
+                        {job.status === "completed" && job.output_url && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => setActivePlaybackUrl(job.output_url!)}
+                              variant="workspace-secondary"
+                              className="h-9 gap-1.5 text-xs"
+                            >
+                              <Play className="w-3.5 h-3.5 text-violet-400" />
+                              <span>Putar</span>
+                            </Button>
+
+                            <a
+                              href={job.output_url}
+                              download={`storyboard_${project.id}.mp4`}
+                              className="flex items-center gap-1.5 rounded-lg bg-[#C45B3A] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#A9472C]"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Unduh MP4</span>
+                            </a>
+
+                            <Button
+                              size="sm"
+                              onClick={() => setActiveTab("storyboard_youtube")}
+                              className="bg-red-600/90 hover:bg-red-500 text-white text-xs h-8 gap-1.5 font-semibold"
+                            >
+                              <Youtube className="w-3.5 h-3.5 fill-current" />
+                              <span>YouTube & Thumbnail</span>
+                            </Button>
+                          </>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => deleteJobMutation.mutate(job.id)}
+                          className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                          title="Hapus riwayat render"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

@@ -151,9 +151,9 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
   const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col w-full overflow-hidden bg-[#0F0F0F] text-white">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#F3F0E8] text-[#26251F]">
       {/* Top Header Bar */}
-      <div className="h-14 border-b border-[#222222] shrink-0 bg-[#141414]/95 backdrop-blur-md w-full">
+      <div className="h-14 w-full shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7]/95 backdrop-blur-md">
         <div className="max-w-[1920px] w-full mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
@@ -161,7 +161,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-white tracking-tight">
+                <h1 className="font-serif text-base font-semibold tracking-tight text-[#26251F]">
                   Watermark & Audio Enhancer
                 </h1>
                 <Badge
@@ -179,13 +179,13 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
           {/* Sub-tab navigation */}
           <div className="flex items-center gap-3">
-            <div className="flex bg-[#1E1E1E] p-1 rounded-xl border border-[#2E2E2E]">
+            <div className="flex rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
               <button
                 onClick={() => setActiveSubTab("watermark")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
                   activeSubTab === "watermark"
-                    ? "bg-violet-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-[#C45B3A] text-white shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
               >
                 <Stamp className="w-3.5 h-3.5" />
@@ -196,8 +196,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 onClick={() => setActiveSubTab("bgm")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
                   activeSubTab === "bgm"
-                    ? "bg-violet-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-[#C45B3A] text-white shadow-sm"
+                    : "text-[#77766D] hover:text-[#26251F]"
                 }`}
               >
                 <Music2 className="w-3.5 h-3.5" />
@@ -210,7 +210,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
             <Button
               onClick={() => setActiveTab("storyboard_render")}
-              className="bg-violet-600 hover:bg-violet-500 text-white gap-2 text-xs font-semibold shadow-md shadow-violet-500/20 h-8"
+              variant="workspace-primary"
+              className="h-9 gap-2 text-xs"
             >
               <span>Lanjut ke Render 16:9</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -223,9 +224,9 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
       {activeSubTab === "watermark" ? (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
           {/* Left Side: Non-playable 16:9 AI Scene Canvas Preview */}
-          <div className="flex-1 min-h-0 flex flex-col border-r border-[#222] bg-[#0A0A0A] p-4 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-[#E5E1D7] bg-[#F3F0E8] p-4">
             {/* Preview Toolbar */}
-            <div className="shrink-0 flex items-center justify-between mb-3 bg-[#141414] px-3.5 py-2 rounded-xl border border-[#222]">
+            <div className="mb-3 flex shrink-0 items-center justify-between rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] px-3.5 py-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -242,7 +243,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <select
                     value={selectedSceneIndex}
                     onChange={(e) => setSelectedSceneIndex(Number(e.target.value))}
-                    className="bg-[#1C1C1C] border border-[#333] text-xs rounded-lg px-2.5 py-1 text-foreground focus:outline-none focus:border-violet-500"
+                    className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                   >
                     {scenes.length > 0 ? (
                       scenes.map((sc, idx) => (
@@ -299,7 +300,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             <div className="flex-1 min-h-0 flex items-center justify-center p-1 relative overflow-hidden">
               <div
                 ref={previewRef}
-                className="relative aspect-video h-full w-auto max-h-full max-w-full bg-black rounded-xl overflow-hidden border-2 border-[#242424] shadow-2xl flex items-center justify-center select-none group shrink-0"
+                className="group relative flex aspect-video h-full w-auto max-h-full max-w-full shrink-0 select-none items-center justify-center overflow-hidden rounded-xl border-2 border-[#E5E1D7] bg-[#FFFEFA] shadow-lg"
               >
                 {/* AI Scene Image or Artistic Empty State */}
                 {currentScene?.image_url ? (
@@ -370,7 +371,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
             {/* Bottom: Scene Thumbnails Carousel Strip */}
             {scenes.length > 0 && (
-              <div className="shrink-0 mt-2.5 pt-2 border-t border-[#1F1F1F]">
+              <div className="mt-2.5 shrink-0 border-t border-[#E5E1D7] pt-2">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-foreground">
@@ -422,7 +423,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
           </div>
 
           {/* Right Side: Watermark Customizer Inspector Panel with Inner Scroll */}
-          <div className="w-full lg:w-[420px] xl:w-[460px] shrink-0 h-full min-h-0 bg-[#121212] flex flex-col border-t lg:border-t-0 border-[#222]">
+          <div className="flex h-full min-h-0 w-full shrink-0 flex-col border-t border-[#E5E1D7] bg-[#FBFAF7] lg:w-[420px] lg:border-t-0 xl:w-[460px]">
             <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-5 space-y-4 scrollbar-thin scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
               <WatermarkCustomizePanel
                 project={{ ...project, watermark: liveWatermark }}
@@ -456,7 +457,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div className="w-8 h-8 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
                     <Music2 className="w-4 h-4" />
                   </div>
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="font-serif text-lg font-semibold text-[#26251F]">
                     Musik Latar / Background Music (BGM)
                   </h2>
                   <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px]">
@@ -489,7 +490,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-[#26251F]">
                   <Sparkles className="w-4 h-4 text-violet-400" />
                   Pustaka Mood Sinematik Bebas Royalti
                 </h3>
@@ -508,8 +509,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                     onClick={() => setSelectedBgm(bgm.id)}
                     className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between group ${
                       isSelected
-                        ? "bg-[#18181F] border-violet-500 shadow-md shadow-violet-500/10"
-                        : "bg-[#141414] border-[#262626] hover:border-[#383838]"
+                        ? "bg-[#F8EEEA] border-[#C45B3A] shadow-sm"
+                        : "bg-[#FFFEFA] border-[#E5E1D7] hover:border-[#BEB6A5]"
                     }`}
                   >
                     <div className="flex items-start justify-between">
