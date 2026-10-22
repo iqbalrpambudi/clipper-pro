@@ -194,12 +194,7 @@ export function ScriptParametersForm({
         {/* Language Selector (Central Project Language Control) */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold text-[#4D4A42]">
-              Bahasa Utama Video (Kunci Seluruh Pipeline)
-            </label>
-            <span className="text-[10px] text-[#A9472C]/80 font-mono">
-              Mengunci Naskah, Voice TTS & YouTube
-            </span>
+            <label className="block text-xs font-semibold text-[#4D4A42]">Bahasa Utama Video</label>
           </div>
           <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
             <button
@@ -315,9 +310,6 @@ export function ScriptParametersForm({
               <span className="truncate max-w-[260px]">
                 {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} •
                 16:9 Landscape
-              </span>
-              <span className="text-[#C45B3A] font-mono text-[9px] px-1.5 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
-                Prompt Visual Selaras
               </span>
             </div>
           )}

@@ -805,19 +805,6 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   <label className="text-xs font-semibold text-[#4D4A42]">
                     Pustaka Suara ({filteredVoices.length} Karakter)
                   </label>
-                  {/* Locked Language Status Badge */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
-                    {projectLanguage === "en" ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#41627F] bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9]">
-                        <span>🇬🇧</span> English (Terkunci)
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]">
-                        <span>🇮🇩</span> Indonesia (Terkunci)
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">

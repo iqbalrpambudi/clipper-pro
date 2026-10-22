@@ -470,9 +470,6 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   <label className="block text-xs font-semibold text-foreground">
                     Bahasa Utama Video (Kunci Seluruh Pipeline)
                   </label>
-                  <span className="text-[10px] text-muted-foreground/80 font-mono">
-                    Mengunci Naskah, Voice TTS & Subtitle
-                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
                   <button

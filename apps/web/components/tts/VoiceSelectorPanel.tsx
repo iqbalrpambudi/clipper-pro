@@ -433,25 +433,6 @@ export function VoiceSelectorPanel({
         </div>
       )}
 
-      {/* Locked Language Status Banner */}
-      <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-1.5">
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Katalog Suara Terkunci:</span>
-          {projectLanguage === "en" ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#41627F] bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9]">
-              <span>🇬🇧</span> English (EN)
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]">
-              <span>🇮🇩</span> Indonesia (ID)
-            </span>
-          )}
-        </div>
-        <span className="text-[10px] text-muted-foreground/75 font-mono">
-          🔒 Mengikuti Naskah Tab 1
-        </span>
-      </div>
-
       {/* Voice Cards List (scrollable) */}
       <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
         {filteredVoices.map((v) => {
