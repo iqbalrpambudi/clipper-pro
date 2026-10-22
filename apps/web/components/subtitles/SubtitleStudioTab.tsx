@@ -536,7 +536,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     }
                     className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="font-mono text-slate-300 text-[11px]">
+                  <span className="font-mono text-[#4D4A42] text-[11px]">
                     {style.box_color || "#000000"}
                   </span>
                 </div>
@@ -544,7 +544,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
               {/* Position Preset */}
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">
+                <label className="block text-[#77766D] font-semibold mb-1">
                   Posisi Layar Vertikal
                 </label>
                 <select

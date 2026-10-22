@@ -53,7 +53,7 @@ const BGM_MOODS = [
     genre: "Suspense / Tension",
     desc: "Ketegangan tinggi dengan dentuman drum sinematik untuk adegan klimaks",
     duration: "2:15",
-    color: "from-rose-600/20 to-purple-600/20",
+    color: "from-[#C45B3A]/15 to-[#D4765E]/15",
     border: "border-rose-500/30",
   },
   {
@@ -156,7 +156,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
       <div className="h-14 w-full shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7]/95 backdrop-blur-md">
         <div className="max-w-[1920px] w-full mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+            <div className="w-8 h-8 rounded-xl border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-center text-[#C45B3A]">
               <Stamp className="w-4 h-4" />
             </div>
             <div>
@@ -166,7 +166,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 </h1>
                 <Badge
                   variant="outline"
-                  className="text-[10px] bg-violet-500/10 text-violet-300 border-violet-500/30"
+                  className="text-[10px] bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                 >
                   16:9 Storyboard
                 </Badge>
@@ -202,7 +202,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
               >
                 <Music2 className="w-3.5 h-3.5" />
                 <span>Musik Latar (BGM)</span>
-                <span className="px-1.5 py-0.2 text-[9px] rounded bg-violet-500/20 text-violet-300 border border-violet-500/30 font-semibold">
+                <span className="px-1.5 py-0.2 text-[9px] rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] font-semibold">
                   Baru
                 </span>
               </button>
@@ -233,7 +233,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   size="sm"
                   onClick={handlePrevScene}
                   disabled={selectedSceneIndex <= 0}
-                  className="h-7 w-7 p-0 border-[#2E2E2E]"
+                  className="h-7 w-7 p-0 border-[#E5E1D7]"
                   title="Adegan Sebelumnya"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -263,7 +263,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   size="sm"
                   onClick={handleNextScene}
                   disabled={selectedSceneIndex >= scenes.length - 1}
-                  className="h-7 w-7 p-0 border-[#2E2E2E]"
+                  className="h-7 w-7 p-0 border-[#E5E1D7]"
                   title="Adegan Berikutnya"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -276,7 +276,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   variant="outline"
                   size="sm"
                   onClick={() => setShowSafeZones(!showSafeZones)}
-                  className={`h-7 text-xs gap-1.5 border-[#2E2E2E] ${
+                  className={`h-7 text-xs gap-1.5 border-[#E5E1D7] ${
                     showSafeZones
                       ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
                       : "text-muted-foreground"
@@ -289,7 +289,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
                 <Badge
                   variant="outline"
-                  className="text-[10px] text-muted-foreground border-[#333] hidden sm:inline-flex"
+                  className="text-[10px] text-muted-foreground border-[#E5E1D7] hidden sm:inline-flex"
                 >
                   Drag Watermark Bebas
                 </Badge>
@@ -312,7 +312,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#121218] via-[#101014] to-[#0a0a0c] p-6 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-2">
+                    <div className="w-12 h-12 rounded-2xl border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-center text-[#C45B3A] mb-2">
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <div className="font-semibold text-xs text-foreground">
@@ -360,7 +360,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
                     <Badge
                       variant="outline"
-                      className="bg-black/80 text-muted-foreground border-[#333] text-[10px] backdrop-blur-sm"
+                      className="bg-black/80 text-muted-foreground border-[#E5E1D7] text-[10px] backdrop-blur-sm"
                     >
                       Watermark Dinonaktifkan
                     </Badge>
@@ -396,8 +396,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                         onClick={() => setSelectedSceneIndex(idx)}
                         className={`group relative shrink-0 w-24 aspect-[16/9] rounded-lg overflow-hidden border transition text-left ${
                           isSelected
-                            ? "border-violet-500 ring-2 ring-violet-500/40 scale-[1.03]"
-                            : "border-[#2E2E2E] hover:border-[#444] opacity-70 hover:opacity-100"
+                            ? "border-[#C45B3A] ring-2 ring-[#C45B3A]/30 scale-[1.03]"
+                            : "border-[#E5E1D7] hover:border-[#444] opacity-70 hover:opacity-100"
                         }`}
                       >
                         {sc.image_url ? (
@@ -407,7 +407,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-[#181818] flex items-center justify-center text-[10px] text-muted-foreground">
+                          <div className="w-full h-full bg-[#F1EEE6] flex items-center justify-center text-[10px] text-muted-foreground">
                             Slot #{idx + 1}
                           </div>
                         )}
@@ -431,8 +431,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
               />
 
               {/* Quick Helper Tip */}
-              <div className="mt-4 p-3.5 rounded-xl bg-violet-600/5 border border-violet-500/20 text-xs text-muted-foreground flex items-start gap-2.5">
-                <Info className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+              <div className="mt-4 p-3.5 rounded-xl bg-[#F8EEEA] border border-[#E9C9BD] text-xs text-muted-foreground flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-[#C45B3A] shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <span className="font-semibold text-foreground text-[11px] block">
                     Tips Branding Watermark
@@ -450,17 +450,17 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
       ) : (
         /* Future Feature Showcase: Background Music (BGM) Studio */
         <div className="flex-1 min-h-0 p-6 lg:p-10 overflow-y-auto max-w-6xl mx-auto w-full space-y-6">
-          <div className="bg-gradient-to-r from-violet-900/30 via-indigo-900/20 to-transparent p-6 rounded-2xl border border-violet-500/20">
+          <div className="bg-gradient-to-r from-[#F8EEEA] via-[#FBFAF7] to-transparent p-6 rounded-2xl border border-[#E9C9BD]">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5 mb-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                  <div className="w-8 h-8 rounded-lg bg-[#F8EEEA] border border-[#E9C9BD] flex items-center justify-center text-[#C45B3A]">
                     <Music2 className="w-4 h-4" />
                   </div>
                   <h2 className="font-serif text-lg font-semibold text-[#26251F]">
                     Musik Latar / Background Music (BGM)
                   </h2>
-                  <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px]">
+                  <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-[10px]">
                     Preview Integrasi
                   </Badge>
                 </div>
@@ -478,7 +478,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   onClick={() =>
                     showToast("Fitur audio mixing BGM sedang dalam finalisasi", "info")
                   }
-                  className="border-[#333] text-xs"
+                  className="border-[#E5E1D7] text-xs"
                 >
                   Daftar Notifikasi Rilis
                 </Button>
@@ -491,7 +491,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-[#26251F]">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <Sparkles className="w-4 h-4 text-[#C45B3A]" />
                   Pustaka Mood Sinematik Bebas Royalti
                 </h3>
                 <p className="text-xs text-muted-foreground">
@@ -521,7 +521,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                             e.stopPropagation();
                             setIsPlayingPreview(!isPlayingPreview);
                           }}
-                          className="w-10 h-10 rounded-xl bg-violet-600/10 group-hover:bg-violet-600 border border-violet-500/30 group-hover:border-violet-500 flex items-center justify-center text-violet-400 group-hover:text-white transition"
+                          className="w-10 h-10 rounded-xl bg-[#F8EEEA] group-hover:bg-[#C45B3A] border border-[#E9C9BD] group-hover:border-[#C45B3A] flex items-center justify-center text-[#C45B3A] group-hover:text-white transition"
                         >
                           {isSelected && isPlayingPreview ? (
                             <Pause className="w-4 h-4" />
@@ -532,7 +532,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                         <div>
                           <div className="font-bold text-sm text-foreground flex items-center gap-2">
                             {bgm.name}
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A]" />}
                           </div>
                           <span className="text-[10px] text-muted-foreground uppercase font-semibold">
                             {bgm.genre} • Durasi {bgm.duration}
@@ -551,9 +551,9 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
           {/* Audio Mixing & Auto-Ducking Controls (Preview) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-[#141414] border border-[#262626] space-y-4">
+            <div className="p-4 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-4">
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-violet-400" />
+                <Sliders className="w-4 h-4 text-[#C45B3A]" />
                 Kontrol Mixer Audio & Auto-Ducking
               </h4>
 
@@ -569,14 +569,14 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   step="1"
                   value={bgmVolume}
                   onChange={(e) => setBgmVolume(Number(e.target.value))}
-                  className="w-full accent-violet-600 h-1.5 bg-[#2A2A2A] rounded-lg cursor-pointer"
+                  className="w-full accent-[#C45B3A] h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
                 />
                 <span className="text-[10px] text-muted-foreground mt-1 block">
                   Disarankan 12% - 18% agar narasi tetap dominan dan jelas
                 </span>
               </div>
 
-              <label className="flex items-center justify-between p-3 rounded-lg bg-[#1A1A1A] border border-[#2E2E2E] cursor-pointer">
+              <label className="flex items-center justify-between p-3 rounded-lg bg-[#FBFAF7] border border-[#E5E1D7] cursor-pointer">
                 <div>
                   <div className="font-semibold text-xs text-foreground">
                     Auto-Ducking Narasi Cerdas
@@ -589,16 +589,16 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   type="checkbox"
                   checked={autoDucking}
                   onChange={(e) => setAutoDucking(e.target.checked)}
-                  className="rounded border-[#2E2E2E] text-violet-600 focus:ring-violet-500/30 w-4 h-4 cursor-pointer"
+                  className="rounded border-[#E5E1D7] text-[#C45B3A] focus:ring-[#C45B3A]/30 w-4 h-4 cursor-pointer"
                 />
               </label>
             </div>
 
             {/* Custom Audio Upload */}
-            <div className="p-4 rounded-xl bg-[#141414] border border-[#262626] flex flex-col justify-between">
+            <div className="p-4 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] flex flex-col justify-between">
               <div>
                 <h4 className="text-xs font-bold text-white flex items-center gap-2 mb-2">
-                  <UploadCloud className="w-4 h-4 text-violet-400" />
+                  <UploadCloud className="w-4 h-4 text-[#C45B3A]" />
                   Upload Lagu / Backsound Kustom
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -607,8 +607,8 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 </p>
               </div>
 
-              <div className="mt-4 border-2 border-dashed border-[#2E2E2E] hover:border-violet-500/50 rounded-xl p-5 text-center cursor-pointer transition bg-[#181818]">
-                <UploadCloud className="w-6 h-6 text-violet-400 mx-auto mb-1.5" />
+              <div className="mt-4 border-2 border-dashed border-[#E5E1D7] hover:border-[#C45B3A] rounded-xl p-5 text-center cursor-pointer transition bg-[#FBFAF7]">
+                <UploadCloud className="w-6 h-6 text-[#C45B3A] mx-auto mb-1.5" />
                 <div className="text-xs font-semibold text-white">Pilih File Audio (MP3 / WAV)</div>
                 <span className="text-[10px] text-muted-foreground">Maksimal durasi 10 menit</span>
               </div>

@@ -70,7 +70,7 @@ export function TextLayerInspector({
             <h4 className="text-xs font-semibold tracking-wide text-[#26251F]">
               Daftar Layer Teks
             </h4>
-            <Badge variant="outline" className="border-[#333] text-[10px] text-slate-400 py-0">
+            <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-slate-400 py-0">
               {layers.length} Layer
             </Badge>
           </div>
@@ -190,7 +190,7 @@ export function TextLayerInspector({
                     text: selectedLayer.text.toUpperCase(),
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#333]"
+                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#E5E1D7]"
               >
                 HURUF BESAR SEMUA
               </button>
@@ -281,7 +281,7 @@ export function TextLayerInspector({
                     className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                       selectedLayer.fontSize === sz
                         ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                        : "bg-[#202020] text-slate-400 border-[#333]"
+                        : "bg-[#F1EEE6] text-[#77766D] border-[#E5E1D7]"
                     }`}
                   >
                     {sz}px
@@ -442,7 +442,7 @@ export function TextLayerInspector({
                             bgCornerRadius: btn.val,
                           })
                         }
-                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#202020] text-slate-400 hover:text-white border border-[#333]"
+                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#F1EEE6] text-[#77766D] hover:text-[#26251F] border border-[#E5E1D7]"
                       >
                         {btn.label}
                       </button>
@@ -575,7 +575,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <Sun className="w-4 h-4 text-purple-400" />
+                <Sun className="w-4 h-4 text-[#C45B3A]" />
                 <div>
                   <h4 className="text-xs font-semibold text-[#26251F]">Bayangan / 3D Pop / Glow</h4>
                   <p className="text-[10px] text-muted-foreground">
@@ -652,7 +652,7 @@ export function TextLayerInspector({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[11px] font-semibold text-[#4D4A42]">Blur Bayangan</span>
-                    <span className="font-mono text-[11px] text-purple-400">
+                    <span className="font-mono text-[11px] text-[#C45B3A]">
                       {selectedLayer.shadowBlur ?? 6}px
                     </span>
                   </div>
@@ -687,7 +687,7 @@ export function TextLayerInspector({
                     rotation: 0,
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#333]"
+                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#E5E1D7]"
               >
                 Reset 0° (Lurus)
               </button>
@@ -725,7 +725,7 @@ export function TextLayerInspector({
                     className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                       selectedLayer.rotation === deg
                         ? "bg-orange-500/20 text-orange-300 border-orange-500/40"
-                        : "bg-[#202020] text-slate-400 border-[#333]"
+                        : "bg-[#F1EEE6] text-[#77766D] border-[#E5E1D7]"
                     }`}
                   >
                     {deg > 0 ? `+${deg}°` : `${deg}°`}

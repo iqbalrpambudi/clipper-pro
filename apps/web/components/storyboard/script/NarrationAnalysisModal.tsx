@@ -371,10 +371,10 @@ export function NarrationAnalysisModal({
                     <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
-                          <TrendingUp className="w-3.5 h-3.5 text-violet-400" />
+                          <TrendingUp className="w-3.5 h-3.5 text-[#C45B3A]" />
                           <span>{analysisData.retention_pacing_score.label}</span>
                         </span>
-                        <span className="text-xs font-bold font-mono text-violet-400">
+                        <span className="text-xs font-bold font-mono text-[#C45B3A]">
                           {analysisData.retention_pacing_score.score}%
                         </span>
                       </div>
@@ -640,8 +640,8 @@ export function NarrationAnalysisModal({
                           {seg.improved_visual_prompt && (
                             <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold text-violet-300 flex items-center gap-1.5">
-                                  <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
+                                <span className="text-[11px] font-semibold text-[#A9472C] flex items-center gap-1.5">
+                                  <ImageIcon className="w-3.5 h-3.5 text-[#C45B3A]" />
                                   <span>
                                     Visual Prompt AI Adegan (
                                     {updateVisualPrompts ? "Akan Disinkronkan" : "Dilewati"})

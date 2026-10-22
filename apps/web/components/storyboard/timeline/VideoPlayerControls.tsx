@@ -94,7 +94,7 @@ export function VideoPlayerControls({
             )}
           </button>
 
-          <span className="text-xs font-mono font-bold text-violet-400 shrink-0">
+          <span className="text-xs font-mono font-bold text-[#C45B3A] shrink-0">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
         </div>

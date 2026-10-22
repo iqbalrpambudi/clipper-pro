@@ -64,10 +64,10 @@ function renderTokenizedPrompt(promptText: string) {
           return (
             <span
               key={pIdx}
-              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono text-[10px] font-semibold align-baseline"
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] font-mono text-[10px] font-semibold align-baseline"
               title="Karakter & Varian Wujud"
             >
-              <Users className="w-2.5 h-2.5 text-violet-400 shrink-0" />
+              <Users className="w-2.5 h-2.5 text-[#C45B3A] shrink-0" />
               {part}
             </span>
           );
@@ -277,7 +277,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         {/* Preset Indicator Ribbon */}
         <div className="flex flex-col justify-between gap-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5 text-xs sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4 text-violet-400" />
+            <Palette className="w-4 h-4 text-[#C45B3A]" />
             <span className="text-[#5E5C54]">Preset Gaya Visual:</span>
             <select
               value={activePreset?.id || ""}
@@ -298,7 +298,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
 
           <Link
             href="/image-studio"
-            className="text-violet-400 hover:text-violet-300 flex items-center gap-1 font-medium text-xs hover:underline"
+            className="text-[#C45B3A] hover:text-[#A9472C] flex items-center gap-1 font-medium text-xs hover:underline"
           >
             <span>Sesuaikan Gaya di AI Visual Studio</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -312,7 +312,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex shrink-0 items-center gap-1.5 font-semibold text-[#A9472C]">
-                <Users className="w-4 h-4 text-violet-400" />
+                <Users className="w-4 h-4 text-[#C45B3A]" />
                 <span>Continuity Bible:</span>
               </div>
 
@@ -326,8 +326,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                     className="flex items-center gap-1.5 rounded-lg border border-[#E9C9BD] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                     title={char.visual_anchor}
                   >
-                    <span className="font-bold text-violet-300">👤 {char.name}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300">
+                    <span className="font-bold text-[#A9472C]">👤 {char.name}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C]">
                       [char:{charId}]
                     </span>
                     {hasVariants && (
@@ -511,7 +511,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                   {/* Segment Header */}
                   <div className="flex min-w-0 items-center justify-between gap-2 border-b border-[#E5E1D7] pb-2.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="shrink-0 text-[10px] font-mono font-bold text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                      <span className="shrink-0 text-[10px] font-mono font-bold text-[#C45B3A] bg-[#F8EEEA] px-1.5 py-0.5 rounded border border-[#E9C9BD]">
                         #{segIdx + 1}
                       </span>
                       <h3
@@ -549,8 +549,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                           <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-[#E5E1D7] bg-[#F3F0E8]">
                             {isGeneratingThis ? (
                               <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
-                                <span className="text-[11px] text-violet-300 font-mono">
+                                <Loader2 className="w-6 h-6 animate-spin text-[#C45B3A]" />
+                                <span className="text-[11px] text-[#A9472C] font-mono">
                                   Menggambar sketsa AI...
                                 </span>
                               </div>
@@ -596,7 +596,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               <span className="rounded bg-[#26251F]/80 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white backdrop-blur-xs">
                                 Gambar #{imgIdx + 1}
                               </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-violet-900/80 text-violet-200 border border-violet-500/30 backdrop-blur-xs">
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#C45B3A]/80 text-white border border-[#C45B3A]/30 backdrop-blur-xs">
                                 {item.motion_effect}
                               </span>
                             </div>
@@ -637,7 +637,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                           onClick={() =>
                                             setEditPromptText((prev) => `${prev} [char:${cId}]`)
                                           }
-                                          className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                          className="px-1.5 py-0.5 rounded bg-[#F8EEEA] hover:bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] text-[9px] font-mono transition"
                                         >
                                           + [char:{cId}]
                                         </button>
@@ -651,7 +651,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                                   (prev) => `${prev} [char:${cId}:${v.variant_id}]`
                                                 )
                                               }
-                                              className="px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-[9px] font-mono transition"
+                                              className="px-1.5 py-0.5 rounded bg-[#F8EEEA] hover:bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] text-[9px] font-mono transition"
                                             >
                                               + [char:{cId}:{v.variant_id}]
                                             </button>
@@ -712,7 +712,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                       Visual Prompt
                                     </span>
                                     {showCompiledPrompt && (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-mono font-medium">
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] font-mono font-medium">
                                         Compiled
                                       </span>
                                     )}
@@ -743,7 +743,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                         setEditingItemId(item.id);
                                         setEditPromptText(item.image_prompt);
                                       }}
-                                      className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-mono"
+                                      className="text-[10px] text-[#C45B3A] hover:text-[#A9472C] flex items-center gap-1 font-mono"
                                     >
                                       <Edit3 className="w-2.5 h-2.5" />
                                       <span>Edit</span>
@@ -766,7 +766,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                             {/* Voiceover Narration sentence */}
                             {item.script_text && (
                               <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] px-2.5 py-1.5">
-                                <span className="text-[9px] uppercase font-semibold text-violet-400 font-mono block mb-0.5">
+                                <span className="text-[9px] uppercase font-semibold text-[#C45B3A] font-mono block mb-0.5">
                                   Narasi Suara:
                                 </span>
                                 <p className="line-clamp-2 font-sans text-[11px] italic leading-relaxed text-[#4D4A42]">
@@ -807,7 +807,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                 className={`w-full text-xs h-8 gap-1.5 ${
                                   item.status === "ready"
                                     ? "border-[#E5E1D7] hover:border-[#C45B3A] hover:text-[#A9472C]"
-                                    : "bg-violet-600 hover:bg-violet-500 text-white"
+                                    : "bg-[#C45B3A] hover:bg-[#A9472C] text-[#FFFAF6]"
                                 }`}
                               >
                                 {isGeneratingThis ? (
@@ -850,7 +850,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             >
               <div className="flex items-center justify-between border-b border-[#E5E1D7] p-4">
                 <div className="flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-violet-400" />
+                  <ImageIcon className="w-4 h-4 text-[#C45B3A]" />
                   <span className="font-mono text-xs font-semibold text-[#26251F]">
                     Preview Ilustrasi 16:9 • Efek {previewImage.motion_effect}
                   </span>
@@ -864,7 +864,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                 </button>
               </div>
 
-              <div className="relative flex aspect-video items-center justify-center bg-[#26251F]">
+              <div className="relative flex aspect-video items-center justify-center bg-[#F1EEE6]">
                 <img
                   key={previewImage.image_url}
                   src={previewImage.image_url!}

@@ -79,7 +79,7 @@ export function SubtitleStudioPanel({
                   "info"
                 );
               }}
-              className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+              className="w-4 h-4 rounded accent-[#C45B3A] cursor-pointer"
             />
             <div>
               <span className="block text-xs font-semibold text-[#26251F]">
@@ -97,8 +97,8 @@ export function SubtitleStudioPanel({
             variant={subtitleStyle.enabled !== false ? "default" : "secondary"}
             className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
               subtitleStyle.enabled !== false
-                ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
-                : "bg-[#222222] text-slate-500 border border-[#333333]"
+                ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
+                : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
             }`}
           >
             {subtitleStyle.enabled !== false ? "AKTIF" : "NONAKTIF"}
@@ -119,7 +119,7 @@ export function SubtitleStudioPanel({
       <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Bookmark className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+            <Bookmark className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
             <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset Kustom:</span>
             <select
               value={selectedSubtitlePresetId}
@@ -204,7 +204,7 @@ export function SubtitleStudioPanel({
       <div>
         <label className="text-[11px] font-semibold text-slate-300 mb-2 flex items-center justify-between">
           <span>Pilihan Gaya Preset Cepat:</span>
-          <span className="text-[10px] text-violet-400 font-mono">1-Click Theme</span>
+          <span className="text-[10px] text-[#C45B3A] font-mono">1-Click Theme</span>
         </label>
         <div className="grid grid-cols-2 gap-2">
           {COLOR_PRESETS.map((p) => {
@@ -237,14 +237,14 @@ export function SubtitleStudioPanel({
                 }}
                 className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
                   isSelected
-                    ? "bg-violet-500/20 border-violet-500 text-white font-semibold"
+                    ? "bg-[#F8EEEA] border-[#C45B3A] text-white font-semibold"
                     : "bg-[#FFFEFA] border-[#E5E1D7] text-[#4D4A42] hover:border-[#C45B3A]"
                 }`}
               >
                 <div className="flex items-center gap-1.5 truncate">
-                  <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <Icon className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
                   <span className="truncate">{p.name}</span>
-                  {isSelected && <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />}
+                  {isSelected && <CheckCircle2 className="w-3 h-3 text-[#C45B3A] shrink-0" />}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <span
@@ -269,7 +269,7 @@ export function SubtitleStudioPanel({
       {/* Mode Tampilan Kata */}
       <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-          <Type className="w-3.5 h-3.5 text-violet-400" />
+          <Type className="w-3.5 h-3.5 text-[#C45B3A]" />
           <span>Mode Tampilan Kata</span>
         </span>
         <div className="grid grid-cols-3 gap-1.5">
@@ -289,7 +289,7 @@ export function SubtitleStudioPanel({
               }
               className={`p-2 rounded-xl text-center border transition flex flex-col items-center ${
                 subtitleStyle.display_mode === m.id
-                  ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
+                  ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42] font-semibold"
                   : "bg-[#F3F0E8] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
               }`}
             >
@@ -332,10 +332,10 @@ export function SubtitleStudioPanel({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-            <Zap className="w-3.5 h-3.5 text-violet-400" />
+            <Zap className="w-3.5 h-3.5 text-[#C45B3A]" />
             <span>Animasi & Efek Gerak Highlight</span>
           </span>
-          <span className="text-[10px] font-mono text-violet-300 uppercase px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
+          <span className="text-[10px] font-mono text-[#A9472C] uppercase px-2 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
             {subtitleStyle.highlight_animation === "scale"
               ? "Scale Pop"
               : subtitleStyle.highlight_animation === "none"
@@ -387,10 +387,10 @@ export function SubtitleStudioPanel({
 
         {/* Tingkat Pembesaran Slider jika Scale Pop */}
         {subtitleStyle.highlight_animation === "scale" && (
-          <div className="p-2.5 rounded-lg bg-[#181818] border border-[#2E2E2E] space-y-1.5 mt-2">
+          <div className="p-2.5 rounded-lg bg-[#FBFAF7] border border-[#E5E1D7] space-y-1.5 mt-2">
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-300 font-medium">Tingkat Pembesaran (Scale Factor)</span>
-              <span className="font-mono text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+              <span className="font-mono text-[#C45B3A] font-bold bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
                 {(subtitleStyle.scale_factor || 1.15).toFixed(2)}x
               </span>
             </div>
@@ -420,7 +420,7 @@ export function SubtitleStudioPanel({
       {/* Tipografi: Jenis Font & Ketebalan */}
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-          <Sliders className="w-3.5 h-3.5 text-violet-400" />
+          <Sliders className="w-3.5 h-3.5 text-[#C45B3A]" />
           <span>Tipografi & Ukuran Teks</span>
         </span>
 
@@ -437,7 +437,7 @@ export function SubtitleStudioPanel({
                   font_family: e.target.value,
                 }))
               }
-              className="w-full bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+              className="w-full bg-[#FBFAF7] border border-[#E5E1D7] rounded-xl px-2.5 py-1.5 text-xs text-[#26251F] focus:outline-none focus:border-[#C45B3A]"
             >
               <option value="Poppins">Poppins (Modern Sans)</option>
               <option value="Montserrat">Montserrat (Geometric)</option>
@@ -461,7 +461,7 @@ export function SubtitleStudioPanel({
                   font_weight: e.target.value,
                 }))
               }
-              className="w-full bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+              className="w-full bg-[#FBFAF7] border border-[#E5E1D7] rounded-xl px-2.5 py-1.5 text-xs text-[#26251F] focus:outline-none focus:border-[#C45B3A]"
             >
               <option value="Bold">Bold (Tebal)</option>
               <option value="SemiBold">SemiBold (Sedang Tebal)</option>
@@ -474,7 +474,7 @@ export function SubtitleStudioPanel({
         <div>
           <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1">
             <span>Ukuran Font:</span>
-            <span className="font-mono text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+            <span className="font-mono text-[#C45B3A] font-bold bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
               {subtitleStyle.font_size || 38}px
             </span>
           </div>
@@ -503,13 +503,13 @@ export function SubtitleStudioPanel({
       {/* Palet Warna, Garis Luar (Outer Text), & Kotak Latar */}
       <div className="space-y-3.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-          <Palette className="w-3.5 h-3.5 text-violet-400" />
+          <Palette className="w-3.5 h-3.5 text-[#C45B3A]" />
           <span>Warna Teks & Garis Luar (Outer Text)</span>
         </span>
 
         <div className="grid grid-cols-2 gap-2.5">
           {/* Warna Teks Normal */}
-          <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+          <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
             <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
               Teks Normal
             </label>
@@ -532,7 +532,7 @@ export function SubtitleStudioPanel({
           </div>
 
           {/* Warna Highlight Kata */}
-          <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+          <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
             <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
               Highlight Kata
             </label>
@@ -548,14 +548,14 @@ export function SubtitleStudioPanel({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-violet-400 text-xs font-semibold">
+              <span className="font-mono text-[#C45B3A] text-xs font-semibold">
                 {subtitleStyle.highlight_color || "#FFE600"}
               </span>
             </div>
           </div>
 
           {/* Garis Luar (Outer Text / Outline Color) */}
-          <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+          <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
             <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
               Garis Luar (Outer)
             </label>
@@ -578,7 +578,7 @@ export function SubtitleStudioPanel({
           </div>
 
           {/* Kotak Latar (Box Color) */}
-          <div className="p-2.5 rounded-xl bg-[#1A1A1A] border border-[#2E2E2E]">
+          <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
             <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
               Kotak Latar (Box)
             </label>
@@ -606,7 +606,7 @@ export function SubtitleStudioPanel({
           <div>
             <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
               <span>Tebal Outline</span>
-              <span className="font-mono text-violet-400 font-bold">
+              <span className="font-mono text-[#C45B3A] font-bold">
                 {subtitleStyle.outline_width ?? 4}px
               </span>
             </div>
@@ -629,7 +629,7 @@ export function SubtitleStudioPanel({
           <div>
             <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
               <span>Opasitas Kotak</span>
-              <span className="font-mono text-violet-400 font-bold">
+              <span className="font-mono text-[#C45B3A] font-bold">
                 {Math.round((subtitleStyle.box_opacity || 0) * 100)}%
               </span>
             </div>
@@ -652,10 +652,10 @@ export function SubtitleStudioPanel({
       </div>
 
       {/* Posisi Layar & Offset */}
-      <div className="p-3.5 rounded-xl bg-[#141414] border border-[#262626] space-y-3">
+      <div className="p-3.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-white flex items-center gap-1.5">
-            <Move className="w-3.5 h-3.5 text-violet-400" />
+            <Move className="w-3.5 h-3.5 text-[#C45B3A]" />
             <span>Posisi Layar Subtitle</span>
           </span>
           <button
@@ -668,7 +668,7 @@ export function SubtitleStudioPanel({
                 offset_y: -30,
               }))
             }
-            className="text-[10px] text-violet-400 hover:underline"
+            className="text-[10px] text-[#C45B3A] hover:underline"
           >
             Reset Posisi
           </button>
@@ -692,8 +692,8 @@ export function SubtitleStudioPanel({
               }
               className={`p-1.5 rounded-lg text-[11px] font-medium border text-center transition ${
                 subtitleStyle.position === pos.id
-                  ? "bg-violet-600/30 border-violet-500 text-violet-200 font-semibold"
-                  : "bg-[#101010] border-[#2A2A2A] text-slate-400 hover:text-white"
+                  ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42] font-semibold"
+                  : "bg-[#FBFAF7] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
               }`}
             >
               {pos.label}
@@ -705,7 +705,7 @@ export function SubtitleStudioPanel({
         <div className="pt-1">
           <div className="flex justify-between items-center mb-1 text-[11px] text-slate-300">
             <span>Offset Posisi Vertikal (Y):</span>
-            <span className="font-mono text-violet-400 font-bold">
+            <span className="font-mono text-[#C45B3A] font-bold">
               {subtitleStyle.offset_y || 0}px
             </span>
           </div>

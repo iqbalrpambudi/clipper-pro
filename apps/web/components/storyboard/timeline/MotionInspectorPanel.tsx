@@ -73,7 +73,7 @@ export function MotionInspectorPanel({
                   }
                   className={`p-2 rounded-xl text-xs font-medium border text-center transition ${
                     activeItem.motion_effect === m.id
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
+                      ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42] font-semibold"
                       : "bg-[#FBFAF7] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                   }`}
                 >

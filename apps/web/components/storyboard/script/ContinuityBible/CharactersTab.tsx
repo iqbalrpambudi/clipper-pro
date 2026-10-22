@@ -35,7 +35,7 @@ export function CharactersTab({
           <button
             type="button"
             onClick={onAddCharacter}
-            className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium inline-flex items-center gap-1.5 transition shadow"
+            className="mt-1 px-3 py-1.5 text-xs rounded-lg bg-[#C45B3A] hover:bg-[#A9472C] text-[#FFFAF6] font-medium inline-flex items-center gap-1.5 transition shadow"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Karakter Pertama</span>
@@ -48,10 +48,10 @@ export function CharactersTab({
   return (
     <div className="flex flex-col space-y-3 mt-3.5">
       {/* Tips Kontinuitas Karakter Interaksi */}
-      <div className="p-2.5 rounded-xl bg-violet-950/20 border border-violet-500/20 flex items-start gap-2.5">
-        <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-        <div className="space-y-0.5 text-[11px] text-violet-200/90 leading-relaxed">
-          <span className="font-semibold text-violet-300">Tips Kontinuitas Tokoh Interaksi:</span>{" "}
+      <div className="p-2.5 rounded-xl bg-[#F8EEEA] border border-[#E9C9BD] flex items-start gap-2.5">
+        <Sparkles className="w-4 h-4 text-[#C45B3A] shrink-0 mt-0.5" />
+        <div className="space-y-0.5 text-[11px] text-[#4D4A42]/90 leading-relaxed">
+          <span className="font-semibold text-[#A9472C]">Tips Kontinuitas Tokoh Interaksi:</span>{" "}
           Jika tokoh utama berinteraksi dengan orang lain (seperti pedagang pasar, guru, atau
           pengawal), pastikan tokoh tersebut didaftarkan juga di sini agar wujud wajah, busana, dan
           kiosnya konsisten antar adegan.
@@ -127,13 +127,13 @@ export function CharactersTab({
                   {/* Variants Sub-list */}
                   <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider">
+                      <span className="text-[10px] font-bold text-[#A9472C] uppercase tracking-wider">
                         Varian Bentuk / Usia:
                       </span>
                       <button
                         type="button"
                         onClick={() => onAddVariant(cIdx)}
-                        className="text-[10px] text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1"
+                        className="text-[10px] text-[#C45B3A] hover:text-[#A9472C] font-semibold flex items-center gap-1"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Tambah Varian</span>
@@ -172,7 +172,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="w-24 px-2 py-1 bg-[#161616] rounded border border-[#333] text-amber-300 font-mono text-[10px] focus:outline-none"
+                                className="w-24 px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#A9472C] font-mono text-[10px] focus:outline-none"
                               />
                               <button
                                 type="button"
@@ -197,7 +197,7 @@ export function CharactersTab({
                                 setCharactersList(updated);
                               }}
                               rows={2}
-                              className="w-full px-2 py-1 bg-[#161616] rounded border border-[#333] text-slate-300 text-[10px] font-mono focus:outline-none"
+                              className="w-full px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#4D4A42] text-[10px] font-mono focus:outline-none"
                             />
                           </div>
                         ))}
@@ -214,7 +214,7 @@ export function CharactersTab({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-violet-300 flex items-center gap-1">
+                      <span className="text-xs font-bold text-[#A9472C] flex items-center gap-1">
                         👤 {char.name}
                       </span>
                       {char.role && (
@@ -223,12 +223,12 @@ export function CharactersTab({
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
                       [char:{char.id || char.name.toLowerCase().replace(/\s+/g, "")}]
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-300 leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
+                  <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
                     {char.visual_anchor || "Belum ada ciri visual khusus."}
                   </p>
 
@@ -245,16 +245,16 @@ export function CharactersTab({
                             className="p-2 rounded bg-black/60 border border-[#262626] flex flex-col gap-1"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-semibold text-amber-300">
+                              <span className="text-[10px] font-semibold text-[#A9472C]">
                                 ✨ {v.label}
                               </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-[#A9472C] border border-amber-500/20">
                                 [char:
                                 {char.id || char.name.toLowerCase().replace(/\s+/g, "")}:
                                 {v.variant_id}]
                               </span>
                             </div>
-                            <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                            <p className="text-[10px] text-[#4D4A42] font-mono leading-relaxed">
                               {v.visual_anchor}
                             </p>
                           </div>

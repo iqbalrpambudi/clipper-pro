@@ -39,7 +39,7 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
               onClick={() => onSeek(item.start_time || 0)}
               className={`group relative shrink-0 w-24 aspect-[16/9] rounded-lg overflow-hidden border transition text-left ${
                 isSelected
-                  ? "border-violet-500 ring-2 ring-violet-500/40 scale-[1.03]"
+                  ? "border-[#C45B3A] ring-2 ring-[#C45B3A]/30 scale-[1.03]"
                   : "border-[#E5E1D7] opacity-70 hover:border-[#C45B3A] hover:opacity-100"
               }`}
             >
@@ -64,7 +64,7 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
               <div className="absolute inset-x-0 bottom-0 bg-black/85 px-1 py-0.5 text-[8.5px] text-white truncate font-medium flex items-center justify-between">
                 <span className="truncate">{item.chapter_title || `Scene ${idx + 1}`}</span>
                 {item.motion_effect && (
-                  <span className="text-[7.5px] text-violet-300 font-mono shrink-0 ml-1">
+                  <span className="text-[7.5px] text-[#A9472C] font-mono shrink-0 ml-1">
                     {item.motion_effect}
                   </span>
                 )}

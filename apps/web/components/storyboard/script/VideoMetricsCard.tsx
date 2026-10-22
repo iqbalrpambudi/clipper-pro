@@ -32,7 +32,7 @@ export function VideoMetricsCard({
     <div className="space-y-3 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 shadow-sm">
       <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2.5">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-violet-400" />
+          <Clock className="w-4 h-4 text-[#C45B3A]" />
           <h4 className="text-xs font-semibold uppercase tracking-wider text-[#26251F]">
             Ringkasan Metrik Video
           </h4>
@@ -59,7 +59,7 @@ export function VideoMetricsCard({
               {hasCopiedNarration ? (
                 <Check className="w-3 h-3 text-emerald-400" />
               ) : (
-                <Copy className="w-3 h-3 text-violet-400" />
+                <Copy className="w-3 h-3 text-[#C45B3A]" />
               )}
               <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
             </button>
@@ -75,7 +75,7 @@ export function VideoMetricsCard({
           <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
             Durasi Narasi
           </span>
-          <div className="text-sm font-bold text-violet-400 mt-1 font-mono">
+          <div className="text-sm font-bold text-[#C45B3A] mt-1 font-mono">
             {resultDurationFormatted}
           </div>
           <span className="text-[10px] text-slate-500 font-mono block mt-0.5">

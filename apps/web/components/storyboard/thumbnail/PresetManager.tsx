@@ -104,7 +104,7 @@ export function PresetManager({
               value={newPresetName}
               onChange={(e) => setNewPresetName(e.target.value)}
               placeholder="Contoh: Signature Misteri Dark / MrBeast Style..."
-              className="bg-black/50 border-[#333] text-xs font-medium"
+              className="bg-black/50 border-[#E5E1D7] text-xs font-medium"
               autoFocus
             />
             <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function PresetManager({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsSaving(false)}
-                className="border-[#333] text-xs h-7"
+                className="border-[#E5E1D7] text-xs h-7"
               >
                 Batal
               </Button>
@@ -131,7 +131,7 @@ export function PresetManager({
             type="button"
             size="sm"
             onClick={() => setIsSaving(true)}
-            className="w-full bg-[#242424] hover:bg-[#2A2A2A] text-white border border-[#333] text-xs font-semibold h-8"
+            className="w-full bg-[#C45B3A] hover:bg-[#A9472C] text-[#FFFAF6] border border-[#C45B3A] text-xs font-semibold h-8"
           >
             <BookmarkPlus className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
             <span>+ Simpan Style Saat Ini</span>
@@ -154,7 +154,7 @@ export function PresetManager({
             <div
               key={preset.id}
               onClick={() => onApplyPreset(preset)}
-              className="group p-3 rounded-xl bg-[#181818] border border-[#282828] hover:border-amber-500/50 hover:bg-[#1E1E1E] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
+              className="group p-3 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] hover:border-[#C45B3A] hover:bg-[#F8EEEA] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
@@ -177,7 +177,7 @@ export function PresetManager({
               <Button
                 size="sm"
                 variant="outline"
-                className="border-[#333] text-[11px] h-7 px-2.5 group-hover:bg-amber-500 group-hover:text-black group-hover:border-amber-500 shrink-0 transition-all font-semibold"
+                className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-amber-500 group-hover:text-black group-hover:border-amber-500 shrink-0 transition-all font-semibold"
               >
                 <span>Pakai</span>
               </Button>
@@ -204,7 +204,7 @@ export function PresetManager({
               <div
                 key={preset.id}
                 onClick={() => onApplyPreset(preset)}
-                className="group p-3 rounded-xl bg-[#181818] border border-[#282828] hover:border-emerald-500/50 hover:bg-[#1E1E1E] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
+                className="group p-3 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] hover:border-[#456A4E] hover:bg-[#F1EEE6] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -231,7 +231,7 @@ export function PresetManager({
                     size="sm"
                     variant="outline"
                     onClick={() => onApplyPreset(preset)}
-                    className="border-[#333] text-[11px] h-7 px-2.5 group-hover:bg-emerald-500 group-hover:text-white group-hover:border-emerald-500 transition-all font-semibold"
+                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-emerald-500 group-hover:text-white group-hover:border-emerald-500 transition-all font-semibold"
                   >
                     Pakai
                   </Button>

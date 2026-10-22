@@ -78,7 +78,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 size="sm"
                 onClick={handlePrevScene}
                 disabled={activeItemIndex <= 0}
-                className="h-7 w-7 p-0 border-[#2E2E2E]"
+                className="h-7 w-7 p-0 border-[#E5E1D7]"
                 title="Adegan Sebelumnya"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -111,7 +111,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 size="sm"
                 onClick={handleNextScene}
                 disabled={activeItemIndex >= state.items.length - 1}
-                className="h-7 w-7 p-0 border-[#2E2E2E]"
+                className="h-7 w-7 p-0 border-[#E5E1D7]"
                 title="Adegan Berikutnya"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -124,7 +124,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowSafeZones(!showSafeZones)}
-                className={`h-7 text-xs gap-1.5 border-[#2E2E2E] ${
+                className={`h-7 text-xs gap-1.5 border-[#E5E1D7] ${
                   showSafeZones
                     ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
                     : "text-muted-foreground"
@@ -137,7 +137,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
 
               <Badge
                 variant="outline"
-                className="text-[10px] text-muted-foreground border-[#333] hidden sm:inline-flex"
+                className="text-[10px] text-muted-foreground border-[#E5E1D7] hidden sm:inline-flex"
               >
                 {state.activeRightTab === "watermark"
                   ? "Drag Watermark Bebas"

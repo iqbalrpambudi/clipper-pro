@@ -100,7 +100,7 @@ export function ScriptParametersForm({
       <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Bookmark className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+            <Bookmark className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
             <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset:</span>
             <select
               value={selectedScriptPresetId}
@@ -135,7 +135,7 @@ export function ScriptParametersForm({
           <button
             type="button"
             onClick={() => setShowSaveScriptModal(!showSaveScriptModal)}
-            className="px-2.5 py-1 text-xs rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 hover:text-white transition flex items-center gap-1 font-medium shrink-0"
+            className="px-2.5 py-1 text-xs rounded-lg bg-[#F8EEEA] hover:bg-[#F3E1D9] border border-[#E9C9BD] text-[#A9472C] hover:text-[#A9472C] transition flex items-center gap-1 font-medium shrink-0"
           >
             <BookmarkPlus className="w-3.5 h-3.5" />
             <span>Simpan Preset</span>
@@ -197,7 +197,7 @@ export function ScriptParametersForm({
             <label className="block text-xs font-semibold text-[#4D4A42]">
               Bahasa Utama Video (Kunci Seluruh Pipeline)
             </label>
-            <span className="text-[10px] text-violet-300/80 font-mono">
+            <span className="text-[10px] text-[#A9472C]/80 font-mono">
               Mengunci Naskah, Voice TTS & YouTube
             </span>
           </div>
@@ -233,10 +233,10 @@ export function ScriptParametersForm({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="flex items-center gap-1.5 text-xs font-semibold text-[#4D4A42]">
-              <Clock className="w-3.5 h-3.5 text-violet-400" />
+              <Clock className="w-3.5 h-3.5 text-[#C45B3A]" />
               Target Durasi Narasi
             </label>
-            <span className="text-xs font-mono font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">
+            <span className="text-xs font-mono font-bold text-[#C45B3A] bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
               {durationMins} Menit (~{durationMins * 135} kata)
             </span>
           </div>
@@ -247,7 +247,7 @@ export function ScriptParametersForm({
             step={1}
             value={durationMins}
             onChange={(e) => setDurationMins(Number(e.target.value))}
-            className="w-full accent-violet-500 cursor-pointer h-1.5 bg-[#2A2A2A] rounded-lg"
+            className="w-full accent-[#C45B3A] cursor-pointer h-1.5 bg-[#E5E1D7] rounded-lg"
           />
           <div className="mt-1 flex justify-between font-mono text-[10px] text-[#77766D]">
             <span>3 Menit (Singkat)</span>
@@ -274,7 +274,7 @@ export function ScriptParametersForm({
                 onClick={() => setTone(t.id)}
                 className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${
                   tone === t.id
-                    ? "bg-violet-500/20 border-violet-500/50 text-violet-200 font-semibold"
+                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] font-semibold"
                     : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                 }`}
               >
@@ -288,12 +288,12 @@ export function ScriptParametersForm({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Palette className="w-3.5 h-3.5 text-violet-400" />
+              <Palette className="w-3.5 h-3.5 text-[#C45B3A]" />
               Preset Gaya Visual Ilustrasi AI
             </label>
             <Link
               href="/image-studio"
-              className="text-[11px] text-violet-400 hover:text-violet-300 hover:underline flex items-center gap-1"
+              className="text-[11px] text-[#C45B3A] hover:text-[#A9472C] hover:underline flex items-center gap-1"
             >
               <span>Buka Studio</span>
               <ExternalLink className="w-3 h-3" />
@@ -316,7 +316,7 @@ export function ScriptParametersForm({
                 {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} •
                 16:9 Landscape
               </span>
-              <span className="text-violet-400 font-mono text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
+              <span className="text-[#C45B3A] font-mono text-[9px] px-1.5 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
                 Prompt Visual Selaras
               </span>
             </div>
@@ -340,7 +340,7 @@ export function ScriptParametersForm({
                 onClick={() => setImagesPerSegment(opt.count)}
                 className={`p-2.5 rounded-xl border text-center transition ${
                   imagesPerSegment === opt.count
-                    ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
                     : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                 }`}
               >
@@ -373,7 +373,7 @@ export function ScriptParametersForm({
               id="resetBibleCheck"
               checked={resetBibleOnGenerate}
               onChange={(e) => setResetBibleOnGenerate(e.target.checked)}
-              className="rounded border-[#333] text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+              className="rounded border-[#E5E1D7] text-[#C45B3A] focus:ring-[#C45B3A] w-4 h-4 cursor-pointer"
             />
             <label
               htmlFor="resetBibleCheck"

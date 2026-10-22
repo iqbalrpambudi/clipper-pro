@@ -558,7 +558,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               </div>
 
               {/* YouTube Card & Interactive Konva Canvas Container */}
-              <div className="overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#26251F] shadow-lg transition-all">
+              <div className="overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#F1EEE6] shadow-lg transition-all">
                 <div className="relative w-full aspect-video">
                   <ThumbnailKonvaCanvas
                     ref={canvasRef}
@@ -678,7 +678,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   onClick={() => setActiveSettingsTab("presets")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     activeSettingsTab === "presets"
-                      ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                       : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
                   }`}
                 >

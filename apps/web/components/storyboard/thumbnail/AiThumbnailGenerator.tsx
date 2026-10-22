@@ -100,7 +100,7 @@ export function AiThumbnailGenerator({
                 className={`p-2.5 rounded-xl border text-left transition-all ${
                   isSelected
                     ? "bg-red-500/10 border-red-500/40 text-white shadow-sm ring-1 ring-red-500/30"
-                    : "bg-[#1E1E1E] border-[#2A2A2A] text-slate-300 hover:bg-[#252525]"
+                    : "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C] hover:bg-[#F3E1D9]"
                 }`}
               >
                 <div className="text-xs font-bold truncate">{f.name}</div>
@@ -114,7 +114,7 @@ export function AiThumbnailGenerator({
       </div>
 
       {/* SECTION 2: Prompt Input & Action */}
-      <div className="p-3.5 rounded-xl bg-[#181818] border border-[#2E2E2E] space-y-3">
+      <div className="p-3.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-3">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
             <Wand2 className="w-4 h-4 text-amber-400" />
@@ -152,7 +152,7 @@ export function AiThumbnailGenerator({
           value={thumbnailPrompt}
           onChange={(e) => setThumbnailPrompt(e.target.value)}
           placeholder="A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape)..."
-          className="bg-black/50 border-[#333] text-xs font-mono min-h-[90px] resize-y"
+          className="bg-black/50 border-[#E5E1D7] text-xs font-mono min-h-[90px] resize-y"
         />
 
         <div className="flex items-center justify-between pt-1">
@@ -200,7 +200,7 @@ export function AiThumbnailGenerator({
                   className={`group relative aspect-video rounded-lg overflow-hidden border cursor-pointer transition-all ${
                     isActive
                       ? "ring-2 ring-red-500 border-red-500"
-                      : "border-[#333] hover:border-slate-400 opacity-80 hover:opacity-100"
+                      : "border-[#E5E1D7] hover:border-slate-400 opacity-80 hover:opacity-100"
                   }`}
                   title="Klik untuk memakai latar ini"
                 >

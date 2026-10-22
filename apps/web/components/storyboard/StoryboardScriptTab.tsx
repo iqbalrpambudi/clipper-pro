@@ -53,7 +53,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 {state.hasCopiedNarration ? (
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
                 ) : (
-                  <Copy className="w-3.5 h-3.5 text-violet-400" />
+                  <Copy className="w-3.5 h-3.5 text-[#C45B3A]" />
                 )}
                 <span>{state.hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
               </Button>

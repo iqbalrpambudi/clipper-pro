@@ -238,7 +238,7 @@ export function VoiceSelectorPanel({
                 size="xs"
                 disabled={isSyncingElevenLabs}
                 onClick={handleSyncElevenLabsVoices}
-                className="h-6 text-[10px] gap-1 px-2 border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+                className="h-6 text-[10px] gap-1 px-2 border-[#E9C9BD] text-[#A9472C] hover:bg-[#F8EEEA]"
               >
                 {isSyncingElevenLabs ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -263,7 +263,7 @@ export function VoiceSelectorPanel({
                   href="https://elevenlabs.io/voice-library"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-violet-400 hover:text-violet-300 hover:underline flex items-center gap-0.5"
+                  className="text-[#C45B3A] hover:text-[#A9472C] hover:underline flex items-center gap-0.5"
                 >
                   Buka Voice Library <ExternalLink className="w-2.5 h-2.5" />
                 </a>
@@ -286,7 +286,7 @@ export function VoiceSelectorPanel({
                     setSelectedVoice(clean);
                     showToast(`Voice ID '${clean}' dipilih untuk narasi!`, "success");
                   }}
-                  className="h-7 text-[10px] px-2.5 bg-violet-600 hover:bg-violet-500"
+                  className="h-7 text-[10px] px-2.5"
                 >
                   Pilih ID Ini
                 </Button>
@@ -311,16 +311,16 @@ export function VoiceSelectorPanel({
             {/* Active Custom Voice indicator if selectedVoice is custom */}
             {selectedVoice &&
               !filteredVoices.some((v) => v.id.toLowerCase() === selectedVoice.toLowerCase()) && (
-                <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
+                <div className="p-2 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                    <span className="text-[11px] font-medium text-violet-200 truncate">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
+                    <span className="text-[11px] font-medium text-[#4D4A42] truncate">
                       Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
                     </span>
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 border-violet-400 text-violet-300"
+                    className="text-[9px] py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
                   >
                     Custom ID
                   </Badge>
@@ -372,7 +372,7 @@ export function VoiceSelectorPanel({
           <div className="space-y-1.5 border-t border-border pt-2.5">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span>Custom Voice ID / Speaker Name:</span>
-              <span className="text-violet-400 text-[10px]">Opsional / Voice Library</span>
+              <span className="text-[#C45B3A] text-[10px]">Opsional / Voice Library</span>
             </div>
             <div className="flex items-center gap-1.5">
               <input
@@ -392,7 +392,7 @@ export function VoiceSelectorPanel({
                   setSelectedVoice(clean);
                   showToast(`Voice '${clean}' dipilih untuk Runware!`, "success");
                 }}
-                className="h-7 text-[10px] px-2.5 bg-violet-600 hover:bg-violet-500"
+                className="h-7 text-[10px] px-2.5"
               >
                 Pilih ID
               </Button>
@@ -414,16 +414,16 @@ export function VoiceSelectorPanel({
             </div>
             {selectedVoice &&
               !filteredVoices.some((v) => v.id.toLowerCase() === selectedVoice.toLowerCase()) && (
-                <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-between gap-2 text-xs">
+                <div className="p-2 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                    <span className="text-[11px] font-medium text-violet-200 truncate">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
+                    <span className="text-[11px] font-medium text-[#4D4A42] truncate">
                       Voice Aktif: <span className="font-mono">{selectedVoice}</span>
                     </span>
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 border-violet-400 text-violet-300"
+                    className="text-[9px] py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
                   >
                     Custom Speaker
                   </Badge>
@@ -493,7 +493,7 @@ export function VoiceSelectorPanel({
                           ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                           : isJa
                             ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                            : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                            : "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                     }`}
                   >
                     {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}

@@ -554,7 +554,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     }}
                     className={`p-2.5 rounded-xl border text-left transition ${
                       provider === "gemini"
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
                         : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                     }`}
                   >
@@ -570,7 +570,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     }}
                     className={`p-2.5 rounded-xl border text-left transition ${
                       provider === "elevenlabs"
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
                         : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                     }`}
                   >
@@ -586,7 +586,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     }}
                     className={`p-2.5 rounded-xl border text-left transition ${
                       provider === "runware"
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
                         : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                     }`}
                   >
@@ -604,7 +604,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     }}
                     className={`p-2.5 rounded-xl border text-left transition ${
                       provider === "edge"
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
+                        ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
                         : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                     }`}
                   >
@@ -623,7 +623,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     <span className="font-semibold text-[#4D4A42]">Model Gemini TTS</span>
                     <Badge
                       variant="outline"
-                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+                      className="text-[9px] py-0 text-[#A9472C] border-[#C45B3A]/40"
                     >
                       2.5 Flash Utama
                     </Badge>
@@ -631,7 +631,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   <select
                     value={geminiModel}
                     onChange={(e) => setGeminiModel(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                    className="w-full px-2 py-1.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] text-foreground text-xs font-medium focus:outline-none focus:border-[#C45B3A]"
                   >
                     {GEMINI_TTS_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -648,7 +648,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     <span className="font-semibold text-[#4D4A42]">Model ElevenLabs</span>
                     <Badge
                       variant="outline"
-                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+                      className="text-[9px] py-0 text-[#A9472C] border-[#C45B3A]/40"
                     >
                       Multilingual v2
                     </Badge>
@@ -656,7 +656,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   <select
                     value={elevenlabsModel}
                     onChange={(e) => setElevenlabsModel(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                    className="w-full px-2 py-1.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] text-foreground text-xs font-medium focus:outline-none focus:border-[#C45B3A]"
                   >
                     {ELEVENLABS_TTS_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -673,7 +673,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         href="https://elevenlabs.io/voice-library"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-violet-400 hover:underline flex items-center gap-0.5"
+                        className="text-[#C45B3A] hover:underline flex items-center gap-0.5"
                       >
                         Voice Library <ExternalLink className="w-2.5 h-2.5" />
                       </a>
@@ -684,7 +684,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         value={customVoiceInput}
                         onChange={(e) => setCustomVoiceInput(e.target.value)}
                         placeholder="Contoh: pNInz6obpgDQGcFmaJgB"
-                        className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                        className="flex-1 px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-foreground text-xs font-mono"
                       />
                       <button
                         type="button"
@@ -706,7 +706,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         title="Tes sampel suara"
                       >
                         {sampleAudioPlaying === customVoiceInput.trim() ? (
-                          <Pause className="w-3.5 h-3.5 text-violet-400" />
+                          <Pause className="w-3.5 h-3.5 text-[#C45B3A]" />
                         ) : (
                           <Play className="w-3.5 h-3.5" />
                         )}
@@ -714,7 +714,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     </div>
                     {voice &&
                       !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
-                        <div className="text-[10px] text-violet-300 font-mono">
+                        <div className="text-[10px] text-[#A9472C] font-mono">
                           Voice ID Aktif: {voice}
                         </div>
                       )}
@@ -728,7 +728,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     <span className="font-semibold text-[#4D4A42]">Model Runware TTS</span>
                     <Badge
                       variant="outline"
-                      className="text-[9px] py-0 text-violet-300 border-violet-500/40"
+                      className="text-[9px] py-0 text-[#A9472C] border-[#C45B3A]/40"
                     >
                       Audio Engine
                     </Badge>
@@ -740,7 +740,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                       setRunwareModel(newM);
                       setVoice(newM);
                     }}
-                    className="w-full px-2 py-1.5 bg-[#1A1A1A] rounded-lg border border-[#333] text-foreground text-xs font-medium focus:outline-none focus:border-violet-500"
+                    className="w-full px-2 py-1.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] text-foreground text-xs font-medium focus:outline-none focus:border-[#C45B3A]"
                   >
                     {RUNWARE_TTS_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -753,7 +753,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>Custom Voice ID / Speaker Name:</span>
-                      <span className="text-violet-400 text-[10px]">Opsional</span>
+                      <span className="text-[#C45B3A] text-[10px]">Opsional</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <input
@@ -761,7 +761,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         value={runwareCustomVoiceInput}
                         onChange={(e) => setRunwareCustomVoiceInput(e.target.value)}
                         placeholder="Contoh: Ashley, Eve, Leo, presenter_male"
-                        className="flex-1 px-2 py-1 bg-[#1A1A1A] rounded border border-[#333] text-foreground text-xs font-mono"
+                        className="flex-1 px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-foreground text-xs font-mono"
                       />
                       <button
                         type="button"
@@ -783,7 +783,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         title="Tes sampel audio"
                       >
                         {sampleAudioPlaying === runwareCustomVoiceInput.trim() ? (
-                          <Pause className="w-3.5 h-3.5 text-violet-400" />
+                          <Pause className="w-3.5 h-3.5 text-[#C45B3A]" />
                         ) : (
                           <Play className="w-3.5 h-3.5" />
                         )}
@@ -791,7 +791,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                     </div>
                     {voice &&
                       !filteredVoices.some((v) => v.id.toLowerCase() === voice.toLowerCase()) && (
-                        <div className="text-[10px] text-violet-300 font-mono">
+                        <div className="text-[10px] text-[#A9472C] font-mono">
                           Voice Aktif: {voice}
                         </div>
                       )}
@@ -833,7 +833,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                         onClick={() => setVoice(v.id)}
                         className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                           isSelected
-                            ? "bg-violet-500/20 border-violet-500 text-violet-200 ring-1 ring-violet-500/40"
+                            ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42] ring-1 ring-[#C45B3A]/30"
                             : "bg-[#FFFEFA] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#F1EEE6] hover:border-[#C9C3B6]"
                         }`}
                       >
@@ -855,14 +855,14 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                                     ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                                     : isJa
                                       ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                                      : "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                                      : "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                               }`}
                             >
                               {isEn ? "🇬🇧 EN" : isId ? "🇮🇩 ID" : isJa ? "🇯🇵 JA" : "🌐 Multi"}
                             </Badge>
                           </div>
                           {isSelected && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
                           )}
                         </div>
 
@@ -905,7 +905,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                 <div>
                   <div className="flex items-center justify-between mb-1 text-xs">
                     <span className="font-semibold text-[#4D4A42]">Kecepatan Bicara</span>
-                    <span className="font-mono text-violet-400">
+                    <span className="font-mono text-[#C45B3A]">
                       {rate >= 0 ? `+${rate}%` : `${rate}%`}
                     </span>
                   </div>
@@ -923,7 +923,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                 <div>
                   <div className="flex items-center justify-between mb-1 text-xs">
                     <span className="font-semibold text-[#4D4A42]">Pitch Nada</span>
-                    <span className="font-mono text-violet-400">
+                    <span className="font-mono text-[#C45B3A]">
                       {pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`}
                     </span>
                   </div>
@@ -1036,7 +1036,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                       </div>
                     </div>
 
-                    <span className="text-xs font-mono font-bold text-violet-400">
+                    <span className="text-xs font-mono font-bold text-[#C45B3A]">
                       {formatTime(currentTime)} / {formatTime(duration || audio.duration || 0)}
                     </span>
                   </div>
@@ -1068,7 +1068,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                       size="sm"
                       onClick={() => syncTimingMutation.mutate()}
                       disabled={syncTimingMutation.isPending}
-                      className="border-[#2E2E2E] text-[11px] gap-1.5 h-7"
+                      className="border-[#E5E1D7] text-[11px] gap-1.5 h-7"
                     >
                       {syncTimingMutation.isPending ? (
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1135,7 +1135,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                           }`}
                         >
                           <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                            <span className="font-mono font-bold text-violet-300">
+                            <span className="font-mono font-bold text-[#A9472C]">
                               Segmen #{idx + 1}
                             </span>
                             <span className="font-mono">

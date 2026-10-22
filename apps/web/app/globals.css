@@ -1537,7 +1537,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom Supabase Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -1554,6 +1554,33 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(62, 207, 142, 0.4);
+}
+
+/* Workspace light scrollbar */
+.workspace-theme ::-webkit-scrollbar-track {
+  background: #f3f0e8;
+}
+.workspace-theme ::-webkit-scrollbar-thumb {
+  background: #d2cdbf;
+  border-radius: 4px;
+}
+.workspace-theme ::-webkit-scrollbar-thumb:hover {
+  background: #b8b2a2;
+}
+.workspace-theme {
+  scrollbar-color: #d2cdbf #f3f0e8;
+}
+
+/* Portal surface light scrollbar */
+.workspace-portal-surface ::-webkit-scrollbar-track {
+  background: #f3f0e8;
+}
+.workspace-portal-surface ::-webkit-scrollbar-thumb {
+  background: #d2cdbf;
+  border-radius: 4px;
+}
+.workspace-portal-surface ::-webkit-scrollbar-thumb:hover {
+  background: #b8b2a2;
 }
 
 /* Supabase Glass & Panel Classes */

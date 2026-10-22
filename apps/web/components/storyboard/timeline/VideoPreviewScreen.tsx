@@ -283,8 +283,8 @@ export function VideoPreviewScreen({
             })`,
           }}
         >
-          <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-violet-400/70 transition-all flex items-center justify-center pointer-events-auto">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-violet-300 px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
+          <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/60 transition-all flex items-center justify-center pointer-events-auto">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-[#A9472C] px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
               <Move className="w-3 h-3" />
               <span>Tarik untuk geser posisi subtitle</span>
             </div>
@@ -298,7 +298,7 @@ export function VideoPreviewScreen({
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
         {activeItem && (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-600/80 backdrop-blur-md text-violet-100 font-semibold border border-violet-400/30">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#C45B3A]/80 backdrop-blur-md text-[#FFFAF6] font-semibold border border-[#C45B3A]/30">
             Motion: {activeItem.motion_effect}
           </span>
         )}

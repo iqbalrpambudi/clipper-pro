@@ -59,7 +59,7 @@ export function SegmentsList({
     return (
       <div className="w-full">
         <div className="rounded-2xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-12 text-center shadow-sm">
-          <BookOpen className="w-12 h-12 text-violet-400/50 mx-auto mb-3" />
+          <BookOpen className="w-12 h-12 text-[#C45B3A]/40 mx-auto mb-3" />
           <h3 className="mb-1.5 text-base font-semibold text-[#26251F]">
             Daftar Babak & Segmen Naskah (0 Segmen)
           </h3>
@@ -86,7 +86,7 @@ export function SegmentsList({
                 <span>Daftar Babak & Segmen Naskah ({segments.length} Segmen)</span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono border-violet-500/30 text-violet-300 bg-violet-500/10 normal-case"
+                  className="text-[10px] font-mono border-[#E9C9BD] text-[#A9472C] bg-[#F8EEEA] normal-case"
                 >
                   {language === "en" ? "🇬🇧 English Explainer" : "🇮🇩 Indonesian"}
                 </Badge>
@@ -108,12 +108,12 @@ export function SegmentsList({
               {hasCopiedNarration ? (
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
               ) : (
-                <Copy className="w-3.5 h-3.5 text-violet-400" />
+                <Copy className="w-3.5 h-3.5 text-[#C45B3A]" />
               )}
               <span>{hasCopiedNarration ? "Tersalin!" : "Salin Semua Narasi"}</span>
             </Button>
 
-            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
+            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
               {items.length} Prompt Gambar Siap
             </span>
             <Button onClick={onNextStep} variant="workspace-primary" className="gap-2 text-xs">
@@ -148,7 +148,7 @@ export function SegmentsList({
               >
                 <div className="flex flex-col justify-between gap-2.5 border-b border-[#E5E1D7] pb-2.5 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 font-bold border border-violet-500/25 shrink-0">
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] font-bold border border-[#E9C9BD] shrink-0">
                       Segmen {idx + 1}
                     </span>
                     {isEditing ? (
@@ -196,7 +196,7 @@ export function SegmentsList({
                           onClick={() => onStartEditSegment(seg, idx, segItems)}
                           className="h-8 gap-1.5 px-2.5 text-xs text-[#4D4A42] hover:bg-[#F1EEE6] hover:text-[#26251F]"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-violet-400" />
+                          <Edit2 className="w-3.5 h-3.5 text-[#C45B3A]" />
                           <span>Edit Segmen</span>
                         </Button>
                       </div>

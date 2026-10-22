@@ -79,7 +79,7 @@ export function ContinuityBibleCard({
       <div className="shrink-0 space-y-3 border-b border-[#E5E1D7] pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-violet-400" />
+            <BookOpen className="w-4 h-4 text-[#C45B3A]" />
             <div>
               <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#26251F]">
                 Story Continuity Bible
@@ -115,10 +115,10 @@ export function ContinuityBibleCard({
                 <DropdownMenuItem
                   onClick={onExtractBible}
                   disabled={isExtracting}
-                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-violet-600/20 hover:text-violet-200 transition focus:bg-violet-600/20 focus:text-violet-200"
+                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-[#F8EEEA] hover:text-[#4D4A42] transition focus:bg-[#F8EEEA] focus:text-[#4D4A42]"
                 >
                   {isExtracting ? (
-                    <RefreshCw className="w-4 h-4 animate-spin text-violet-400 shrink-0" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#C45B3A] shrink-0" />
                   ) : (
                     <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
                   )}
@@ -130,16 +130,16 @@ export function ContinuityBibleCard({
                   </div>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="bg-[#262626] my-1" />
+                <DropdownMenuSeparator className="bg-[#E5E1D7] my-1" />
 
                 <DropdownMenuItem
                   onClick={() => {
                     setBibleTab("characters");
                     onAddCharacter();
                   }}
-                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-violet-600/20 hover:text-violet-200 transition focus:bg-violet-600/20 focus:text-violet-200"
+                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-[#F8EEEA] hover:text-[#4D4A42] transition focus:bg-[#F8EEEA] focus:text-[#4D4A42]"
                 >
-                  <Users className="w-4 h-4 text-violet-400 shrink-0" />
+                  <Users className="w-4 h-4 text-[#C45B3A] shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Tambah Karakter</span>
                     <span className="text-[10px] text-[#77766D]">
@@ -173,7 +173,7 @@ export function ContinuityBibleCard({
                   {editingBible ? (
                     <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                   ) : (
-                    <Edit2 className="w-4 h-4 text-violet-400 shrink-0" />
+                    <Edit2 className="w-4 h-4 text-[#C45B3A] shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">

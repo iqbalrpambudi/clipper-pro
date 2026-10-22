@@ -82,7 +82,7 @@ export function BgmCustomizePanel({
             <Music2 className="w-3.5 h-3.5" />
           </div>
           <h4 className="text-xs font-semibold text-[#26251F]">Musik Latar (BGM) & Mixer</h4>
-          <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[9px] px-1.5 py-0">
+          <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-[9px] px-1.5 py-0">
             Auto-Duck
           </Badge>
         </div>
@@ -95,7 +95,7 @@ export function BgmCustomizePanel({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[#C45B3A]" />
             Pustaka Mood Sinematik
           </span>
           <span className="text-[10px] text-muted-foreground">{BGM_MOODS.length} Mood</span>
@@ -144,7 +144,7 @@ export function BgmCustomizePanel({
                       <div className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate">
                         <span>{bgm.name}</span>
                         {isSelected && (
-                          <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />
+                          <CheckCircle2 className="w-3 h-3 text-[#C45B3A] shrink-0" />
                         )}
                       </div>
                       <span className="text-[9.5px] text-muted-foreground font-mono">
@@ -165,7 +165,7 @@ export function BgmCustomizePanel({
       {/* Mixer & Auto-Ducking Controls */}
       <div className="space-y-3.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <h4 className="flex items-center gap-1.5 text-xs font-semibold text-[#26251F]">
-          <Sliders className="w-3.5 h-3.5 text-violet-400" />
+          <Sliders className="w-3.5 h-3.5 text-[#C45B3A]" />
           Kontrol Mixer BGM
         </h4>
 
@@ -199,7 +199,7 @@ export function BgmCustomizePanel({
             type="checkbox"
             checked={autoDucking}
             onChange={(e) => setAutoDucking(e.target.checked)}
-            className="w-4 h-4 accent-violet-600 cursor-pointer rounded"
+            className="w-4 h-4 accent-[#C45B3A] cursor-pointer rounded"
           />
         </label>
       </div>
@@ -207,7 +207,7 @@ export function BgmCustomizePanel({
       {/* Upload Custom Audio CTA */}
       <div className="space-y-1.5 rounded-xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-3 text-center transition hover:border-[#C45B3A]">
         <div className="flex items-center justify-center gap-2 text-[#77766D]">
-          <UploadCloud className="w-4 h-4 text-violet-400" />
+          <UploadCloud className="w-4 h-4 text-[#C45B3A]" />
           <span className="text-xs font-semibold text-[#4D4A42]">Unggah Audio BGM Sendiri</span>
         </div>
         <p className="text-[10px] text-muted-foreground">
@@ -226,8 +226,8 @@ export function BgmCustomizePanel({
       </div>
 
       {/* Info Tip */}
-      <div className="p-3 rounded-xl bg-violet-600/5 border border-violet-500/20 text-xs text-muted-foreground flex items-start gap-2">
-        <Info className="w-3.5 h-3.5 text-violet-400 shrink-0 mt-0.5" />
+      <div className="p-3 rounded-xl bg-[#F8EEEA] border border-[#E9C9BD] text-xs text-muted-foreground flex items-start gap-2">
+        <Info className="w-3.5 h-3.5 text-[#C45B3A] shrink-0 mt-0.5" />
         <span className="text-[11px] leading-relaxed">
           Musik latar akan digabungkan secara otomatis pada tahap Render 16:9 sesuai volume mixer di
           atas.

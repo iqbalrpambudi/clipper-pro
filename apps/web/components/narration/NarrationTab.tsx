@@ -115,7 +115,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
       if (tpl.id === "story_parodi") {
         return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
       }
-      return <Film className="w-4 h-4 text-purple-400 shrink-0" />;
+      return <Film className="w-4 h-4 text-[#C45B3A] shrink-0" />;
     }
     if (cat === "fakta") {
       if (tpl.id === "fakta_ranking") {
@@ -294,7 +294,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <Clapperboard className="w-3 h-3 text-purple-400" />
+                  <Clapperboard className="w-3 h-3 text-[#C45B3A]" />
                   <span>Alur Cerita</span>
                   <span className="text-[10px] opacity-75 font-mono">{categoryCounts.recap}</span>
                 </button>

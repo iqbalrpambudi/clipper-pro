@@ -165,7 +165,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5 text-xs">
               <div className="flex items-center justify-between text-[#4D4A42]">
                 <span>Aspect Ratio:</span>
-                <span className="font-mono font-bold text-violet-400">16:9 (Landscape)</span>
+                <span className="font-mono font-bold text-[#C45B3A]">16:9 (Landscape)</span>
               </div>
               <div className="flex items-center justify-between text-[#4D4A42]">
                 <span>Durasi Audio:</span>
@@ -186,7 +186,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-1 text-[#4D4A42]">
                 <span>Status Subtitle:</span>
                 <span
-                  className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-violet-400" : "text-amber-400"}`}
+                  className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-[#C45B3A]" : "text-amber-400"}`}
                 >
                   {project.subtitle_style?.enabled !== false
                     ? "Aktif (Burn-in)"
@@ -219,7 +219,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                       "info"
                     );
                   }}
-                  className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                  className="w-4 h-4 rounded accent-[#C45B3A] cursor-pointer"
                 />
                 <span className="font-semibold text-[#26251F]">
                   Sertakan Subtitle pada Render Video
@@ -229,8 +229,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                 variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
                 className={`text-[10px] font-mono ${
                   project.subtitle_style?.enabled !== false
-                    ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
-                    : "bg-[#222222] text-slate-400 border border-[#333333]"
+                    ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
+                    : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
                 }`}
               >
                 {project.subtitle_style?.enabled !== false ? "AKTIF" : "NONAKTIF"}
@@ -260,8 +260,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                     }}
                     className={`p-3 rounded-xl border text-left transition ${
                       resolution === res.id
-                        ? "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                        : "bg-[#141414] border-[#2E2E2E] text-slate-400 hover:text-white"
+                        ? "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C]"
+                        : "bg-[#FBFAF7] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
                     }`}
                   >
                     <div className="text-xs font-bold">{res.label}</div>
@@ -305,11 +305,11 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
           <div className="lg:col-span-7 space-y-6">
             {/* Active Job Live Progress */}
             {isRendering && (
-              <div className="p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5 space-y-4">
+              <div className="p-5 rounded-2xl border border-[#E9C9BD] bg-[#F8EEEA] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                    <h4 className="text-xs font-bold text-white font-mono">
+                    <Loader2 className="w-4 h-4 text-[#C45B3A] animate-spin" />
+                    <h4 className="text-xs font-bold text-[#26251F] font-mono">
                       Sedang Me-render Video Final (
                       {activeTask?.task_type === "render" && activeTask.progress !== undefined
                         ? activeTask.progress
@@ -336,9 +336,9 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full bg-[#262626] rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-[#E5E1D7] rounded-full h-2 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#C45B3A] to-[#D4765E] h-full transition-all duration-300"
                     style={{
                       width: `${Math.max(
                         5,
@@ -368,7 +368,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                   <button
                     type="button"
                     onClick={() => setActivePlaybackUrl(null)}
-                    className="text-xs text-slate-400 hover:text-white"
+                    className="text-xs text-[#77766D] hover:text-[#26251F]"
                   >
                     Tutup
                   </button>
@@ -377,7 +377,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                   src={activePlaybackUrl}
                   controls
                   autoPlay
-                  className="w-full aspect-video rounded-xl border border-[#E5E1D7] bg-[#26251F]"
+                  className="w-full aspect-video rounded-xl border border-[#E5E1D7] bg-[#F1EEE6]"
                 />
               </div>
             )}
@@ -386,7 +386,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
             <div className="space-y-4 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6">
               <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-3">
                 <div className="flex items-center gap-2">
-                  <HardDrive className="w-4 h-4 text-violet-400" />
+                  <HardDrive className="w-4 h-4 text-[#C45B3A]" />
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-[#26251F]">
                     Riwayat File Render ({renderJobs.length})
                   </h4>
@@ -411,7 +411,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
                         ) : job.status === "rendering" || job.status === "queued" ? (
-                          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#F8EEEA] flex items-center justify-center text-[#C45B3A] shrink-0">
                             <Loader2 className="w-5 h-5 animate-spin" />
                           </div>
                         ) : (
@@ -430,7 +430,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                                 job.status === "completed"
                                   ? "bg-emerald-500/10 text-emerald-400"
                                   : job.status === "rendering"
-                                    ? "bg-violet-500/10 text-violet-300"
+                                    ? "bg-[#F8EEEA] text-[#A9472C]"
                                     : "bg-rose-500/10 text-rose-400"
                               }`}
                             >
@@ -479,7 +479,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                               variant="workspace-secondary"
                               className="h-9 gap-1.5 text-xs"
                             >
-                              <Play className="w-3.5 h-3.5 text-violet-400" />
+                              <Play className="w-3.5 h-3.5 text-[#C45B3A]" />
                               <span>Putar</span>
                             </Button>
 
