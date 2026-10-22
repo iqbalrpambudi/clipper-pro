@@ -11,11 +11,18 @@ import {
   Pause,
   Play,
   CheckCircle2,
+  Bookmark,
+  BookmarkPlus,
+  Save,
+  Trash2,
+  X,
 } from "lucide-react";
 import { VoiceInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
+import { Input } from "@/components/ui/input";
+import { VoicePreset } from "@/lib/presetStorage";
 import {
   GEMINI_TTS_MODELS,
   ELEVENLABS_TTS_MODELS,
@@ -50,6 +57,15 @@ interface VoiceSelectorPanelProps {
   loadingSampleVoiceId: string | null;
   playVoiceSample: (voiceId: string) => void;
   showToast: (msg: string, type: "success" | "error" | "info") => void;
+  voicePresets: VoicePreset[];
+  selectedVoicePresetId: string;
+  handleLoadVoicePreset: (presetId: string) => void;
+  handleSaveVoicePreset: (e: React.FormEvent) => void;
+  handleDeleteVoicePreset: (id: string, name: string) => void;
+  showSaveVoiceModal: boolean;
+  setShowSaveVoiceModal: (show: boolean) => void;
+  newVoicePresetName: string;
+  setNewVoicePresetName: (name: string) => void;
 }
 
 export function VoiceSelectorPanel({
@@ -79,7 +95,18 @@ export function VoiceSelectorPanel({
   loadingSampleVoiceId,
   playVoiceSample,
   showToast,
+  voicePresets,
+  selectedVoicePresetId,
+  handleLoadVoicePreset,
+  handleSaveVoicePreset,
+  handleDeleteVoicePreset,
+  showSaveVoiceModal,
+  setShowSaveVoiceModal,
+  newVoicePresetName,
+  setNewVoicePresetName,
 }: VoiceSelectorPanelProps) {
+  const selectedPreset = voicePresets.find((p) => p.id === selectedVoicePresetId);
+
   return (
     <SectionPanel
       title="Pilih Karakter Suara"
@@ -148,6 +175,83 @@ export function VoiceSelectorPanel({
         </div>
       }
     >
+      {/* Voice Preset Bar */}
+      <div className="mb-3.5 space-y-2.5 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Bookmark className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="shrink-0 text-xs font-semibold text-foreground">Preset:</span>
+            <select
+              value={selectedVoicePresetId}
+              onChange={(e) => handleLoadVoicePreset(e.target.value)}
+              className="max-w-[200px] truncate rounded-lg border border-input bg-control-background px-2.5 py-1 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
+            >
+              <option value="" disabled>
+                -- Muat Preset Suara --
+              </option>
+              {voicePresets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
+                </option>
+              ))}
+            </select>
+            {selectedPreset && !selectedPreset.isBuiltin && (
+              <button
+                type="button"
+                onClick={() => handleDeleteVoicePreset(selectedPreset.id, selectedPreset.name)}
+                title="Hapus Preset Kustom Ini"
+                className="shrink-0 rounded p-1 text-primary transition hover:bg-accent"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          <Button
+            type="button"
+            variant="workspace-secondary"
+            size="xs"
+            onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
+            className="shrink-0 gap-1"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5" />
+            <span>Simpan Preset</span>
+          </Button>
+        </div>
+
+        {showSaveVoiceModal && (
+          <form
+            onSubmit={handleSaveVoicePreset}
+            className="flex items-center gap-2 border-t border-border pt-2"
+          >
+            <Input
+              type="text"
+              placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
+              value={newVoicePresetName}
+              onChange={(e) => setNewVoicePresetName(e.target.value)}
+              autoFocus
+              className="h-9 flex-1 text-xs"
+            />
+            <Button
+              type="submit"
+              variant="workspace-primary"
+              size="workspace-sm"
+              className="shrink-0 gap-1"
+            >
+              <Save className="h-3 w-3" />
+              <span>Simpan</span>
+            </Button>
+            <button
+              type="button"
+              onClick={() => setShowSaveVoiceModal(false)}
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </form>
+        )}
+      </div>
+
       {/* Gemini Model Selection Box */}
       {provider === "gemini" && (
         <div className="mb-3.5 space-y-2 rounded-xl border border-border bg-background p-3">

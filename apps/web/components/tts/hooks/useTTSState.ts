@@ -1,27 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import {
-  Project,
-  ProjectDetail,
-  Narration,
-  AudioTrack,
-  SentenceSegment,
-  VoiceInfo,
-} from "@/types";
-import {
-  GEMINI_TTS_MODELS,
-  ELEVENLABS_TTS_MODELS,
-  RUNWARE_TTS_MODELS,
-} from "../constants";
+import { presetStorage, VoicePreset } from "@/lib/presetStorage";
+import { Project, ProjectDetail, Narration, AudioTrack, SentenceSegment, VoiceInfo } from "@/types";
+import { GEMINI_TTS_MODELS, ELEVENLABS_TTS_MODELS, RUNWARE_TTS_MODELS } from "../constants";
 
 export interface UseTTSStateProps {
   project: Project & {
     narration?: Narration | null;
     audio?: AudioTrack | null;
+    audio_track?: AudioTrack | null;
   };
 }
 
@@ -31,27 +22,28 @@ export function useTTSState({ project }: UseTTSStateProps) {
     useStudioStore();
 
   const draft = voiceDraftsByProject[project.id];
+  const audio = project.audio || project.audio_track;
 
-  const initialProvider = draft?.provider || project.audio?.provider || "gemini";
+  const initialProvider = draft?.provider || audio?.provider || "gemini";
   const initialVoice =
-    draft?.voice ||
-    project.audio?.voice ||
-    (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
+    draft?.voice || audio?.voice || (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
   const initialGeminiModel =
     draft?.geminiModel ||
-    (project.audio?.provider === "gemini" && project.audio?.model) ||
+    (audio?.provider === "gemini" && audio?.model) ||
     "gemini-2.5-flash-preview-tts";
   const initialElevenlabsModel =
     draft?.elevenlabsModel ||
-    (project.audio?.provider === "elevenlabs" && project.audio?.model) ||
+    (audio?.provider === "elevenlabs" && audio?.model) ||
     "eleven_multilingual_v2";
   const initialRunwareModel =
-    draft?.runwareModel ||
-    (project.audio?.provider === "runware" && project.audio?.model) ||
-    "fishaudio:s2.1@pro";
-  const initialRate = draft?.rate !== undefined ? String(draft.rate) : project.audio?.rate || "+0%";
-  const initialPitch =
-    draft?.pitch !== undefined ? String(draft.pitch) : project.audio?.pitch || "+0Hz";
+    draft?.runwareModel || (audio?.provider === "runware" && audio?.model) || "fishaudio:s2.1@pro";
+  const parseRate = (val: string | number | undefined | null) => {
+    if (typeof val === "number") return val;
+    if (!val) return 0;
+    return parseInt(String(val).replace(/[%+]/g, "")) || 0;
+  };
+  const initialRate = parseRate(draft?.rate ?? audio?.rate);
+  const initialPitch = parseRate(draft?.pitch ?? audio?.pitch);
   const initialFallback = draft?.fallbackEnabled ?? true;
 
   const [selectedVoice, setSelectedVoice] = useState(initialVoice);
@@ -59,9 +51,12 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const [geminiModel, setGeminiModel] = useState(initialGeminiModel);
   const [elevenlabsModel, setElevenlabsModel] = useState(initialElevenlabsModel);
   const [runwareModel, setRunwareModel] = useState(initialRunwareModel);
-  const [rate, setRate] = useState(initialRate);
-  const [pitch, setPitch] = useState(initialPitch);
+  const [rate, setRate] = useState<number>(initialRate);
+  const [pitch, setPitch] = useState<number>(initialPitch);
   const [fallbackEnabled, setFallbackEnabled] = useState(initialFallback);
+  const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>(
+    draft?.selectedVoicePresetId || ""
+  );
 
   // Sync draft whenever user changes voice settings in short studio
   useEffect(() => {
@@ -74,6 +69,8 @@ export function useTTSState({ project }: UseTTSStateProps) {
       rate,
       pitch,
       fallbackEnabled,
+      customVoiceInput: draft?.customVoiceInput,
+      selectedVoicePresetId,
     });
   }, [
     project.id,
@@ -85,6 +82,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
     rate,
     pitch,
     fallbackEnabled,
+    selectedVoicePresetId,
     setVoiceDraft,
   ]);
 
@@ -97,7 +95,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const hasInitializedConfigRef = useRef(false);
   useEffect(() => {
     if (hasInitializedConfigRef.current) return;
-    if (draft || project.audio?.provider) {
+    if (draft || audio?.provider) {
       hasInitializedConfigRef.current = true;
       return;
     }
@@ -123,7 +121,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
     if (appConfig.tts_fallback_enabled !== undefined) {
       setFallbackEnabled(appConfig.tts_fallback_enabled);
     }
-  }, [appConfig, draft, project.audio?.provider]);
+  }, [appConfig, draft, audio?.provider]);
 
   const selectedModelObj =
     provider === "gemini"
@@ -141,12 +139,12 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(project.audio?.duration || 0);
+  const [audioDuration, setAudioDuration] = useState(audio?.duration || 0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
   // Live Progress State for TTS Generation (driven by SSE activeTask)
-  const [isGeneratingTTS, setIsGeneratingTTS] = useState(project.audio?.status === "generating");
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(audio?.status === "generating");
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStepText, setGenerationStepText] = useState("");
   const [generationElapsed, setGenerationElapsed] = useState(0);
@@ -205,13 +203,9 @@ export function useTTSState({ project }: UseTTSStateProps) {
     };
   }, [isGeneratingTTS]);
 
-  // Detect completion when project.audio changes to ready
+  // Detect completion when audio changes to ready
   useEffect(() => {
-    if (
-      isGeneratingTTS &&
-      project.audio &&
-      (project.audio.status === "ready" || project.audio.audio_url)
-    ) {
+    if (isGeneratingTTS && audio && (audio.status === "ready" || audio.audio_url)) {
       setGenerationProgress(100);
       setGenerationStepText("Audio narasi & forced alignment berhasil dibuat!");
       const timeout = setTimeout(() => {
@@ -221,28 +215,28 @@ export function useTTSState({ project }: UseTTSStateProps) {
       }, 1200);
       return () => clearTimeout(timeout);
     }
-  }, [project.audio, isGeneratingTTS]);
+  }, [audio, isGeneratingTTS]);
 
   // Sync state only when not actively generating to prevent overwriting user's new voice selection
   useEffect(() => {
-    if (project.audio?.duration) {
-      setAudioDuration(project.audio.duration);
+    if (audio?.duration) {
+      setAudioDuration(audio.duration);
     }
     if (!isGeneratingTTS && !draft) {
-      if (project.audio?.provider) {
-        setProvider(project.audio.provider);
+      if (audio?.provider) {
+        setProvider(audio.provider);
       }
-      if (project.audio?.voice) {
-        setSelectedVoice(project.audio.voice);
+      if (audio?.voice) {
+        setSelectedVoice(audio.voice);
       }
-      if (project.audio?.rate) {
-        setRate(project.audio.rate);
+      if (audio?.rate) {
+        setRate(parseRate(audio.rate));
       }
-      if (project.audio?.pitch) {
-        setPitch(project.audio.pitch);
+      if (audio?.pitch) {
+        setPitch(parseRate(audio.pitch));
       }
     }
-  }, [project.audio?.id, project.audio?.status, isGeneratingTTS]);
+  }, [audio?.id, audio?.status, isGeneratingTTS]);
 
   const handleTimeUpdate = () => {
     if (mainAudioRef.current) {
@@ -269,7 +263,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
       setCurrentTime(0);
       mainAudioRef.current.load();
     }
-  }, [project.audio?.audio_url, project.audio?.id]);
+  }, [audio?.audio_url, audio?.id]);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voices"],
@@ -312,8 +306,8 @@ export function useTTSState({ project }: UseTTSStateProps) {
       return api.generateTTS(project.id, {
         provider,
         voice: selectedVoice,
-        rate,
-        pitch,
+        rate: `${rate >= 0 ? "+" : ""}${rate}%`,
+        pitch: `${pitch >= 0 ? "+" : ""}${pitch}Hz`,
         model: activeModel,
         fallback_enabled: fallbackEnabled,
         language: projectLanguage,
@@ -433,8 +427,8 @@ export function useTTSState({ project }: UseTTSStateProps) {
       sampleAudioRef.current = new Audio();
     }
 
-    const audio = sampleAudioRef.current;
-    audio.pause();
+    const player = sampleAudioRef.current;
+    player.pause();
     setSampleAudioPlaying(voiceId);
     setLoadingSampleVoiceId(voiceId);
 
@@ -445,21 +439,21 @@ export function useTTSState({ project }: UseTTSStateProps) {
     else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
 
     const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&language=${encodeURIComponent(projectLanguage)}&t=${Date.now()}`;
-    audio.src = sampleUrl;
-    audio.oncanplay = () => {
+    player.src = sampleUrl;
+    player.oncanplay = () => {
       setLoadingSampleVoiceId(null);
     };
-    audio.onended = () => {
+    player.onended = () => {
       setSampleAudioPlaying(null);
       setLoadingSampleVoiceId(null);
     };
-    audio.onerror = () => {
+    player.onerror = () => {
       setSampleAudioPlaying(null);
       setLoadingSampleVoiceId(null);
       showToast("Gagal memutar sampel audio untuk " + voiceId, "error");
     };
 
-    audio.play().catch((e) => {
+    player.play().catch((e) => {
       console.warn("Audio play blocked or failed:", e);
       setSampleAudioPlaying(null);
       setLoadingSampleVoiceId(null);
@@ -511,11 +505,77 @@ export function useTTSState({ project }: UseTTSStateProps) {
   // ElevenLabs dynamic account voice sync & custom voice ID
   const [elevenLabsCustomVoices, setElevenLabsCustomVoices] = useState<VoiceInfo[]>([]);
   const [isSyncingElevenLabs, setIsSyncingElevenLabs] = useState<boolean>(false);
-  const [customVoiceInput, setCustomVoiceInput] = useState<string>("");
+  const [customVoiceInput, setCustomVoiceInput] = useState<string>(draft?.customVoiceInput || "");
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // Runware custom voice / speaker ID input
-  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>("");
+  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>(
+    draft?.runwareCustomVoiceInput || ""
+  );
+
+  // Voice presets (shared by short & storyboard studios)
+  const [voicePresets, setVoicePresets] = useState<VoicePreset[]>([]);
+  const [showSaveVoiceModal, setShowSaveVoiceModal] = useState(false);
+  const [newVoicePresetName, setNewVoicePresetName] = useState("");
+
+  useEffect(() => {
+    setVoicePresets(presetStorage.getVoicePresets());
+  }, []);
+
+  const handleLoadVoicePreset = (presetId: string) => {
+    setSelectedVoicePresetId(presetId);
+    const found = voicePresets.find((p) => p.id === presetId);
+    if (!found) return;
+    setProvider(found.provider);
+    setSelectedVoice(found.voice);
+    if (found.provider === "gemini") setGeminiModel(found.model);
+    else if (found.provider === "elevenlabs") setElevenlabsModel(found.model);
+    else if (found.provider === "runware") setRunwareModel(found.model);
+    if (found.customVoiceInput) setCustomVoiceInput(found.customVoiceInput);
+    if (found.runwareCustomVoiceInput) setRunwareCustomVoiceInput(found.runwareCustomVoiceInput);
+    setRate(found.rate ?? 0);
+    setPitch(found.pitch ?? 0);
+    showToast(`Preset suara "${found.name}" berhasil dimuat!`, "success");
+  };
+
+  const handleSaveVoicePreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVoicePresetName.trim()) {
+      showToast("Nama preset suara tidak boleh kosong", "error");
+      return;
+    }
+    const model =
+      provider === "gemini"
+        ? geminiModel
+        : provider === "elevenlabs"
+          ? elevenlabsModel
+          : provider === "runware"
+            ? runwareModel
+            : "edge";
+
+    const saved = presetStorage.saveVoicePreset({
+      name: newVoicePresetName.trim(),
+      provider,
+      model,
+      voice: selectedVoice,
+      customVoiceInput: customVoiceInput || undefined,
+      runwareCustomVoiceInput: runwareCustomVoiceInput || undefined,
+      rate,
+      pitch,
+    });
+    setVoicePresets(presetStorage.getVoicePresets());
+    setSelectedVoicePresetId(saved.id);
+    setNewVoicePresetName("");
+    setShowSaveVoiceModal(false);
+    showToast(`Preset suara "${saved.name}" berhasil disimpan!`, "success");
+  };
+
+  const handleDeleteVoicePreset = (id: string, name: string) => {
+    presetStorage.deleteVoicePreset(id);
+    setVoicePresets(presetStorage.getVoicePresets());
+    if (selectedVoicePresetId === id) setSelectedVoicePresetId("");
+    showToast(`Preset suara "${name}" dihapus`, "info");
+  };
 
   const handleSyncElevenLabsVoices = async () => {
     setIsSyncingElevenLabs(true);
@@ -570,6 +630,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
   return {
     // Project & derived
     project,
+    audio,
     narrationText,
     projectLanguage,
     isEnProject,
@@ -592,6 +653,16 @@ export function useTTSState({ project }: UseTTSStateProps) {
     setPitch,
     fallbackEnabled,
     setFallbackEnabled,
+    // Voice presets
+    voicePresets,
+    selectedVoicePresetId,
+    showSaveVoiceModal,
+    setShowSaveVoiceModal,
+    newVoicePresetName,
+    setNewVoicePresetName,
+    handleLoadVoicePreset,
+    handleSaveVoicePreset,
+    handleDeleteVoicePreset,
     // Voices list & filtering
     voices,
     filteredVoices,

@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 
 interface AudioParametersPanelProps {
-  rate: string;
-  setRate: (rate: string) => void;
-  pitch: string;
-  setPitch: (pitch: string) => void;
+  rate: number;
+  setRate: (rate: number) => void;
+  pitch: number;
+  setPitch: (pitch: number) => void;
   fallbackEnabled: boolean;
   setFallbackEnabled: (fallback: boolean) => void;
   costEstimate?: { estimated_cost_usd: number };
@@ -57,36 +57,37 @@ export function AudioParametersPanel({
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
-              Kecepatan (Rate)
-            </label>
-            <select
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">Kecepatan (Rate)</span>
+              <span className="font-mono text-primary">{rate >= 0 ? `+${rate}` : rate}%</span>
+            </div>
+            <input
+              type="range"
+              min={-20}
+              max={30}
+              step={5}
               value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
-            >
-              <option value="-10%">Lambat (-10%)</option>
-              <option value="+0%">Normal (+0%)</option>
-              <option value="+10%">Cepat (+10%)</option>
-              <option value="+20%">Sangat Cepat (+20%)</option>
-            </select>
+              onChange={(e) => setRate(Number(e.target.value))}
+              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
-              Tinggi Nada (Pitch)
-            </label>
-            <select
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">Tinggi Nada (Pitch)</span>
+              <span className="font-mono text-primary">{pitch >= 0 ? `+${pitch}` : pitch}Hz</span>
+            </div>
+            <input
+              type="range"
+              min={-15}
+              max={15}
+              step={3}
               value={pitch}
-              onChange={(e) => setPitch(e.target.value)}
-              className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
-            >
-              <option value="-5Hz">Lebih Berat (-5Hz)</option>
-              <option value="+0Hz">Standar (+0Hz)</option>
-              <option value="+5Hz">Lebih Cerah (+5Hz)</option>
-            </select>
+              onChange={(e) => setPitch(Number(e.target.value))}
+              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+            />
           </div>
         </div>
 

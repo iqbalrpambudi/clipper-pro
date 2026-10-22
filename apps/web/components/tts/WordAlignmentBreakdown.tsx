@@ -1,7 +1,16 @@
 "use client";
 
-import React from "react";
-import { AlignLeft, Wand2, Sliders, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
+import React, { useState } from "react";
+import {
+  AlignLeft,
+  Wand2,
+  Sliders,
+  CheckCircle2,
+  Loader2,
+  ArrowRight,
+  Copy,
+  Check,
+} from "lucide-react";
 import { SentenceSegment, WordTimestamp } from "@/types";
 import { Button } from "@/components/ui/button";
 import { formatAudioTime } from "./constants";
@@ -22,7 +31,8 @@ interface WordAlignmentBreakdownProps {
   onSaveSegments: () => void;
   isSaveSegmentsPending: boolean;
   onSeek: (timeSec: number) => void;
-  onNavigateTimeline: () => void;
+  onNavigateNext: () => void;
+  nextLabel?: string;
 }
 
 export function WordAlignmentBreakdown({
@@ -41,9 +51,22 @@ export function WordAlignmentBreakdown({
   onSaveSegments,
   isSaveSegmentsPending,
   onSeek,
-  onNavigateTimeline,
+  onNavigateNext,
+  nextLabel = "Lanjut ke Timeline",
 }: WordAlignmentBreakdownProps) {
   const displaySegments = isEditTimingMode ? editableSegments : segments;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAll = () => {
+    const text = segments
+      .map((s) => (s.text || "").trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   return (
     <div className="space-y-3 border-t border-border pt-2">
@@ -62,6 +85,28 @@ export function WordAlignmentBreakdown({
 
         {/* Action Toolbar: Realignment AI & Offset Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Copy entire narration script */}
+          <Button
+            type="button"
+            variant="workspace-secondary"
+            size="xs"
+            onClick={handleCopyAll}
+            className="h-7 gap-1 text-[11px]"
+            title="Salin seluruh teks narasi ke clipboard"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3 h-3 text-[#456A4E]" />
+                <span className="font-semibold text-[#456A4E]">Tersalin!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3" />
+                <span>Salin Narasi</span>
+              </>
+            )}
+          </Button>
+
           {/* Realignment Trigger Button */}
           <Button
             type="button"
@@ -222,15 +267,15 @@ export function WordAlignmentBreakdown({
       {/* Next Tab Button */}
       <div className="flex items-center justify-between border-t border-border pt-4">
         <span className="text-xs text-muted-foreground">
-          Audio siap! Lanjutkan ke perakitan Timeline & Subtitle.
+          Audio siap! Lanjutkan ke langkah berikutnya.
         </span>
         <Button
           variant="workspace-primary"
           size="sm"
-          onClick={onNavigateTimeline}
+          onClick={onNavigateNext}
           className="gap-2 font-semibold"
         >
-          <span>Lanjut ke Timeline</span>
+          <span>{nextLabel}</span>
           <ArrowRight className="w-4 h-4" />
         </Button>
       </div>

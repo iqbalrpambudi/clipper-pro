@@ -6,42 +6,48 @@ import { Project, Narration, AudioTrack } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 import { EmptyState } from "@/components/fragments/EmptyState";
-import {
-  GEMINI_TTS_MODELS,
-  ELEVENLABS_TTS_MODELS,
-  RUNWARE_TTS_MODELS,
-  formatAudioTime,
-} from "./constants";
+import { formatAudioTime } from "./constants";
 import { VoiceSelectorPanel } from "./VoiceSelectorPanel";
 import { AudioParametersPanel } from "./AudioParametersPanel";
 import { AudioPlayerCard } from "./AudioPlayerCard";
 import { WordAlignmentBreakdown } from "./WordAlignmentBreakdown";
 import { useTTSState } from "./hooks";
 
-// Re-export constants for backward compatibility (e.g. StoryboardVoiceTab)
-export { GEMINI_TTS_MODELS, ELEVENLABS_TTS_MODELS, RUNWARE_TTS_MODELS, formatAudioTime };
-
 export interface TTSTabProps {
   project: Project & {
     narration?: Narration | null;
     audio?: AudioTrack | null;
+    audio_track?: AudioTrack | null;
   };
+  /** Replaces the default page header (used by the storyboard shell). */
+  header?: React.ReactNode;
+  /** Label + target for the "next step" button under the alignment list. */
+  nextLabel?: string;
+  onNavigateNext?: () => void;
+  /** Mode-specific panel rendered under the audio player. */
+  extra?: React.ReactNode;
 }
 
-export function TTSTab({ project }: TTSTabProps) {
+export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TTSTabProps) {
   const state = useTTSState({ project });
 
   return (
     <div className="space-y-5">
-      <header className="border-b border-surface-border pb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Audio</p>
-        <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-foreground">
-          Suara & sinkronisasi
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pilih karakter narator, atur suara, lalu tinjau hasil dan sinkronisasi kata.
-        </p>
-      </header>
+      {header === undefined ? (
+        <header className="border-b border-surface-border pb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+            Audio
+          </p>
+          <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-foreground">
+            Suara & sinkronisasi
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pilih karakter narator, atur suara, lalu tinjau hasil dan sinkronisasi kata.
+          </p>
+        </header>
+      ) : (
+        header
+      )}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         {/* ========================================================================= */}
         {/* KOLOM KIRI (5/12): PEMILIHAN KARAKTER SUARA & PARAMETER TUNING           */}
@@ -74,6 +80,15 @@ export function TTSTab({ project }: TTSTabProps) {
             loadingSampleVoiceId={state.loadingSampleVoiceId}
             playVoiceSample={state.playVoiceSample}
             showToast={state.showToast}
+            voicePresets={state.voicePresets}
+            selectedVoicePresetId={state.selectedVoicePresetId}
+            handleLoadVoicePreset={state.handleLoadVoicePreset}
+            handleSaveVoicePreset={state.handleSaveVoicePreset}
+            handleDeleteVoicePreset={state.handleDeleteVoicePreset}
+            showSaveVoiceModal={state.showSaveVoiceModal}
+            setShowSaveVoiceModal={state.setShowSaveVoiceModal}
+            newVoicePresetName={state.newVoicePresetName}
+            setNewVoicePresetName={state.setNewVoicePresetName}
           />
 
           <AudioParametersPanel
@@ -106,25 +121,25 @@ export function TTSTab({ project }: TTSTabProps) {
             className="!border-surface-border !bg-card"
             headerClassName="!border-surface-border !bg-muted"
             badge={
-              state.project.audio ? (
+              state.audio ? (
                 <Badge
                   variant="outline"
                   className="font-mono text-[10px] text-primary border-primary/30"
                 >
-                  {formatAudioTime(state.audioDuration)} • {state.project.audio.voice}
+                  {formatAudioTime(state.audioDuration)} • {state.audio.voice}
                 </Badge>
               ) : undefined
             }
           >
-            {state.project.audio && state.project.audio.audio_url ? (
+            {state.audio?.audio_url ? (
               <div className="space-y-5">
                 <AudioPlayerCard
                   audioRef={state.mainAudioRef}
-                  audioUrl={state.project.audio.audio_url}
+                  audioUrl={state.audio.audio_url}
                   projectName={state.project.name}
-                  voiceName={state.project.audio.voice}
-                  provider={state.project.audio.provider}
-                  rate={state.project.audio.rate}
+                  voiceName={state.audio.voice}
+                  provider={state.audio.provider}
+                  rate={state.audio.rate}
                   isPlaying={state.isPlaying}
                   currentTime={state.currentTime}
                   audioDuration={state.audioDuration}
@@ -139,6 +154,8 @@ export function TTSTab({ project }: TTSTabProps) {
                   onToggleMute={state.toggleMute}
                   onVolumeChange={state.handleVolumeChange}
                 />
+
+                {extra}
 
                 {state.project.narration?.segments &&
                   state.project.narration.segments.length > 0 && (
@@ -158,7 +175,7 @@ export function TTSTab({ project }: TTSTabProps) {
                       offsetMs={state.offsetMs}
                       isRealignPending={state.realignMutation.isPending}
                       isGeneratingTTS={state.isGeneratingTTS}
-                      hasAudioUrl={!!state.project.audio?.audio_url}
+                      hasAudioUrl={!!state.audio?.audio_url}
                       onRealign={() => state.realignMutation.mutate({ offset_ms: state.offsetMs })}
                       onGlobalOffsetShift={state.handleGlobalOffsetShift}
                       onWordTimingNudge={state.handleWordTimingNudge}
@@ -167,7 +184,8 @@ export function TTSTab({ project }: TTSTabProps) {
                       }
                       isSaveSegmentsPending={state.updateSegmentsMutation.isPending}
                       onSeek={state.handleSeek}
-                      onNavigateTimeline={() => state.setActiveTab("timeline")}
+                      onNavigateNext={onNavigateNext ?? (() => state.setActiveTab("timeline"))}
+                      nextLabel={nextLabel}
                     />
                   )}
               </div>
