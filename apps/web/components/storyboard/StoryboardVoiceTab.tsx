@@ -450,7 +450,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
           {/* Left Column: Voiceover Controls (5 Cols) */}
           <div className="space-y-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-6 shadow-sm lg:col-span-5">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] text-[#456A4E]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]">
                 <Mic className="w-4 h-4" />
               </div>
               <div>
@@ -463,7 +463,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
             <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Bookmark className="w-3.5 h-3.5 text-[#456A4E] shrink-0" />
+                  <Bookmark className="w-3.5 h-3.5 text-[#A9472C] shrink-0" />
                   <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset:</span>
                   <select
                     value={selectedVoicePresetId}
@@ -498,7 +498,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                 <button
                   type="button"
                   onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
-                  className="flex shrink-0 items-center gap-1 rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] px-2.5 py-1 text-xs font-medium text-[#456A4E] transition hover:bg-[#DFEBDD]"
+                  className="flex shrink-0 items-center gap-1 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-2.5 py-1 text-xs font-medium text-[#A9472C] transition hover:bg-[#F3E1D9]"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5" />
                   <span>Simpan Preset</span>
@@ -805,6 +805,19 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                   <label className="text-xs font-semibold text-[#4D4A42]">
                     Pustaka Suara ({filteredVoices.length} Karakter)
                   </label>
+                  {/* Locked Language Status Badge */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
+                    {projectLanguage === "en" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#41627F] bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9]">
+                        <span>🇬🇧</span> English (Terkunci)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]">
+                        <span>🇮🇩</span> Indonesia (Terkunci)
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">

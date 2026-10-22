@@ -83,7 +83,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, id: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="w-32 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
+                    className="w-32 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -126,7 +126,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, focal_props: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                   />
                 </div>
               </div>

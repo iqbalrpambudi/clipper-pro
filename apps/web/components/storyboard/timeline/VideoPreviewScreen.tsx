@@ -314,7 +314,7 @@ export function VideoPreviewScreen({
             </span>
           </div>
           {/* Title safe 10% */}
-          <div className="absolute inset-[10%] border border-dotted border-[#C9DDCF] rounded-lg flex items-end justify-start p-2">
+          <div className="absolute inset-[10%] border border-dotted border-[#E9C9BD] rounded-lg flex items-end justify-start p-2">
             <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
               Title Safe 80% (Batas Subtitle)
             </span>

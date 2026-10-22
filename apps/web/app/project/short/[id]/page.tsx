@@ -20,7 +20,7 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
 
   if (!project) return null;
 
-  // Timeline is a full-bleed editor; every other tab shares the studio content gutter.
+  // Timeline is a full-bleed editor surface; the other tabs share the studio gutter.
   if (activeTab === "timeline") return <TimelineTab project={project} />;
 
   return (

@@ -347,7 +347,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                       </span>
                     </div>
                     {/* Title safe 10% */}
-                    <div className="absolute inset-[10%] border border-dotted border-[#456A4E]/50 rounded-lg flex items-end justify-start p-2">
+                    <div className="absolute inset-[10%] border border-dotted border-[#E9C9BD]/50 rounded-lg flex items-end justify-start p-2">
                       <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
                         Title Safe 80% (Disarankan untuk Logo)
                       </span>
