@@ -340,7 +340,7 @@ export function RenderTab({ project }: RenderTabProps) {
                   {liveWatermark?.enabled ? (
                     <Badge
                       variant="default"
-                      className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                      className="text-[10px] bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF]"
                     >
                       Aktif: {liveWatermark.text || "@watermark"}
                     </Badge>
@@ -560,7 +560,7 @@ export function RenderTab({ project }: RenderTabProps) {
                         {job.status === "rendering" && (
                           <Badge
                             variant="outline"
-                            className="text-amber-400 border-amber-500/30 text-[10px] gap-1 font-semibold"
+                            className="text-[#8A6A2F] border-[#E8D9BC] text-[10px] gap-1 font-semibold"
                           >
                             <Loader2 className="w-3 h-3 animate-spin" />{" "}
                             {activeTask?.task_type === "render" &&

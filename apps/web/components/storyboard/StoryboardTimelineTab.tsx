@@ -126,7 +126,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 onClick={() => setShowSafeZones(!showSafeZones)}
                 className={`h-7 text-xs gap-1.5 border-[#E5E1D7] ${
                   showSafeZones
-                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    ? "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                     : "text-muted-foreground"
                 }`}
                 title="Batas aman YouTube player & border (Title & Action Safe)"
@@ -268,7 +268,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 <Stamp className="w-3.5 h-3.5" />
                 <span>Watermark</span>
                 {state.liveWatermark?.enabled && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FFFAF6] shrink-0" />
                 )}
               </button>
               <button

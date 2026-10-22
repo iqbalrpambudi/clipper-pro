@@ -463,7 +463,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
             <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Bookmark className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <Bookmark className="w-3.5 h-3.5 text-[#456A4E] shrink-0" />
                   <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset:</span>
                   <select
                     value={selectedVoicePresetId}
@@ -488,7 +488,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                           if (cur) handleDeleteVoicePreset(cur.id, cur.name);
                         }}
                         title="Hapus Preset Kustom Ini"
-                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                        className="p-1 text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9] rounded transition shrink-0"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -802,18 +802,18 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
               {/* Voice Characters Selection (with Audio Sample Tester) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-300">
+                  <label className="text-xs font-semibold text-[#4D4A42]">
                     Pustaka Suara ({filteredVoices.length} Karakter)
                   </label>
                   {/* Locked Language Status Badge */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-muted-foreground/75 font-mono">🔒</span>
                     {projectLanguage === "en" ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#41627F] bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9]">
                         <span>🇬🇧</span> English (Terkunci)
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]">
                         <span>🇮🇩</span> Indonesia (Terkunci)
                       </span>
                     )}
@@ -850,11 +850,11 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                               variant="secondary"
                               className={`text-[9px] py-0 px-1 font-mono ${
                                 isEn
-                                  ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                                  ? "bg-[#EAF0F5] text-[#41627F] border-[#CFDDE9]"
                                   : isId
-                                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                    ? "bg-[#ECF3EB] text-[#456A4E] border-[#C9DDCF]"
                                     : isJa
-                                      ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                      ? "bg-[#F7EFE0] text-[#8A6A2F] border-[#E8D9BC]"
                                       : "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                               }`}
                             >
@@ -988,7 +988,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
           <div className="lg:col-span-7 space-y-5">
             {!audio ? (
               <div className="rounded-2xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-12 text-center">
-                <Volume2 className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                <Volume2 className="w-12 h-12 text-[#858176] mx-auto mb-3" />
                 <h3 className="mb-1.5 text-base font-semibold text-[#26251F]">
                   Audio Belum Dibuat
                 </h3>
@@ -1026,7 +1026,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                       <div>
                         <div className="flex items-center gap-2 text-xs font-semibold text-[#26251F]">
                           <span>Audio Narasi Storyboard</span>
-                          <Badge variant="supabase" className="text-[10px] uppercase font-mono">
+                          <Badge variant="workspace" className="text-[10px] uppercase font-mono">
                             {audio.provider} • {audio.voice}
                           </Badge>
                         </div>
@@ -1057,7 +1057,7 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                 <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-[#456A4E]" />
                       <h4 className="text-xs font-semibold text-[#26251F]">
                         Status Sinkronisasi Waktu (Whisper Alignment)
                       </h4>
@@ -1102,12 +1102,12 @@ export function StoryboardVoiceTab({ project }: StoryboardVoiceTabProps) {
                       >
                         {hasCopiedNarration ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-semibold">Tersalin!</span>
+                            <Check className="w-3.5 h-3.5 text-[#456A4E]" />
+                            <span className="text-[#456A4E] font-semibold">Tersalin!</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <Copy className="w-3.5 h-3.5 text-[#77766D]" />
                             <span>Salin Semua Narasi</span>
                           </>
                         )}

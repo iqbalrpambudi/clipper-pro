@@ -66,11 +66,11 @@ export function TextLayerInspector({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-amber-400" />
+            <Layers className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold tracking-wide text-[#26251F]">
               Daftar Layer Teks
             </h4>
-            <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-slate-400 py-0">
+            <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-[#858176] py-0">
               {layers.length} Layer
             </Badge>
           </div>
@@ -97,7 +97,7 @@ export function TextLayerInspector({
           {layers.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[#D2CDBF] py-4 text-center text-xs text-[#77766D]">
               Belum ada layer teks. Klik tombol{" "}
-              <span className="text-amber-400 font-semibold">+ Tambah Teks</span> di atas.
+              <span className="text-[#C45B3A] font-semibold">+ Tambah Teks</span> di atas.
             </div>
           ) : (
             layers.map((layer, index) => {
@@ -153,7 +153,7 @@ export function TextLayerInspector({
                       type="button"
                       title="Duplikat Layer"
                       onClick={() => onDuplicateLayer(layer.id)}
-                      className="p-1 rounded text-slate-400 hover:text-amber-400"
+                      className="p-1 rounded text-[#858176] hover:text-[#C45B3A]"
                     >
                       <Copy className="w-3 h-3" />
                     </button>
@@ -161,7 +161,7 @@ export function TextLayerInspector({
                       type="button"
                       title="Hapus Layer"
                       onClick={() => onDeleteLayer(layer.id)}
-                      className="p-1 rounded text-slate-400 hover:text-red-400"
+                      className="p-1 rounded text-[#858176] hover:text-[#A9472C]"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -180,7 +180,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <Type className="w-4 h-4 text-amber-400" />
+                <Type className="w-4 h-4 text-[#C45B3A]" />
                 <h4 className="text-xs font-semibold text-[#26251F]">Edit Isi Teks & Tipografi</h4>
               </div>
               <button
@@ -190,7 +190,7 @@ export function TextLayerInspector({
                     text: selectedLayer.text.toUpperCase(),
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#E5E1D7]"
+                className="text-[10px] px-2 py-0.5 rounded bg-[#F3F0E8] hover:bg-[#EAE6DD] text-[#4D4A42] border border-[#E5E1D7]"
               >
                 HURUF BESAR SEMUA
               </button>
@@ -230,7 +230,7 @@ export function TextLayerInspector({
                     }
                     className={`p-2 rounded-lg border text-left transition-all ${
                       selectedLayer.fontFamily === font.id
-                        ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-500/30"
+                        ? "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C] ring-1 ring-[#E9C9BD]"
                         : "bg-[#F3F0E8] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#EAE6DD]"
                     }`}
                   >
@@ -252,7 +252,7 @@ export function TextLayerInspector({
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-[#4D4A42]">Ukuran Font</span>
-                <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                <span className="font-mono text-xs font-bold text-[#A9472C] bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
                   {selectedLayer.fontSize}px
                 </span>
               </div>
@@ -280,7 +280,7 @@ export function TextLayerInspector({
                     }
                     className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                       selectedLayer.fontSize === sz
-                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                        ? "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                         : "bg-[#F1EEE6] text-[#77766D] border-[#E5E1D7]"
                     }`}
                   >
@@ -305,8 +305,8 @@ export function TextLayerInspector({
                     }
                     className={`w-6 h-6 rounded-md border transition-transform ${
                       selectedLayer.fill === cp.value
-                        ? "scale-110 ring-2 ring-amber-400 border-white"
-                        : "border-[#444] hover:scale-105"
+                        ? "scale-110 ring-2 ring-[#C45B3A] border-[#FBFAF7]"
+                        : "border-[#DCD6C8] hover:scale-105"
                     }`}
                     style={{ backgroundColor: cp.value }}
                     title={cp.label}
@@ -324,7 +324,7 @@ export function TextLayerInspector({
                     className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
                     title="Pilih Warna Kustom"
                   />
-                  <span className="font-mono text-[10px] text-slate-400">{selectedLayer.fill}</span>
+                  <span className="font-mono text-[10px] text-[#858176]">{selectedLayer.fill}</span>
                 </div>
               </div>
             </div>
@@ -334,7 +334,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <Square className="w-4 h-4 text-emerald-400" />
+                <Square className="w-4 h-4 text-[#456A4E]" />
                 <div>
                   <h4 className="text-xs font-semibold text-[#26251F]">
                     Box Highlight / Background Pill
@@ -378,8 +378,8 @@ export function TextLayerInspector({
                         }
                         className={`w-6 h-6 rounded-md border transition-transform ${
                           selectedLayer.bgFill === bp.value
-                            ? "scale-110 ring-2 ring-emerald-400 border-white"
-                            : "border-[#444] hover:scale-105"
+                            ? "scale-110 ring-2 ring-[#456A4E] border-[#FBFAF7]"
+                            : "border-[#DCD6C8] hover:scale-105"
                         }`}
                         style={{ backgroundColor: bp.value }}
                         title={bp.label}
@@ -399,7 +399,7 @@ export function TextLayerInspector({
                         className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
                         title="Pilih Warna Kustom"
                       />
-                      <span className="font-mono text-[10px] text-slate-400">
+                      <span className="font-mono text-[10px] text-[#858176]">
                         {selectedLayer.bgFill}
                       </span>
                     </div>
@@ -412,7 +412,7 @@ export function TextLayerInspector({
                     <span className="text-[11px] font-semibold text-[#4D4A42]">
                       Kelengkungan Sudut (Corner Radius)
                     </span>
-                    <span className="font-mono text-[11px] text-emerald-400">
+                    <span className="font-mono text-[11px] text-[#456A4E]">
                       {selectedLayer.bgCornerRadius ?? 8}px
                     </span>
                   </div>
@@ -453,10 +453,10 @@ export function TextLayerInspector({
                 {/* Padding */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-semibold text-slate-300">
+                    <span className="text-[11px] font-semibold text-[#4D4A42]">
                       Padding Box (Jarak Tepi)
                     </span>
-                    <span className="font-mono text-[11px] text-emerald-400">
+                    <span className="font-mono text-[11px] text-[#456A4E]">
                       {selectedLayer.bgPaddingX ?? 16}px
                     </span>
                   </div>
@@ -482,7 +482,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <Palette className="w-4 h-4 text-cyan-400" />
+                <Palette className="w-4 h-4 text-[#41627F]" />
                 <div>
                   <h4 className="text-xs font-semibold text-[#26251F]">Outline / Stroke Teks</h4>
                   <p className="text-[10px] text-muted-foreground">
@@ -507,10 +507,10 @@ export function TextLayerInspector({
               <div className="space-y-3 pt-1 animate-in fade-in duration-200">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-semibold text-slate-300">
+                    <span className="text-[11px] font-semibold text-[#4D4A42]">
                       Ketebalan Stroke (Width)
                     </span>
-                    <span className="font-mono text-[11px] text-cyan-400">
+                    <span className="font-mono text-[11px] text-[#41627F]">
                       {selectedLayer.strokeWidth ?? 5}px
                     </span>
                   </div>
@@ -544,8 +544,8 @@ export function TextLayerInspector({
                         }
                         className={`w-6 h-6 rounded-md border ${
                           selectedLayer.stroke === c
-                            ? "scale-110 ring-2 ring-cyan-400 border-white"
-                            : "border-[#444]"
+                            ? "scale-110 ring-2 ring-[#41627F] border-[#FBFAF7]"
+                            : "border-[#DCD6C8]"
                         }`}
                         style={{ backgroundColor: c }}
                       />
@@ -561,7 +561,7 @@ export function TextLayerInspector({
                         }
                         className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
                       />
-                      <span className="font-mono text-[10px] text-slate-400">
+                      <span className="font-mono text-[10px] text-[#858176]">
                         {selectedLayer.stroke || "#000000"}
                       </span>
                     </div>
@@ -677,7 +677,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-orange-400" />
+                <RotateCcw className="w-4 h-4 text-[#C45B3A]" />
                 <h4 className="text-xs font-semibold text-[#26251F]">Kemiringan (Rotasi)</h4>
               </div>
               <button
@@ -687,7 +687,7 @@ export function TextLayerInspector({
                     rotation: 0,
                   })
                 }
-                className="text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-[#E5E1D7]"
+                className="text-[10px] px-2 py-0.5 rounded bg-[#F3F0E8] hover:bg-[#EAE6DD] text-[#4D4A42] border border-[#E5E1D7]"
               >
                 Reset 0° (Lurus)
               </button>
@@ -696,7 +696,7 @@ export function TextLayerInspector({
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[11px] font-semibold text-[#4D4A42]">Derajat Rotasi</span>
-                <span className="font-mono text-xs font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                <span className="font-mono text-xs font-bold text-[#A9472C] bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
                   {selectedLayer.rotation || 0}°
                 </span>
               </div>
@@ -724,7 +724,7 @@ export function TextLayerInspector({
                     }
                     className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                       selectedLayer.rotation === deg
-                        ? "bg-orange-500/20 text-orange-300 border-orange-500/40"
+                        ? "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                         : "bg-[#F1EEE6] text-[#77766D] border-[#E5E1D7]"
                     }`}
                   >
@@ -737,7 +737,7 @@ export function TextLayerInspector({
         </div>
       ) : (
         <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-6 text-center">
-          <Type className="w-8 h-8 mx-auto text-slate-500 opacity-50" />
+          <Type className="w-8 h-8 mx-auto text-[#858176] opacity-50" />
           <h5 className="text-xs font-semibold text-[#4D4A42]">Pilih Layer Teks</h5>
           <p className="text-[11px] text-muted-foreground">
             Klik salah satu teks langsung di kanvas thumbnail atau pilih dari daftar layer di atas

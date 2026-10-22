@@ -45,7 +45,7 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <Sparkles className="w-4 h-4 text-[#456A4E]" />
             <h4 className="text-xs font-semibold text-[#26251F]">
               Generate Metadata YouTube dengan AI
             </h4>
@@ -119,17 +119,17 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-400" />
+            <FileText className="w-4 h-4 text-[#456A4E]" />
             <h4 className="text-xs font-semibold text-[#26251F]">Judul Video YouTube</h4>
           </div>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => onCopy(title, "title", "Judul")}
-            className="h-6 text-[10px] text-slate-400 hover:text-white"
+            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "title" ? (
-              <Check className="w-3 h-3 text-emerald-400 mr-1" />
+              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}
@@ -172,10 +172,10 @@ export function YoutubeMetadataForm({
             size="sm"
             variant="ghost"
             onClick={() => onCopy(description, "desc", "Deskripsi")}
-            className="h-6 text-[10px] text-slate-400 hover:text-white"
+            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "desc" ? (
-              <Check className="w-3 h-3 text-emerald-400 mr-1" />
+              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}
@@ -195,17 +195,17 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-emerald-400" />
+            <Tag className="w-4 h-4 text-[#456A4E]" />
             <h4 className="text-xs font-semibold text-[#26251F]">Tags Video (Pisahkan Koma)</h4>
           </div>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => onCopy(tagsInput, "tags", "Tags")}
-            className="h-6 text-[10px] text-slate-400 hover:text-white"
+            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "tags" ? (
-              <Check className="w-3 h-3 text-emerald-400 mr-1" />
+              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}

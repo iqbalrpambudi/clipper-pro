@@ -777,18 +777,18 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <a
                 href={api.getSubtitleExportUrl(project.id, "srt")}
                 download
-                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-emerald-500/50 hover:bg-emerald-500/10 transition text-center group"
+                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-[#C9DDCF] hover:bg-[#DFEBDD] transition text-center group"
               >
-                <Download className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform mb-1" />
+                <Download className="w-4 h-4 text-[#456A4E] group-hover:scale-110 transition-transform mb-1" />
                 <span className="text-[11px] font-bold text-foreground">.SRT</span>
                 <span className="text-[9px] text-muted-foreground">Standard Text</span>
               </a>
               <a
                 href={api.getSubtitleExportUrl(project.id, "vtt")}
                 download
-                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-indigo-500/50 hover:bg-indigo-500/10 transition text-center group"
+                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-[#CFDDE9] hover:bg-[#DCE7F0] transition text-center group"
               >
-                <Download className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform mb-1" />
+                <Download className="w-4 h-4 text-[#41627F] group-hover:scale-110 transition-transform mb-1" />
                 <span className="text-[11px] font-bold text-foreground">.VTT</span>
                 <span className="text-[9px] text-muted-foreground">WebVTT Web</span>
               </a>

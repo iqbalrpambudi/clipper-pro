@@ -90,15 +90,15 @@ export function NarrationAnalysisModal({
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 88) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-    if (score >= 75) return "text-amber-400 border-amber-500/30 bg-amber-500/10";
-    return "text-rose-400 border-rose-500/30 bg-rose-500/10";
+    if (score >= 88) return "text-[#456A4E] border-[#C9DDCF] bg-[#ECF3EB]";
+    if (score >= 75) return "text-[#8A6A2F] border-[#E8D9BC] bg-[#F7EFE0]";
+    return "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]";
   };
 
   const getScoreBarColor = (score: number) => {
-    if (score >= 88) return "bg-emerald-500";
-    if (score >= 75) return "bg-amber-500";
-    return "bg-rose-500";
+    if (score >= 88) return "bg-[#456A4E]";
+    if (score >= 75) return "bg-[#8A6A2F]";
+    return "bg-[#A9472C]";
   };
 
   return (
@@ -108,7 +108,7 @@ export function NarrationAnalysisModal({
         <div className="flex items-center justify-between border-b border-[#E5E1D7] bg-[#FBFAF7] px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E9C9BD] bg-[#F8EEEA] shadow-inner">
-            <Award className="h-5 w-5 text-[#A9472C]" />
+              <Award className="h-5 w-5 text-[#A9472C]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -349,10 +349,10 @@ export function NarrationAnalysisModal({
                     <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <Zap className="w-3.5 h-3.5 text-[#8A6A2F]" />
                           <span>{analysisData.hook_score.label}</span>
                         </span>
-                        <span className="text-xs font-bold font-mono text-amber-400">
+                        <span className="text-xs font-bold font-mono text-[#8A6A2F]">
                           {analysisData.hook_score.score}%
                         </span>
                       </div>
@@ -395,10 +395,10 @@ export function NarrationAnalysisModal({
                     <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
-                          <Flag className="w-3.5 h-3.5 text-rose-400" />
+                          <Flag className="w-3.5 h-3.5 text-[#A9472C]" />
                           <span>{analysisData.emotional_storytelling_score.label}</span>
                         </span>
-                        <span className="text-xs font-bold font-mono text-rose-400">
+                        <span className="text-xs font-bold font-mono text-[#A9472C]">
                           {analysisData.emotional_storytelling_score.score}%
                         </span>
                       </div>
@@ -419,10 +419,10 @@ export function NarrationAnalysisModal({
                     <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
-                          <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                          <Volume2 className="w-3.5 h-3.5 text-[#41627F]" />
                           <span>{analysisData.clarity_delivery_score.label}</span>
                         </span>
-                        <span className="text-xs font-bold font-mono text-sky-400">
+                        <span className="text-xs font-bold font-mono text-[#41627F]">
                           {analysisData.clarity_delivery_score.score}%
                         </span>
                       </div>
@@ -443,10 +443,10 @@ export function NarrationAnalysisModal({
                     <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
-                          <Award className="w-3.5 h-3.5 text-emerald-400" />
+                          <Award className="w-3.5 h-3.5 text-[#456A4E]" />
                           <span>{analysisData.call_to_action_score.label}</span>
                         </span>
-                        <span className="text-xs font-bold font-mono text-emerald-400">
+                        <span className="text-xs font-bold font-mono text-[#456A4E]">
                           {analysisData.call_to_action_score.score}%
                         </span>
                       </div>
@@ -469,13 +469,13 @@ export function NarrationAnalysisModal({
                     {/* Strengths */}
                     <div className="space-y-2.5 rounded-xl border border-[#C9DDCF] bg-[#ECF3EB] p-4">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#456A4E]">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <CheckCircle2 className="w-4 h-4 text-[#456A4E]" />
                         <span>Kelebihan Naskah Saat Ini</span>
                       </div>
                       <ul className="space-y-1.5">
                         {analysisData.strengths.map((str, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs text-[#4D4A42]">
-                            <span className="text-emerald-400 font-bold">•</span>
+                            <span className="text-[#456A4E] font-bold">•</span>
                             <span>{str}</span>
                           </li>
                         ))}
@@ -485,13 +485,13 @@ export function NarrationAnalysisModal({
                     {/* Weaknesses */}
                     <div className="space-y-2.5 rounded-xl border border-[#EAD8B5] bg-[#F8F1E2] p-4">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#87632C]">
-                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        <AlertTriangle className="w-4 h-4 text-[#8A6A2F]" />
                         <span>Catatan Kritis & Titik Lemah</span>
                       </div>
                       <ul className="space-y-1.5">
                         {analysisData.weaknesses.map((wk, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs text-[#4D4A42]">
-                            <span className="text-amber-400 font-bold">•</span>
+                            <span className="text-[#8A6A2F] font-bold">•</span>
                             <span>{wk}</span>
                           </li>
                         ))}
@@ -512,7 +512,7 @@ export function NarrationAnalysisModal({
                             key={idx}
                             className="flex items-start gap-2 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2.5 text-xs text-[#4D4A42]"
                           >
-                            <span className="text-sky-400 font-bold font-mono">{idx + 1}.</span>
+                            <span className="text-[#41627F] font-bold font-mono">{idx + 1}.</span>
                             <span>{rec}</span>
                           </div>
                         ))}
@@ -540,7 +540,7 @@ export function NarrationAnalysisModal({
                             <ImageIcon className="h-3.5 w-3.5 text-[#A9472C]" />
                             Sinkronkan Visual Prompt AI Otomatis
                           </span>
-                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <span className="text-[10px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded-full border border-[#C9DDCF]">
                             Direkomendasikan
                           </span>
                         </div>
@@ -609,7 +609,7 @@ export function NarrationAnalysisModal({
                               </span>
                             </label>
                             {seg.change_summary && (
-                              <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                              <span className="text-[11px] font-mono text-[#456A4E] bg-[#ECF3EB] px-2.5 py-0.5 rounded-full border border-[#C9DDCF]">
                                 ✨ {seg.change_summary}
                               </span>
                             )}
@@ -617,7 +617,7 @@ export function NarrationAnalysisModal({
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div className="space-y-1 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-3">
-                              <span className="text-[10px] uppercase font-bold text-rose-400 block tracking-wider">
+                              <span className="text-[10px] uppercase font-bold text-[#A9472C] block tracking-wider">
                                 ❌ Teks Narasi Asli
                               </span>
                               <p className="font-sans leading-relaxed text-[#4D4A42]">
@@ -626,7 +626,7 @@ export function NarrationAnalysisModal({
                             </div>
 
                             <div className="space-y-1 rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] p-3">
-                              <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider flex items-center gap-1">
+                              <span className="text-[10px] uppercase font-bold text-[#456A4E] block tracking-wider flex items-center gap-1">
                                 <Check className="w-3 h-3" />
                                 <span>Versi Optimal (High Retention)</span>
                               </span>

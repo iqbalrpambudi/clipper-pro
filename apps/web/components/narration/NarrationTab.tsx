@@ -113,33 +113,33 @@ export function NarrationTab({ project }: NarrationTabProps) {
     const cat = getTemplateCategory(tpl);
     if (cat === "recap") {
       if (tpl.id === "story_parodi") {
-        return <Smile className="w-4 h-4 text-amber-400 shrink-0" />;
+        return <Smile className="w-4 h-4 text-[#8A6A2F] shrink-0" />;
       }
       return <Film className="w-4 h-4 text-[#C45B3A] shrink-0" />;
     }
     if (cat === "fakta") {
       if (tpl.id === "fakta_ranking") {
-        return <Flame className="w-4 h-4 text-orange-400 shrink-0" />;
+        return <Flame className="w-4 h-4 text-[#8A6A2F] shrink-0" />;
       }
-      return <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />;
+      return <Lightbulb className="w-4 h-4 text-[#8A6A2F] shrink-0" />;
     }
     if (cat === "edukasi") {
       if (tpl.id === "edukasi_explainer") {
-        return <MessageSquareQuote className="w-4 h-4 text-cyan-400 shrink-0" />;
+        return <MessageSquareQuote className="w-4 h-4 text-[#41627F] shrink-0" />;
       }
-      return <BookOpen className="w-4 h-4 text-sky-400 shrink-0" />;
+      return <BookOpen className="w-4 h-4 text-[#41627F] shrink-0" />;
     }
     if (cat === "showcase") {
       if (tpl.id === "showcase_review") {
-        return <Search className="w-4 h-4 text-emerald-400 shrink-0" />;
+        return <Search className="w-4 h-4 text-[#456A4E] shrink-0" />;
       }
-      return <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />;
+      return <Sparkles className="w-4 h-4 text-[#456A4E] shrink-0" />;
     }
     if (cat === "opini") {
       if (tpl.id === "opini_komentar") {
-        return <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />;
+        return <ShieldAlert className="w-4 h-4 text-[#A9472C] shrink-0" />;
       }
-      return <Heart className="w-4 h-4 text-pink-400 shrink-0" />;
+      return <Heart className="w-4 h-4 text-[#A9472C] shrink-0" />;
     }
     return <Code className="h-4 w-4 shrink-0 text-primary" />;
   };
@@ -309,7 +309,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <Lightbulb className="w-3 h-3 text-amber-400" />
+                  <Lightbulb className="w-3 h-3 text-[#8A6A2F]" />
                   <span>Fakta</span>
                   <span className="text-[10px] opacity-75 font-mono">{categoryCounts.fakta}</span>
                 </button>
@@ -324,7 +324,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <BookOpen className="w-3 h-3 text-sky-400" />
+                  <BookOpen className="w-3 h-3 text-[#41627F]" />
                   <span>Edukasi</span>
                   <span className="text-[10px] opacity-75 font-mono">{categoryCounts.edukasi}</span>
                 </button>
@@ -339,7 +339,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <Sparkles className="w-3 h-3 text-teal-400" />
+                  <Sparkles className="w-3 h-3 text-[#456A4E]" />
                   <span>Showcase</span>
                   <span className="text-[10px] opacity-75 font-mono">
                     {categoryCounts.showcase}
@@ -356,7 +356,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <MessageSquareQuote className="w-3 h-3 text-pink-400" />
+                  <MessageSquareQuote className="w-3 h-3 text-[#A9472C]" />
                   <span>Opini & POV</span>
                   <span className="text-[10px] opacity-75 font-mono">{categoryCounts.opini}</span>
                 </button>
@@ -414,7 +414,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                           </h4>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <Badge
-                              variant={isSelected ? "supabase" : "secondary"}
+                              variant={isSelected ? "workspace-accent" : "secondary"}
                               className="text-[9px] py-0"
                             >
                               {badgeLabel}
@@ -439,13 +439,13 @@ export function NarrationTab({ project }: NarrationTabProps) {
             description="Atur topik, nada, durasi, dan bahasa naskah."
             className="!border-surface-border !bg-card"
             headerClassName="!border-surface-border !bg-muted"
-            icon={<Sliders className="w-4 h-4 text-amber-400" />}
+            icon={<Sliders className="w-4 h-4 text-[#8A6A2F]" />}
             badge={
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <Layers className="w-3 h-3 text-amber-400" />
+                <Layers className="w-3 h-3 text-[#8A6A2F]" />
                 <span>{project.scenes.length} scene</span>
                 {hasDialogTranscript && (
-                  <span className="text-sky-400 font-semibold">• 🎙️ Dialog</span>
+                  <span className="text-[#41627F] font-semibold">• 🎙️ Dialog</span>
                 )}
               </div>
             }

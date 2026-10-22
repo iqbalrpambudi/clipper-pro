@@ -107,7 +107,7 @@ export function SubtitleStudioPanel({
       </div>
 
       {subtitleStyle.enabled === false && (
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2">
+        <div className="p-3 rounded-xl bg-[#F7EFE0] border border-[#E8D9BC] text-[#8A6A2F] text-[11px] flex items-center gap-2">
           <span>
             ⚠️ Subtitle sedang dinonaktifkan. Video akan dirender bersih tanpa subtitle. Beri
             centang pada checklist di atas jika ingin mengaktifkan subtitle kembali.
@@ -149,7 +149,7 @@ export function SubtitleStudioPanel({
                   if (cur) handleDeleteSubtitlePreset(cur.id, cur.name);
                 }}
                 title="Hapus Preset Ini"
-                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                className="p-1 text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9] rounded transition shrink-0"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -202,7 +202,7 @@ export function SubtitleStudioPanel({
 
       {/* Presets 1-Click */}
       <div>
-        <label className="text-[11px] font-semibold text-slate-300 mb-2 flex items-center justify-between">
+        <label className="text-[11px] font-semibold text-[#4D4A42] mb-2 flex items-center justify-between">
           <span>Pilihan Gaya Preset Cepat:</span>
           <span className="text-[10px] text-[#C45B3A] font-mono">1-Click Theme</span>
         </label>
@@ -237,7 +237,7 @@ export function SubtitleStudioPanel({
                 }}
                 className={`p-2 rounded-xl text-xs border text-left flex items-center justify-between transition ${
                   isSelected
-                    ? "bg-[#F8EEEA] border-[#C45B3A] text-white font-semibold"
+                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] font-semibold"
                     : "bg-[#FFFEFA] border-[#E5E1D7] text-[#4D4A42] hover:border-[#C45B3A]"
                 }`}
               >
@@ -389,7 +389,7 @@ export function SubtitleStudioPanel({
         {subtitleStyle.highlight_animation === "scale" && (
           <div className="p-2.5 rounded-lg bg-[#FBFAF7] border border-[#E5E1D7] space-y-1.5 mt-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-300 font-medium">Tingkat Pembesaran (Scale Factor)</span>
+              <span className="text-[#4D4A42] font-medium">Tingkat Pembesaran (Scale Factor)</span>
               <span className="font-mono text-[#C45B3A] font-bold bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
                 {(subtitleStyle.scale_factor || 1.15).toFixed(2)}x
               </span>
@@ -408,7 +408,7 @@ export function SubtitleStudioPanel({
               }
               className="mt-1 h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
             />
-            <div className="flex justify-between text-[10px] text-slate-500">
+            <div className="flex justify-between text-[10px] text-[#858176]">
               <span>Halus (1.05x)</span>
               <span>Standar (1.20x)</span>
               <span>Ekstrem (1.60x)</span>
@@ -426,7 +426,7 @@ export function SubtitleStudioPanel({
 
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+            <label className="text-[11px] font-semibold text-[#4D4A42] block mb-1">
               Jenis Font:
             </label>
             <select
@@ -450,7 +450,7 @@ export function SubtitleStudioPanel({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+            <label className="text-[11px] font-semibold text-[#4D4A42] block mb-1">
               Ketebalan Font:
             </label>
             <select
@@ -472,7 +472,7 @@ export function SubtitleStudioPanel({
         </div>
 
         <div>
-          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#4D4A42] mb-1">
             <span>Ukuran Font:</span>
             <span className="font-mono text-[#C45B3A] font-bold bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
               {subtitleStyle.font_size || 38}px
@@ -492,7 +492,7 @@ export function SubtitleStudioPanel({
             }
             className="mt-1 h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
-          <div className="flex justify-between text-[10px] text-slate-500">
+          <div className="flex justify-between text-[10px] text-[#858176]">
             <span>Kecil (24px)</span>
             <span>Sedang (38px)</span>
             <span>Besar (64px)</span>
@@ -510,7 +510,7 @@ export function SubtitleStudioPanel({
         <div className="grid grid-cols-2 gap-2.5">
           {/* Warna Teks Normal */}
           <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
-            <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+            <label className="text-[#77766D] block mb-1 text-[10px] font-medium uppercase font-mono">
               Teks Normal
             </label>
             <div className="flex items-center gap-2">
@@ -525,7 +525,7 @@ export function SubtitleStudioPanel({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-slate-200 text-xs font-semibold">
+              <span className="font-mono text-[#26251F] text-xs font-semibold">
                 {subtitleStyle.primary_color || "#FFFFFF"}
               </span>
             </div>
@@ -533,7 +533,7 @@ export function SubtitleStudioPanel({
 
           {/* Warna Highlight Kata */}
           <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
-            <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+            <label className="text-[#77766D] block mb-1 text-[10px] font-medium uppercase font-mono">
               Highlight Kata
             </label>
             <div className="flex items-center gap-2">
@@ -556,7 +556,7 @@ export function SubtitleStudioPanel({
 
           {/* Garis Luar (Outer Text / Outline Color) */}
           <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
-            <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+            <label className="text-[#77766D] block mb-1 text-[10px] font-medium uppercase font-mono">
               Garis Luar (Outer)
             </label>
             <div className="flex items-center gap-2">
@@ -571,7 +571,7 @@ export function SubtitleStudioPanel({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-slate-200 text-xs font-semibold">
+              <span className="font-mono text-[#26251F] text-xs font-semibold">
                 {subtitleStyle.outline_color || "#000000"}
               </span>
             </div>
@@ -579,7 +579,7 @@ export function SubtitleStudioPanel({
 
           {/* Kotak Latar (Box Color) */}
           <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
-            <label className="text-slate-400 block mb-1 text-[10px] font-medium uppercase font-mono">
+            <label className="text-[#77766D] block mb-1 text-[10px] font-medium uppercase font-mono">
               Kotak Latar (Box)
             </label>
             <div className="flex items-center gap-2">
@@ -594,7 +594,7 @@ export function SubtitleStudioPanel({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-slate-200 text-xs font-semibold">
+              <span className="font-mono text-[#26251F] text-xs font-semibold">
                 {subtitleStyle.box_color || "#000000"}
               </span>
             </div>
@@ -604,7 +604,7 @@ export function SubtitleStudioPanel({
         {/* Sliders: Tebal Outline & Opasitas Kotak */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div>
-            <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
+            <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-[#4D4A42]">
               <span>Tebal Outline</span>
               <span className="font-mono text-[#C45B3A] font-bold">
                 {subtitleStyle.outline_width ?? 4}px
@@ -627,7 +627,7 @@ export function SubtitleStudioPanel({
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
+            <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-[#4D4A42]">
               <span>Opasitas Kotak</span>
               <span className="font-mono text-[#C45B3A] font-bold">
                 {Math.round((subtitleStyle.box_opacity || 0) * 100)}%
@@ -654,7 +654,7 @@ export function SubtitleStudioPanel({
       {/* Posisi Layar & Offset */}
       <div className="p-3.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+          <span className="text-xs font-bold text-[#26251F] flex items-center gap-1.5">
             <Move className="w-3.5 h-3.5 text-[#C45B3A]" />
             <span>Posisi Layar Subtitle</span>
           </span>
@@ -703,7 +703,7 @@ export function SubtitleStudioPanel({
 
         {/* Offset Y Slider */}
         <div className="pt-1">
-          <div className="flex justify-between items-center mb-1 text-[11px] text-slate-300">
+          <div className="flex justify-between items-center mb-1 text-[11px] text-[#4D4A42]">
             <span>Offset Posisi Vertikal (Y):</span>
             <span className="font-mono text-[#C45B3A] font-bold">
               {subtitleStyle.offset_y || 0}px
@@ -723,7 +723,7 @@ export function SubtitleStudioPanel({
             }
             className="h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+          <div className="flex justify-between text-[10px] text-[#858176] mt-1">
             <span>Lebih Rendah</span>
             <span>Bisa digeser langsung di preview</span>
             <span>Lebih Tinggi</span>

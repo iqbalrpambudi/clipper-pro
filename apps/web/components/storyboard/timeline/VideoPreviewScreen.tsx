@@ -284,7 +284,7 @@ export function VideoPreviewScreen({
           }}
         >
           <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/60 transition-all flex items-center justify-center pointer-events-auto">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-[#A9472C] px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-white px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
               <Move className="w-3 h-3" />
               <span>Tarik untuk geser posisi subtitle</span>
             </div>
@@ -308,14 +308,14 @@ export function VideoPreviewScreen({
       {showSafeZones && (
         <div className="absolute inset-0 pointer-events-none z-30">
           {/* Action safe 5% */}
-          <div className="absolute inset-[5%] border border-dashed border-amber-400/40 rounded-lg flex items-start justify-end p-2">
-            <span className="text-[9px] font-mono text-amber-300/80 bg-black/60 px-1 rounded">
+          <div className="absolute inset-[5%] border border-dashed border-[#E8D9BC] rounded-lg flex items-start justify-end p-2">
+            <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
               Action Safe 90%
             </span>
           </div>
           {/* Title safe 10% */}
-          <div className="absolute inset-[10%] border border-dotted border-emerald-400/40 rounded-lg flex items-end justify-start p-2">
-            <span className="text-[9px] font-mono text-emerald-300/80 bg-black/60 px-1 rounded">
+          <div className="absolute inset-[10%] border border-dotted border-[#C9DDCF] rounded-lg flex items-end justify-start p-2">
+            <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
               Title Safe 80% (Batas Subtitle)
             </span>
           </div>

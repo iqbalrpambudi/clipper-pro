@@ -95,7 +95,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         return {
           label: "Download YouTube",
           icon: Youtube,
-          badgeColor: "text-rose-700 border-rose-200 bg-rose-50",
+          badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
         };
       case "scene_detect":
         return {
@@ -107,19 +107,19 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         return {
           label: "Tagging Visual AI",
           icon: Sparkles,
-          badgeColor: "text-amber-800 border-amber-200 bg-amber-50",
+          badgeColor: "text-[#8A6A2F] border-[#E8D9BC] bg-[#F7EFE0]",
         };
       case "scene_transcribe":
         return {
           label: "Transkripsi Dialog",
           icon: Mic,
-          badgeColor: "text-sky-800 border-sky-200 bg-sky-50",
+          badgeColor: "text-[#41627F] border-[#CFDDE9] bg-[#EAF0F5]",
         };
       case "tts_align":
         return {
           label: "Suara & Alignment",
           icon: Volume2,
-          badgeColor: "text-violet-800 border-violet-200 bg-violet-50",
+          badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
         };
       case "render":
         return {
@@ -150,7 +150,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
           aria-label={`Buka detail ${meta.label}, progres ${currentTask.progress}%`}
         >
           {isError ? (
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-700" />
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[#A9472C]" />
           ) : isSuccess ? (
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#456A4E]" />
           ) : (
@@ -167,7 +167,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             type="button"
             onClick={handleCancel}
             disabled={isCancelling}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 shadow-lg transition hover:scale-105 hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-lg transition hover:scale-105 hover:bg-[#F3E1D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E9C9BD] disabled:opacity-50"
             title="Batalkan proses worker"
             aria-label="Batalkan proses worker"
           >
@@ -187,9 +187,9 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
       <div
         className={`relative overflow-hidden rounded-xl border p-3.5 shadow-2xl backdrop-blur-md transition-all duration-300 ${
           isError
-            ? "border-rose-200 bg-rose-50 shadow-rose-950/10"
+            ? "border-[#E9C9BD] bg-[#F8EEEA] shadow-[#A9472C]/20"
             : isSuccess
-              ? "border-[#C9DDCF] bg-[#ECF3EB] shadow-emerald-950/10"
+              ? "border-[#C9DDCF] bg-[#ECF3EB] shadow-[#456A4E]/20"
               : "border-[#E5E1D7] bg-[#FBFAF7]/95 shadow-black/10"
         }`}
       >
@@ -199,14 +199,14 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
                 isError
-                  ? "border-rose-200 bg-rose-100 text-rose-700"
+                  ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
                   : isSuccess
                     ? "border-[#C9DDCF] bg-white text-[#456A4E]"
                     : "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
               }`}
             >
               {isError ? (
-                <AlertCircle className="h-4 w-4 text-rose-700" />
+                <AlertCircle className="h-4 w-4 text-[#A9472C]" />
               ) : isSuccess ? (
                 <CheckCircle2 className="h-4 w-4 text-[#456A4E]" />
               ) : (
@@ -256,7 +256,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                 type="button"
                 onClick={handleCancel}
                 disabled={isCancelling}
-                className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[10px] font-medium text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50"
+                className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-2 text-[10px] font-medium text-[#A9472C] transition-colors hover:bg-[#F3E1D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E9C9BD] disabled:opacity-50"
                 title="Batalkan proses worker ini"
                 aria-label="Batalkan proses worker ini"
               >
@@ -273,7 +273,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
               <button
                 type="button"
                 onClick={() => setShowDetails(!showDetails)}
-                className="flex h-8 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[10px] font-medium text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                className="flex h-8 items-center gap-1 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-2 text-[10px] font-medium text-[#A9472C] transition-colors hover:bg-[#F3E1D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E9C9BD]"
                 aria-label={showDetails ? "Sembunyikan detail error" : "Lihat detail error"}
               >
                 <span>Detail</span>
@@ -337,8 +337,8 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
         {/* Expandable Error Details Box */}
         {showDetails && currentTask.error && (
-          <div className="mt-2.5 max-h-36 space-y-1 overflow-x-auto rounded-lg border border-rose-200 bg-white/70 p-2.5 font-mono text-xs text-rose-800">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-rose-700">
+          <div className="mt-2.5 max-h-36 space-y-1 overflow-x-auto rounded-lg border border-[#E9C9BD] bg-white/70 p-2.5 font-mono text-xs text-[#A9472C]">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#A9472C]">
               <AlertCircle className="w-3 h-3 shrink-0" />
               <span>Detail Kesalahan dari Worker:</span>
             </div>

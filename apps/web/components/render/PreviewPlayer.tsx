@@ -1223,10 +1223,10 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
 
         {/* Top Watermark Overlay */}
         <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-[#F8EEEA] animate-pulse" />
           <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
           <span className="text-white/30">•</span>
-          <span className="text-amber-400/90 font-semibold uppercase">
+          <span className="text-[#8A6A2F] font-semibold uppercase">
             {project.background_fill?.mode === "cover"
               ? "Cover 9:16"
               : project.background_fill?.zoom && project.background_fill.zoom > 1.05

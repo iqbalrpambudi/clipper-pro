@@ -79,7 +79,7 @@ export function WorldSettingTab({
 
         <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-2 text-[10px] text-[#77766D]">
           <span>Variabel Prompt:</span>
-          <span className="font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+          <span className="font-mono px-2 py-0.5 rounded bg-[#F7EFE0] text-[#8A6A2F] border border-[#E8D9BC]">
             [era]
           </span>
         </div>

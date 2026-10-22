@@ -92,7 +92,7 @@ export function ContinuityBibleCard({
 
           <div className="flex items-center gap-2">
             {editingBible && (
-              <span className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[10px] text-[#8A6A2F] bg-[#F7EFE0] border border-[#E8D9BC] px-2 py-0.5 rounded-full font-medium">
                 Mode Edit Aktif
               </span>
             )}
@@ -120,7 +120,7 @@ export function ContinuityBibleCard({
                   {isExtracting ? (
                     <RefreshCw className="w-4 h-4 animate-spin text-[#C45B3A] shrink-0" />
                   ) : (
-                    <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                    <Sparkles className="w-4 h-4 text-[#8A6A2F] shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Ekstrak dari Naskah</span>
@@ -153,9 +153,9 @@ export function ContinuityBibleCard({
                     setBibleTab("locations");
                     onAddLocation();
                   }}
-                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-sky-600/20 hover:text-sky-200 transition focus:bg-sky-600/20 focus:text-sky-200"
+                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-[#DCE7F0] hover:text-[#41627F] transition focus:bg-[#EAF0F5] focus:text-[#41627F]"
                 >
-                  <MapPin className="w-4 h-4 text-sky-400 shrink-0" />
+                  <MapPin className="w-4 h-4 text-[#41627F] shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Tambah Tempat</span>
                     <span className="text-[10px] text-[#77766D]">
@@ -168,10 +168,10 @@ export function ContinuityBibleCard({
 
                 <DropdownMenuItem
                   onClick={() => setEditingBible(!editingBible)}
-                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-white/10 hover:text-white transition focus:bg-white/10 focus:text-white"
+                  className="flex items-center gap-2.5 text-xs px-2.5 py-2 rounded-lg cursor-pointer transition hover:bg-[#EAE6DD] hover:text-[#26251F] focus:bg-[#EAE6DD] focus:text-[#26251F]"
                 >
                   {editingBible ? (
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <Check className="w-4 h-4 text-[#456A4E] shrink-0" />
                   ) : (
                     <Edit2 className="w-4 h-4 text-[#C45B3A] shrink-0" />
                   )}

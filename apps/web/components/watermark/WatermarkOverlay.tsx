@@ -173,15 +173,15 @@ export function WatermarkOverlay({
         isDragging ? "duration-0" : "duration-100 ease-out"
       } ${
         isDraggable
-          ? "cursor-grab active:cursor-grabbing pointer-events-auto hover:ring-2 hover:ring-violet-400/80 rounded group"
+          ? "cursor-grab active:cursor-grabbing pointer-events-auto hover:ring-2 hover:ring-[#E9C9BD] rounded group"
           : "pointer-events-none"
-      } ${isDragging ? "ring-2 ring-violet-500 shadow-xl" : ""}`}
+      } ${isDragging ? "ring-2 ring-[#E9C9BD] shadow-xl" : ""}`}
       style={positionStyles}
       title={isDraggable ? "Tarik untuk memposisikan watermark bebas" : undefined}
     >
       {/* Visual coordinate badge during drag */}
       {isDragging && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-50">
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#F8EEEA] text-[#A9472C] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-50">
           X: {Math.round(watermark.custom_x ?? 50)}% | Y: {Math.round(watermark.custom_y ?? 50)}%
         </div>
       )}

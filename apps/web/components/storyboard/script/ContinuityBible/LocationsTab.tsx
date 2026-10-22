@@ -44,10 +44,10 @@ export function LocationsTab({
   return (
     <div className="flex flex-col space-y-3 mt-3.5">
       {/* Tips Kontinuitas Latar */}
-      <div className="p-2.5 rounded-xl bg-sky-950/20 border border-sky-500/20 flex items-start gap-2.5">
-        <Sparkles className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-        <div className="space-y-0.5 text-[11px] text-sky-200/90 leading-relaxed">
-          <span className="font-semibold text-sky-300">Tips Kontinuitas Latar Spasial:</span> Agar
+      <div className="p-2.5 rounded-xl bg-[#EAF0F5] border border-[#CFDDE9] flex items-start gap-2.5">
+        <Sparkles className="w-4 h-4 text-[#41627F] shrink-0 mt-0.5" />
+        <div className="space-y-0.5 text-[11px] text-[#41627F] leading-relaxed">
+          <span className="font-semibold text-[#41627F]">Tips Kontinuitas Latar Spasial:</span> Agar
           toko atau latar tidak berpindah tempat (misal toko pedagang tiba-tiba berpindah ke bawah
           pohon), kuncilah <strong>Micro-Set</strong> (bentuk fisik kios/ruangan spesifik),{" "}
           <strong>Anchor Props</strong> (2-3 benda patokan tetap), dan <strong>Arah Cahaya</strong>.
@@ -88,7 +88,7 @@ export function LocationsTab({
                   <button
                     type="button"
                     onClick={() => onDeleteLocation(lIdx)}
-                    className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+                    className="p-1.5 rounded text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9] transition"
                     title="Hapus Lokasi"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -113,7 +113,7 @@ export function LocationsTab({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 flex items-center gap-1">
+                  <label className="text-[10px] uppercase font-semibold tracking-wider text-[#41627F] flex items-center gap-1">
                     <Anchor className="w-3 h-3" />
                     <span>Objek Patokan Tetap / Anchor Props (English)</span>
                   </label>
@@ -133,10 +133,10 @@ export function LocationsTab({
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-sky-300 flex items-center gap-1">
+                  <span className="text-xs font-bold text-[#41627F] flex items-center gap-1">
                     🗺️ {loc.name}
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#EAF0F5] text-[#41627F] border border-[#CFDDE9]">
                     [loc:{loc.id || loc.name.toLowerCase().replace(/\s+/g, "")}]
                   </span>
                 </div>
@@ -144,9 +144,9 @@ export function LocationsTab({
                   {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
                 </p>
                 {loc.focal_props && (
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono bg-sky-950/30 text-sky-300 px-2.5 py-1.5 rounded-lg border border-sky-500/20">
-                    <Anchor className="w-3 h-3 text-sky-400 shrink-0" />
-                    <span className="text-[10px] uppercase text-sky-400 font-bold shrink-0">
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono bg-[#EAF0F5] text-[#41627F] px-2.5 py-1.5 rounded-lg border border-[#CFDDE9]">
+                    <Anchor className="w-3 h-3 text-[#41627F] shrink-0" />
+                    <span className="text-[10px] uppercase text-[#41627F] font-bold shrink-0">
                       Anchor Props:
                     </span>
                     <span className="truncate">{loc.focal_props}</span>

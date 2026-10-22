@@ -279,7 +279,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           onClick={() => setIsYTOpen(true)}
           className="gap-1.5"
         >
-          <Youtube className="h-4 w-4 text-rose-600" />
+          <Youtube className="h-4 w-4 text-[#A9472C]" />
           <span>Impor YouTube</span>
         </Button>
       </header>
@@ -309,7 +309,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               onClick={() => setIsYTOpen(true)}
               className="gap-1.5"
             >
-              <Youtube className="w-4 h-4 text-rose-500" />
+              <Youtube className="w-4 h-4 text-[#A9472C]" />
               <span>Impor dari YouTube</span>
             </Button>
           }
@@ -370,7 +370,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         </Badge>
 
                         {vid.status === "downloading" && (
-                          <Badge variant="warning" className="text-[10px] py-0 gap-1 animate-pulse">
+                          <Badge
+                            variant="workspace-warning"
+                            className="text-[10px] py-0 gap-1 animate-pulse"
+                          >
                             <Loader2 className="w-2.5 h-2.5 animate-spin" />
                             <span>Mengunduh</span>
                           </Badge>
@@ -425,7 +428,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setVideoToDelete(vid)}
-                          className="text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 h-6 w-6"
+                          className="text-muted-foreground hover:text-[#A9472C] hover:bg-[#F3E1D9] h-6 w-6"
                           title="Hapus video"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -463,8 +466,8 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Inline Progress for Downloading */}
                     {vid.status === "downloading" && (
-                      <div className="mb-2 space-y-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                        <div className="flex items-center justify-between text-[10px] text-amber-300">
+                      <div className="mb-2 space-y-1 bg-[#F7EFE0] p-2 rounded-lg border border-[#E8D9BC]">
+                        <div className="flex items-center justify-between text-[10px] text-[#8A6A2F]">
                           <span className="truncate">{dlMessage}</span>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold">{dlProgress}%</span>
@@ -475,7 +478,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                                 cancelMediaMutation.isPending &&
                                 cancelMediaMutation.variables === vid.id
                               }
-                              className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
+                              className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
                               title="Batalkan proses download"
                             >
                               Batal
@@ -484,7 +487,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                         </div>
                         <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                            className="bg-[#F7EFE0] h-full rounded-full transition-all duration-300"
                             style={{ width: `${Math.max(5, dlProgress)}%` }}
                           />
                         </div>
@@ -493,7 +496,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Inline Progress for AI Processing */}
                     {vid.status === "processing" && (
-                      <div className="mb-2 space-y-1 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                      <div className="mb-2 space-y-1 bg-[#ECF3EB] p-2 rounded-lg border border-[#C9DDCF]">
                         <div className="flex items-center justify-between text-[10px] text-primary">
                           <span className="truncate">{detectMessage}</span>
                           <div className="flex items-center gap-2 shrink-0">
@@ -505,7 +508,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                                 cancelMediaMutation.isPending &&
                                 cancelMediaMutation.variables === vid.id
                               }
-                              className="text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer disabled:opacity-50"
+                              className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
                               title="Batalkan proses deteksi"
                             >
                               Batal
@@ -523,7 +526,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Error Message */}
                     {vid.status === "failed" && (
-                      <div className="mb-2 text-[11px] text-rose-400 flex items-center gap-1.5 bg-rose-500/10 p-1.5 rounded border border-rose-500/20">
+                      <div className="mb-2 text-[11px] text-[#A9472C] flex items-center gap-1.5 bg-[#F8EEEA] p-1.5 rounded border border-[#E9C9BD]">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate">{vid.error_message || "Gagal memproses"}</span>
                       </div>
@@ -556,7 +559,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               )}
 
               {untaggedCount > 0 && (
-                <Badge variant="warning" className="text-[10px]">
+                <Badge variant="workspace-warning" className="text-[10px]">
                   {untaggedCount} belum di-tag
                 </Badge>
               )}
@@ -604,12 +607,12 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               >
                 {transcribeMutation.isPending ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#41627F]" />
                     <span>Mentranskrip...</span>
                   </>
                 ) : (
                   <>
-                    <Mic className="w-3.5 h-3.5 text-sky-400" />
+                    <Mic className="w-3.5 h-3.5 text-[#41627F]" />
                     <span>
                       Transkrip Dialog {untranscribedCount > 0 ? `(${untranscribedCount})` : ""}
                     </span>
@@ -652,7 +655,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       repairThumbnailsMutation.mutate();
                     }}
                     disabled={repairThumbnailsMutation.isPending}
-                    className="gap-2 text-xs cursor-pointer text-amber-300 focus:text-amber-200"
+                    className="gap-2 text-xs cursor-pointer text-[#8A6A2F] focus:text-[#8A6A2F]"
                   >
                     <Wrench className="w-3.5 h-3.5" />
                     <span>Perbaiki Thumbnail {brokenCount > 0 ? `(${brokenCount})` : ""}</span>
@@ -699,9 +702,9 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
         {/* Live Progress Bar for Transcribing */}
         {transcribeMutation.isPending && (
-          <div className="animate-fadeIn space-y-2 rounded-lg border border-sky-500/30 bg-card p-3">
+          <div className="animate-fadeIn space-y-2 rounded-lg border border-[#CFDDE9] bg-card p-3">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-sky-400 font-medium">
+              <div className="flex items-center gap-2 text-[#41627F] font-medium">
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 <span className="truncate max-w-sm sm:max-w-md">
                   {transcribeStepText || "Sedang mentranskripsikan dialog audio..."}
@@ -712,7 +715,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   {Math.floor(transcribeElapsed / 60)}:
                   {String(transcribeElapsed % 60).padStart(2, "0")}
                 </span>
-                <span className="text-sky-400 font-bold">{Math.round(transcribeProgress)}%</span>
+                <span className="text-[#41627F] font-bold">{Math.round(transcribeProgress)}%</span>
                 <button
                   type="button"
                   onClick={() => api.cancelProjectTasks(project.id)}
@@ -725,7 +728,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="bg-sky-400 h-full transition-all duration-300 rounded-full"
+                className="bg-[#EAF0F5] h-full transition-all duration-300 rounded-full"
                 style={{ width: `${Math.max(5, transcribeProgress)}%` }}
               />
             </div>
@@ -776,13 +779,13 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   </span>
 
                   {scene.transcript && (
-                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-sky-500/90 text-[8px] font-bold text-white flex items-center gap-0.5 shadow-sm">
+                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-[#41627F] text-[8px] font-bold text-white flex items-center gap-0.5 shadow-sm">
                       <Mic className="w-2.5 h-2.5" /> Dialog
                     </span>
                   )}
 
                   {/* Duration Badge */}
-                  <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 text-[9px] font-mono text-zinc-300">
+                  <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 text-[9px] font-mono text-white">
                     {scene.duration}s
                   </span>
                 </div>
@@ -796,10 +799,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {scene.transcript && (
                       <div
-                        className="flex items-start gap-1 mt-1 p-1 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] text-sky-200"
+                        className="flex items-start gap-1 mt-1 p-1 rounded bg-[#EAF0F5] border border-[#CFDDE9] text-[10px] text-[#41627F]"
                         title={scene.transcript}
                       >
-                        <MessageSquare className="w-2.5 h-2.5 text-sky-400 shrink-0 mt-0.5" />
+                        <MessageSquare className="w-2.5 h-2.5 text-[#41627F] shrink-0 mt-0.5" />
                         <span className="line-clamp-1 italic">"{scene.transcript}"</span>
                       </div>
                     )}
@@ -831,7 +834,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
         <DialogContent appearance="workspace" className="max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-2">
-              <Youtube className="w-5 h-5 text-rose-500" />
+              <Youtube className="w-5 h-5 text-[#A9472C]" />
               <DialogTitle>Impor Video dari YouTube</DialogTitle>
             </div>
             <DialogDescription>

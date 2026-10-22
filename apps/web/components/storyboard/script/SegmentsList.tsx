@@ -106,7 +106,7 @@ export function SegmentsList({
               title="Salin seluruh teks naskah narasi ke clipboard"
             >
               {hasCopiedNarration ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-[#456A4E]" />
               ) : (
                 <Copy className="w-3.5 h-3.5 text-[#C45B3A]" />
               )}
@@ -181,7 +181,7 @@ export function SegmentsList({
                           title="Salin teks segmen ini"
                         >
                           {copiedSegmentId === segId ? (
-                            <Check className="w-3 h-3 text-emerald-400" />
+                            <Check className="w-3 h-3 text-[#456A4E]" />
                           ) : (
                             <Copy className="h-3 w-3 text-[#77766D]" />
                           )}

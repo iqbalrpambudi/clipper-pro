@@ -83,7 +83,7 @@ export function PresetManager({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <BookmarkPlus className="w-4 h-4 text-amber-400" />
+            <BookmarkPlus className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold text-[#26251F]">
               Simpan Gaya Teks Sebagai Preset
             </h4>
@@ -104,14 +104,14 @@ export function PresetManager({
               value={newPresetName}
               onChange={(e) => setNewPresetName(e.target.value)}
               placeholder="Contoh: Signature Misteri Dark / MrBeast Style..."
-              className="bg-black/50 border-[#E5E1D7] text-xs font-medium"
+              className="border-[#E5E1D7] bg-[#F3F0E8] text-xs font-medium text-[#26251F] placeholder:text-[#858176]"
               autoFocus
             />
             <div className="flex items-center gap-2">
               <Button
                 type="submit"
                 size="sm"
-                className="bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold h-7"
+                className="h-7 bg-[#C45B3A] text-xs font-bold text-[#FFFAF6] hover:bg-[#A9472C]"
               >
                 Simpan Preset
               </Button>
@@ -133,7 +133,7 @@ export function PresetManager({
             onClick={() => setIsSaving(true)}
             className="w-full bg-[#C45B3A] hover:bg-[#A9472C] text-[#FFFAF6] border border-[#C45B3A] text-xs font-semibold h-8"
           >
-            <BookmarkPlus className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
+            <BookmarkPlus className="w-3.5 h-3.5 mr-1.5" />
             <span>+ Simpan Style Saat Ini</span>
           </Button>
         )}
@@ -142,8 +142,8 @@ export function PresetManager({
       {/* Built-in Presets */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
+            <Sparkles className="w-3.5 h-3.5 text-[#C45B3A]" />
             <span>Preset Bawaan YouTube Viral</span>
           </div>
           <span className="text-[10px] text-muted-foreground">Terapkan 1-Klik</span>
@@ -158,7 +158,7 @@ export function PresetManager({
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
-                  className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs border border-white/10"
+                  className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs border border-[#E5E1D7]"
                   style={{
                     backgroundColor: preset.previewColor || "#FFE600",
                     color: preset.previewColor === "#FFFFFF" ? "#000" : "#fff",
@@ -167,7 +167,7 @@ export function PresetManager({
                   <Palette className="w-4 h-4 text-black/80" />
                 </div>
                 <div className="min-w-0">
-                  <h5 className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors truncate">
+                  <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#A9472C] truncate">
                     {preset.name}
                   </h5>
                   <p className="text-[10px] text-muted-foreground truncate">{preset.desc}</p>
@@ -177,7 +177,7 @@ export function PresetManager({
               <Button
                 size="sm"
                 variant="outline"
-                className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-amber-500 group-hover:text-black group-hover:border-amber-500 shrink-0 transition-all font-semibold"
+                className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] shrink-0 transition-all font-semibold"
               >
                 <span>Pakai</span>
               </Button>
@@ -190,7 +190,7 @@ export function PresetManager({
       {customPresets.length > 0 && (
         <div className="space-y-2.5 pt-2">
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#456A4E]">
               <BookmarkPlus className="w-3.5 h-3.5" />
               <span>Preset Kustom Anda</span>
             </div>
@@ -208,7 +208,7 @@ export function PresetManager({
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs border border-white/10"
+                    className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs border border-[#E5E1D7]"
                     style={{
                       backgroundColor: preset.previewColor || "#22C55E",
                     }}
@@ -216,7 +216,7 @@ export function PresetManager({
                     <Palette className="w-4 h-4 text-black/80" />
                   </div>
                   <div className="min-w-0">
-                    <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
+                    <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#456A4E] truncate">
                       {preset.name}
                     </h5>
                     <p className="text-[10px] text-muted-foreground truncate">{preset.desc}</p>
@@ -231,14 +231,14 @@ export function PresetManager({
                     size="sm"
                     variant="outline"
                     onClick={() => onApplyPreset(preset)}
-                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-emerald-500 group-hover:text-white group-hover:border-emerald-500 transition-all font-semibold"
+                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#456A4E] group-hover:text-[#FFFAF6] group-hover:border-[#456A4E] transition-all font-semibold"
                   >
                     Pakai
                   </Button>
                   <button
                     type="button"
                     onClick={() => onDeleteCustomPreset(preset.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    className="p-1.5 rounded-lg text-[#858176] hover:bg-[#F8EEEA] hover:text-[#A9472C] transition-colors"
                     title="Hapus Preset Kustom"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

@@ -250,7 +250,7 @@ export function VoiceSelectorPanel({
             </div>
 
             {syncError && (
-              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 leading-normal">
+              <div className="p-2 rounded-lg bg-[#F7EFE0] border border-[#E8D9BC] text-[10px] text-[#8A6A2F] leading-normal">
                 {syncError}
               </div>
             )}
@@ -438,11 +438,11 @@ export function VoiceSelectorPanel({
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-muted-foreground">Katalog Suara Terkunci:</span>
           {projectLanguage === "en" ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#41627F] bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9]">
               <span>🇬🇧</span> English (EN)
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]">
               <span>🇮🇩</span> Indonesia (ID)
             </span>
           )}
@@ -488,11 +488,11 @@ export function VoiceSelectorPanel({
                     variant="secondary"
                     className={`text-[9px] py-0 px-1 font-mono ${
                       isEn
-                        ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                        ? "bg-[#EAF0F5] text-[#41627F] border-[#CFDDE9]"
                         : isId
-                          ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                          ? "bg-[#ECF3EB] text-[#456A4E] border-[#C9DDCF]"
                           : isJa
-                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            ? "bg-[#F7EFE0] text-[#8A6A2F] border-[#E8D9BC]"
                             : "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                     }`}
                   >

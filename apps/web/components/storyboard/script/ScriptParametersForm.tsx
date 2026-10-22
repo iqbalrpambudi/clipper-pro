@@ -125,7 +125,7 @@ export function ScriptParametersForm({
                     if (cur) onDeleteScriptPreset(cur.id, cur.name);
                   }}
                   title="Hapus Preset Kustom Ini"
-                  className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition shrink-0"
+                  className="shrink-0 rounded p-1 text-[#858176] transition hover:bg-[#F8EEEA] hover:text-[#A9472C]"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -287,7 +287,7 @@ export function ScriptParametersForm({
         {/* AI Visual Preset Selector */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-[#4D4A42] flex items-center gap-1.5">
               <Palette className="w-3.5 h-3.5 text-[#C45B3A]" />
               Preset Gaya Visual Ilustrasi AI
             </label>
@@ -311,7 +311,7 @@ export function ScriptParametersForm({
             ))}
           </select>
           {presets.find((p) => p.id === (selectedPresetId || activePreset?.id)) && (
-            <div className="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+            <div className="text-[10px] text-[#858176] mt-1 flex items-center justify-between">
               <span className="truncate max-w-[260px]">
                 {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} •
                 16:9 Landscape

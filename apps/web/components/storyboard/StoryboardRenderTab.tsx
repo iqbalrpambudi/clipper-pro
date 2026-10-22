@@ -175,7 +175,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               </div>
               <div className="flex items-center justify-between text-[#4D4A42]">
                 <span>Kesiapan Gambar:</span>
-                <span className="font-mono font-bold text-emerald-400">
+                <span className="font-mono font-bold text-[#456A4E]">
                   {readyItemsCount} dari {items.length} Siap
                 </span>
               </div>
@@ -186,7 +186,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-1 text-[#4D4A42]">
                 <span>Status Subtitle:</span>
                 <span
-                  className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-[#C45B3A]" : "text-amber-400"}`}
+                  className={`font-mono font-bold ${project.subtitle_style?.enabled !== false ? "text-[#C45B3A]" : "text-[#8A6A2F]"}`}
                 >
                   {project.subtitle_style?.enabled !== false
                     ? "Aktif (Burn-in)"
@@ -293,7 +293,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               </Button>
 
               {!audio && (
-                <p className="text-[11px] text-amber-400/90 text-center">
+                <p className="text-[11px] text-[#8A6A2F] text-center">
                   ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum
                   me-render.
                 </p>
@@ -323,7 +323,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                       size="sm"
                       onClick={() => cancelJobMutation.mutate(activeRenderJob.id)}
                       disabled={cancelJobMutation.isPending}
-                      className="text-rose-400 hover:text-rose-300 text-xs h-7 gap-1"
+                      className="text-[#A9472C] hover:text-[#A9472C] text-xs h-7 gap-1"
                     >
                       {cancelJobMutation.isPending ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -407,7 +407,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                     >
                       <div className="flex items-center gap-3">
                         {job.status === "completed" ? (
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#ECF3EB] flex items-center justify-center text-[#456A4E] shrink-0">
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
                         ) : job.status === "rendering" || job.status === "queued" ? (
@@ -415,7 +415,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             <Loader2 className="w-5 h-5 animate-spin" />
                           </div>
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#F8EEEA] flex items-center justify-center text-[#A9472C] shrink-0">
                             <AlertCircle className="w-5 h-5" />
                           </div>
                         )}
@@ -428,10 +428,10 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             <span
                               className={`text-[10px] font-mono px-2 py-0.5 rounded ${
                                 job.status === "completed"
-                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  ? "bg-[#ECF3EB] text-[#456A4E]"
                                   : job.status === "rendering"
                                     ? "bg-[#F8EEEA] text-[#A9472C]"
-                                    : "bg-rose-500/10 text-rose-400"
+                                    : "bg-[#F8EEEA] text-[#A9472C]"
                               }`}
                             >
                               {job.status}
@@ -442,7 +442,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             {new Date(job.created_at).toLocaleString("id-ID")}
                           </p>
                           {job.status === "failed" && job.error_message && (
-                            <p className="text-[11px] text-rose-400/90 mt-1 max-w-md">
+                            <p className="text-[11px] text-[#A9472C] mt-1 max-w-md">
                               {job.error_message}
                             </p>
                           )}
@@ -458,7 +458,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             disabled={
                               cancelJobMutation.isPending && cancelJobMutation.variables === job.id
                             }
-                            className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5 px-3 font-semibold shadow-sm"
+                            className="h-8 text-xs bg-[#F8EEEA] hover:bg-[#F3E1D9] text-[#A9472C] gap-1.5 px-3 font-semibold shadow-sm"
                             title="Batalkan proses render ini"
                           >
                             {cancelJobMutation.isPending &&
@@ -495,7 +495,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             <Button
                               size="sm"
                               onClick={() => setActiveTab("storyboard_youtube")}
-                              className="bg-red-600/90 hover:bg-red-500 text-white text-xs h-8 gap-1.5 font-semibold"
+                              className="bg-[#F8EEEA] hover:bg-[#F3E1D9] text-[#A9472C] text-xs h-8 gap-1.5 font-semibold"
                             >
                               <Youtube className="w-3.5 h-3.5 fill-current" />
                               <span>YouTube & Thumbnail</span>
@@ -506,7 +506,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                         <button
                           type="button"
                           onClick={() => deleteJobMutation.mutate(job.id)}
-                          className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                          className="p-2 rounded-lg text-[#858176] hover:text-[#A9472C] hover:bg-[#F3E1D9]"
                           title="Hapus riwayat render"
                         >
                           <Trash2 className="w-4 h-4" />

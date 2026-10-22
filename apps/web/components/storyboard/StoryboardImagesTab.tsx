@@ -51,10 +51,10 @@ function renderTokenizedPrompt(promptText: string) {
           return (
             <span
               key={pIdx}
-              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-semibold align-baseline"
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#F7EFE0] text-[#8A6A2F] border border-[#E8D9BC] font-mono text-[10px] font-semibold align-baseline"
               title="Gaya Gambar Preset AI"
             >
-              <Sparkles className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              <Sparkles className="w-2.5 h-2.5 text-[#A9803C] shrink-0" />
               {part}
             </span>
           );
@@ -77,10 +77,10 @@ function renderTokenizedPrompt(promptText: string) {
           return (
             <span
               key={pIdx}
-              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-mono text-[10px] font-semibold align-baseline"
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#EAF0F5] text-[#41627F] border border-[#CFDDE9] font-mono text-[10px] font-semibold align-baseline"
               title="Latar Tempat Kejadian"
             >
-              <MapPin className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+              <MapPin className="w-2.5 h-2.5 text-[#5A7E9C] shrink-0" />
               {part}
             </span>
           );
@@ -90,10 +90,10 @@ function renderTokenizedPrompt(promptText: string) {
           return (
             <span
               key={pIdx}
-              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[10px] font-semibold align-baseline"
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF] font-mono text-[10px] font-semibold align-baseline"
               title="Setting Era Waktu & Atmosfer"
             >
-              <Compass className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+              <Compass className="w-2.5 h-2.5 text-[#5F8168] shrink-0" />
               {part}
             </span>
           );
@@ -331,7 +331,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                       [char:{charId}]
                     </span>
                     {hasVariants && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#F7EFE0] text-[#8A6A2F]">
                         +{char.variants?.length} varian
                       </span>
                     )}
@@ -345,11 +345,11 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                 return (
                   <span
                     key={`loc-${i}`}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#D7E2E3] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#CFDDE9] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                     title={loc.environment_anchor}
                   >
-                    <span className="font-bold text-sky-300">🗺️ {loc.name}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300">
+                    <span className="font-bold text-[#41627F]">🗺️ {loc.name}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-[#EAF0F5] text-[#41627F]">
                       [loc:{locId}]
                     </span>
                   </span>
@@ -362,8 +362,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                   className="flex items-center gap-1.5 rounded-lg border border-[#C9DDCF] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                   title={project.world_setting.atmosphere}
                 >
-                  <span className="font-bold text-emerald-300">⏳ {project.world_setting.era}</span>
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">
+                  <span className="font-bold text-[#456A4E]">⏳ {project.world_setting.era}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-[#ECF3EB] text-[#456A4E]">
                     [era]
                   </span>
                 </span>
@@ -394,16 +394,16 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             </div>
 
             <div className="flex items-center gap-2 border-l border-[#E5E1D7] pl-2">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF] font-mono">
                 ✓ {readyCount} Siap
               </span>
               {pendingCount > 0 && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-[#F7EFE0] text-[#8A6A2F] border border-[#E8D9BC] font-mono">
                   ⏳ {pendingCount} Belum
                 </span>
               )}
               {failedCount > 0 && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBEAE6] text-[#A9472C] border border-[#E9C9BD] font-mono">
                   ⚠ {failedCount} Gagal
                 </span>
               )}
@@ -469,7 +469,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
         {/* Main Items Gallery Grouped by Segment */}
         {items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#D2CDBF] bg-[#FBFAF7] p-12 text-center">
-            <ImageIcon className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+            <ImageIcon className="w-12 h-12 text-[#858176] mx-auto mb-3" />
             <h3 className="mb-1.5 text-base font-semibold text-[#26251F]">Belum Ada Slot Gambar</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
               Buat naskah storyboard terlebih dahulu pada langkah pertama agar adegan dan prompt
@@ -574,8 +574,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               </>
                             ) : item.status === "failed" ? (
                               <div className="flex flex-col items-center gap-1.5 p-4 text-center">
-                                <AlertCircle className="w-6 h-6 text-rose-400" />
-                                <span className="text-[11px] text-rose-300 font-mono">
+                                <AlertCircle className="w-6 h-6 text-[#C45B3A]" />
+                                <span className="text-[11px] text-[#A9472C] font-mono">
                                   Gagal generate gambar
                                 </span>
                                 <span className="line-clamp-2 text-[10px] text-[#77766D]">
@@ -584,7 +584,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               </div>
                             ) : (
                               <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                <ImageIcon className="w-8 h-8 text-slate-600" />
+                                <ImageIcon className="w-8 h-8 text-[#77766D]" />
                                 <span className="font-mono text-[11px] text-[#77766D]">
                                   Belum Digenerate
                                 </span>
@@ -624,7 +624,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                     onClick={() =>
                                       setEditPromptText((prev) => `${prev} [preset:style]`)
                                     }
-                                    className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono transition"
+                                    className="px-1.5 py-0.5 rounded bg-[#F7EFE0] hover:bg-[#F0E4CE] text-[#8A6A2F] border border-[#E8D9BC] text-[9px] font-mono transition"
                                   >
                                     + [preset:style]
                                   </button>
@@ -669,7 +669,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                         onClick={() =>
                                           setEditPromptText((prev) => `${prev} [loc:${lId}]`)
                                         }
-                                        className="px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] font-mono transition"
+                                        className="px-1.5 py-0.5 rounded bg-[#EAF0F5] hover:bg-[#DCE7F0] text-[#41627F] border border-[#CFDDE9] text-[9px] font-mono transition"
                                       >
                                         + [loc:{lId}]
                                       </button>
@@ -679,7 +679,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                     <button
                                       type="button"
                                       onClick={() => setEditPromptText((prev) => `${prev} [era]`)}
-                                      className="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-mono transition"
+                                      className="px-1.5 py-0.5 rounded bg-[#ECF3EB] hover:bg-[#DFEBDD] text-[#456A4E] border border-[#C9DDCF] text-[9px] font-mono transition"
                                     >
                                       + [era]
                                     </button>
@@ -732,7 +732,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                       title="Salin Prompt"
                                     >
                                       {copiedPromptId === item.id ? (
-                                        <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                        <Check className="w-2.5 h-2.5 text-[#456A4E]" />
                                       ) : (
                                         <Copy className="w-2.5 h-2.5" />
                                       )}

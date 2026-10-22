@@ -93,7 +93,7 @@ export function CharactersTab({
                     <button
                       type="button"
                       onClick={() => onDeleteCharacter(cIdx)}
-                      className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+                      className="p-1.5 rounded text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9] transition"
                       title="Hapus Karakter"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -177,7 +177,7 @@ export function CharactersTab({
                               <button
                                 type="button"
                                 onClick={() => onDeleteVariant(cIdx, vIdx)}
-                                className="p-1 text-red-400 hover:text-red-300 transition"
+                                className="p-1 text-[#A9472C] hover:text-[#A9472C] transition"
                                 title="Hapus Varian"
                               >
                                 <Trash2 className="w-3 h-3" />

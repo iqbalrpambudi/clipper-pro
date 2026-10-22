@@ -40,7 +40,7 @@ const ThumbnailKonvaCanvas = dynamic(() => import("./thumbnail/ThumbnailKonvaCan
   loading: () => (
     <div className="flex aspect-video w-full items-center justify-center rounded-2xl border border-[#E5E1D7] bg-[#F3F0E8] text-xs text-[#77766D]">
       <div className="flex items-center gap-2">
-        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-[#E9C9BD] border-t-transparent rounded-full animate-spin" />
         <span>Memuat Canvas Thumbnail...</span>
       </div>
     </div>
@@ -485,11 +485,11 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
       {/* Top Header */}
       <StoryboardTabHeader
         icon={Youtube}
-        iconColor="text-red-500"
-        iconBg="bg-red-500/10 border-red-500/20"
+        iconColor="text-[#A9472C]"
+        iconBg="bg-[#F8EEEA] border-[#E9C9BD]"
         title="YouTube Packaging & Thumbnail Studio"
         badge="Langkah 6 • Packaging"
-        badgeColor="bg-red-500/10 text-red-400 border-red-500/30"
+        badgeColor="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
         secondaryBadge="Kanvas Bebas"
         description="Editor teks thumbnail kanvas grafis bebas ala Photoshop dan generator paket metadata YouTube."
         actions={
@@ -582,7 +582,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
 
                 {/* YouTube Video Info Block Simulation */}
                 <div className="flex items-start gap-2.5 border-t border-[#E5E1D7] bg-[#FBFAF7] p-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center font-bold text-white text-[11px] shrink-0 shadow-md">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#F8EEEA] to-[#F7EFE0] flex items-center justify-center font-bold text-[#A9472C] text-[11px] shrink-0 shadow-md">
                     C
                   </div>
                   <div className="flex-1 min-w-0">
@@ -613,7 +613,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     variant="workspace-secondary"
                     className="h-8 text-[11px] font-semibold"
                   >
-                    <Plus className="w-3 h-3 mr-1 text-amber-400" />
+                    <Plus className="w-3 h-3 mr-1 text-[#8A6A2F]" />
                     <span>Tambah Teks</span>
                   </Button>
 
@@ -622,7 +622,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDeleteLayer(selectedLayerId)}
-                      className="h-7 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      className="h-7 text-[11px] text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9]"
                     >
                       <Trash2 className="w-3 h-3 mr-1" />
                       <span>Hapus Layer</span>
@@ -649,7 +649,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   onClick={() => setActiveSettingsTab("generator")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     activeSettingsTab === "generator"
-                      ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                       : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
                   }`}
                 >
@@ -662,13 +662,13 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   onClick={() => setActiveSettingsTab("layers")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     activeSettingsTab === "layers"
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                       : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
                   }`}
                 >
                   <Type className="w-3.5 h-3.5" />
                   <span>Editor Teks & Layer</span>
-                  <span className="w-4 h-4 rounded-full bg-amber-500/30 text-[10px] font-mono flex items-center justify-center text-amber-300 ml-0.5">
+                  <span className="w-4 h-4 rounded-full bg-[#E9C9BD] text-[10px] font-mono flex items-center justify-center text-[#A9472C] ml-0.5">
                     {layers.length}
                   </span>
                 </button>
@@ -691,7 +691,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   onClick={() => setActiveSettingsTab("metadata")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     activeSettingsTab === "metadata"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                       : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
                   }`}
                 >

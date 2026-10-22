@@ -39,7 +39,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 className="h-9 gap-1.5 border-[#E9C9BD] bg-[#F8EEEA] text-xs font-semibold text-[#A9472C] shadow-sm transition hover:bg-[#F3E1D9]"
                 title="Analisis Skor Narasi untuk Retensi YouTube"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-[#8A6A2F]" />
                 <span>Skor Narasi</span>
               </Button>
 
@@ -51,7 +51,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
                 title="Salin seluruh teks narasi ke clipboard"
               >
                 {state.hasCopiedNarration ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <Check className="w-3.5 h-3.5 text-[#456A4E]" />
                 ) : (
                   <Copy className="w-3.5 h-3.5 text-[#C45B3A]" />
                 )}

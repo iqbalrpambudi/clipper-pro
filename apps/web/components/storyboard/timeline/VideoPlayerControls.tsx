@@ -88,7 +88,7 @@ export function VideoPlayerControls({
             title={isMuted ? "Unmute Audio" : "Mute Audio"}
           >
             {isMuted ? (
-              <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+              <VolumeX className="w-3.5 h-3.5 text-[#A9472C]" />
             ) : (
               <Volume2 className="w-3.5 h-3.5" />
             )}

@@ -155,7 +155,7 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
         {isImageLoading && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20 backdrop-blur-xs">
             <div className="flex items-center gap-2 text-xs font-semibold text-white/80">
-              <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-[#C45B3A] border-t-transparent rounded-full animate-spin" />
               <span>Memuat Latar Gambar...</span>
             </div>
           </div>

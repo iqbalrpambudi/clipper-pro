@@ -64,19 +64,19 @@ export function AiThumbnailGenerator({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-red-500" />
-            <h4 className="text-xs font-bold text-white">Formula Hook Visual AI</h4>
+            <Sparkles className="w-4 h-4 text-[#C45B3A]" />
+            <h4 className="text-xs font-bold text-[#26251F]">Formula Hook Visual AI</h4>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+          <div className="flex items-center gap-1.5 text-[10px] text-[#77766D]">
             {mainCharName && (
-              <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10 text-amber-300">
-                <User className="w-3 h-3 text-amber-400" />
+              <span className="flex items-center gap-1 bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD] text-[#A9472C]">
+                <User className="w-3 h-3 text-[#C45B3A]" />
                 <span>{mainCharName}</span>
               </span>
             )}
             {mainLocName && (
-              <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10 text-cyan-300">
-                <MapPin className="w-3 h-3 text-cyan-400" />
+              <span className="flex items-center gap-1 bg-[#EAF0F5] px-2 py-0.5 rounded border border-[#CFDDE9] text-[#41627F]">
+                <MapPin className="w-3 h-3 text-[#5A7E9C]" />
                 <span>{mainLocName}</span>
               </span>
             )}
@@ -99,8 +99,8 @@ export function AiThumbnailGenerator({
                 onClick={() => onSelectFormula(f.id)}
                 className={`p-2.5 rounded-xl border text-left transition-all ${
                   isSelected
-                    ? "bg-red-500/10 border-red-500/40 text-white shadow-sm ring-1 ring-red-500/30"
-                    : "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C] hover:bg-[#F3E1D9]"
+                    ? "bg-[#F8EEEA] border-[#E9C9BD] text-[#26251F] shadow-sm ring-1 ring-[#E9C9BD]"
+                    : "bg-[#FBFAF7] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#F1EEE6]"
                 }`}
               >
                 <div className="text-xs font-bold truncate">{f.name}</div>
@@ -117,7 +117,7 @@ export function AiThumbnailGenerator({
       <div className="p-3.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-3">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Wand2 className="w-4 h-4 text-amber-400" />
+            <Wand2 className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold text-[#26251F]">Prompt Ilustrasi Thumbnail AI</h4>
           </div>
 
@@ -126,7 +126,7 @@ export function AiThumbnailGenerator({
               <button
                 type="button"
                 onClick={onResyncWithCurrentStory}
-                className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"
+                className="text-[10px] font-semibold text-[#456A4E] hover:text-[#375840] flex items-center gap-1 bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]"
                 title="Perbarui prompt dan teks hook mengikuti tokoh dan latar cerita terbaru saat ini"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -138,7 +138,7 @@ export function AiThumbnailGenerator({
               <button
                 type="button"
                 onClick={onInjectPresetStyle}
-                className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                className="text-[10px] font-semibold text-[#A9472C] hover:text-[#8C3A24] flex items-center gap-1"
                 title="Sisipkan konsistensi master visual preset ke prompt"
               >
                 <Palette className="w-3 h-3" />
@@ -152,13 +152,13 @@ export function AiThumbnailGenerator({
           value={thumbnailPrompt}
           onChange={(e) => setThumbnailPrompt(e.target.value)}
           placeholder="A high-CTR YouTube thumbnail illustration (16:9 widescreen landscape)..."
-          className="bg-black/50 border-[#E5E1D7] text-xs font-mono min-h-[90px] resize-y"
+          className="min-h-[90px] resize-y border-[#E5E1D7] bg-[#F3F0E8] font-mono text-xs text-[#26251F] placeholder:text-[#858176] focus-visible:border-[#C45B3A] focus-visible:ring-[#E9C9BD]"
         />
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-[10px] text-muted-foreground">
             💡 Gambar dihasilkan bersih 16:9 tanpa teks AI, siap ditambahkan teks di tab{" "}
-            <span className="text-amber-400 font-semibold">Editor Teks</span>.
+            <span className="text-[#A9472C] font-semibold">Editor Teks</span>.
           </p>
 
           <Button
@@ -182,8 +182,8 @@ export function AiThumbnailGenerator({
         <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
           <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
-              <History className="w-3.5 h-3.5 text-slate-400" />
-              <h5 className="text-xs font-bold text-slate-200">Riwayat Variasi Thumbnail</h5>
+              <History className="w-3.5 h-3.5 text-[#858176]" />
+              <h5 className="text-xs font-bold text-[#26251F]">Riwayat Variasi Thumbnail</h5>
             </div>
             <span className="text-[10px] text-muted-foreground">
               {thumbnailHistory.length} Gambar
@@ -199,8 +199,8 @@ export function AiThumbnailGenerator({
                   onClick={() => setThumbnailUrl(item.url)}
                   className={`group relative aspect-video rounded-lg overflow-hidden border cursor-pointer transition-all ${
                     isActive
-                      ? "ring-2 ring-red-500 border-red-500"
-                      : "border-[#E5E1D7] hover:border-slate-400 opacity-80 hover:opacity-100"
+                      ? "ring-2 ring-[#C45B3A] border-[#C45B3A]"
+                      : "border-[#E5E1D7] hover:border-[#D2CDBF] opacity-80 hover:opacity-100"
                   }`}
                   title="Klik untuk memakai latar ini"
                 >
@@ -210,7 +210,7 @@ export function AiThumbnailGenerator({
                     className="w-full h-full object-cover"
                   />
                   {isActive && (
-                    <div className="absolute top-1 right-1 px-1 py-0.5 rounded bg-red-600 text-[8px] font-bold text-white">
+                    <div className="absolute top-1 right-1 px-1 py-0.5 rounded bg-[#C45B3A] text-[8px] font-bold text-[#FFFAF6]">
                       Aktif
                     </div>
                   )}

@@ -43,10 +43,10 @@ export function VideoMetricsCard({
               <button
                 type="button"
                 onClick={onOpenNarrationAnalysis}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-sm"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#8A6A2F] hover:text-[#8A6A2F] px-2.5 py-1 rounded-lg bg-[#F7EFE0] hover:bg-[#F7EFE0] border border-[#E8D9BC] transition shadow-sm"
                 title="Analisis Skor Narasi untuk Retensi YouTube"
               >
-                <Sparkles className="w-3 h-3 text-amber-400" />
+                <Sparkles className="w-3 h-3 text-[#8A6A2F]" />
                 <span>Skor Narasi</span>
               </button>
             )}
@@ -57,7 +57,7 @@ export function VideoMetricsCard({
               title="Salin seluruh teks narasi ke clipboard"
             >
               {hasCopiedNarration ? (
-                <Check className="w-3 h-3 text-emerald-400" />
+                <Check className="w-3 h-3 text-[#456A4E]" />
               ) : (
                 <Copy className="w-3 h-3 text-[#C45B3A]" />
               )}
@@ -65,7 +65,7 @@ export function VideoMetricsCard({
             </button>
           </div>
         ) : (
-          <span className="text-[10px] text-slate-400 font-mono">Target Estimasi</span>
+          <span className="text-[10px] text-[#858176] font-mono">Target Estimasi</span>
         )}
       </div>
 
@@ -78,7 +78,7 @@ export function VideoMetricsCard({
           <div className="text-sm font-bold text-[#C45B3A] mt-1 font-mono">
             {resultDurationFormatted}
           </div>
-          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+          <span className="text-[10px] text-[#858176] font-mono block mt-0.5">
             {wordCount > 0
               ? `~${(wordCount / 135).toFixed(1)} mnt (135 kpm)`
               : `Target ${durationMins} mnt`}
@@ -93,7 +93,7 @@ export function VideoMetricsCard({
           <div className="mt-1 font-mono text-sm font-bold text-[#26251F]">
             {charCount > 0 ? `${charCount.toLocaleString()} Karakter` : "0 Karakter"}
           </div>
-          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+          <span className="text-[10px] text-[#858176] font-mono block mt-0.5">
             {wordCount > 0 ? `${wordCount.toLocaleString()} Kata` : "0 Kata"}
           </span>
         </div>
@@ -103,12 +103,12 @@ export function VideoMetricsCard({
           <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
             Estimasi Ilustrasi
           </span>
-          <div className="text-sm font-bold text-emerald-400 mt-1 font-mono">
+          <div className="text-sm font-bold text-[#456A4E] mt-1 font-mono">
             {itemsCount > 0
               ? `${itemsCount} Slot Gambar`
               : `${durationMins * 2 * imagesPerSegment} Estimasi Slot`}
           </div>
-          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+          <span className="text-[10px] text-[#858176] font-mono block mt-0.5">
             {imagesPerSegment} gambar / segmen
           </span>
         </div>

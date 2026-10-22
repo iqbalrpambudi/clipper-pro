@@ -35,8 +35,8 @@ const BGM_MOODS = [
     genre: "Orchestral / Film",
     desc: "Suasana megah & emosional, sangat cocok untuk alur cerita dramatis",
     duration: "2:45",
-    color: "from-blue-600/20 to-indigo-600/20",
-    border: "border-blue-500/30",
+    color: "from-[#EAF0F5] to-[#E3EBF2]",
+    border: "border-[#CFDDE9]",
   },
   {
     id: "lofi",
@@ -44,8 +44,8 @@ const BGM_MOODS = [
     genre: "Chillhop / Relax",
     desc: "Ritme santai tidak mengganggu konsentrasi, pas untuk narasi edukatif & fakta",
     duration: "3:10",
-    color: "from-amber-600/20 to-orange-600/20",
-    border: "border-amber-500/30",
+    color: "from-[#F7EFE0] to-[#F0E4CE]",
+    border: "border-[#E8D9BC]",
   },
   {
     id: "dramatic",
@@ -54,7 +54,7 @@ const BGM_MOODS = [
     desc: "Ketegangan tinggi dengan dentuman drum sinematik untuk adegan klimaks",
     duration: "2:15",
     color: "from-[#C45B3A]/15 to-[#D4765E]/15",
-    border: "border-rose-500/30",
+    border: "border-[#E9C9BD]",
   },
   {
     id: "inspiring",
@@ -62,8 +62,8 @@ const BGM_MOODS = [
     genre: "Modern Acoustic",
     desc: "Nuansa positif, optimis, dan memotivasi untuk konten profil atau biografi",
     duration: "2:50",
-    color: "from-emerald-600/20 to-teal-600/20",
-    border: "border-emerald-500/30",
+    color: "from-[#ECF3EB] to-[#DFEBDD]",
+    border: "border-[#C9DDCF]",
   },
 ];
 
@@ -190,7 +190,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
               >
                 <Stamp className="w-3.5 h-3.5" />
                 <span>Watermark & Branding</span>
-                {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+                {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-[#456A4E]" />}
               </button>
               <button
                 onClick={() => setActiveSubTab("bgm")}
@@ -278,7 +278,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   onClick={() => setShowSafeZones(!showSafeZones)}
                   className={`h-7 text-xs gap-1.5 border-[#E5E1D7] ${
                     showSafeZones
-                      ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                      ? "bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                       : "text-muted-foreground"
                   }`}
                   title="Batas aman YouTube player & border (Title & Action Safe)"
@@ -341,14 +341,14 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 {showSafeZones && (
                   <div className="absolute inset-0 pointer-events-none z-30">
                     {/* Action safe 5% */}
-                    <div className="absolute inset-[5%] border border-dashed border-amber-400/40 rounded-lg flex items-start justify-end p-2">
-                      <span className="text-[9px] font-mono text-amber-300/80 bg-black/60 px-1 rounded">
+                    <div className="absolute inset-[5%] border border-dashed border-[#C45B3A]/50 rounded-lg flex items-start justify-end p-2">
+                      <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
                         Action Safe 90%
                       </span>
                     </div>
                     {/* Title safe 10% */}
-                    <div className="absolute inset-[10%] border border-dotted border-emerald-400/40 rounded-lg flex items-end justify-start p-2">
-                      <span className="text-[9px] font-mono text-emerald-300/80 bg-black/60 px-1 rounded">
+                    <div className="absolute inset-[10%] border border-dotted border-[#456A4E]/50 rounded-lg flex items-end justify-start p-2">
+                      <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
                         Title Safe 80% (Disarankan untuk Logo)
                       </span>
                     </div>
@@ -552,7 +552,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
           {/* Audio Mixing & Auto-Ducking Controls (Preview) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] space-y-4">
-              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+              <h4 className="text-xs font-bold text-[#26251F] flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-[#C45B3A]" />
                 Kontrol Mixer Audio & Auto-Ducking
               </h4>
@@ -560,7 +560,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-muted-foreground">Volume Musik Latar (BGM)</span>
-                  <span className="font-mono text-white font-semibold">{bgmVolume}%</span>
+                  <span className="font-mono font-semibold text-[#26251F]">{bgmVolume}%</span>
                 </div>
                 <input
                   type="range"
@@ -597,7 +597,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
             {/* Custom Audio Upload */}
             <div className="p-4 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] flex flex-col justify-between">
               <div>
-                <h4 className="text-xs font-bold text-white flex items-center gap-2 mb-2">
+                <h4 className="text-xs font-bold text-[#26251F] flex items-center gap-2 mb-2">
                   <UploadCloud className="w-4 h-4 text-[#C45B3A]" />
                   Upload Lagu / Backsound Kustom
                 </h4>
@@ -609,7 +609,9 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
               <div className="mt-4 border-2 border-dashed border-[#E5E1D7] hover:border-[#C45B3A] rounded-xl p-5 text-center cursor-pointer transition bg-[#FBFAF7]">
                 <UploadCloud className="w-6 h-6 text-[#C45B3A] mx-auto mb-1.5" />
-                <div className="text-xs font-semibold text-white">Pilih File Audio (MP3 / WAV)</div>
+                <div className="text-xs font-semibold text-[#26251F]">
+                  Pilih File Audio (MP3 / WAV)
+                </div>
                 <span className="text-[10px] text-muted-foreground">Maksimal durasi 10 menit</span>
               </div>
             </div>
