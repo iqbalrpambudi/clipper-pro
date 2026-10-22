@@ -326,7 +326,7 @@ export function WatermarkCustomizePanel({
                 {watermark.enabled ? (
                   <Badge
                     variant="default"
-                    className="text-[10px] bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF]"
+                    className="text-[10px] bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                   >
                     Aktif
                   </Badge>

@@ -103,7 +103,7 @@ export function VideoMetricsCard({
           <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider block">
             Estimasi Ilustrasi
           </span>
-          <div className="text-sm font-bold text-[#456A4E] mt-1 font-mono">
+          <div className="text-sm font-bold text-[#26251F] mt-1 font-mono">
             {itemsCount > 0
               ? `${itemsCount} Slot Gambar`
               : `${durationMins * 2 * imagesPerSegment} Estimasi Slot`}

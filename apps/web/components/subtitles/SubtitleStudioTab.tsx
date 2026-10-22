@@ -777,9 +777,9 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <a
                 href={api.getSubtitleExportUrl(project.id, "srt")}
                 download
-                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-[#C9DDCF] hover:bg-[#DFEBDD] transition text-center group"
+                className="group flex flex-col items-center justify-center rounded-xl border border-surface-border bg-surface/70 p-2.5 text-center transition hover:border-primary/50 hover:bg-primary/10"
               >
-                <Download className="w-4 h-4 text-[#456A4E] group-hover:scale-110 transition-transform mb-1" />
+                <Download className="mb-1 h-4 w-4 text-primary transition-transform group-hover:scale-110" />
                 <span className="text-[11px] font-bold text-foreground">.SRT</span>
                 <span className="text-[9px] text-muted-foreground">Standard Text</span>
               </a>

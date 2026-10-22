@@ -496,7 +496,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
                     {/* Inline Progress for AI Processing */}
                     {vid.status === "processing" && (
-                      <div className="mb-2 space-y-1 bg-[#ECF3EB] p-2 rounded-lg border border-[#C9DDCF]">
+                      <div className="mb-2 space-y-1 bg-[#F1EEE6] p-2 rounded-lg border border-[#E5E1D7]">
                         <div className="flex items-center justify-between text-[10px] text-primary">
                           <span className="truncate">{detectMessage}</span>
                           <div className="flex items-center gap-2 shrink-0">
