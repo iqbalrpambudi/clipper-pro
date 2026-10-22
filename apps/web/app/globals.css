@@ -1623,7 +1623,10 @@ body {
   box-shadow: 0 0 25px rgba(62, 207, 142, 0.35);
 }
 
-/* Range input styling with Supabase green */
+/* Range input accent color */
 input[type="range"] {
   accent-color: #3ecf8e;
+}
+.workspace-theme input[type="range"] {
+  accent-color: #C45B3A;
 }

@@ -27,7 +27,7 @@ export function CharactersTab({
     return (
       <div className="flex flex-col space-y-3 mt-3.5">
         <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
-          <p className="text-xs text-slate-400">Belum ada profil karakter terkunci.</p>
+          <p className="text-xs text-[#77766D]">Belum ada profil karakter terkunci.</p>
           <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
             Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda
             dapat menambahkannya manual sekarang.
@@ -203,7 +203,7 @@ export function CharactersTab({
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[10px] text-slate-500 italic">
+                      <p className="text-[10px] text-[#77766D] italic">
                         Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot; untuk
                         menambahkan versi muda, dewasa, atau bentuk perubahan wujud.
                       </p>
@@ -218,7 +218,7 @@ export function CharactersTab({
                         👤 {char.name}
                       </span>
                       {char.role && (
-                        <span className="text-[10px] text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 font-mono">
+                        <span className="text-[10px] text-[#77766D] px-2 py-0.5 rounded-full bg-[#F3F0E8] border border-[#E5E1D7] font-mono">
                           {char.role}
                         </span>
                       )}
@@ -228,27 +228,27 @@ export function CharactersTab({
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-black/40 p-2 rounded-lg border border-[#222]">
+                  <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
                     {char.visual_anchor || "Belum ada ciri visual khusus."}
                   </p>
 
                   {/* Display Variants if any */}
                   {char.variants && char.variants.length > 0 && (
-                    <div className="space-y-1.5 pt-1.5 border-t border-[#222]">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    <div className="space-y-1.5 pt-1.5 border-t border-[#E5E1D7]">
+                      <span className="text-[10px] font-bold text-[#77766D] uppercase tracking-wider block">
                         Varian Wujud / Usia:
                       </span>
                       <div className="grid grid-cols-1 gap-1.5">
                         {char.variants.map((v, vIdx) => (
                           <div
                             key={vIdx}
-                            className="p-2 rounded bg-black/60 border border-[#262626] flex flex-col gap-1"
+                            className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] flex flex-col gap-1"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-semibold text-[#A9472C]">
                                 ✨ {v.label}
                               </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-[#A9472C] border border-amber-500/20">
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
                                 [char:
                                 {char.id || char.name.toLowerCase().replace(/\s+/g, "")}:
                                 {v.variant_id}]
