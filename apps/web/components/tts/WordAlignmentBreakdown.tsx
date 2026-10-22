@@ -108,7 +108,7 @@ export function WordAlignmentBreakdown({
           {/* Toggle Edit Timing Mode */}
           <Button
             type="button"
-            variant={isEditTimingMode ? "supabase" : "outline"}
+            variant={isEditTimingMode ? "workspace-primary" : "outline"}
             size="xs"
             onClick={onToggleEditTiming}
             className="h-7 text-[11px] gap-1"

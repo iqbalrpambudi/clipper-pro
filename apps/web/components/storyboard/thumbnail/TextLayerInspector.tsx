@@ -334,7 +334,7 @@ export function TextLayerInspector({
           <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
             <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
               <div className="flex items-center gap-2">
-                <Square className="w-4 h-4 text-[#456A4E]" />
+                <Square className="w-4 h-4 text-[#C45B3A]" />
                 <div>
                   <h4 className="text-xs font-semibold text-[#26251F]">
                     Box Highlight / Background Pill
@@ -378,7 +378,7 @@ export function TextLayerInspector({
                         }
                         className={`w-6 h-6 rounded-md border transition-transform ${
                           selectedLayer.bgFill === bp.value
-                            ? "scale-110 ring-2 ring-[#456A4E] border-[#FBFAF7]"
+                            ? "scale-110 ring-2 ring-[#C45B3A] border-[#FBFAF7]"
                             : "border-[#DCD6C8] hover:scale-105"
                         }`}
                         style={{ backgroundColor: bp.value }}
@@ -412,7 +412,7 @@ export function TextLayerInspector({
                     <span className="text-[11px] font-semibold text-[#4D4A42]">
                       Kelengkungan Sudut (Corner Radius)
                     </span>
-                    <span className="font-mono text-[11px] text-[#456A4E]">
+                    <span className="font-mono text-[11px] text-[#A9472C]">
                       {selectedLayer.bgCornerRadius ?? 8}px
                     </span>
                   </div>
@@ -456,7 +456,7 @@ export function TextLayerInspector({
                     <span className="text-[11px] font-semibold text-[#4D4A42]">
                       Padding Box (Jarak Tepi)
                     </span>
-                    <span className="font-mono text-[11px] text-[#456A4E]">
+                    <span className="font-mono text-[11px] text-[#A9472C]">
                       {selectedLayer.bgPaddingX ?? 16}px
                     </span>
                   </div>

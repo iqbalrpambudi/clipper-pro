@@ -212,7 +212,7 @@ export function ContinuityBibleCard({
             onClick={() => setBibleTab("locations")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
               bibleTab === "locations"
-                ? "bg-[#76816B] text-white shadow-sm"
+                ? "bg-[#C45B3A] text-white shadow-sm"
                 : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
             }`}
           >
@@ -228,7 +228,7 @@ export function ContinuityBibleCard({
             onClick={() => setBibleTab("world")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
               bibleTab === "world"
-                ? "bg-[#8A6B3E] text-white shadow-sm"
+                ? "bg-[#C45B3A] text-white shadow-sm"
                 : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
             }`}
           >

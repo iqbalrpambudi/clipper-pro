@@ -902,7 +902,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <Button
                         key={fmt.format_id}
                         type="button"
-                        variant={isSelected ? "supabase" : "outline"}
+                        variant={isSelected ? "workspace-primary" : "outline"}
                         size="sm"
                         disabled={Boolean(downloadingFormatId)}
                         onClick={() => handleDownloadYT(fmt.format_id)}

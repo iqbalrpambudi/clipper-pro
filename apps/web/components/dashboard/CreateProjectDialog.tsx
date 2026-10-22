@@ -181,7 +181,7 @@ export function CreateProjectDialog({
                 onClick={() => setLanguage("id")}
                 className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
                   language === "id"
-                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 shadow-sm shadow-emerald-500/10 font-semibold"
+                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-sm font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -193,7 +193,7 @@ export function CreateProjectDialog({
                 onClick={() => setLanguage("en")}
                 className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
                   language === "en"
-                    ? "border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-sm shadow-blue-500/10 font-semibold"
+                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-sm font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -207,7 +207,7 @@ export function CreateProjectDialog({
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" variant="supabase" size="sm" disabled={isPending}>
+            <Button type="submit" variant="workspace-primary" size="sm" disabled={isPending}>
               {isPending ? "Membuat..." : "Buat Project"}
             </Button>
           </DialogFooter>

@@ -62,8 +62,8 @@ const BGM_MOODS = [
     genre: "Modern Acoustic",
     desc: "Nuansa positif, optimis, dan memotivasi untuk konten profil atau biografi",
     duration: "2:50",
-    color: "from-[#ECF3EB] to-[#DFEBDD]",
-    border: "border-[#C9DDCF]",
+    color: "from-[#F8EEEA] to-[#F3E1D9]",
+    border: "border-[#E9C9BD]",
   },
 ];
 

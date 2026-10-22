@@ -370,7 +370,7 @@ export function ScenePreviewModal({
               </Button>
 
               <Button
-                variant={isLooping ? "supabase" : "outline"}
+                variant={isLooping ? "workspace-primary" : "outline"}
                 size="xs"
                 onClick={() => setIsLooping(!isLooping)}
                 className="h-8 gap-1.5"

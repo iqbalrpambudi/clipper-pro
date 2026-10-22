@@ -45,7 +45,7 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#456A4E]" />
+            <Sparkles className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold text-[#26251F]">
               Generate Metadata YouTube dengan AI
             </h4>
@@ -73,7 +73,7 @@ export function YoutubeMetadataForm({
                   onClick={() => setFocusAngle(angle.id)}
                   className={`p-2 rounded-lg border text-left text-[11px] transition-all font-semibold ${
                     focusAngle === angle.id
-                      ? "bg-[#ECF3EB] border-[#C9DDCF] text-[#456A4E]"
+                      ? "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C]"
                       : "bg-[#F3F0E8] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#EAE6DD]"
                   }`}
                 >
@@ -119,7 +119,7 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#456A4E]" />
+            <FileText className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold text-[#26251F]">Judul Video YouTube</h4>
           </div>
           <Button
@@ -129,7 +129,7 @@ export function YoutubeMetadataForm({
             className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "title" ? (
-              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
+              <Check className="w-3 h-3 text-[#A9472C] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}
@@ -175,7 +175,7 @@ export function YoutubeMetadataForm({
             className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "desc" ? (
-              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
+              <Check className="w-3 h-3 text-[#A9472C] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}
@@ -195,7 +195,7 @@ export function YoutubeMetadataForm({
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3.5">
         <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-[#456A4E]" />
+            <Tag className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-semibold text-[#26251F]">Tags Video (Pisahkan Koma)</h4>
           </div>
           <Button
@@ -205,7 +205,7 @@ export function YoutubeMetadataForm({
             className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "tags" ? (
-              <Check className="w-3 h-3 text-[#456A4E] mr-1" />
+              <Check className="w-3 h-3 text-[#A9472C] mr-1" />
             ) : (
               <Copy className="w-3 h-3 mr-1" />
             )}

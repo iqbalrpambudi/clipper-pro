@@ -90,10 +90,10 @@ function renderTokenizedPrompt(promptText: string) {
           return (
             <span
               key={pIdx}
-              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF] font-mono text-[10px] font-semibold align-baseline"
+              className="inline-flex items-center gap-1 mx-0.5 px-1.5 py-0.2 rounded bg-[#F1EEE6] text-[#5E5C54] border border-[#E5E1D7] font-mono text-[10px] font-semibold align-baseline"
               title="Setting Era Waktu & Atmosfer"
             >
-              <Compass className="w-2.5 h-2.5 text-[#5F8168] shrink-0" />
+              <Compass className="w-2.5 h-2.5 text-[#858176] shrink-0" />
               {part}
             </span>
           );
@@ -359,11 +359,11 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
               {/* World Setting Era */}
               {project.world_setting?.era && (
                 <span
-                  className="flex items-center gap-1.5 rounded-lg border border-[#C9DDCF] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
+                  className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] px-2.5 py-1 font-mono text-[11px] text-[#4D4A42]"
                   title={project.world_setting.atmosphere}
                 >
-                  <span className="font-bold text-[#456A4E]">⏳ {project.world_setting.era}</span>
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-[#ECF3EB] text-[#456A4E]">
+                  <span className="font-bold text-[#5E5C54]">⏳ {project.world_setting.era}</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-[#F1EEE6] text-[#5E5C54]">
                     [era]
                   </span>
                 </span>
@@ -394,7 +394,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
             </div>
 
             <div className="flex items-center gap-2 border-l border-[#E5E1D7] pl-2">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF] font-mono">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-[#F1EEE6] text-[#5E5C54] border border-[#E5E1D7] font-mono">
                 ✓ {readyCount} Siap
               </span>
               {pendingCount > 0 && (
@@ -679,7 +679,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                     <button
                                       type="button"
                                       onClick={() => setEditPromptText((prev) => `${prev} [era]`)}
-                                      className="px-1.5 py-0.5 rounded bg-[#ECF3EB] hover:bg-[#DFEBDD] text-[#456A4E] border border-[#C9DDCF] text-[9px] font-mono transition"
+                                      className="px-1.5 py-0.5 rounded bg-[#F1EEE6] hover:bg-[#EAE6DD] text-[#5E5C54] border border-[#E5E1D7] text-[9px] font-mono transition"
                                     >
                                       + [era]
                                     </button>
@@ -803,7 +803,7 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                 type="button"
                                 onClick={() => handleGenerateSingle(item)}
                                 disabled={isGeneratingThis || batchGenerateMutation.isPending}
-                                variant={item.status === "ready" ? "outline" : "supabase"}
+                                variant={item.status === "ready" ? "outline" : "workspace-primary"}
                                 className={`w-full text-xs h-8 gap-1.5 ${
                                   item.status === "ready"
                                     ? "border-[#E5E1D7] hover:border-[#C45B3A] hover:text-[#A9472C]"

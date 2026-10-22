@@ -509,7 +509,7 @@ export function VoiceSelectorPanel({
               <div className="flex items-center justify-between border-t border-border pt-2 text-xs">
                 <Button
                   type="button"
-                  variant={isPlayingSample ? "supabase" : "outline"}
+                  variant={isPlayingSample ? "workspace-primary" : "outline"}
                   size="xs"
                   onClick={(e) => {
                     e.stopPropagation();

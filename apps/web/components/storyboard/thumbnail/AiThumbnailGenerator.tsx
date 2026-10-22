@@ -126,7 +126,7 @@ export function AiThumbnailGenerator({
               <button
                 type="button"
                 onClick={onResyncWithCurrentStory}
-                className="text-[10px] font-semibold text-[#456A4E] hover:text-[#375840] flex items-center gap-1 bg-[#ECF3EB] px-2 py-0.5 rounded border border-[#C9DDCF]"
+                className="text-[10px] font-semibold text-[#A9472C] hover:text-[#8A3722] flex items-center gap-1 bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]"
                 title="Perbarui prompt dan teks hook mengikuti tokoh dan latar cerita terbaru saat ini"
               >
                 <RotateCcw className="w-3 h-3" />

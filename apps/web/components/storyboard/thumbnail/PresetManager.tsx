@@ -190,7 +190,7 @@ export function PresetManager({
       {customPresets.length > 0 && (
         <div className="space-y-2.5 pt-2">
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#456A4E]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#A9472C]">
               <BookmarkPlus className="w-3.5 h-3.5" />
               <span>Preset Kustom Anda</span>
             </div>
@@ -204,19 +204,19 @@ export function PresetManager({
               <div
                 key={preset.id}
                 onClick={() => onApplyPreset(preset)}
-                className="group p-3 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] hover:border-[#456A4E] hover:bg-[#F1EEE6] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
+                className="group p-3 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7] hover:border-[#C45B3A] hover:bg-[#F8EEEA] transition-all cursor-pointer flex items-center justify-between gap-3 shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs border border-[#E5E1D7]"
                     style={{
-                      backgroundColor: preset.previewColor || "#22C55E",
+                      backgroundColor: preset.previewColor || "#C45B3A",
                     }}
                   >
                     <Palette className="w-4 h-4 text-black/80" />
                   </div>
                   <div className="min-w-0">
-                    <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#456A4E] truncate">
+                    <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#A9472C] truncate">
                       {preset.name}
                     </h5>
                     <p className="text-[10px] text-muted-foreground truncate">{preset.desc}</p>
@@ -231,7 +231,7 @@ export function PresetManager({
                     size="sm"
                     variant="outline"
                     onClick={() => onApplyPreset(preset)}
-                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#456A4E] group-hover:text-[#FFFAF6] group-hover:border-[#456A4E] transition-all font-semibold"
+                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] transition-all font-semibold"
                   >
                     Pakai
                   </Button>

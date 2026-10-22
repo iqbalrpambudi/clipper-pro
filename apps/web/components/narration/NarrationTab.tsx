@@ -131,9 +131,9 @@ export function NarrationTab({ project }: NarrationTabProps) {
     }
     if (cat === "showcase") {
       if (tpl.id === "showcase_review") {
-        return <Search className="w-4 h-4 text-[#456A4E] shrink-0" />;
+        return <Search className="w-4 h-4 text-[#A9472C] shrink-0" />;
       }
-      return <Sparkles className="w-4 h-4 text-[#456A4E] shrink-0" />;
+      return <Sparkles className="w-4 h-4 text-[#A9472C] shrink-0" />;
     }
     if (cat === "opini") {
       if (tpl.id === "opini_komentar") {
@@ -339,7 +339,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <Sparkles className="w-3 h-3 text-[#456A4E]" />
+                  <Sparkles className="w-3 h-3 text-[#A9472C]" />
                   <span>Showcase</span>
                   <span className="text-[10px] opacity-75 font-mono">
                     {categoryCounts.showcase}

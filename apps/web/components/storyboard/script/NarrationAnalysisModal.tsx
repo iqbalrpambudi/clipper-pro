@@ -331,7 +331,7 @@ export function NarrationAnalysisModal({
                   onClick={() => setActiveTab("improvements")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                     activeTab === "improvements"
-                      ? "border border-[#C9DDCF] bg-[#ECF3EB] text-[#456A4E]"
+                      ? "border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
                       : "text-[#77766D] hover:text-[#26251F]"
                   }`}
                 >
@@ -589,7 +589,7 @@ export function NarrationAnalysisModal({
                           key={idx}
                           className={`space-y-2.5 rounded-xl border p-4 transition ${
                             isSelected
-                              ? "bg-[#ECF3EB] border-[#C9DDCF] shadow-sm"
+                              ? "bg-[#F8EEEA] border-[#E9C9BD] shadow-sm"
                               : "bg-[#FBFAF7] border-[#E5E1D7] opacity-75"
                           }`}
                         >

@@ -25,7 +25,7 @@ export default function ProjectRedirectPage({ params }: PageProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-        <Loader2 className="w-8 h-8 text-[#3ECF8E] animate-spin mb-3" />
+        <Loader2 className="w-8 h-8 text-[#C45B3A] animate-spin mb-3" />
         <p className="text-sm text-muted-foreground">Mengarahkan ke Studio...</p>
       </div>
     );
@@ -46,7 +46,7 @@ export default function ProjectRedirectPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-      <Loader2 className="w-8 h-8 text-[#3ECF8E] animate-spin mb-3" />
+      <Loader2 className="w-8 h-8 text-[#C45B3A] animate-spin mb-3" />
       <p className="text-sm text-muted-foreground">Membuka Studio Project...</p>
     </div>
   );
