@@ -301,8 +301,6 @@ export function useStoryboardScriptState(project: Project) {
     setWorldSetting(project.world_setting || {});
   };
 
-  const [resetBibleOnGenerate, setResetBibleOnGenerate] = useState<boolean>(true);
-
   const narration = project.narration;
   const segments: (SentenceSegment & { chapter?: string; segment_id?: string })[] =
     (narration?.segments as (SentenceSegment & { chapter?: string; segment_id?: string })[]) || [];
@@ -450,7 +448,6 @@ export function useStoryboardScriptState(project: Project) {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
-      reset_bible?: boolean;
     }) => api.generateStoryboardScript(project.id, data),
     onSuccess: (data) => {
       if (data?.characters) {
@@ -502,7 +499,6 @@ export function useStoryboardScriptState(project: Project) {
       preset_id: selectedPresetId || undefined,
       custom_instructions: customInstructions.trim() || undefined,
       language,
-      reset_bible: resetBibleOnGenerate,
     });
   };
 
@@ -627,8 +623,6 @@ export function useStoryboardScriptState(project: Project) {
     setImagesPerSegment,
     customInstructions,
     setCustomInstructions,
-    resetBibleOnGenerate,
-    setResetBibleOnGenerate,
     generateScriptMutation,
     handleGenerate,
 

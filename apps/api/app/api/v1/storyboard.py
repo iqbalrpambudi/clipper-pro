@@ -120,7 +120,6 @@ async def generate_script(
             preset_id=payload.preset_id,
             custom_instructions=payload.custom_instructions,
             language=lang,
-            reset_bible=bool(payload.reset_bible),
         )
         proj = await db.get(Project, project_id)
         active_preset = await get_active_image_preset(db)

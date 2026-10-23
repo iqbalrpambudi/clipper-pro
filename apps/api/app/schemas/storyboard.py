@@ -12,7 +12,6 @@ class StoryboardScriptGenerateRequest(BaseModel):
     preset_id: Optional[str] = None
     custom_instructions: Optional[str] = None
     language: Optional[str] = "id"  # id | en
-    reset_bible: Optional[bool] = True  # If True, regenerates fresh characters/locations instead of keeping old story
 
 
 class StoryboardItemResponse(BaseModel):

@@ -408,9 +408,6 @@ def build_storyboard_outline_prompt(
     tone: str = "santai",
     num_chapters: int = 5,
     custom_instructions: Optional[str] = None,
-    existing_characters: Optional[List[Dict[str, Any]]] = None,
-    existing_locations: Optional[List[Dict[str, Any]]] = None,
-    existing_world_setting: Optional[Dict[str, Any]] = None,
     language: str = "id",
 ) -> Tuple[str, str]:
     """Build prompts for Phase 1: High-level Master Storyboard Outline + Story Continuity Bible (Characters with variants, locations, world setting)."""
@@ -442,12 +439,6 @@ def build_storyboard_outline_prompt(
             f"Tone: {tone}\n"
             "Language: ENGLISH (Generate all outline text in English)\n"
         )
-        if existing_characters:
-            user_prompt += f"Previously Locked Characters: {json.dumps(existing_characters, ensure_ascii=False)}\n"
-        if existing_locations:
-            user_prompt += f"Previously Locked Locations: {json.dumps(existing_locations, ensure_ascii=False)}\n"
-        if existing_world_setting:
-            user_prompt += f"Previously Locked World Setting: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
         if custom_instructions:
             user_prompt += f"Additional Instructions: {custom_instructions}\n"
 
@@ -478,12 +469,6 @@ def build_storyboard_outline_prompt(
         f"Tone: {tone}\n"
         "Bahasa: BAHASA INDONESIA (Buat outline dalam Bahasa Indonesia)\n"
     )
-    if existing_characters:
-        user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
-    if existing_locations:
-        user_prompt += f"Latar tempat yang telah dikunci sebelumnya: {json.dumps(existing_locations, ensure_ascii=False)}\n"
-    if existing_world_setting:
-        user_prompt += f"Setting dunia/era sebelumnya: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
     if custom_instructions:
         user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
 
@@ -749,9 +734,6 @@ def build_storyboard_prompt(
     images_per_segment: int = 2,
     preset: Optional[Any] = None,
     custom_instructions: Optional[str] = None,
-    existing_characters: Optional[List[Dict[str, Any]]] = None,
-    existing_locations: Optional[List[Dict[str, Any]]] = None,
-    existing_world_setting: Optional[Dict[str, Any]] = None,
     language: str = "id",
 ) -> Tuple[str, str]:
     """Build system and user prompts for single-shot long-form storyboard scriptwriting + Story Continuity Bible."""
@@ -767,12 +749,7 @@ def build_storyboard_prompt(
 
     visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
     tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
-    continuity_instruction = _format_continuity_bible_instructions(
-        characters=existing_characters,
-        locations=existing_locations,
-        world_setting=existing_world_setting,
-        language=language,
-    )
+    continuity_instruction = _format_continuity_bible_instructions(language=language)
 
     if language == "en":
         system_prompt = STORYBOARD_SYSTEM_PROMPT_EN_TEMPLATE.format(
@@ -820,12 +797,6 @@ def build_storyboard_prompt(
             f"Jumlah Gambar per Segmen: {images_per_segment} scene per segmen\n"
             "Bahasa: BAHASA INDONESIA\n"
         )
-    if existing_characters:
-        user_prompt += f"Karakter yang telah dikunci sebelumnya: {json.dumps(existing_characters, ensure_ascii=False)}\n"
-    if existing_locations:
-        user_prompt += f"Latar tempat yang telah dikunci sebelumnya: {json.dumps(existing_locations, ensure_ascii=False)}\n"
-    if existing_world_setting:
-        user_prompt += f"Setting dunia/era sebelumnya: {json.dumps(existing_world_setting, ensure_ascii=False)}\n"
     if custom_instructions:
         user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
 
@@ -926,7 +897,6 @@ async def generate_storyboard_script(
     preset_id: Optional[str] = None,
     custom_instructions: Optional[str] = None,
     language: str = "id",
-    reset_bible: bool = True,
 ) -> Tuple[Narration, List[StoryboardItem]]:
     """Generate long-form storyboard script and save Narration + StoryboardItem records."""
     proj = await db.get(Project, project_id)
@@ -953,29 +923,13 @@ async def generate_storyboard_script(
     scenes_per_chapter = max(images_per_segment * 2, int(round(words_per_chapter / 19)))
     segments_per_chapter = max(2, int(round(scenes_per_chapter / max(1, images_per_segment))))
 
-    # Check if the story topic changed compared to previous narration or project name
-    res_last_narration = await db.execute(
-        select(Narration).where(Narration.project_id == project_id).order_by(Narration.created_at.desc()).limit(1)
-    )
-    last_narration = res_last_narration.scalar_one_or_none()
-    last_topic = ((last_narration.topic if last_narration and last_narration.topic else proj.name) or "").strip().lower()
+    # Every regeneration rebuilds the Continuity Bible from scratch.
+    log.info("Resetting Continuity Bible for project %s", project_id)
     clean_topic = topic.strip()
-    topic_changed = bool(clean_topic and last_topic and clean_topic.lower() != last_topic)
-
     chapters: List[Dict[str, Any]] = []
-    if reset_bible or topic_changed:
-        log.info("Resetting Continuity Bible for project %s (reset_bible=%s, topic_changed=%s)", project_id, reset_bible, topic_changed)
-        existing_characters = None
-        existing_locations = None
-        existing_world_setting = None
-    else:
-        existing_characters = proj.characters if (isinstance(proj.characters, list) and len(proj.characters) > 0) else None
-        existing_locations = proj.locations if (isinstance(proj.locations, list) and len(proj.locations) > 0) else None
-        existing_world_setting = proj.world_setting if (isinstance(proj.world_setting, dict) and len(proj.world_setting) > 0) else None
-
-    detected_characters: List[Dict[str, Any]] = list(existing_characters) if existing_characters else []
-    detected_locations: List[Dict[str, Any]] = list(existing_locations) if existing_locations else []
-    detected_world_setting: Dict[str, Any] = dict(existing_world_setting) if existing_world_setting else {}
+    detected_characters: List[Dict[str, Any]] = []
+    detected_locations: List[Dict[str, Any]] = []
+    detected_world_setting: Dict[str, Any] = {}
 
     # TWO-PHASE CHUNKED GENERATION (for duration_mins >= 3)
     if duration_mins >= 3:
@@ -987,9 +941,6 @@ async def generate_storyboard_script(
                 tone=tone,
                 num_chapters=num_chapters,
                 custom_instructions=custom_instructions,
-                existing_characters=existing_characters,
-                existing_locations=existing_locations,
-                existing_world_setting=existing_world_setting,
                 language=language,
             )
             log.info(
@@ -1110,9 +1061,6 @@ async def generate_storyboard_script(
             images_per_segment=images_per_segment,
             preset=preset,
             custom_instructions=custom_instructions,
-            existing_characters=existing_characters,
-            existing_locations=existing_locations,
-            existing_world_setting=existing_world_setting,
             language=language,
         )
         raw_response = await llm_adapter.generate_chat(

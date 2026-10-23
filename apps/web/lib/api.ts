@@ -486,7 +486,6 @@ export const api = {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
-      reset_bible?: boolean;
     }
   ) =>
     request<{

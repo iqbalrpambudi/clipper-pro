@@ -94,8 +94,6 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             setImagesPerSegment={state.setImagesPerSegment}
             customInstructions={state.customInstructions}
             setCustomInstructions={state.setCustomInstructions}
-            resetBibleOnGenerate={state.resetBibleOnGenerate}
-            setResetBibleOnGenerate={state.setResetBibleOnGenerate}
             hasSegments={state.segments.length > 0}
             isGenerating={state.generateScriptMutation.isPending}
             onGenerate={state.handleGenerate}

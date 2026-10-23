@@ -35,8 +35,6 @@ interface ScriptParametersFormProps {
   setImagesPerSegment: (val: number) => void;
   customInstructions: string;
   setCustomInstructions: (val: string) => void;
-  resetBibleOnGenerate: boolean;
-  setResetBibleOnGenerate: (val: boolean) => void;
   hasSegments: boolean;
   isGenerating: boolean;
   onGenerate: (e: React.FormEvent) => void;
@@ -69,8 +67,6 @@ export function ScriptParametersForm({
   setImagesPerSegment,
   customInstructions,
   setCustomInstructions,
-  resetBibleOnGenerate,
-  setResetBibleOnGenerate,
   hasSegments,
   isGenerating,
   onGenerate,
@@ -364,30 +360,6 @@ export function ScriptParametersForm({
             className="border-[#E5E1D7] bg-[#FFFEFA] text-xs"
           />
         </div>
-
-        {/* Reset Bible Checkbox when regenerating */}
-        {hasSegments && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
-            <input
-              type="checkbox"
-              id="resetBibleCheck"
-              checked={resetBibleOnGenerate}
-              onChange={(e) => setResetBibleOnGenerate(e.target.checked)}
-              className="rounded border-[#E5E1D7] text-[#C45B3A] focus:ring-[#C45B3A] w-4 h-4 cursor-pointer"
-            />
-            <label
-              htmlFor="resetBibleCheck"
-              className="cursor-pointer select-none text-[11px] text-[#4D4A42]"
-            >
-              <span className="block font-semibold text-[#26251F]">
-                Perbarui Character Sheet untuk Cerita Baru
-              </span>
-              <span className="text-[10px] text-muted-foreground block">
-                Centang agar karakter & latar lama diganti dengan karakter cerita baru ini
-              </span>
-            </label>
-          </div>
-        )}
 
         <Button
           type="submit"
