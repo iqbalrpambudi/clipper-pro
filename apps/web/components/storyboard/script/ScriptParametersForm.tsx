@@ -312,9 +312,6 @@ export function ScriptParametersForm({
                 {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} •
                 16:9 Landscape
               </span>
-              <span className="text-[#C45B3A] font-mono text-[9px] px-1.5 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
-                Prompt Visual Selaras
-              </span>
             </div>
           )}
         </div>

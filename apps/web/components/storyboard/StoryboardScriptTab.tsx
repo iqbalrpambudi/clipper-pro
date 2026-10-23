@@ -116,10 +116,6 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
               wordCount={state.wordCount}
               charCount={state.charCount}
               resultDurationFormatted={state.resultDurationFormatted}
-              hasSegments={state.segments.length > 0}
-              hasCopiedNarration={state.hasCopiedNarration}
-              onCopyAllNarration={state.handleCopyAllNarration}
-              onOpenNarrationAnalysis={state.handleOpenNarrationAnalysis}
               itemsCount={state.items.length}
             />
 

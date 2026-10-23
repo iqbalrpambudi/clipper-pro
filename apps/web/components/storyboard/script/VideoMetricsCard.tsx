@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Clock, Check, Copy, Sparkles } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface VideoMetricsCardProps {
   durationMins: number;
@@ -9,10 +9,6 @@ interface VideoMetricsCardProps {
   wordCount: number;
   charCount: number;
   resultDurationFormatted: string;
-  hasSegments: boolean;
-  hasCopiedNarration: boolean;
-  onCopyAllNarration: () => void;
-  onOpenNarrationAnalysis?: () => void;
   itemsCount: number;
 }
 
@@ -22,10 +18,6 @@ export function VideoMetricsCard({
   wordCount,
   charCount,
   resultDurationFormatted,
-  hasSegments,
-  hasCopiedNarration,
-  onCopyAllNarration,
-  onOpenNarrationAnalysis,
   itemsCount,
 }: VideoMetricsCardProps) {
   return (
@@ -37,36 +29,6 @@ export function VideoMetricsCard({
             Ringkasan Metrik Video
           </h4>
         </div>
-        {hasSegments ? (
-          <div className="flex items-center gap-2">
-            {onOpenNarrationAnalysis && (
-              <button
-                type="button"
-                onClick={onOpenNarrationAnalysis}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#8A6A2F] hover:text-[#8A6A2F] px-2.5 py-1 rounded-lg bg-[#F7EFE0] hover:bg-[#F7EFE0] border border-[#E8D9BC] transition shadow-sm"
-                title="Analisis Skor Narasi untuk Retensi YouTube"
-              >
-                <Sparkles className="w-3 h-3 text-[#8A6A2F]" />
-                <span>Skor Narasi</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onCopyAllNarration}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] px-2.5 py-1 text-[11px] font-semibold text-[#4D4A42] transition hover:bg-[#F1EEE6] hover:text-[#26251F]"
-              title="Salin seluruh teks narasi ke clipboard"
-            >
-              {hasCopiedNarration ? (
-                <Check className="w-3 h-3 text-[#456A4E]" />
-              ) : (
-                <Copy className="w-3 h-3 text-[#C45B3A]" />
-              )}
-              <span>{hasCopiedNarration ? "Tersalin!" : "Salin Narasi"}</span>
-            </button>
-          </div>
-        ) : (
-          <span className="text-[10px] text-[#858176] font-mono">Target Estimasi</span>
-        )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5">
