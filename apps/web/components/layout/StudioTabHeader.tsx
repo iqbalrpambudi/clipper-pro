@@ -36,7 +36,7 @@ export function StudioTabHeader({
     <div
       className={
         className ||
-        "sticky top-[var(--studio-chrome-h)] z-30 w-full shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7]/95 backdrop-blur-md"
+        "w-full shrink-0 border-b border-[#E5E1D7] bg-[#FBFAF7]"
       }
     >
       <div className="mx-auto flex w-full max-w-[1920px] flex-col justify-between gap-3 px-4 py-3 sm:h-[4.5rem] sm:flex-row sm:items-center sm:px-6">

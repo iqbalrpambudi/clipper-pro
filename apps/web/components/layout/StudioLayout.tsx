@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -52,17 +52,6 @@ export function StudioLayout({
 }: StudioLayoutProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(projectName);
-  const chromeRef = useRef<HTMLElement>(null);
-  const [chromeHeight, setChromeHeight] = useState(0);
-
-  useEffect(() => {
-    const el = chromeRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => setChromeHeight(el.offsetHeight));
-    observer.observe(el);
-    setChromeHeight(el.offsetHeight);
-    return () => observer.disconnect();
-  }, []);
 
   const handleTitleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,17 +70,8 @@ export function StudioLayout({
       className={`workspace-theme flex flex-col bg-[#F3F0E8] text-[#26251F] ${
         isFullHeightTab ? "h-screen overflow-hidden" : "min-h-screen"
       }`}
-      style={
-        {
-          // Full-height tabs never scroll, so their tab header must not be offset.
-          "--studio-chrome-h": isFullHeightTab ? "0px" : `${chromeHeight}px`,
-        } as React.CSSProperties
-      }
     >
-      <header
-        ref={chromeRef}
-        className="sticky top-0 z-40 border-b border-[#DCD6C8] bg-[#FBFAF7]/95 backdrop-blur-md"
-      >
+      <header className="sticky top-0 z-40 border-b border-[#DCD6C8] bg-[#FBFAF7]/95 backdrop-blur-md">
         <div className="mx-auto flex min-h-16 max-w-[1920px] items-center gap-3 px-3 py-2 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Button
