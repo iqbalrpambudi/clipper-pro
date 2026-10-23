@@ -20,17 +20,17 @@ export default function ShortVideoStudioPage({ params }: PageProps) {
 
   if (!project) return null;
 
-  // Timeline is a full-bleed editor surface; the other tabs share the studio gutter.
+  // Timeline is a full-bleed editor surface; the other tabs own their own header + gutter.
   if (activeTab === "timeline") return <TimelineTab project={project} />;
 
   return (
-    <div className="mx-auto w-full max-w-[1920px] px-3 py-4 sm:px-6 sm:py-6">
+    <>
       {(activeTab === "media" || !["narration", "tts", "render"].includes(activeTab)) && (
         <MediaPoolTab project={project} />
       )}
       {activeTab === "narration" && <NarrationTab project={project} />}
       {activeTab === "tts" && <TTSTab project={project} />}
       {activeTab === "render" && <RenderTab project={project} />}
-    </div>
+    </>
   );
 }

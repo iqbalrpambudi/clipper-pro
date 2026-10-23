@@ -19,6 +19,7 @@ import {
   StopCircle,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
+import { StudioTabHeader } from "@/components/layout";
 import { useStudioStore } from "@/lib/store";
 import { Project, SourceVideo, Scene, YTInfoResponse, YTFormatOption } from "@/types";
 import { api } from "@/lib/api";
@@ -248,777 +249,771 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* ========================================================================= */}
       {/* 1. FRAGMENT: PAGE HEADER & ACTION TOOLBAR                                  */}
       {/* ========================================================================= */}
-      <header className="flex flex-col gap-3 border-b border-surface-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-            Sumber video
-          </p>
-          <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-foreground">
-            Media Pool
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kelola materi video mentah dan hasil ekstraksi visual AI untuk naskah video.
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <Badge variant="outline" className="font-mono text-xs">
-              {project.source_videos.length} Video
-            </Badge>
-            <Badge variant="secondary" className="font-mono text-xs">
-              {project.scenes.length} Scenes
-            </Badge>
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="workspace-secondary"
-          size="workspace-sm"
-          onClick={() => setIsYTOpen(true)}
-          className="gap-1.5"
-        >
-          <Youtube className="h-4 w-4 text-[#A9472C]" />
-          <span>Impor YouTube</span>
-        </Button>
-      </header>
-
-      {/* ========================================================================= */}
-      {/* 2. FRAGMENT: DROPZONE COMPONENT                                           */}
-      {/* ========================================================================= */}
-      <Dropzone
-        onFilesSelected={handleFileUpload}
-        isUploading={isUploading}
-        label="Tarik & lepas file video di sini, atau"
-        hint="Mendukung MP4, MOV, MKV, WebM (bisa pilih banyak file sekaligus)"
+      <StudioTabHeader
+        icon={Film}
+        title="Media Pool"
+        badge={`${project.source_videos.length} Video`}
+        secondaryBadge={`${project.scenes.length} Scenes`}
+        description="Kelola materi video mentah dan hasil ekstraksi visual AI untuk naskah video."
+        actions={
+          <Button
+            type="button"
+            variant="workspace-secondary"
+            size="workspace-sm"
+            onClick={() => setIsYTOpen(true)}
+            className="gap-1.5"
+          >
+            <Youtube className="h-4 w-4 text-[#A9472C]" />
+            <span>Impor YouTube</span>
+          </Button>
+        }
       />
-
-      {/* ========================================================================= */}
-      {/* 3. SOURCE VIDEOS LIST                                                     */}
-      {/* ========================================================================= */}
-      {project.source_videos.length === 0 ? (
-        <EmptyState
-          icon={Film}
-          title="Belum Ada Video di Media Pool"
-          description="Upload materi video mentah atau impor dari YouTube di atas untuk memulai deteksi visual AI."
-          action={
-            <Button
-              variant="workspace-primary"
-              size="sm"
-              onClick={() => setIsYTOpen(true)}
-              className="gap-1.5"
-            >
-              <Youtube className="w-4 h-4 text-[#A9472C]" />
-              <span>Impor dari YouTube</span>
-            </Button>
-          }
+      <div className="mx-auto w-full max-w-[1920px] space-y-6 px-4 py-5 sm:px-6">
+        {/* ========================================================================= */}
+        {/* 2. FRAGMENT: DROPZONE COMPONENT                                           */}
+        {/* ========================================================================= */}
+        <Dropzone
+          onFilesSelected={handleFileUpload}
+          isUploading={isUploading}
+          label="Tarik & lepas file video di sini, atau"
+          hint="Mendukung MP4, MOV, MKV, WebM (bisa pilih banyak file sekaligus)"
         />
-      ) : (
-        <div className="space-y-2.5">
+
+        {/* ========================================================================= */}
+        {/* 3. SOURCE VIDEOS LIST                                                     */}
+        {/* ========================================================================= */}
+        {project.source_videos.length === 0 ? (
+          <EmptyState
+            icon={Film}
+            title="Belum Ada Video di Media Pool"
+            description="Upload materi video mentah atau impor dari YouTube di atas untuk memulai deteksi visual AI."
+            action={
+              <Button
+                variant="workspace-primary"
+                size="sm"
+                onClick={() => setIsYTOpen(true)}
+                className="gap-1.5"
+              >
+                <Youtube className="w-4 h-4 text-[#A9472C]" />
+                <span>Impor dari YouTube</span>
+              </Button>
+            }
+          />
+        ) : (
+          <div className="space-y-2.5">
+            <Toolbar
+              left={
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Film className="w-3.5 h-3.5 text-primary" />
+                  <span>Video Sumber Terdaftar</span>
+                </span>
+              }
+              right={
+                <span className="text-xs text-muted-foreground font-mono">
+                  {project.source_videos.length} file
+                </span>
+              }
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {project.source_videos.map((vid) => {
+                const isDownloadActive =
+                  activeTask?.task_type === "youtube_download" &&
+                  activeTask.data?.video_id === vid.id;
+                const dlProgress = isDownloadActive ? activeTask.progress : vid.progress || 15;
+                const dlMessage =
+                  isDownloadActive && activeTask.message
+                    ? activeTask.message
+                    : `Mengunduh (${dlProgress}%)...`;
+
+                const isDetectActive =
+                  activeTask?.task_type === "scene_detect" &&
+                  (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id);
+                const detectProgress = isDetectActive ? activeTask.progress : vid.progress || 25;
+                const detectMessage =
+                  isDetectActive && activeTask.message
+                    ? activeTask.message
+                    : `Menganalisis visual AI (${detectProgress}%)...`;
+
+                const videoScenes =
+                  project.scenes?.filter((s) => s.source_video_id === vid.id) || [];
+                const sceneCount = videoScenes.length;
+
+                return (
+                  <Card
+                    key={vid.id}
+                    className="flex flex-col justify-between border-border bg-card p-3.5 transition-all hover:border-primary/40"
+                  >
+                    <div>
+                      {/* Header Row: Origin, Status, Delete */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant={vid.origin === "ytdlp" ? "destructive" : "secondary"}
+                            className="text-[9px] uppercase font-mono px-1.5 py-0"
+                          >
+                            {vid.origin === "ytdlp" ? "YouTube" : "Upload"}
+                          </Badge>
+
+                          {vid.status === "downloading" && (
+                            <Badge
+                              variant="workspace-warning"
+                              className="text-[10px] py-0 gap-1 animate-pulse"
+                            >
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                              <span>Mengunduh</span>
+                            </Badge>
+                          )}
+                          {vid.status === "processing" && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] py-0 gap-1 animate-pulse"
+                            >
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                              <span>Analisis AI</span>
+                            </Badge>
+                          )}
+                          {vid.status === "ready" && (
+                            <Badge variant="secondary" className="text-[10px] py-0 gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <span>Siap</span>
+                            </Badge>
+                          )}
+                          {vid.status === "failed" && (
+                            <Badge variant="destructive" className="text-[10px] py-0 gap-1">
+                              <AlertCircle className="w-2.5 h-2.5" />
+                              <span>Gagal</span>
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {(vid.status === "downloading" || vid.status === "processing") && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => cancelMediaMutation.mutate(vid.id)}
+                              disabled={
+                                cancelMediaMutation.isPending &&
+                                cancelMediaMutation.variables === vid.id
+                              }
+                              className="h-7 gap-1 px-2 text-[10px] font-semibold"
+                              title="Batalkan proses video ini"
+                            >
+                              {cancelMediaMutation.isPending &&
+                              cancelMediaMutation.variables === vid.id ? (
+                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                              ) : (
+                                <StopCircle className="w-2.5 h-2.5" />
+                              )}
+                              <span>Batal</span>
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setVideoToDelete(vid)}
+                            className="text-muted-foreground hover:text-[#A9472C] hover:bg-[#F3E1D9] h-6 w-6"
+                            title="Hapus video"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h4
+                        className="text-xs font-semibold text-foreground truncate mb-1"
+                        title={vid.filename}
+                      >
+                        {vid.filename}
+                      </h4>
+
+                      {/* Meta Info */}
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
+                        {vid.duration && vid.duration > 0 && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            {formatDuration(vid.duration)}
+                          </span>
+                        )}
+                        {vid.width && vid.height && (
+                          <span className="rounded bg-muted px-1 font-mono text-[10px]">
+                            {vid.height}p
+                          </span>
+                        )}
+                        {vid.status === "ready" && (
+                          <span className="text-primary font-medium text-[10px]">
+                            {sceneCount} scene
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Inline Progress for Downloading */}
+                      {vid.status === "downloading" && (
+                        <div className="mb-2 space-y-1 bg-[#F7EFE0] p-2 rounded-lg border border-[#E8D9BC]">
+                          <div className="flex items-center justify-between text-[10px] text-[#8A6A2F]">
+                            <span className="truncate">{dlMessage}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono font-bold">{dlProgress}%</span>
+                              <button
+                                type="button"
+                                onClick={() => cancelMediaMutation.mutate(vid.id)}
+                                disabled={
+                                  cancelMediaMutation.isPending &&
+                                  cancelMediaMutation.variables === vid.id
+                                }
+                                className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
+                                title="Batalkan proses download"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </div>
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="bg-[#F7EFE0] h-full rounded-full transition-all duration-300"
+                              style={{ width: `${Math.max(5, dlProgress)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Inline Progress for AI Processing */}
+                      {vid.status === "processing" && (
+                        <div className="mb-2 space-y-1 bg-[#F1EEE6] p-2 rounded-lg border border-[#E5E1D7]">
+                          <div className="flex items-center justify-between text-[10px] text-primary">
+                            <span className="truncate">{detectMessage}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono font-bold">{detectProgress}%</span>
+                              <button
+                                type="button"
+                                onClick={() => cancelMediaMutation.mutate(vid.id)}
+                                disabled={
+                                  cancelMediaMutation.isPending &&
+                                  cancelMediaMutation.variables === vid.id
+                                }
+                                className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
+                                title="Batalkan proses deteksi"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </div>
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all duration-300"
+                              style={{ width: `${Math.max(5, detectProgress)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Error Message */}
+                      {vid.status === "failed" && (
+                        <div className="mb-2 text-[11px] text-[#A9472C] flex items-center gap-1.5 bg-[#F8EEEA] p-1.5 rounded border border-[#E9C9BD]">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{vid.error_message || "Gagal memproses"}</span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. SCENE GALLERY & UNIFIED AI ACTIONS                                     */}
+        {/* ========================================================================= */}
+        <div className="space-y-3 pt-2">
           <Toolbar
             left={
-              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Film className="w-3.5 h-3.5 text-primary" />
-                <span>Video Sumber Terdaftar</span>
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>Scene AI ({project.scenes.length})</span>
+                </h3>
+
+                {modelConfig?.vision_model && (
+                  <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                    Vision:{" "}
+                    <strong className="text-foreground ml-1">{modelConfig.vision_model}</strong>
+                  </Badge>
+                )}
+
+                {untaggedCount > 0 && (
+                  <Badge variant="workspace-warning" className="text-[10px]">
+                    {untaggedCount} belum di-tag
+                  </Badge>
+                )}
+              </div>
             }
             right={
-              <span className="text-xs text-muted-foreground font-mono">
-                {project.source_videos.length} file
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Quick Tagging CTA */}
+                <Button
+                  type="button"
+                  variant="workspace-primary"
+                  size="sm"
+                  onClick={() => handleRetag("quick")}
+                  disabled={retagMutation.isPending || untaggedCount === 0}
+                  className="h-8 gap-1.5 text-xs"
+                  title="Tagging otomatis hanya scene yang belum memiliki deskripsi AI"
+                >
+                  {retagMutation.isPending && retaggingMode === "quick" ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menganalisis...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Tagging {untaggedCount > 0 ? `(${untaggedCount})` : ""}</span>
+                    </>
+                  )}
+                </Button>
+
+                {/* Transcribe Dialog CTA */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTranscribeProgress(10);
+                    setTranscribeElapsed(0);
+                    setTranscribeStepText("Memulai transkripsi dialog Whisper...");
+                    transcribeMutation.mutate("id");
+                  }}
+                  disabled={transcribeMutation.isPending || project.scenes.length === 0}
+                  className="h-8 gap-1.5 border-border text-xs"
+                  title="Ekstrak dialog audio percakapan menggunakan Whisper"
+                >
+                  {transcribeMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#41627F]" />
+                      <span>Mentranskrip...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-3.5 h-3.5 text-[#41627F]" />
+                      <span>
+                        Transkrip Dialog {untranscribedCount > 0 ? `(${untranscribedCount})` : ""}
+                      </span>
+                    </>
+                  )}
+                </Button>
+
+                {/* More Options Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 border-border px-2">
+                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent appearance="workspace" align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Tagging ulang seluruh ${project.scenes.length} scene dari awal menggunakan vision model ${
+                              modelConfig?.vision_model || "aktif"
+                            }?`
+                          )
+                        ) {
+                          handleRetag("force");
+                        }
+                      }}
+                      disabled={retagMutation.isPending || project.scenes.length === 0}
+                      className="gap-2 text-xs cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>Force Tagging (Semua)</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setBrokenThumbnails({});
+                        repairThumbnailsMutation.mutate();
+                      }}
+                      disabled={repairThumbnailsMutation.isPending}
+                      className="gap-2 text-xs cursor-pointer text-[#8A6A2F] focus:text-[#8A6A2F]"
+                    >
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span>Perbaiki Thumbnail {brokenCount > 0 ? `(${brokenCount})` : ""}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             }
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {project.source_videos.map((vid) => {
-              const isDownloadActive =
-                activeTask?.task_type === "youtube_download" &&
-                activeTask.data?.video_id === vid.id;
-              const dlProgress = isDownloadActive ? activeTask.progress : vid.progress || 15;
-              const dlMessage =
-                isDownloadActive && activeTask.message
-                  ? activeTask.message
-                  : `Mengunduh (${dlProgress}%)...`;
+          {/* Live Progress Bar for Retagging */}
+          {retagMutation.isPending && (
+            <div className="animate-fadeIn space-y-2 rounded-lg border border-primary/30 bg-card p-3">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 font-medium text-primary">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span className="truncate max-w-sm sm:max-w-md">
+                    {retagStepText || "Sedang menganalisis scene visual..."}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                  <span>
+                    {Math.floor(retagElapsed / 60)}:{String(retagElapsed % 60).padStart(2, "0")}
+                  </span>
+                  <span className="font-bold text-primary">{Math.round(retagProgress)}%</span>
+                  <button
+                    type="button"
+                    onClick={() => api.cancelProjectTasks(project.id)}
+                    className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                    title="Batalkan proses tagging"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${Math.max(5, retagProgress)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
-              const isDetectActive =
-                activeTask?.task_type === "scene_detect" &&
-                (!activeTask.data?.video_id || activeTask.data?.video_id === vid.id);
-              const detectProgress = isDetectActive ? activeTask.progress : vid.progress || 25;
-              const detectMessage =
-                isDetectActive && activeTask.message
-                  ? activeTask.message
-                  : `Menganalisis visual AI (${detectProgress}%)...`;
+          {/* Live Progress Bar for Transcribing */}
+          {transcribeMutation.isPending && (
+            <div className="animate-fadeIn space-y-2 rounded-lg border border-[#CFDDE9] bg-card p-3">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-[#41627F] font-medium">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span className="truncate max-w-sm sm:max-w-md">
+                    {transcribeStepText || "Sedang mentranskripsikan dialog audio..."}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                  <span>
+                    {Math.floor(transcribeElapsed / 60)}:
+                    {String(transcribeElapsed % 60).padStart(2, "0")}
+                  </span>
+                  <span className="text-[#41627F] font-bold">
+                    {Math.round(transcribeProgress)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => api.cancelProjectTasks(project.id)}
+                    className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                    title="Batalkan proses transkripsi"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="bg-[#EAF0F5] h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.max(5, transcribeProgress)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
-              const videoScenes = project.scenes?.filter((s) => s.source_video_id === vid.id) || [];
-              const sceneCount = videoScenes.length;
-
-              return (
-                <Card
-                  key={vid.id}
-                  className="flex flex-col justify-between border-border bg-card p-3.5 transition-all hover:border-primary/40"
+          {/* Scene Cards Grid */}
+          {project.scenes.length === 0 ? (
+            <EmptyState
+              icon={Sparkles}
+              title="Belum Ada Scene Terdeteksi"
+              description="Scene visual akan terbentuk secara otomatis setelah video sumber diunggah dan dianalisis."
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {sortedScenes.map((scene) => (
+                <div
+                  key={scene.id}
+                  onClick={() => setPreviewScene(scene)}
+                  className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary/50 hover:shadow-lg"
                 >
-                  <div>
-                    {/* Header Row: Origin, Status, Delete */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <Badge
-                          variant={vid.origin === "ytdlp" ? "destructive" : "secondary"}
-                          className="text-[9px] uppercase font-mono px-1.5 py-0"
-                        >
-                          {vid.origin === "ytdlp" ? "YouTube" : "Upload"}
-                        </Badge>
-
-                        {vid.status === "downloading" && (
-                          <Badge
-                            variant="workspace-warning"
-                            className="text-[10px] py-0 gap-1 animate-pulse"
-                          >
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            <span>Mengunduh</span>
-                          </Badge>
-                        )}
-                        {vid.status === "processing" && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] py-0 gap-1 animate-pulse"
-                          >
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            <span>Analisis AI</span>
-                          </Badge>
-                        )}
-                        {vid.status === "ready" && (
-                          <Badge variant="secondary" className="text-[10px] py-0 gap-1">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            <span>Siap</span>
-                          </Badge>
-                        )}
-                        {vid.status === "failed" && (
-                          <Badge variant="destructive" className="text-[10px] py-0 gap-1">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            <span>Gagal</span>
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {(vid.status === "downloading" || vid.status === "processing") && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => cancelMediaMutation.mutate(vid.id)}
-                            disabled={
-                              cancelMediaMutation.isPending &&
-                              cancelMediaMutation.variables === vid.id
-                            }
-                            className="h-7 gap-1 px-2 text-[10px] font-semibold"
-                            title="Batalkan proses video ini"
-                          >
-                            {cancelMediaMutation.isPending &&
-                            cancelMediaMutation.variables === vid.id ? (
-                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            ) : (
-                              <StopCircle className="w-2.5 h-2.5" />
-                            )}
-                            <span>Batal</span>
-                          </Button>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setVideoToDelete(vid)}
-                          className="text-muted-foreground hover:text-[#A9472C] hover:bg-[#F3E1D9] h-6 w-6"
-                          title="Hapus video"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Title */}
-                    <h4
-                      className="text-xs font-semibold text-foreground truncate mb-1"
-                      title={vid.filename}
-                    >
-                      {vid.filename}
-                    </h4>
-
-                    {/* Meta Info */}
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
-                      {vid.duration && vid.duration > 0 && (
-                        <span className="flex items-center gap-1 font-mono">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          {formatDuration(vid.duration)}
-                        </span>
-                      )}
-                      {vid.width && vid.height && (
-                        <span className="rounded bg-muted px-1 font-mono text-[10px]">
-                          {vid.height}p
-                        </span>
-                      )}
-                      {vid.status === "ready" && (
-                        <span className="text-primary font-medium text-[10px]">
-                          {sceneCount} scene
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Inline Progress for Downloading */}
-                    {vid.status === "downloading" && (
-                      <div className="mb-2 space-y-1 bg-[#F7EFE0] p-2 rounded-lg border border-[#E8D9BC]">
-                        <div className="flex items-center justify-between text-[10px] text-[#8A6A2F]">
-                          <span className="truncate">{dlMessage}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono font-bold">{dlProgress}%</span>
-                            <button
-                              type="button"
-                              onClick={() => cancelMediaMutation.mutate(vid.id)}
-                              disabled={
-                                cancelMediaMutation.isPending &&
-                                cancelMediaMutation.variables === vid.id
-                              }
-                              className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
-                              title="Batalkan proses download"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="bg-[#F7EFE0] h-full rounded-full transition-all duration-300"
-                            style={{ width: `${Math.max(5, dlProgress)}%` }}
-                          />
-                        </div>
+                  {/* Thumbnail Container */}
+                  <div className="relative aspect-video overflow-hidden bg-black">
+                    {scene.thumbnail_url && !brokenThumbnails[scene.id] ? (
+                      <img
+                        src={scene.thumbnail_url}
+                        alt={scene.description || "Scene thumbnail"}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={() =>
+                          setBrokenThumbnails((prev) => ({ ...prev, [scene.id]: true }))
+                        }
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                        <Film className="w-5 h-5 opacity-40 mb-1" />
+                        <span className="text-[9px] font-mono">#{scene.scene_index + 1}</span>
                       </div>
                     )}
 
-                    {/* Inline Progress for AI Processing */}
-                    {vid.status === "processing" && (
-                      <div className="mb-2 space-y-1 bg-[#F1EEE6] p-2 rounded-lg border border-[#E5E1D7]">
-                        <div className="flex items-center justify-between text-[10px] text-primary">
-                          <span className="truncate">{detectMessage}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono font-bold">{detectProgress}%</span>
-                            <button
-                              type="button"
-                              onClick={() => cancelMediaMutation.mutate(vid.id)}
-                              disabled={
-                                cancelMediaMutation.isPending &&
-                                cancelMediaMutation.variables === vid.id
-                              }
-                              className="text-[#A9472C] hover:text-[#A9472C] font-semibold underline cursor-pointer disabled:opacity-50"
-                              title="Batalkan proses deteksi"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all duration-300"
-                            style={{ width: `${Math.max(5, detectProgress)}%` }}
-                          />
-                        </div>
-                      </div>
+                    {/* Play hover overlay */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-110">
+                        <Play className="w-4 h-4 ml-0.5 fill-current" />
+                      </span>
+                    </div>
+
+                    {/* Top Badges: Scene Index & Dialog */}
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-mono font-bold text-white">
+                      #{scene.scene_index + 1}
+                    </span>
+
+                    {scene.transcript && (
+                      <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-[#41627F] text-[8px] font-bold text-white flex items-center gap-0.5 shadow-sm">
+                        <Mic className="w-2.5 h-2.5" /> Dialog
+                      </span>
                     )}
 
-                    {/* Error Message */}
-                    {vid.status === "failed" && (
-                      <div className="mb-2 text-[11px] text-[#A9472C] flex items-center gap-1.5 bg-[#F8EEEA] p-1.5 rounded border border-[#E9C9BD]">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{vid.error_message || "Gagal memproses"}</span>
+                    {/* Duration Badge */}
+                    <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 text-[9px] font-mono text-white">
+                      {scene.duration}s
+                    </span>
+                  </div>
+
+                  {/* Card Info */}
+                  <div className="p-2 flex-1 flex flex-col justify-between gap-1.5">
+                    <div>
+                      <p className="text-[11px] text-foreground/90 line-clamp-2 leading-snug">
+                        {scene.description || "Scene visual"}
+                      </p>
+
+                      {scene.transcript && (
+                        <div
+                          className="flex items-start gap-1 mt-1 p-1 rounded bg-[#EAF0F5] border border-[#CFDDE9] text-[10px] text-[#41627F]"
+                          title={scene.transcript}
+                        >
+                          <MessageSquare className="w-2.5 h-2.5 text-[#41627F] shrink-0 mt-0.5" />
+                          <span className="line-clamp-1 italic">"{scene.transcript}"</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {scene.tags && scene.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {scene.tags.slice(0, 2).map((t, i) => (
+                          <span
+                            key={i}
+                            className="rounded border border-border bg-surface px-1 py-0.5 text-[9px] text-muted-foreground"
+                          >
+                            #{t}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. SCENE GALLERY & UNIFIED AI ACTIONS                                     */}
-      {/* ========================================================================= */}
-      <div className="space-y-3 pt-2">
-        <Toolbar
-          left={
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-foreground">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span>Scene AI ({project.scenes.length})</span>
-              </h3>
-
-              {modelConfig?.vision_model && (
-                <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
-                  Vision:{" "}
-                  <strong className="text-foreground ml-1">{modelConfig.vision_model}</strong>
-                </Badge>
-              )}
-
-              {untaggedCount > 0 && (
-                <Badge variant="workspace-warning" className="text-[10px]">
-                  {untaggedCount} belum di-tag
-                </Badge>
-              )}
+                </div>
+              ))}
             </div>
-          }
-          right={
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Quick Tagging CTA */}
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 5. MODAL: YOUTUBE IMPORTER                                                */}
+        {/* ========================================================================= */}
+        <Dialog open={isYTOpen} onOpenChange={setIsYTOpen}>
+          <DialogContent appearance="workspace" className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                <Youtube className="w-5 h-5 text-[#A9472C]" />
+                <DialogTitle>Impor Video dari YouTube</DialogTitle>
+              </div>
+              <DialogDescription>
+                Masukkan URL video YouTube untuk memeriksa dan memilih resolusi download.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleInspectYT} className="flex gap-2 pt-2">
+              <Input
+                type="url"
+                required
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={ytUrl}
+                onChange={(e) => setYtUrl(e.target.value)}
+                className="flex-1"
+                autoFocus
+              />
               <Button
-                type="button"
-                variant="workspace-primary"
+                type="submit"
+                variant="destructive"
                 size="sm"
-                onClick={() => handleRetag("quick")}
-                disabled={retagMutation.isPending || untaggedCount === 0}
-                className="h-8 gap-1.5 text-xs"
-                title="Tagging otomatis hanya scene yang belum memiliki deskripsi AI"
+                disabled={inspectYTMutation.isPending}
+                className="shrink-0 gap-1.5"
               >
-                {retagMutation.isPending && retaggingMode === "quick" ? (
+                {inspectYTMutation.isPending ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Menganalisis...</span>
+                    <span>Memeriksa...</span>
                   </>
                 ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>AI Tagging {untaggedCount > 0 ? `(${untaggedCount})` : ""}</span>
-                  </>
+                  <span>Periksa</span>
                 )}
               </Button>
+            </form>
 
-              {/* Transcribe Dialog CTA */}
+            {/* Inspect Result */}
+            {ytInfo && (
+              <div className="mt-2 space-y-3 rounded-xl border border-border bg-card p-3">
+                <div className="flex gap-3">
+                  {ytInfo.thumbnail && (
+                    <img
+                      src={ytInfo.thumbnail}
+                      alt={ytInfo.title}
+                      className="h-16 w-24 shrink-0 rounded-lg border border-border object-cover"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold text-foreground line-clamp-2">
+                      {ytInfo.title}
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Durasi: <strong className="text-foreground">{ytInfo.duration_str}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+                    Pilih Resolusi Download:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ytInfo.formats?.map((fmt: YTFormatOption) => {
+                      const isSelected = downloadingFormatId === fmt.format_id;
+                      return (
+                        <Button
+                          key={fmt.format_id}
+                          type="button"
+                          variant={isSelected ? "workspace-primary" : "outline"}
+                          size="sm"
+                          disabled={Boolean(downloadingFormatId)}
+                          onClick={() => handleDownloadYT(fmt.format_id)}
+                          className="h-auto justify-between border-border py-2 text-xs"
+                        >
+                          <span className="font-semibold flex items-center gap-1.5">
+                            {isSelected && <Loader2 className="w-3 h-3 animate-spin" />}
+                            <span>{fmt.resolution}</span>
+                          </span>
+                          <span className="text-[10px] opacity-75 font-mono">
+                            {isSelected
+                              ? "Memulai..."
+                              : fmt.filesize_approx_mb
+                                ? `${fmt.filesize_approx_mb} MB`
+                                : "Auto"}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setTranscribeProgress(10);
-                  setTranscribeElapsed(0);
-                  setTranscribeStepText("Memulai transkripsi dialog Whisper...");
-                  transcribeMutation.mutate("id");
+                  setIsYTOpen(false);
+                  setYtInfo(null);
                 }}
-                disabled={transcribeMutation.isPending || project.scenes.length === 0}
-                className="h-8 gap-1.5 border-border text-xs"
-                title="Ekstrak dialog audio percakapan menggunakan Whisper"
               >
-                {transcribeMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#41627F]" />
-                    <span>Mentranskrip...</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-3.5 h-3.5 text-[#41627F]" />
-                    <span>
-                      Transkrip Dialog {untranscribedCount > 0 ? `(${untranscribedCount})` : ""}
-                    </span>
-                  </>
-                )}
+                Tutup
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-              {/* More Options Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 border-border px-2">
-                    <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent appearance="workspace" align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Tagging ulang seluruh ${project.scenes.length} scene dari awal menggunakan vision model ${
-                            modelConfig?.vision_model || "aktif"
-                          }?`
-                        )
-                      ) {
-                        handleRetag("force");
-                      }
-                    }}
-                    disabled={retagMutation.isPending || project.scenes.length === 0}
-                    className="gap-2 text-xs cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>Force Tagging (Semua)</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setBrokenThumbnails({});
-                      repairThumbnailsMutation.mutate();
-                    }}
-                    disabled={repairThumbnailsMutation.isPending}
-                    className="gap-2 text-xs cursor-pointer text-[#8A6A2F] focus:text-[#8A6A2F]"
-                  >
-                    <Wrench className="w-3.5 h-3.5" />
-                    <span>Perbaiki Thumbnail {brokenCount > 0 ? `(${brokenCount})` : ""}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          }
-        />
-
-        {/* Live Progress Bar for Retagging */}
-        {retagMutation.isPending && (
-          <div className="animate-fadeIn space-y-2 rounded-lg border border-primary/30 bg-card p-3">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 font-medium text-primary">
-                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                <span className="truncate max-w-sm sm:max-w-md">
-                  {retagStepText || "Sedang menganalisis scene visual..."}
-                </span>
+        {/* ========================================================================= */}
+        {/* 6. MODAL: CONFIRM DELETE VIDEO                                            */}
+        {/* ========================================================================= */}
+        <Dialog
+          open={Boolean(videoToDelete)}
+          onOpenChange={(open) => !open && setVideoToDelete(null)}
+        >
+          <DialogContent appearance="workspace" className="max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0">
+                <Trash2 className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                <span>
-                  {Math.floor(retagElapsed / 60)}:{String(retagElapsed % 60).padStart(2, "0")}
-                </span>
-                <span className="font-bold text-primary">{Math.round(retagProgress)}%</span>
-                <button
-                  type="button"
-                  onClick={() => api.cancelProjectTasks(project.id)}
-                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
-                  title="Batalkan proses tagging"
-                >
-                  Batal
-                </button>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Hapus Video dari Media Pool?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Tindakan ini tidak dapat dibatalkan
+                </DialogDescription>
               </div>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${Math.max(5, retagProgress)}%` }}
-              />
-            </div>
-          </div>
-        )}
 
-        {/* Live Progress Bar for Transcribing */}
-        {transcribeMutation.isPending && (
-          <div className="animate-fadeIn space-y-2 rounded-lg border border-[#CFDDE9] bg-card p-3">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-[#41627F] font-medium">
-                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                <span className="truncate max-w-sm sm:max-w-md">
-                  {transcribeStepText || "Sedang mentranskripsikan dialog audio..."}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                <span>
-                  {Math.floor(transcribeElapsed / 60)}:
-                  {String(transcribeElapsed % 60).padStart(2, "0")}
-                </span>
-                <span className="text-[#41627F] font-bold">{Math.round(transcribeProgress)}%</span>
-                <button
-                  type="button"
-                  onClick={() => api.cancelProjectTasks(project.id)}
-                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
-                  title="Batalkan proses transkripsi"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="bg-[#EAF0F5] h-full transition-all duration-300 rounded-full"
-                style={{ width: `${Math.max(5, transcribeProgress)}%` }}
-              />
-            </div>
-          </div>
-        )}
+            <p className="text-sm text-foreground/80 leading-relaxed py-2">
+              Apakah Anda yakin ingin menghapus{" "}
+              <span className="font-semibold text-foreground">"{videoToDelete?.filename}"</span>?
+              Seluruh scene visual AI hasil analisis video ini juga akan dihapus dari project.
+            </p>
 
-        {/* Scene Cards Grid */}
-        {project.scenes.length === 0 ? (
-          <EmptyState
-            icon={Sparkles}
-            title="Belum Ada Scene Terdeteksi"
-            description="Scene visual akan terbentuk secara otomatis setelah video sumber diunggah dan dianalisis."
-          />
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {sortedScenes.map((scene) => (
-              <div
-                key={scene.id}
-                onClick={() => setPreviewScene(scene)}
-                className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary/50 hover:shadow-lg"
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setVideoToDelete(null)}
               >
-                {/* Thumbnail Container */}
-                <div className="relative aspect-video overflow-hidden bg-black">
-                  {scene.thumbnail_url && !brokenThumbnails[scene.id] ? (
-                    <img
-                      src={scene.thumbnail_url}
-                      alt={scene.description || "Scene thumbnail"}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={() => setBrokenThumbnails((prev) => ({ ...prev, [scene.id]: true }))}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                      <Film className="w-5 h-5 opacity-40 mb-1" />
-                      <span className="text-[9px] font-mono">#{scene.scene_index + 1}</span>
-                    </div>
-                  )}
+                Batal
+              </Button>
+              <Button
+                type="button"
+                id="confirm-delete-video-btn"
+                variant="destructive"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (!videoToDelete) return;
+                  const vidId = videoToDelete.id;
+                  setVideoToDelete(null);
+                  deleteMutation.mutate(vidId);
+                }}
+                className="gap-1.5"
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>Hapus Video</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-                  {/* Play hover overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-110">
-                      <Play className="w-4 h-4 ml-0.5 fill-current" />
-                    </span>
-                  </div>
-
-                  {/* Top Badges: Scene Index & Dialog */}
-                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-mono font-bold text-white">
-                    #{scene.scene_index + 1}
-                  </span>
-
-                  {scene.transcript && (
-                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-[#41627F] text-[8px] font-bold text-white flex items-center gap-0.5 shadow-sm">
-                      <Mic className="w-2.5 h-2.5" /> Dialog
-                    </span>
-                  )}
-
-                  {/* Duration Badge */}
-                  <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 text-[9px] font-mono text-white">
-                    {scene.duration}s
-                  </span>
-                </div>
-
-                {/* Card Info */}
-                <div className="p-2 flex-1 flex flex-col justify-between gap-1.5">
-                  <div>
-                    <p className="text-[11px] text-foreground/90 line-clamp-2 leading-snug">
-                      {scene.description || "Scene visual"}
-                    </p>
-
-                    {scene.transcript && (
-                      <div
-                        className="flex items-start gap-1 mt-1 p-1 rounded bg-[#EAF0F5] border border-[#CFDDE9] text-[10px] text-[#41627F]"
-                        title={scene.transcript}
-                      >
-                        <MessageSquare className="w-2.5 h-2.5 text-[#41627F] shrink-0 mt-0.5" />
-                        <span className="line-clamp-1 italic">"{scene.transcript}"</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {scene.tags && scene.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {scene.tags.slice(0, 2).map((t, i) => (
-                        <span
-                          key={i}
-                          className="rounded border border-border bg-surface px-1 py-0.5 text-[9px] text-muted-foreground"
-                        >
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* ========================================================================= */}
+        {/* 7. MODAL: SCENE PREVIEW                                                   */}
+        {/* ========================================================================= */}
+        {previewScene && (
+          <ScenePreviewModal
+            isOpen={Boolean(previewScene)}
+            onClose={() => setPreviewScene(null)}
+            videoUrl={previewScene.video_url}
+            thumbnailUrl={previewScene.thumbnail_url}
+            startTime={previewScene.start_time}
+            endTime={previewScene.end_time}
+            title={`Scene #${previewScene.scene_index + 1}`}
+            description={previewScene.description}
+            tags={previewScene.tags}
+            transcript={previewScene.transcript}
+            sceneIndex={previewScene.scene_index}
+          />
         )}
       </div>
-
-      {/* ========================================================================= */}
-      {/* 5. MODAL: YOUTUBE IMPORTER                                                */}
-      {/* ========================================================================= */}
-      <Dialog open={isYTOpen} onOpenChange={setIsYTOpen}>
-        <DialogContent appearance="workspace" className="max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Youtube className="w-5 h-5 text-[#A9472C]" />
-              <DialogTitle>Impor Video dari YouTube</DialogTitle>
-            </div>
-            <DialogDescription>
-              Masukkan URL video YouTube untuk memeriksa dan memilih resolusi download.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleInspectYT} className="flex gap-2 pt-2">
-            <Input
-              type="url"
-              required
-              placeholder="https://www.youtube.com/watch?v=..."
-              value={ytUrl}
-              onChange={(e) => setYtUrl(e.target.value)}
-              className="flex-1"
-              autoFocus
-            />
-            <Button
-              type="submit"
-              variant="destructive"
-              size="sm"
-              disabled={inspectYTMutation.isPending}
-              className="shrink-0 gap-1.5"
-            >
-              {inspectYTMutation.isPending ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Memeriksa...</span>
-                </>
-              ) : (
-                <span>Periksa</span>
-              )}
-            </Button>
-          </form>
-
-          {/* Inspect Result */}
-          {ytInfo && (
-            <div className="mt-2 space-y-3 rounded-xl border border-border bg-card p-3">
-              <div className="flex gap-3">
-                {ytInfo.thumbnail && (
-                  <img
-                    src={ytInfo.thumbnail}
-                    alt={ytInfo.title}
-                    className="h-16 w-24 shrink-0 rounded-lg border border-border object-cover"
-                  />
-                )}
-                <div className="min-w-0">
-                  <h4 className="text-xs font-semibold text-foreground line-clamp-2">
-                    {ytInfo.title}
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Durasi: <strong className="text-foreground">{ytInfo.duration_str}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 border-t border-border pt-2">
-                <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-                  Pilih Resolusi Download:
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {ytInfo.formats?.map((fmt: YTFormatOption) => {
-                    const isSelected = downloadingFormatId === fmt.format_id;
-                    return (
-                      <Button
-                        key={fmt.format_id}
-                        type="button"
-                        variant={isSelected ? "workspace-primary" : "outline"}
-                        size="sm"
-                        disabled={Boolean(downloadingFormatId)}
-                        onClick={() => handleDownloadYT(fmt.format_id)}
-                        className="h-auto justify-between border-border py-2 text-xs"
-                      >
-                        <span className="font-semibold flex items-center gap-1.5">
-                          {isSelected && <Loader2 className="w-3 h-3 animate-spin" />}
-                          <span>{fmt.resolution}</span>
-                        </span>
-                        <span className="text-[10px] opacity-75 font-mono">
-                          {isSelected
-                            ? "Memulai..."
-                            : fmt.filesize_approx_mb
-                              ? `${fmt.filesize_approx_mb} MB`
-                              : "Auto"}
-                        </span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setIsYTOpen(false);
-                setYtInfo(null);
-              }}
-            >
-              Tutup
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* 6. MODAL: CONFIRM DELETE VIDEO                                            */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={Boolean(videoToDelete)}
-        onOpenChange={(open) => !open && setVideoToDelete(null)}
-      >
-        <DialogContent appearance="workspace" className="max-w-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive shrink-0">
-              <Trash2 className="w-5 h-5" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-bold text-foreground">
-                Hapus Video dari Media Pool?
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Tindakan ini tidak dapat dibatalkan
-              </DialogDescription>
-            </div>
-          </div>
-
-          <p className="text-sm text-foreground/80 leading-relaxed py-2">
-            Apakah Anda yakin ingin menghapus{" "}
-            <span className="font-semibold text-foreground">"{videoToDelete?.filename}"</span>?
-            Seluruh scene visual AI hasil analisis video ini juga akan dihapus dari project.
-          </p>
-
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setVideoToDelete(null)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              id="confirm-delete-video-btn"
-              variant="destructive"
-              size="sm"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (!videoToDelete) return;
-                const vidId = videoToDelete.id;
-                setVideoToDelete(null);
-                deleteMutation.mutate(vidId);
-              }}
-              className="gap-1.5"
-            >
-              {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              <span>Hapus Video</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* 7. MODAL: SCENE PREVIEW                                                   */}
-      {/* ========================================================================= */}
-      {previewScene && (
-        <ScenePreviewModal
-          isOpen={Boolean(previewScene)}
-          onClose={() => setPreviewScene(null)}
-          videoUrl={previewScene.video_url}
-          thumbnailUrl={previewScene.thumbnail_url}
-          startTime={previewScene.start_time}
-          endTime={previewScene.end_time}
-          title={`Scene #${previewScene.scene_index + 1}`}
-          description={previewScene.description}
-          tags={previewScene.tags}
-          transcript={previewScene.transcript}
-          sceneIndex={previewScene.scene_index}
-        />
-      )}
     </div>
   );
 }
