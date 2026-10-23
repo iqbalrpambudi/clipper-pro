@@ -54,7 +54,6 @@ export function ModelsConfigTab() {
   const [ttsProvider, setTtsProvider] = useState("gemini");
   const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
   const [ttsApiKey, setTtsApiKey] = useState("");
-  const [ttsFallbackEnabled, setTtsFallbackEnabled] = useState(true);
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
   const [elevenlabsModel, setElevenlabsModel] = useState("eleven_multilingual_v2");
   const [runwareApiKey, setRunwareApiKey] = useState("");
@@ -119,7 +118,6 @@ export function ModelsConfigTab() {
       } else {
         setTtsModel("gemini-2.5-flash-preview-tts");
       }
-      setTtsFallbackEnabled(config.tts_fallback_enabled !== false);
       if (config.elevenlabs_model) setElevenlabsModel(config.elevenlabs_model);
       if (config.runware_tts_model) setRunwareTtsModel(config.runware_tts_model);
       setImageBaseUrl(config.image_base_url || "");
@@ -308,7 +306,6 @@ export function ModelsConfigTab() {
       api_key: apiKey.trim() || undefined,
       tts_provider: ttsProvider === "gemini" ? ttsModel : ttsProvider,
       tts_api_key: ttsApiKey.trim() || undefined,
-      tts_fallback_enabled: ttsFallbackEnabled,
       elevenlabs_api_key: elevenlabsApiKey.trim() || undefined,
       elevenlabs_model: elevenlabsModel,
       runware_api_key: runwareApiKey.trim() || undefined,
@@ -681,29 +678,6 @@ export function ModelsConfigTab() {
             </>
           )}
 
-          {/* Fallback Checkbox */}
-          <div className="sm:col-span-2 pt-2 border-t border-surface-border/50">
-            <label className="flex items-start gap-3 cursor-pointer select-none group">
-              <input
-                type="checkbox"
-                checked={ttsFallbackEnabled}
-                onChange={(e) => setTtsFallbackEnabled(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-surface-border bg-surface text-brand-500 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
-              />
-              <div>
-                <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">
-                  Aktifkan Fallback Otomatis ke Edge-TTS saat Error / Limit Kuota
-                </span>
-                <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                  Jika diaktifkan, kegagalan request (seperti limit kuota 429 atau server timeout)
-                  pada model TTS utama akan otomatis dialihkan ke suara natural Edge-TTS sehingga
-                  audio tetap lengkap dan video tidak gagal. Jika dinonaktifkan, proses akan
-                  langsung berhenti dengan pesan error dan audio hanya tersimpan hingga bagian yang
-                  berhasil (terpotong).
-                </p>
-              </div>
-            </label>
-          </div>
         </div>
 
         {/* TTS Test Connection Button & Result */}

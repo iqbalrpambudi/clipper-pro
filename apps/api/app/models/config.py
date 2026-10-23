@@ -19,7 +19,6 @@ class ModelConfig(Base):
     api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tts_provider: Mapped[str] = mapped_column(String(50), default="gemini-2.5-flash-preview-tts")
     tts_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    tts_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     elevenlabs_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     elevenlabs_model: Mapped[str] = mapped_column(String(100), default="eleven_multilingual_v2")
     runware_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

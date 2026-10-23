@@ -9,11 +9,11 @@ from app.services.tts import (
     estimate_tts_cost,
     generate_gemini_tts,
     generate_speech_audio,
-    split_text_for_tts,
     test_tts_connection,
 )
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
 from app.services.tts.providers.runware import generate_runware_tts
+from app.services.tts.audio_utils import _split_text_for_tts
 
 
 def test_estimate_tts_cost():
@@ -38,7 +38,7 @@ async def test_gemini_tts_missing_key_throws_error(tmp_path, monkeypatch):
 
 def test_split_text_for_tts():
     text = "Kalimat pertama. Kalimat kedua yang agak panjang. Kalimat ketiga!"
-    chunks = split_text_for_tts(text, max_chars=40)
+    chunks = _split_text_for_tts(text, max_chars=40)
     assert len(chunks) >= 2
     for c in chunks:
         assert len(c) <= 40
@@ -108,21 +108,7 @@ async def test_generate_speech_audio_empty_text():
 
 
 @pytest.mark.asyncio
-async def test_generate_speech_audio_fallback_disabled_raises_error(monkeypatch):
-    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota error")):
-        with pytest.raises(RuntimeError, match="Gemini quota error"):
-            await generate_speech_audio(
-                text="Halo dunia",
-                voice="Puck",
-                output_path="/tmp/test_fb.mp3",
-                provider="gemini",
-                fallback_enabled=False,
-                api_key="valid-key",
-            )
-
-
-@pytest.mark.asyncio
-async def test_generate_speech_audio_fallback_enabled_uses_edge(monkeypatch):
+async def test_generate_speech_audio_provider_error_propagates_without_fallback():
     edge_called = False
 
     async def fake_edge(text, voice, output_path, speed_ratio=1.0):
@@ -130,19 +116,17 @@ async def test_generate_speech_audio_fallback_enabled_uses_edge(monkeypatch):
         edge_called = True
         Path(output_path).touch()
 
-    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini error")):
+    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota error")):
         with patch("app.services.tts.dispatcher.generate_edge_tts", side_effect=fake_edge):
-            res = await generate_speech_audio(
-                text="Halo dunia",
-                voice="Puck",
-                output_path="/tmp/test_fb_ok.mp3",
-                provider="gemini",
-                fallback_enabled=True,
-                api_key="valid-key",
-            )
-            assert edge_called is True
-            assert res.get("fallback_used") is True
-
+            with pytest.raises(RuntimeError, match="Gemini quota error"):
+                await generate_speech_audio(
+                    text="Halo dunia",
+                    voice="Puck",
+                    output_path="/tmp/test_fb.mp3",
+                    provider="gemini",
+                    api_key="valid-key",
+                )
+    assert edge_called is False
 
 def test_elevenlabs_and_runware_voices_exist():
     el_voices = [v for v in AVAILABLE_VOICES if v.provider == "elevenlabs"]
@@ -187,7 +171,6 @@ async def test_elevenlabs_character_limit_blocks_fallback(monkeypatch):
             voice="Adam",
             output_path="/tmp/el_fb.mp3",
             provider="elevenlabs",
-            fallback_enabled=True,
             api_key="mock",
         )
 

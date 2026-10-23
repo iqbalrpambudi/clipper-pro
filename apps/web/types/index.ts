@@ -339,7 +339,6 @@ export interface ModelConfig {
   tts_provider: string;
   tts_api_key_masked?: string | null;
   has_tts_api_key: boolean;
-  tts_fallback_enabled?: boolean;
   elevenlabs_api_key_masked?: string | null;
   has_elevenlabs_api_key?: boolean;
   elevenlabs_model?: string;

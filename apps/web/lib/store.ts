@@ -91,7 +91,6 @@ export interface VoiceDraftState {
   runwareModel?: string;
   rate?: number | string;
   pitch?: number | string;
-  fallbackEnabled?: boolean;
   customVoiceInput?: string;
   runwareCustomVoiceInput?: string;
   selectedVoicePresetId?: string;

@@ -98,8 +98,6 @@ export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TT
               setRate={state.setRate}
               pitch={state.pitch}
               setPitch={state.setPitch}
-              fallbackEnabled={state.fallbackEnabled}
-              setFallbackEnabled={state.setFallbackEnabled}
               costEstimate={state.costEstimate}
               isGeneratingTTS={state.isGeneratingTTS}
               generationProgress={state.generationProgress}

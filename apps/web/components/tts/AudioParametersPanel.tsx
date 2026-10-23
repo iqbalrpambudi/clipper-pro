@@ -11,8 +11,6 @@ interface AudioParametersPanelProps {
   setRate: (rate: number) => void;
   pitch: number;
   setPitch: (pitch: number) => void;
-  fallbackEnabled: boolean;
-  setFallbackEnabled: (fallback: boolean) => void;
   costEstimate?: { estimated_cost_usd: number };
   isGeneratingTTS: boolean;
   generationProgress: number;
@@ -29,8 +27,6 @@ export function AudioParametersPanel({
   setRate,
   pitch,
   setPitch,
-  fallbackEnabled,
-  setFallbackEnabled,
   costEstimate,
   isGeneratingTTS,
   generationProgress,
@@ -89,27 +85,6 @@ export function AudioParametersPanel({
               className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
             />
           </div>
-        </div>
-
-        {/* Fallback to Edge-TTS Checkbox */}
-        <div className="pt-1">
-          <label className="flex items-start gap-2.5 cursor-pointer select-none group">
-            <input
-              type="checkbox"
-              checked={fallbackEnabled}
-              onChange={(e) => setFallbackEnabled(e.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-input bg-control-background text-primary focus:ring-primary focus:ring-offset-0"
-            />
-            <div>
-              <span className="text-[11px] font-medium text-foreground transition-colors">
-                Fallback otomatis ke Edge-TTS jika API error / kuota habis
-              </span>
-              <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
-                Jika tidak dicentang, proses akan berhenti dengan error dan audio terpotong pada
-                bagian yang gagal.
-              </p>
-            </div>
-          </label>
         </div>
 
         {/* Live Progress Card for TTS */}

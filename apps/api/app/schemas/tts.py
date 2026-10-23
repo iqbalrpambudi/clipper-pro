@@ -35,7 +35,6 @@ class TTSGenerateRequest(BaseModel):
     rate: str = "+0%"
     pitch: str = "+0Hz"
     model: Optional[str] = None
-    fallback_enabled: Optional[bool] = None
     language: Optional[str] = None  # id | en (inferred from narration if omitted)
 
 

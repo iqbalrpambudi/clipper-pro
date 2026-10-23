@@ -33,7 +33,6 @@ async def generate_tts_and_align_job(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     model: Optional[str] = None,
-    fallback_enabled: Optional[bool] = None,
     language: Optional[str] = None,
 ) -> None:
     """Async task to generate TTS audio and run forced word alignment."""
@@ -93,13 +92,6 @@ async def generate_tts_and_align_job(
                 tts_model = model or "edge"
 
             # Step 1: TTS generation with per-segment chunking to prevent silent segment 2
-            use_fallback = fallback_enabled
-            if use_fallback is None:
-                use_fallback = getattr(cfg, "tts_fallback_enabled", True) if cfg else True
-            if use_fallback is None:
-                use_fallback = True
-
-            fallback_info: Dict[str, Any] = {}
             duration = await generate_speech_audio(
                 text=narration.raw_text,
                 output_path=str(audio_file),
@@ -110,37 +102,24 @@ async def generate_tts_and_align_job(
                 api_key=api_key,
                 model=tts_model,
                 segments=narration.segments,
-                fallback_info=fallback_info,
-                fallback_enabled=use_fallback,
                 language=narration_lang,
             )
 
-            actual_provider = fallback_info.get("fallback_provider", provider)
-            actual_voice = fallback_info.get("fallback_voice", voice)
+            actual_provider = provider
+            actual_voice = voice
 
             if await is_cancelled(project_id):
                 raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
 
-            if fallback_info.get("fell_back"):
-                await publish_project_event(
-                    project_id,
-                    task_type="tts_align",
-                    status="progress",
-                    progress=50,
-                    stage="forced_alignment",
-                    message=f"Gemini quota limit tercapai, dialihkan ke Edge-TTS ({actual_voice}). Word alignment sedang disinkronkan...",
-                    data={"narration_id": narration_id, "duration": duration, "provider": actual_provider, "voice": actual_voice},
-                )
-            else:
-                await publish_project_event(
-                    project_id,
-                    task_type="tts_align",
-                    status="progress",
-                    progress=50,
-                    stage="forced_alignment",
-                    message="Audio selesai. Menjalankan forced word-level alignment & timestamping...",
-                    data={"narration_id": narration_id, "duration": duration},
-                )
+            await publish_project_event(
+                project_id,
+                task_type="tts_align",
+                status="progress",
+                progress=50,
+                stage="forced_alignment",
+                message="Audio selesai. Menjalankan forced word-level alignment & timestamping...",
+                data={"narration_id": narration_id, "duration": duration},
+            )
 
             # Step 2: Alignment
             target_segments = narration.segments

@@ -76,7 +76,6 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
-        tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
         elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
@@ -117,8 +116,6 @@ async def save_model_configuration(
         cfg.tts_provider = payload.tts_provider
     if payload.tts_api_key is not None and payload.tts_api_key.strip():
         cfg.tts_api_key_encrypted = encrypt_secret(payload.tts_api_key.strip())
-    if payload.tts_fallback_enabled is not None:
-        cfg.tts_fallback_enabled = payload.tts_fallback_enabled
     if payload.elevenlabs_api_key is not None and payload.elevenlabs_api_key.strip():
         cfg.elevenlabs_api_key_encrypted = encrypt_secret(payload.elevenlabs_api_key.strip())
     if payload.elevenlabs_model is not None:
@@ -160,7 +157,6 @@ async def save_model_configuration(
         tts_provider=cfg.tts_provider,
         tts_api_key_masked=mask_secret(raw_tts_key),
         has_tts_api_key=bool(raw_tts_key),
-        tts_fallback_enabled=getattr(cfg, "tts_fallback_enabled", True) if getattr(cfg, "tts_fallback_enabled", None) is not None else True,
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
         elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",

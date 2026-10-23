@@ -234,7 +234,6 @@ async def trigger_tts_generation(
             payload.rate,
             payload.pitch,
             payload.model,
-            payload.fallback_enabled,
             target_lang,
         )
         await pool.close()
@@ -249,7 +248,6 @@ async def trigger_tts_generation(
                 payload.rate,
                 payload.pitch,
                 payload.model,
-                payload.fallback_enabled,
                 target_lang,
             )
         )

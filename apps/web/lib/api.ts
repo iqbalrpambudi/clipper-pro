@@ -268,7 +268,6 @@ export const api = {
       rate?: string;
       pitch?: string;
       model?: string;
-      fallback_enabled?: boolean;
       language?: string;
     }
   ) =>
@@ -412,7 +411,6 @@ export const api = {
     api_key?: string;
     tts_provider?: string;
     tts_api_key?: string;
-    tts_fallback_enabled?: boolean;
     elevenlabs_api_key?: string;
     elevenlabs_model?: string;
     runware_api_key?: string;

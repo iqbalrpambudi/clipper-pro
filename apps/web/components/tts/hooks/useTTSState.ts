@@ -44,7 +44,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
   };
   const initialRate = parseRate(draft?.rate ?? audio?.rate);
   const initialPitch = parseRate(draft?.pitch ?? audio?.pitch);
-  const initialFallback = draft?.fallbackEnabled ?? true;
 
   const [selectedVoice, setSelectedVoice] = useState(initialVoice);
   const [provider, setProvider] = useState(initialProvider);
@@ -53,7 +52,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const [runwareModel, setRunwareModel] = useState(initialRunwareModel);
   const [rate, setRate] = useState<number>(initialRate);
   const [pitch, setPitch] = useState<number>(initialPitch);
-  const [fallbackEnabled, setFallbackEnabled] = useState(initialFallback);
   const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>(
     draft?.selectedVoicePresetId || ""
   );
@@ -68,7 +66,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
       runwareModel,
       rate,
       pitch,
-      fallbackEnabled,
       customVoiceInput: draft?.customVoiceInput,
       selectedVoicePresetId,
     });
@@ -81,12 +78,11 @@ export function useTTSState({ project }: UseTTSStateProps) {
     runwareModel,
     rate,
     pitch,
-    fallbackEnabled,
     selectedVoicePresetId,
     setVoiceDraft,
   ]);
 
-  // Fetch active config to sync saved tts_provider & fallback setting
+  // Fetch active config to sync saved tts_provider & models
   const { data: appConfig } = useQuery({
     queryKey: ["model-config"],
     queryFn: api.getModelConfig,
@@ -118,9 +114,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
     }
     if (appConfig.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
     if (appConfig.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
-    if (appConfig.tts_fallback_enabled !== undefined) {
-      setFallbackEnabled(appConfig.tts_fallback_enabled);
-    }
   }, [appConfig, draft, audio?.provider]);
 
   const selectedModelObj =
@@ -309,7 +302,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
         rate: `${rate >= 0 ? "+" : ""}${rate}%`,
         pitch: `${pitch >= 0 ? "+" : ""}${pitch}Hz`,
         model: activeModel,
-        fallback_enabled: fallbackEnabled,
         language: projectLanguage,
       });
     },
@@ -651,8 +643,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
     setRate,
     pitch,
     setPitch,
-    fallbackEnabled,
-    setFallbackEnabled,
     // Voice presets
     voicePresets,
     selectedVoicePresetId,

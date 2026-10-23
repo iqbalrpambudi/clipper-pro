@@ -23,8 +23,6 @@ async def generate_speech_audio(
     api_key: Optional[str] = None,
     model: str = "gemini-2.5-flash-preview-tts",
     segments: Optional[List[Dict[str, Any]]] = None,
-    fallback_info: Optional[Dict[str, Any]] = None,
-    fallback_enabled: bool = True,
     language: Optional[str] = "id",
 ) -> float:
     """Entrypoint for TTS audio generation.
@@ -33,10 +31,10 @@ async def generate_speech_audio(
     - ElevenLabs: Industry benchmark for zero tone drift. Handles single-pass generation up to 40,000 chars.
     - Runware TTS: Ultra-fast & cost-effective (Fish Audio / Qwen3 TTS). Single-pass up to 1,200 chars.
     - Gemini TTS: High-fidelity multimodal audio. Single-pass extended up to 2,200 chars (~2.5 mins) to prevent intonation drift.
-    - Edge-TTS: Free Indonesian neural speech fallback.
+    - Edge-TTS: Free neural speech provider.
 
-    If fallback_enabled is True, any quota/API error will cleanly fallback to Edge-TTS.
-    If fallback_enabled is False, errors will be raised immediately.
+    Provider errors propagate to the caller so the user sees the failure; there is
+    no automatic fallback to another provider.
     """
     clean_text = (text or "").strip()
     if not clean_text:
@@ -102,16 +100,14 @@ async def generate_speech_audio(
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:
-                        if not fallback_enabled:
-                            if parts:
-                                try:
-                                    await _concat_mp3s(parts, output_path)
-                                except Exception:
-                                    pass
-                            raise RuntimeError(
-                                f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                            ) from chunk_err
-                        raise
+                        if parts:
+                            try:
+                                await _concat_mp3s(parts, output_path)
+                            except Exception:
+                                pass
+                        raise RuntimeError(
+                            f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                        ) from chunk_err
                     if i < len(chunks) - 1:
                         await asyncio.sleep(0.3)
 
@@ -130,23 +126,13 @@ async def generate_speech_audio(
                 ])
             )
             if is_char_limit:
-                log.error("ElevenLabs TTS melebihi batas karakter (fallback dicegah): %s", e)
+                log.error("ElevenLabs TTS melebihi batas karakter: %s", e)
                 raise RuntimeError(
                     f"ElevenLabs Character Limit Exceeded: {e}"
                 ) from e
 
-            if not fallback_enabled:
-                log.error("ElevenLabs TTS failed and fallback is disabled: %s", e)
-                raise
-            log.warning("ElevenLabs TTS failed (%s). Falling back to Edge-TTS...", e)
-            edge_voice = "id-ID-ArdiNeural" if voice.lower() in ("adam", "antoni", "josh", "arnold") else "id-ID-GadisNeural"
-            if fallback_info is not None:
-                fallback_info["fell_back"] = True
-                fallback_info["original_provider"] = "elevenlabs"
-                fallback_info["fallback_provider"] = "edge"
-                fallback_info["fallback_voice"] = edge_voice
-                fallback_info["fallback_error"] = str(e)
-            return await generate_edge_tts(clean_text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+            log.error("ElevenLabs TTS failed: %s", e)
+            raise
 
     # 2. RUNWARE TTS
     elif prov == "runware":
@@ -195,16 +181,14 @@ async def generate_speech_audio(
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:
-                        if not fallback_enabled:
-                            if parts:
-                                try:
-                                    await _concat_mp3s(parts, output_path)
-                                except Exception:
-                                    pass
-                            raise RuntimeError(
-                                f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                            ) from chunk_err
-                        raise
+                        if parts:
+                            try:
+                                await _concat_mp3s(parts, output_path)
+                            except Exception:
+                                pass
+                        raise RuntimeError(
+                            f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                        ) from chunk_err
                     if i < len(chunks) - 1:
                         await asyncio.sleep(0.3)
 
@@ -213,21 +197,8 @@ async def generate_speech_audio(
                 for p in parts:
                     Path(p).unlink(missing_ok=True)
         except Exception as e:
-            if not fallback_enabled:
-                log.error("Runware TTS failed and fallback is disabled: %s", e)
-                raise
-            log.warning("Runware TTS failed (%s). Falling back to Edge-TTS...", e)
-            if target_lang == "en":
-                edge_voice = "en-US-GuyNeural" if ("male" in voice.lower() or "inworld" in voice.lower()) else "en-US-JennyNeural"
-            else:
-                edge_voice = "id-ID-ArdiNeural" if "male" in voice.lower() or "inworld" in voice.lower() else "id-ID-GadisNeural"
-            if fallback_info is not None:
-                fallback_info["fell_back"] = True
-                fallback_info["original_provider"] = "runware"
-                fallback_info["fallback_provider"] = "edge"
-                fallback_info["fallback_voice"] = edge_voice
-                fallback_info["fallback_error"] = str(e)
-            return await generate_edge_tts(clean_text, output_path, voice=edge_voice, rate=rate, pitch=pitch)
+            log.error("Runware TTS failed: %s", e)
+            raise
 
     # 3. GEMINI TTS
     elif prov == "gemini":
@@ -276,16 +247,14 @@ async def generate_speech_audio(
                         )
                         parts.append(part_path)
                     except Exception as chunk_err:
-                        if not fallback_enabled:
-                            if parts:
-                                try:
-                                    await _concat_mp3s(parts, output_path)
-                                except Exception as concat_err:
-                                    log.warning("Failed to concat partial audio chunks: %s", concat_err)
-                            raise RuntimeError(
-                                f"Sintesis suara {provider.upper()} terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                            ) from chunk_err
-                        raise
+                        if parts:
+                            try:
+                                await _concat_mp3s(parts, output_path)
+                            except Exception as concat_err:
+                                log.warning("Failed to concat partial audio chunks: %s", concat_err)
+                        raise RuntimeError(
+                            f"Sintesis suara {provider.upper()} terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                        ) from chunk_err
 
                     if i < len(chunks) - 1:
                         await asyncio.sleep(0.5)
@@ -295,32 +264,8 @@ async def generate_speech_audio(
                 for p in parts:
                     Path(p).unlink(missing_ok=True)
         except Exception as e:
-            if not fallback_enabled:
-                log.error("TTS generation failed and fallback is disabled: %s", e)
-                raise
-
-            log.warning(
-                "Gemini TTS synthesis failed (%s). Automatically falling back to Edge-TTS to guarantee audible speech...",
-                e,
-            )
-            if target_lang == "en":
-                edge_voice = "en-US-GuyNeural" if voice in ("Charon", "Fenrir", "Orus", "Mimas") else "en-US-JennyNeural"
-            else:
-                edge_voice = "id-ID-ArdiNeural" if voice in ("Charon", "Fenrir", "Orus") else "id-ID-GadisNeural"
-            if fallback_info is not None:
-                fallback_info["fell_back"] = True
-                fallback_info["original_provider"] = "gemini"
-                fallback_info["fallback_provider"] = "edge"
-                fallback_info["fallback_voice"] = edge_voice
-                fallback_info["fallback_error"] = str(e)
-
-            return await generate_edge_tts(
-                clean_text,
-                output_path,
-                voice=edge_voice,
-                rate=rate,
-                pitch=pitch,
-            )
+            log.error("Gemini TTS failed: %s", e)
+            raise
 
     # 4. EDGE-TTS
     else:
