@@ -19,6 +19,7 @@ import {
   StopCircle,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
+import { SourceVideoPlayer } from "./SourceVideoPlayer";
 import { StudioTabHeader } from "@/components/layout";
 import { useStudioStore } from "@/lib/store";
 import { Project, SourceVideo, Scene, YTInfoResponse, YTFormatOption } from "@/types";
@@ -71,6 +72,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [downloadingFormatId, setDownloadingFormatId] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<SourceVideo | null>(null);
   const [brokenThumbnails, setBrokenThumbnails] = useState<Record<string, boolean>>({});
+  const [playerVideo, setPlayerVideo] = useState<SourceVideo | null>(null);
 
   // Urutkan scene sesuai urutan asli video: source video sequence, lalu scene_index dan start_time
   const sortedScenes = useMemo(() => {
@@ -453,6 +455,22 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           </span>
                         )}
                       </div>
+
+                      {/* Play button for ready videos */}
+                      {vid.status === "ready" && vid.file_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPlayerVideo(vid)}
+                          className="mb-2 h-7 gap-1.5 text-[11px] w-full"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          Putar Video
+                          {vid.heatmap_data && vid.heatmap_data.length > 0 && (
+                            <span className="text-[9px] text-muted-foreground ml-auto">🔥 Heatmap</span>
+                          )}
+                        </Button>
+                      )}
 
                       {/* Inline Progress for Downloading */}
                       {vid.status === "downloading" && (
@@ -886,6 +904,38 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 </div>
 
                 <div className="space-y-1.5 border-t border-border pt-2">
+                  {/* Heatmap preview (before download) */}
+                  {ytInfo.heatmap && ytInfo.heatmap.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                        🔥 Most Replayed Heatmap
+                      </p>
+                      <div className="flex items-end h-6 gap-px rounded overflow-hidden bg-muted/30">
+                        {ytInfo.heatmap.map((b, i) => {
+                          const height = Math.max(4, b.value * 100);
+                          const hue = 30 - b.value * 30;
+                          const sat = 40 + b.value * 55;
+                          const light = 70 - b.value * 30;
+                          return (
+                            <div
+                              key={i}
+                              className="flex-1 rounded-t-sm"
+                              style={{
+                                height: `${height}%`,
+                                backgroundColor: `hsl(${hue}, ${sat}%, ${light}%)`,
+                                opacity: 0.8,
+                              }}
+                              title={`${Math.round(b.value * 100)}%`}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                        Bar tinggi = bagian paling sering ditonton ulang
+                      </p>
+                    </div>
+                  )}
+
                   <p className="text-xs font-semibold text-muted-foreground mb-1.5">
                     Pilih Resolusi Download:
                   </p>
@@ -1011,6 +1061,17 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             tags={previewScene.tags}
             transcript={previewScene.transcript}
             sceneIndex={previewScene.scene_index}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 8. MODAL: SOURCE VIDEO PLAYER + HEATMAP                                   */}
+        {/* ========================================================================= */}
+        {playerVideo && (
+          <SourceVideoPlayer
+            isOpen={Boolean(playerVideo)}
+            onClose={() => setPlayerVideo(null)}
+            video={playerVideo}
           />
         )}
       </div>

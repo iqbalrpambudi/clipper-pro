@@ -141,6 +141,12 @@ export interface WatermarkConfig {
   shadow_color?: string;
 }
 
+export interface HeatmapBucket {
+  start_time: number;
+  end_time: number;
+  value: number;
+}
+
 export interface SourceVideo {
   id: string;
   project_id: string;
@@ -156,6 +162,7 @@ export interface SourceVideo {
   status: "pending" | "downloading" | "processing" | "ready" | "failed";
   progress: number;
   error_message?: string | null;
+  heatmap_data?: HeatmapBucket[] | null;
   created_at: string;
 }
 
@@ -516,6 +523,7 @@ export interface YTInfoResponse {
   duration_str: string;
   thumbnail?: string | null;
   formats: YTFormatOption[];
+  heatmap?: HeatmapBucket[] | null;
 }
 
 export interface CostEstimateResponse {

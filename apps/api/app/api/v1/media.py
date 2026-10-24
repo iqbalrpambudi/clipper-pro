@@ -67,6 +67,7 @@ async def list_media(project_id: str, db: AsyncSession = Depends(get_db)):
             status=v.status,
             progress=v.progress,
             error_message=v.error_message,
+            heatmap_data=v.heatmap_data,
             created_at=v.created_at,
         )
         for v in videos
@@ -179,6 +180,7 @@ async def upload_media_files(
             status=v.status,
             progress=v.progress,
             error_message=v.error_message,
+            heatmap_data=v.heatmap_data,
             created_at=v.created_at,
         )
         for v in created_videos
@@ -268,6 +270,7 @@ async def trigger_youtube_download(
         status=video.status,
         progress=video.progress,
         error_message=None,
+        heatmap_data=None,
         created_at=video.created_at,
     )
 

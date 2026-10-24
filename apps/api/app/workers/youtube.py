@@ -102,8 +102,19 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                     if yt_meta.title:
                         clean_t = yt_meta.title.strip()
                         video.filename = clean_t if clean_t.lower().endswith(".mp4") else f"{clean_t}.mp4"
+                    # Save heatmap if available
+                    if yt_meta.heatmap:
+                        video.heatmap_data = [b.model_dump() for b in yt_meta.heatmap]
                 except Exception as ex:
                     log.debug("Could not resolve video title from yt-dlp metadata: %s", ex)
+            else:
+                # Still fetch heatmap even if title is already set
+                try:
+                    yt_meta = await get_video_info(video.youtube_url)
+                    if yt_meta.heatmap:
+                        video.heatmap_data = [b.model_dump() for b in yt_meta.heatmap]
+                except Exception as ex:
+                    log.debug("Could not fetch heatmap data: %s", ex)
 
             if await is_cancelled(video.project_id, video_id=video_id):
                 raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")

@@ -57,6 +57,7 @@ class SourceVideo(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")  # pending, downloading, processing, ready, failed
     progress: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    heatmap_data: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)  # YouTube "most replayed" [{start_time, end_time, value}]
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

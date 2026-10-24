@@ -64,6 +64,11 @@ class ProjectUpdate(BaseModel):
     world_setting: Optional[Dict[str, Any]] = None
 
 
+class HeatmapBucketOut(BaseModel):
+    start_time: float
+    end_time: float
+    value: float
+
 class SourceVideoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -81,6 +86,7 @@ class SourceVideoResponse(BaseModel):
     status: str
     progress: int
     error_message: Optional[str] = None
+    heatmap_data: Optional[List[HeatmapBucketOut]] = None
     created_at: datetime
 
 

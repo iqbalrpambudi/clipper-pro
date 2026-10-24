@@ -125,12 +125,28 @@ async def get_video_info(url: str) -> YTInfoResponse:
             )
         )
 
+    # Extract YouTube "most replayed" heatmap if available
+    raw_heatmap = data.get("heatmap")
+    heatmap = None
+    if raw_heatmap and isinstance(raw_heatmap, list):
+        from app.schemas.media import HeatmapBucket
+        heatmap = [
+            HeatmapBucket(
+                start_time=b["start_time"],
+                end_time=b["end_time"],
+                value=b["value"],
+            )
+            for b in raw_heatmap
+            if isinstance(b, dict) and "start_time" in b
+        ] or None
+
     return YTInfoResponse(
         title=title,
         duration=duration,
         duration_str=_format_duration(duration),
         thumbnail=thumbnail,
         formats=sorted_formats,
+        heatmap=heatmap,
     )
 
 

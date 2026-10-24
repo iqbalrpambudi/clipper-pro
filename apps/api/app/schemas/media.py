@@ -15,12 +15,18 @@ class YTFormatOption(BaseModel):
     label: str
 
 
+class HeatmapBucket(BaseModel):
+    start_time: float
+    end_time: float
+    value: float
+
 class YTInfoResponse(BaseModel):
     title: str
     duration: float
     duration_str: str
     thumbnail: Optional[str] = None
     formats: List[YTFormatOption] = []
+    heatmap: Optional[List[HeatmapBucket]] = None
 
 
 class YTDownloadRequest(BaseModel):
