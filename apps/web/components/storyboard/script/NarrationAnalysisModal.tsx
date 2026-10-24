@@ -313,14 +313,14 @@ export function NarrationAnalysisModal({
               </div>
 
               {/* Navigation Tabs (Overview vs Improvements) */}
-              <div className="flex items-center gap-2 border-b border-[#E5E1D7] pb-2">
+              <div className="workspace-filter-pills flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setActiveTab("overview")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  className={`flex items-center gap-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
                     activeTab === "overview"
-                      ? "border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
-                      : "text-[#77766D] hover:text-[#26251F]"
+                      ? "workspace-filter-active"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
@@ -329,10 +329,10 @@ export function NarrationAnalysisModal({
                 <button
                   type="button"
                   onClick={() => setActiveTab("improvements")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  className={`flex items-center gap-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
                     activeTab === "improvements"
-                      ? "border border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
-                      : "text-[#77766D] hover:text-[#26251F]"
+                      ? "workspace-filter-active"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <FileCheck className="w-3.5 h-3.5" />

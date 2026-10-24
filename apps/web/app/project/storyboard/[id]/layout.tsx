@@ -24,21 +24,13 @@ interface StoryboardLayoutProps {
   params: Promise<{ id: string }>;
 }
 
-const STORYBOARD_TABS = [
-  "storyboard_script",
-  "storyboard_voice",
-  "storyboard_images",
-  "storyboard_timeline",
-  "storyboard_render",
-  "storyboard_youtube",
-];
-
 export default function StoryboardLayout({ children, params }: StoryboardLayoutProps) {
   const { id } = use(params);
   const router = useRouter();
   const {
     activeTab,
     setActiveTab,
+    setProjectMode,
     activeTask,
     setActiveTask,
     setCurrentProjectId,
@@ -49,11 +41,12 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
   // Reset activeTab to initial Tab 1 whenever project opens or switches
   const lastMountedProjectIdRef = useRef<string | null>(null);
   useEffect(() => {
+    setProjectMode("storyboard");
     if (lastMountedProjectIdRef.current !== id) {
       lastMountedProjectIdRef.current = id;
       setActiveTab("storyboard_script");
     }
-  }, [id, setActiveTab]);
+  }, [id, setActiveTab, setProjectMode]);
 
   // Scope active project ID in store
   useEffect(() => {
@@ -74,18 +67,6 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
       router.replace(`/project/short/${id}`);
     }
   }, [project, id, router]);
-
-  // Normalize activeTab for storyboard studio
-  useEffect(() => {
-    if (!STORYBOARD_TABS.includes(activeTab)) {
-      if (activeTab === "narration") setActiveTab("storyboard_script");
-      else if (activeTab === "tts") setActiveTab("storyboard_voice");
-      else if (activeTab === "timeline" || activeTab === "storyboard_watermark")
-        setActiveTab("storyboard_timeline");
-      else if (activeTab === "render") setActiveTab("storyboard_render");
-      else setActiveTab("storyboard_script");
-    }
-  }, [activeTab, setActiveTab]);
 
   // Restore activeTask on page refresh from project database state if not yet set by SSE
   useEffect(() => {

@@ -321,11 +321,11 @@ export function ModelsConfigTab() {
   return (
     <form onSubmit={handleSaveModel} className="space-y-6">
       {/* Section 1: LLM & Vision Config */}
-      <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-brand-400" />
-            <h3 className="text-sm font-bold text-white">1. Konfigurasi LLM & Vision Model</h3>
+            <h3 className="text-sm font-bold text-foreground">1. Konfigurasi LLM & Vision Model</h3>
           </div>
           <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-[10px]">
             OpenAI & Gemini Compatible
@@ -334,7 +334,7 @@ export function ModelsConfigTab() {
 
         <div className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">API Base URL</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">API Base URL</label>
             <Input
               type="text"
               placeholder="http://localhost:20128/v1 atau https://api.openai.com/v1"
@@ -362,7 +362,7 @@ export function ModelsConfigTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-muted-foreground">
                   Chat Model (Naskah Narasi)
                 </label>
                 <Button
@@ -396,11 +396,11 @@ export function ModelsConfigTab() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-muted-foreground">
                   Vision Model (Tagging Scene Video)
                 </label>
                 {availableModels.length > 0 && (
-                  <span className="text-[10px] text-slate-400 font-mono">Datalist aktif</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">Datalist aktif</span>
                 )}
               </div>
               <Input
@@ -417,9 +417,9 @@ export function ModelsConfigTab() {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-300">API Key</label>
+              <label className="block text-xs font-semibold text-muted-foreground">API Key</label>
               {config?.has_api_key && (
-                <span className="text-[10px] text-emerald-400 font-mono">
+                <span className="text-[10px] text-emerald-600 font-mono">
                   Tersimpan: {config.api_key_masked}
                 </span>
               )}
@@ -457,7 +457,7 @@ export function ModelsConfigTab() {
 
           {testResult && (
             <div
-              className={`text-xs font-mono flex items-center gap-1.5 ${testResult.success ? "text-emerald-400" : "text-rose-400"}`}
+              className={`text-xs font-mono flex items-center gap-1.5 ${testResult.success ? "text-emerald-600" : "text-rose-600"}`}
             >
               {testResult.success ? (
                 <CheckCircle2 className="w-4 h-4" />
@@ -473,11 +473,11 @@ export function ModelsConfigTab() {
       </div>
 
       {/* Section 2: TTS Configuration */}
-      <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Volume2 className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white">2. Konfigurasi Text-to-Speech (TTS)</h3>
+            <Volume2 className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-sm font-bold text-foreground">2. Konfigurasi Text-to-Speech (TTS)</h3>
           </div>
           <div className="flex items-center gap-1.5">
             <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-[10px]">
@@ -488,7 +488,7 @@ export function ModelsConfigTab() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
               Default TTS Provider
             </label>
             <NativeSelect value={ttsProvider} onChange={(e) => setTtsProvider(e.target.value)}>
@@ -507,7 +507,7 @@ export function ModelsConfigTab() {
           {ttsProvider === "gemini" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Gemini TTS Model
                 </label>
                 <NativeSelect value={ttsModel} onChange={(e) => setTtsModel(e.target.value)}>
@@ -528,7 +528,7 @@ export function ModelsConfigTab() {
                     Gemini 2.5 Pro TTS Preview (high-res)
                   </option>
                 </NativeSelect>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5 menit)
                   untuk intonasi vokal seragam.
                 </p>
@@ -536,11 +536,11 @@ export function ModelsConfigTab() {
 
               <div className="sm:col-span-2">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-muted-foreground">
                     Gemini TTS API Key (Tersimpan Terenkripsi)
                   </label>
                   {config?.has_tts_api_key && (
-                    <span className="text-[10px] text-emerald-400 font-mono">
+                    <span className="text-[10px] text-emerald-600 font-mono">
                       Tersimpan: {config.tts_api_key_masked}
                     </span>
                   )}
@@ -564,7 +564,7 @@ export function ModelsConfigTab() {
           {ttsProvider === "elevenlabs" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   ElevenLabs Model
                 </label>
                 <NativeSelect
@@ -585,7 +585,7 @@ export function ModelsConfigTab() {
                   </option>
                   <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Generasi Sebelumnya)</option>
                 </NativeSelect>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal
                   100% konsisten dari awal hingga akhir.
                 </p>
@@ -593,11 +593,11 @@ export function ModelsConfigTab() {
 
               <div className="sm:col-span-2">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-muted-foreground">
                     ElevenLabs API Key (Tersimpan Terenkripsi)
                   </label>
                   {config?.has_elevenlabs_api_key && (
-                    <span className="text-[10px] text-emerald-400 font-mono">
+                    <span className="text-[10px] text-emerald-600 font-mono">
                       Tersimpan: {config.elevenlabs_api_key_masked}
                     </span>
                   )}
@@ -621,7 +621,7 @@ export function ModelsConfigTab() {
           {ttsProvider === "runware" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Runware TTS Model
                 </label>
                 <NativeSelect
@@ -642,7 +642,7 @@ export function ModelsConfigTab() {
                     MiniMax Speech 2.8 (High-realism prosody & emosional)
                   </option>
                 </NativeSelect>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik) dan
                   latensi tinggi.
                 </p>
@@ -650,11 +650,11 @@ export function ModelsConfigTab() {
 
               <div className="sm:col-span-2">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-muted-foreground">
                     Runware API Key (Tersimpan Terenkripsi)
                   </label>
                   {(config?.has_runware_api_key || config?.has_image_api_key) && (
-                    <span className="text-[10px] text-emerald-400 font-mono">
+                    <span className="text-[10px] text-emerald-600 font-mono">
                       Tersimpan: {config.runware_api_key_masked || config.image_api_key_masked}
                     </span>
                   )}
@@ -670,7 +670,7 @@ export function ModelsConfigTab() {
                   onChange={(e) => setRunwareApiKey(e.target.value)}
                   className="text-xs font-mono"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware pada
                   Section 3 di bawah.
                 </p>
@@ -692,14 +692,14 @@ export function ModelsConfigTab() {
             {isTestingTts ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             )}
             <span>Test Koneksi TTS ({ttsProvider.toUpperCase()})</span>
           </Button>
 
           {testTtsResult && (
             <div
-              className={`text-xs font-mono flex items-center gap-1.5 ${testTtsResult.success ? "text-emerald-400" : "text-rose-400"}`}
+              className={`text-xs font-mono flex items-center gap-1.5 ${testTtsResult.success ? "text-emerald-600" : "text-rose-600"}`}
             >
               {testTtsResult.success ? (
                 <CheckCircle2 className="w-4 h-4" />
@@ -715,11 +715,11 @@ export function ModelsConfigTab() {
       </div>
 
       {/* Section 3: AI Image Generator Configuration */}
-      <div className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-violet-400" />
-            <h3 className="text-sm font-bold text-white">
+            <h3 className="text-sm font-bold text-foreground">
               3. Konfigurasi AI Image Generator (Storyboard Explainer)
             </h3>
           </div>
@@ -735,7 +735,7 @@ export function ModelsConfigTab() {
 
         <div className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
               Image API Base URL
             </label>
             <Input
@@ -750,7 +750,7 @@ export function ModelsConfigTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative" ref={imageDropdownRef}>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-muted-foreground">
                   Image Model Name
                 </label>
                 <Button
@@ -798,7 +798,7 @@ export function ModelsConfigTab() {
                 <button
                   type="button"
                   onClick={() => setIsImageDropdownOpen((prev) => !prev)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white rounded-lg transition"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
                   title="Tampilkan daftar model"
                 >
                   <ChevronDown
@@ -827,7 +827,7 @@ export function ModelsConfigTab() {
               {isImageDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-2.5 shadow-xl animate-scale-pop">
                   <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#E5E1D7] bg-[#F1EEE6] px-2.5 py-1.5">
-                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <Input
                       type="text"
                       placeholder="Cari model dari endpoint..."
@@ -839,7 +839,7 @@ export function ModelsConfigTab() {
                       <button
                         type="button"
                         onClick={() => setImageModelSearch("")}
-                        className="text-slate-500 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -848,30 +848,36 @@ export function ModelsConfigTab() {
 
                   {/* Filter tabs */}
                   {featuredImageModels.length > 0 && (
-                    <div className="flex items-center gap-1.5 mb-2 px-1">
-                      <WorkspaceChip
+                    <div className="workspace-filter-pills flex items-center gap-1 mb-2">
+                      <button
                         type="button"
                         onClick={() => setImageTabFilter("image_only")}
-                        selected={imageTabFilter === "image_only"}
-                        className="font-sans text-[10px]"
+                        className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
+                          imageTabFilter === "image_only"
+                            ? "workspace-filter-active"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
                         Khusus Gambar ({featuredImageModels.length})
-                      </WorkspaceChip>
-                      <WorkspaceChip
+                      </button>
+                      <button
                         type="button"
                         onClick={() => setImageTabFilter("all")}
-                        selected={imageTabFilter === "all"}
-                        className="font-sans text-[10px]"
+                        className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
+                          imageTabFilter === "all"
+                            ? "workspace-filter-active"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
                         Semua Model ({availableImageModels.length})
-                      </WorkspaceChip>
+                      </button>
                     </div>
                   )}
 
                   {/* Models list */}
                   <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
                     {isFetchingImageModels ? (
-                      <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400">
+                      <div className="py-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
                         <span className="text-[11px] font-mono">
                           Mengambil model dari endpoint...
@@ -898,7 +904,7 @@ export function ModelsConfigTab() {
 
                         if (filtered.length === 0) {
                           return (
-                            <div className="py-5 text-center text-slate-500 text-xs px-2">
+                            <div className="py-5 text-center text-muted-foreground text-xs px-2">
                               Tidak ada model yang cocok dengan pencarian. Anda tetap dapat mengetik
                               nama model sendiri.
                             </div>
@@ -944,7 +950,7 @@ export function ModelsConfigTab() {
               )}
 
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <span className="text-[10px] text-slate-500">Preset:</span>
+                <span className="text-[10px] text-muted-foreground">Preset:</span>
                 {[
                   "runware:100@1",
                   "inferhub/cb/gemini-2.5-flash-image",
@@ -965,11 +971,11 @@ export function ModelsConfigTab() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-muted-foreground">
                   Image API Key (Tersimpan Terenkripsi)
                 </label>
                 {config?.has_image_api_key && (
-                  <span className="text-[10px] text-emerald-400 font-mono">
+                  <span className="text-[10px] text-emerald-600 font-mono">
                     Tersimpan: {config.image_api_key_masked}
                   </span>
                 )}
@@ -991,10 +997,10 @@ export function ModelsConfigTab() {
           {/* Concurrency Selector 1-4 (default 2) */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-muted-foreground">
                 Jumlah Paralel Request Generator (1 - 4 Concurrent)
               </label>
-              <span className="text-[10px] text-emerald-400 font-mono">
+              <span className="text-[10px] text-emerald-600 font-mono">
                 Aktif: {imageConcurrency} request serentak
               </span>
             </div>
@@ -1042,7 +1048,7 @@ export function ModelsConfigTab() {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-500 mt-1.5">
+            <p className="text-[10px] text-muted-foreground mt-1.5">
               Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch. Default
               adalah <strong>2</strong>.
             </p>
@@ -1050,7 +1056,7 @@ export function ModelsConfigTab() {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-muted-foreground">
                 Master Style Prompt Preset (Doodle Explainer / Parchment Stickman)
               </label>
               <div className="flex items-center gap-3">
@@ -1064,7 +1070,7 @@ export function ModelsConfigTab() {
                 <button
                   type="button"
                   onClick={() => setImageSystemPrompt(DEFAULT_IMAGE_STYLE_PROMPT)}
-                  className="text-[10px] text-slate-400 hover:text-slate-300 flex items-center gap-1 font-mono"
+                  className="text-[10px] text-muted-foreground hover:text-muted-foreground flex items-center gap-1 font-mono"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
                   <span>Reset ke Default</span>
@@ -1078,7 +1084,7 @@ export function ModelsConfigTab() {
               placeholder="Instruksi gaya visual yang akan digabungkan ke setiap adegan..."
               className="text-xs font-mono leading-relaxed"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className="text-[10px] text-muted-foreground mt-1">
               Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya
               visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam,
               parchment tea-stained watercolor) dari awal sampai akhir. Gunakan{" "}
@@ -1107,7 +1113,7 @@ export function ModelsConfigTab() {
 
           {testImageResult && (
             <div
-              className={`text-xs font-mono flex items-center gap-1.5 ${testImageResult.success ? "text-emerald-400" : "text-rose-400"}`}
+              className={`text-xs font-mono flex items-center gap-1.5 ${testImageResult.success ? "text-emerald-600" : "text-rose-600"}`}
             >
               {testImageResult.success ? (
                 <CheckCircle2 className="w-4 h-4" />

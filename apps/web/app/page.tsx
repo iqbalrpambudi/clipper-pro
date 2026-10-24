@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   Trash2,
   Edit3,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useProjects,
@@ -21,6 +22,8 @@ import {
   useUpdateProject,
 } from "@/hooks/useProjects";
 import { Project } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
 import { WorkspaceShell } from "@/components/layout";
 import {
@@ -83,6 +86,12 @@ export default function DashboardPage() {
   const createMutation = useCreateProject();
   const deleteMutation = useDeleteProject();
   const updateMutation = useUpdateProject();
+  const { data: modelConfig } = useQuery({
+    queryKey: ["model-config"],
+    queryFn: api.getModelConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  const needsApiKeySetup = modelConfig && !modelConfig.has_api_key;
 
   // Mode counts
   const shortCount = useMemo(
@@ -243,6 +252,27 @@ export default function DashboardPage() {
             Buat project
           </Button>
         </header>
+
+        {/* Onboarding banner: API key not configured */}
+        {needsApiKeySetup && (
+          <div className="mx-auto max-w-5xl px-6 pt-4">
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-amber-900">
+                  API Key belum dikonfigurasi
+                </p>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Fitur AI (narasi, TTS, gambar) membutuhkan API key. Atur di Pengaturan untuk
+                  mulai membuat video.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100">
+                <Link href="/settings">Atur API Key</Link>
+              </Button>
+            </div>
+          </div>
+        )}
 
         {featuredProject && !isLoading && (
           <section className="workspace-featured-section" aria-labelledby="featured-project-title">

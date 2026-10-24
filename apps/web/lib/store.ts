@@ -36,7 +36,41 @@ export interface TaskEvent {
   timestamp?: string;
 }
 
+const SHORT_TABS: StudioTab[] = ["media", "narration", "tts", "timeline", "render"];
+const STORYBOARD_TABS: StudioTab[] = [
+  "storyboard_script", "storyboard_voice", "storyboard_images",
+  "storyboard_timeline", "storyboard_render", "storyboard_youtube",
+];
+
+const SHORT_FALLBACK: Record<string, StudioTab> = {
+  storyboard_script: "narration",
+  storyboard_voice: "tts",
+  storyboard_timeline: "timeline",
+  storyboard_render: "render",
+};
+
+const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
+  narration: "storyboard_script",
+  tts: "storyboard_voice",
+  timeline: "storyboard_timeline",
+  storyboard_watermark: "storyboard_timeline",
+  render: "storyboard_render",
+};
+
+function normalizeTab(tab: StudioTab, mode: "short" | "storyboard" | null): StudioTab {
+  if (!mode) return tab;
+  if (mode === "short") {
+    if (SHORT_TABS.includes(tab)) return tab;
+    return SHORT_FALLBACK[tab] ?? "media";
+  }
+  if (STORYBOARD_TABS.includes(tab)) return tab;
+  return STORYBOARD_FALLBACK[tab] ?? "storyboard_script";
+}
+
 interface StudioState {
+  projectMode: "short" | "storyboard" | null;
+  setProjectMode: (mode: "short" | "storyboard" | null) => void;
+
   activeTab: StudioTab;
   setActiveTab: (tab: StudioTab) => void;
 
@@ -112,8 +146,17 @@ export interface SubtitleDraftState {
 }
 
 export const useStudioStore = create<StudioState>((set, get) => ({
+  projectMode: null,
+  setProjectMode: (projectMode) => {
+    const { activeTab } = get();
+    set({ projectMode, activeTab: normalizeTab(activeTab, projectMode) });
+  },
+
   activeTab: "media",
-  setActiveTab: (activeTab) => set({ activeTab }),
+  setActiveTab: (tab) => {
+    const { projectMode } = get();
+    set({ activeTab: normalizeTab(tab, projectMode) });
+  },
 
   currentTime: 0,
   setCurrentTime: (currentTime) => set({ currentTime }),

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { YouTubeThumbnailHistory } from "@/types";
 import { Button, Textarea } from "@/components/ui";
+import Link from "next/link";
 
 interface FormulaItem {
   id: string;
@@ -145,6 +146,15 @@ export function AiThumbnailGenerator({
                 <span>Gaya {activePresetName}</span>
               </button>
             )}
+
+            <Link
+              href="/image-studio"
+              className="text-[10px] font-medium text-muted-foreground hover:text-primary flex items-center gap-1"
+              title={activePresetName ? "Edit preset di Art Studio" : "Buat visual preset di Art Studio"}
+            >
+              <Palette className="w-3 h-3" />
+              <span>{activePresetName ? "Edit Preset" : "Buat Preset"} →</span>
+            </Link>
           </div>
         </div>
 

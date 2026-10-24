@@ -16,7 +16,7 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, S
       <SliderPrimitive.Track
         className={cn(
           "relative h-1.5 w-full grow overflow-hidden rounded-full",
-          appearance === "workspace" ? "bg-[#E5E1D7]" : "bg-[#262626]"
+          appearance === "workspace" ? "bg-[#E5E1D7]" : "bg-muted"
         )}
       >
         <SliderPrimitive.Range

@@ -1,20 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Type,
-  Stamp,
   Layers,
   Palette,
   Move,
   Check,
-  Image as ImageIcon,
-  UploadCloud,
-  Trash2,
-  Loader2,
 } from "lucide-react";
-import { api } from "@/lib/api";
+
 import { useStudioStore } from "@/lib/store";
 import { Project, WatermarkConfig } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -142,30 +136,38 @@ const PRESETS: {
     },
   },
   {
-    name: "Logo Kiri Atas",
-    desc: "Preset posisi logo",
+    name: "Overlay Transparan",
+    desc: "Teks besar transparan di tengah",
     config: {
       enabled: true,
-      watermark_type: "image",
-      position: "top-left",
-      offset_x: 32,
-      offset_y: 32,
-      image_width: 150,
-      opacity: 0.9,
-      has_shadow: true,
+      watermark_type: "text",
+      text: "DRAFT",
+      font_family: "Anton",
+      font_size: 64,
+      font_color: "#FFFFFF",
+      opacity: 0.2,
+      position: "center",
+      offset_x: 0,
+      offset_y: 0,
+      has_background: false,
+      has_shadow: false,
     },
   },
   {
-    name: "Logo Kanan Bawah",
-    desc: "Preset watermark logo",
+    name: "Watermark Klasik",
+    desc: "Serif elegan kanan bawah",
     config: {
       enabled: true,
-      watermark_type: "image",
+      watermark_type: "text",
+      text: "Cliper Studio",
+      font_family: "Playfair Display",
+      font_size: 30,
+      font_color: "#FFFFFF",
+      opacity: 0.7,
       position: "bottom-right",
-      offset_x: 35,
-      offset_y: 35,
-      image_width: 140,
-      opacity: 0.85,
+      offset_x: 30,
+      offset_y: 30,
+      has_background: false,
       has_shadow: true,
     },
   },
@@ -174,7 +176,7 @@ const PRESETS: {
 function getInitialWatermark(wm?: WatermarkConfig | null): WatermarkConfig {
   return {
     enabled: wm?.enabled ?? false,
-    watermark_type: wm?.watermark_type || "text",
+    watermark_type: "text",
     text: wm?.text || "@cliperpro",
     font_family: wm?.font_family || "Poppins",
     font_size: wm?.font_size ?? 34,
@@ -190,10 +192,6 @@ function getInitialWatermark(wm?: WatermarkConfig | null): WatermarkConfig {
     background_opacity: wm?.background_opacity ?? 0.5,
     has_shadow: wm?.has_shadow ?? true,
     shadow_color: wm?.shadow_color || "#000000",
-    image_url: wm?.image_url || null,
-    image_path: wm?.image_path || null,
-    image_width: wm?.image_width ?? 160,
-    image_height: wm?.image_height || null,
   };
 }
 
@@ -201,48 +199,28 @@ export function WatermarkCustomizePanel({
   project,
   onWatermarkChange,
 }: WatermarkCustomizePanelProps) {
-  const queryClient = useQueryClient();
   const { showToast } = useStudioStore();
 
   const [watermark, setWatermark] = useState<WatermarkConfig>(() =>
     getInitialWatermark(project.watermark)
   );
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync when project.watermark updates externally
+  // Sync when project.watermark updates externally (only if not mid-edit)
+  const lastCommitRef = useRef<WatermarkConfig | null>(null);
   useEffect(() => {
-    if (project.watermark) {
+    if (project.watermark && project.watermark !== lastCommitRef.current) {
       setWatermark(getInitialWatermark(project.watermark));
     }
   }, [project.watermark]);
 
-  const updateMutation = useMutation({
-    mutationFn: (newWm: WatermarkConfig) => api.updateProject(project.id, { watermark: newWm }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-    },
-    onError: (err: Error) => {
-      showToast(err.message || "Gagal menyimpan watermark", "error");
-    },
-  });
-
   const commitWatermark = (next: WatermarkConfig, showToastNotice?: string) => {
     setWatermark(next);
+    lastCommitRef.current = next;
     onWatermarkChange?.(next);
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    if (showToastNotice) {
+      showToast(showToastNotice, "info");
     }
-
-    debounceTimerRef.current = setTimeout(() => {
-      updateMutation.mutate(next);
-      if (showToastNotice) {
-        showToast(showToastNotice, "info");
-      }
-    }, 350);
   };
 
   const applyPreset = (preset: (typeof PRESETS)[0]) => {
@@ -261,133 +239,52 @@ export function WatermarkCustomizePanel({
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      showToast("File harus berupa gambar (PNG, JPG, WebP, SVG)", "error");
-      return;
-    }
-
-    setIsUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await api.uploadWatermarkImage(project.id, formData);
-      if (res.url) {
-        commitWatermark(
-          {
-            ...watermark,
-            watermark_type: "image",
-            image_url: res.url,
-            image_path: res.file_path,
-            enabled: true,
-          },
-          "Logo watermark berhasil diunggah"
-        );
-      }
-    } catch {
-      // Local preview fallback
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const localUrl = ev.target?.result as string;
-        commitWatermark(
-          {
-            ...watermark,
-            watermark_type: "image",
-            image_url: localUrl,
-            enabled: true,
-          },
-          "Gambar dimuat secara lokal"
-        );
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setIsUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const isImageMode = watermark.watermark_type === "image";
 
   return (
     <div className="space-y-5 text-foreground text-xs">
       {/* Header & Main Toggle */}
       <div className="bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7] shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-              <Stamp className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="font-semibold text-foreground text-sm flex items-center gap-2">
-                Watermark Video
-                {watermark.enabled ? (
-                  <Badge
-                    variant="default"
-                    className="text-[10px] bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
-                  >
-                    Aktif
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] text-muted-foreground border-[#D2CDBF]"
-                  >
-                    Nonaktif
-                  </Badge>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Teks overlay atau custom logo untuk identitas video
-              </p>
-            </div>
-          </div>
-
-          <label className="relative inline-flex items-center cursor-pointer">
+        <div className="flex items-center justify-between gap-3">
+          <label
+            htmlFor="watermark-enable-check"
+            className="flex items-center gap-3 cursor-pointer select-none flex-1"
+          >
             <input
+              id="watermark-enable-check"
               type="checkbox"
               checked={watermark.enabled}
               onChange={(e) => {
-                const next = { ...watermark, enabled: e.target.checked };
+                const checked = e.target.checked;
                 commitWatermark(
-                  next,
-                  e.target.checked ? "Watermark diaktifkan" : "Watermark dinonaktifkan"
+                  { ...watermark, enabled: checked },
+                  checked ? "Watermark diaktifkan." : "Watermark dinonaktifkan."
                 );
               }}
-              className="sr-only peer"
+              className="w-4 h-4 rounded accent-[#C45B3A] cursor-pointer"
             />
-            <div className="w-11 h-6 bg-[#E5E1D7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D2CDBF] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <div>
+              <span className="block text-xs font-semibold text-[#26251F]">
+                Gunakan Watermark pada Video
+              </span>
+              <span className="text-[10px] text-muted-foreground block">
+                {watermark.enabled
+                  ? "Watermark tampil di preview dan akan dibakar ke render video"
+                  : "Video bersih tanpa watermark (hanya visual adegan & audio narasi)"}
+              </span>
+            </div>
           </label>
-        </div>
 
-        {/* Watermark Type Selector: Text vs Custom Image */}
-        <div className="grid grid-cols-2 p-1 bg-[#F1EEE6] rounded-lg border border-[#E5E1D7] gap-1">
-          <button
-            type="button"
-            onClick={() => commitWatermark({ ...watermark, watermark_type: "text" })}
-            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              !isImageMode
-                ? "bg-primary text-primary-foreground shadow"
-                : "text-muted-foreground hover:text-foreground"
+          <Badge
+            variant={watermark.enabled ? "default" : "secondary"}
+            className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+              watermark.enabled
+                ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
+                : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
             }`}
           >
-            <Type className="w-3.5 h-3.5" />
-            <span>Teks Watermark</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => commitWatermark({ ...watermark, watermark_type: "image" })}
-            className={`py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              isImageMode
-                ? "bg-primary text-primary-foreground shadow"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span>Gambar / Logo</span>
-          </button>
+            {watermark.enabled ? "AKTIF" : "NONAKTIF"}
+          </Badge>
         </div>
 
         {/* Quick Presets Grid */}
@@ -413,158 +310,8 @@ export function WatermarkCustomizePanel({
         </div>
       </div>
 
-      {/* Mode-Specific Content: IMAGE vs TEXT */}
-      {isImageMode ? (
-        /* Image Watermark Configuration */
-        <div className="space-y-4 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
-          <div className="flex items-center justify-between">
-            <label className="font-semibold text-foreground flex items-center gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5 text-primary" />
-              Upload Logo / Gambar Watermark
-            </label>
-            <span className="text-[10px] text-muted-foreground">PNG transparan disarankan</span>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          {watermark.image_url ? (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F1EEE6] border border-[#E5E1D7]">
-              {/* Checkered pattern background for PNG transparency visibility */}
-              <div
-                className="w-16 h-16 rounded-lg border border-[#D2CDBF] flex items-center justify-center p-1.5 relative overflow-hidden"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(45deg, #1f1f1f 25%, transparent 25%), linear-gradient(-45deg, #1f1f1f 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1f1f1f 75%), linear-gradient(-45deg, transparent 75%, #1f1f1f 75%)",
-                  backgroundSize: "12px 12px",
-                  backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0px",
-                }}
-              >
-                <img
-                  src={watermark.image_url}
-                  alt="Watermark Logo"
-                  className="max-w-full max-h-full object-contain"
-                  style={{ opacity: watermark.opacity }}
-                />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-foreground truncate">
-                  Logo Kustom Terpilih
-                </div>
-                <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  Lebar: {watermark.image_width || 160}px • Opacity:{" "}
-                  {Math.round((watermark.opacity ?? 0.85) * 100)}%
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingImage}
-                    className="px-2.5 py-1 rounded-md bg-[#222] hover:bg-[#D2CDBF] text-[11px] text-foreground border border-[#DCD6C8] transition flex items-center gap-1"
-                  >
-                    {isUploadingImage ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <UploadCloud className="w-3 h-3 text-primary" />
-                    )}
-                    Ganti Logo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      commitWatermark({
-                        ...watermark,
-                        image_url: null,
-                        image_path: null,
-                      })
-                    }
-                    className="px-2.5 py-1 rounded-md bg-[#F8EEEA] hover:bg-[#F3E1D9] text-[#A9472C] border border-[#E9C9BD] text-[11px] transition flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#D2CDBF] hover:border-primary/60 rounded-xl p-6 text-center cursor-pointer transition bg-[#F3F0E8] hover:bg-[#FBFAF7] group"
-            >
-              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-2 text-primary group-hover:scale-110 transition">
-                {isUploadingImage ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <UploadCloud className="w-5 h-5" />
-                )}
-              </div>
-              <div className="font-semibold text-xs text-foreground group-hover:text-primary transition">
-                {isUploadingImage ? "Mengunggah Logo..." : "Klik atau Seret Logo / Gambar ke Sini"}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Format didukung: PNG, WebP, JPG, SVG (Maks. 5MB)
-              </p>
-            </div>
-          )}
-
-          {/* Image Size (Width) & Opacity Sliders */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-muted-foreground">Ukuran / Lebar Gambar</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {watermark.image_width || 160}px
-                </span>
-              </div>
-              <input
-                type="range"
-                min="40"
-                max="400"
-                step="5"
-                value={watermark.image_width || 160}
-                onChange={(e) =>
-                  commitWatermark({
-                    ...watermark,
-                    image_width: parseInt(e.target.value) || 160,
-                  })
-                }
-                className="w-full accent-primary h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-muted-foreground">Transparansi / Opacity</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {Math.round((watermark.opacity ?? 0.85) * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0.10"
-                max="1.0"
-                step="0.05"
-                value={watermark.opacity ?? 0.85}
-                onChange={(e) =>
-                  commitWatermark({
-                    ...watermark,
-                    opacity: parseFloat(e.target.value) || 0.85,
-                  })
-                }
-                className="w-full accent-primary h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Text Watermark Configuration */
-        <div className="space-y-4 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
+      {/* Text Watermark Configuration */}
+      <div className="space-y-4 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
           <div className="flex items-center justify-between">
             <label className="font-semibold text-foreground flex items-center gap-1.5">
               <Type className="w-3.5 h-3.5 text-primary" />
@@ -740,7 +487,6 @@ export function WatermarkCustomizePanel({
             </div>
           </div>
         </div>
-      )}
 
       {/* Shared Position Controls (9-Grid) */}
       <div className="space-y-3 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
@@ -845,8 +591,7 @@ export function WatermarkCustomizePanel({
           />
         </label>
 
-        {/* Background Box Badge Toggle (Only for text) */}
-        {!isImageMode && (
+        {/* Background Box Badge Toggle */}
           <div className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] space-y-2.5">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
@@ -911,7 +656,6 @@ export function WatermarkCustomizePanel({
               </div>
             )}
           </div>
-        )}
       </div>
     </div>
   );

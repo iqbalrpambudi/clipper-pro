@@ -545,7 +545,7 @@ export function TimelineTracks({
                       }}
                       className={`absolute top-1 bottom-1 rounded-md px-2 flex items-center overflow-hidden cursor-pointer transition border shadow-xs ${
                         active
-                          ? "bg-primary text-black border-primary font-semibold shadow-xs ring-1 ring-primary/40"
+                          ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs ring-1 ring-primary/40"
                           : "border-border bg-card text-foreground/80 hover:border-primary/40"
                       }`}
                       style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
@@ -631,9 +631,9 @@ export function TimelineTracks({
                     key={clip.id || idx}
                     className={`absolute top-1 bottom-1 rounded-lg overflow-hidden cursor-pointer group transition-shadow ${
                       isSel
-                        ? "ring-2 ring-accent-yellow shadow-lg shadow-accent-yellow/20 z-10"
-                        : "ring-1 ring-primary/40 hover:ring-primary"
-                    } ${isDropTarget ? "ring-2 ring-emerald-400" : ""}`}
+                        ? "ring-2 ring-primary shadow-lg shadow-primary/20 z-10"
+                        : "ring-1 ring-border hover:ring-primary/60"
+                    } ${isDropTarget ? "ring-2 ring-emerald-500" : ""}`}
                     style={{ left, width }}
                     onPointerDown={(e) => {
                       if (e.button !== 0) return;
@@ -647,7 +647,7 @@ export function TimelineTracks({
                   >
                     {/* Filmstrip background */}
                     <div
-                      className="absolute inset-0 bg-slate-900"
+                      className="absolute inset-0 bg-muted"
                       style={
                         thumbOk
                           ? {
@@ -669,8 +669,8 @@ export function TimelineTracks({
                     <div
                       className={`absolute inset-0 ${
                         isSel
-                          ? "bg-gradient-to-t from-black/85 via-black/20 to-accent-yellow/15"
-                          : "bg-gradient-to-t from-black/85 via-black/25 to-transparent"
+                          ? "bg-gradient-to-t from-black/50 via-black/10 to-primary/10"
+                          : "bg-gradient-to-t from-black/40 via-transparent to-transparent"
                       }`}
                     />
 
@@ -678,7 +678,7 @@ export function TimelineTracks({
                       <div className="absolute top-1 left-1 right-1 flex items-center gap-1">
                         <span
                           className={`px-1 rounded text-[9px] font-bold ${
-                            isSel ? "bg-accent-yellow text-black" : "bg-black/75 text-white"
+                            isSel ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground shadow-sm"
                           }`}
                         >
                           {idx + 1}
@@ -700,10 +700,10 @@ export function TimelineTracks({
 
                     {width > 44 && (
                       <div className="absolute bottom-1 left-1.5 right-2 flex items-end justify-between gap-1">
-                        <span className="text-[9px] text-slate-200 truncate leading-tight">
+                        <span className="text-[9px] text-foreground/80 truncate leading-tight">
                           {width > 100 ? clip.text || "" : ""}
                         </span>
-                        <span className="text-[9px] font-mono text-white/90 shrink-0">
+                        <span className="text-[9px] font-mono text-foreground/70 shrink-0">
                           {dur.toFixed(1)}s
                         </span>
                       </div>
@@ -711,7 +711,7 @@ export function TimelineTracks({
 
                     {isDropTarget && (
                       <div className="absolute inset-0 bg-emerald-500/30 backdrop-blur-[1px] flex items-center justify-center">
-                        <span className="px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-emerald-300 whitespace-nowrap">
+                        <span className="px-1.5 py-0.5 rounded bg-background/90 text-[9px] font-bold text-emerald-700 whitespace-nowrap shadow-sm">
                           {dropHover?.insert ? "Sisip di sini" : "Ganti scene"}
                         </span>
                       </div>
@@ -733,7 +733,7 @@ export function TimelineTracks({
                       }
                     >
                       <div
-                        className={`w-1 h-7 rounded-full ${dragEdge === idx ? "bg-accent-yellow shadow-md" : "bg-white/80"}`}
+                        className={`w-1 h-7 rounded-full ${dragEdge === idx ? "bg-primary shadow-md" : "bg-foreground/40"}`}
                       />
                     </div>
                   </div>
@@ -767,7 +767,7 @@ export function TimelineTracks({
             >
               {hasAudio && audioDuration > 0 ? (
                 <div
-                  className="absolute top-1 bottom-1 left-0 rounded-lg bg-amber-950/20 ring-1 ring-amber-500/30 overflow-hidden"
+                  className="absolute top-1 bottom-1 left-0 rounded-lg bg-amber-100 ring-1 ring-amber-300 overflow-hidden"
                   style={{ width: waveW }}
                 >
                   {peaks ? (
@@ -777,7 +777,7 @@ export function TimelineTracks({
                       style={{ width: waveW }}
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center px-3 text-[10px] text-amber-400/70">
+                    <div className="absolute inset-0 flex items-center px-3 text-[10px] text-amber-600">
                       Memuat waveform audio…
                     </div>
                   )}
@@ -795,7 +795,7 @@ export function TimelineTracks({
                         e.stopPropagation();
                         onReaddAudio();
                       }}
-                      className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 font-semibold cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 font-semibold cursor-pointer"
                     >
                       + Tambah Audio
                     </button>
@@ -807,7 +807,7 @@ export function TimelineTracks({
             {/* Loop range overlay */}
             {loopRange && (
               <div
-                className="absolute bg-accent-yellow/[0.08] border-x border-accent-yellow/60 pointer-events-none z-20"
+                className="absolute bg-primary/[0.08] border-x border-primary/60 pointer-events-none z-20"
                 style={{
                   left: x(loopRange.start),
                   width: Math.max(2, x(loopRange.end - loopRange.start)),

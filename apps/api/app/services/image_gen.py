@@ -392,6 +392,17 @@ async def generate_image_to_path(
         raise ValueError("Image API Key belum dikonfigurasi. Silakan atur di Model Settings.")
 
     chosen_model = model or settings.IMAGE_MODEL or "dall-e-3"
+
+    # Auto-prefix bare Gemini image model names for InferHub proxies.
+    # InferHub requires "inferhub/cb/" prefix but users/dynamic model lists
+    # may store the bare name (e.g. "gemini-2.5-flash-image").
+    _INFERHUB_IMAGE_MODELS = {
+        "gemini-2.5-flash-image": "inferhub/cb/gemini-2.5-flash-image",
+        "gemini-3.0-pro-image": "inferhub/cb/gemini-3.0-pro-image",
+    }
+    if "/" not in chosen_model and chosen_model in _INFERHUB_IMAGE_MODELS:
+        chosen_model = _INFERHUB_IMAGE_MODELS[chosen_model]
+
     effective_style = style_prompt if style_prompt is not None else settings.IMAGE_SYSTEM_PROMPT
     full_prompt = build_full_image_prompt(prompt, effective_style)
 

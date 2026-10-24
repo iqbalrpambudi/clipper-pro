@@ -31,7 +31,18 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { StudioTabHeader } from "@/components/layout";
 import { Project, ProjectDetail, Narration, NarrationTemplate, Scene } from "@/types";
-import { Button, Input, Textarea, Badge } from "@/components/ui";
+import {
+  Button,
+  Input,
+  Textarea,
+  Badge,
+  FilterPills,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 import { SectionPanel, EmptyState } from "@/components/fragments";
 import { cn } from "@/lib/utils";
 
@@ -42,13 +53,13 @@ interface NarrationTabProps {
   };
 }
 
+type NarrationCategory = "all" | "recap" | "fakta" | "edukasi" | "showcase" | "opini" | "custom";
+
 export function NarrationTab({ project }: NarrationTabProps) {
   const queryClient = useQueryClient();
   const { showToast, setActiveTab } = useStudioStore();
 
-  const [selectedCategory, setSelectedCategory] = useState<
-    "all" | "recap" | "fakta" | "edukasi" | "showcase" | "opini" | "custom"
-  >("all");
+  const [selectedCategory, setSelectedCategory] = useState<NarrationCategory>("all");
   const [selectedTemplateId, setSelectedTemplateId] = useState("recap_cinematic");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("dramatis");
@@ -72,6 +83,18 @@ export function NarrationTab({ project }: NarrationTabProps) {
   });
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
+
+  // Data-driven category pills
+  const CATEGORIES = [
+    { key: "all" as const, label: "Semua", icon: null, color: "" },
+    { key: "recap" as const, label: "Alur Cerita", icon: Clapperboard, color: "text-[#C45B3A]" },
+    { key: "fakta" as const, label: "Fakta", icon: Lightbulb, color: "text-[#8A6A2F]" },
+    { key: "edukasi" as const, label: "Edukasi", icon: BookOpen, color: "text-[#41627F]" },
+    { key: "showcase" as const, label: "Showcase", icon: Sparkles, color: "text-[#A9472C]" },
+    { key: "opini" as const, label: "Opini & POV", icon: MessageSquareQuote, color: "text-[#A9472C]" },
+  ];
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (project.narration) {
@@ -263,123 +286,25 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 </Badge>
               }
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
             >
               <div className="space-y-3">
-                {/* Category Filter Pills */}
-                <div className="flex items-center gap-1 overflow-x-auto rounded-lg border border-border bg-background p-1 text-xs no-scrollbar">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("all")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "all"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <span>Semua</span>
-                    <span className="text-[10px] opacity-75 font-mono">{categoryCounts.all}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("recap")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "recap"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Clapperboard className="w-3 h-3 text-[#C45B3A]" />
-                    <span>Alur Cerita</span>
-                    <span className="text-[10px] opacity-75 font-mono">{categoryCounts.recap}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("fakta")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "fakta"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Lightbulb className="w-3 h-3 text-[#8A6A2F]" />
-                    <span>Fakta</span>
-                    <span className="text-[10px] opacity-75 font-mono">{categoryCounts.fakta}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("edukasi")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "edukasi"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <BookOpen className="w-3 h-3 text-[#41627F]" />
-                    <span>Edukasi</span>
-                    <span className="text-[10px] opacity-75 font-mono">
-                      {categoryCounts.edukasi}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("showcase")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "showcase"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Sparkles className="w-3 h-3 text-[#A9472C]" />
-                    <span>Showcase</span>
-                    <span className="text-[10px] opacity-75 font-mono">
-                      {categoryCounts.showcase}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("opini")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                      selectedCategory === "opini"
-                        ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <MessageSquareQuote className="w-3 h-3 text-[#A9472C]" />
-                    <span>Opini & POV</span>
-                    <span className="text-[10px] opacity-75 font-mono">{categoryCounts.opini}</span>
-                  </button>
-
-                  {categoryCounts.custom > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory("custom")}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5",
-                        selectedCategory === "custom"
-                          ? "border-b-2 border-primary bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <Code className="h-3 w-3 text-primary" />
-                      <span>Kustom</span>
-                      <span className="text-[10px] opacity-75 font-mono">
-                        {categoryCounts.custom}
-                      </span>
-                    </button>
-                  )}
-                </div>
+                {/* Standard Category Tabs */}
+                <FilterPills
+                  value={selectedCategory}
+                  onChange={(val) => setSelectedCategory(val as NarrationCategory)}
+                  items={[
+                    ...CATEGORIES.map(({ key, label, icon: Icon }) => ({
+                      id: key,
+                      label,
+                      icon: Icon ?? undefined,
+                      badge: categoryCounts[key],
+                    })),
+                    ...(categoryCounts.custom > 0
+                      ? [{ id: "custom" as const, label: "Kustom", icon: Code, badge: categoryCounts.custom }]
+                      : []),
+                  ]}
+                />
 
                 {/* Template Card Items */}
                 <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
@@ -438,7 +363,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               title="Parameter Naskah"
               description="Atur topik, nada, durasi, dan bahasa naskah."
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
               icon={<Sliders className="w-4 h-4 text-[#8A6A2F]" />}
               badge={
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -451,6 +376,47 @@ export function NarrationTab({ project }: NarrationTabProps) {
               }
             >
               <div className="space-y-3.5">
+                {/* Language Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-foreground">
+                      Bahasa Utama Video
+                    </label>
+                    <span className="text-[10px] text-muted-foreground/80 font-mono">
+                      Naskah, Voice TTS & Subtitle
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { code: "id", flag: "🇮🇩", label: "Bahasa Indonesia", sub: "Naskah & Voice ID" },
+                      { code: "en", flag: "🇬🇧", label: "English Narration", sub: "Script & Voice EN" },
+                    ].map((opt) => {
+                      const isSelected = language === opt.code;
+                      return (
+                        <button
+                          key={opt.code}
+                          type="button"
+                          onClick={() => handleLanguageSelect(opt.code)}
+                          className={cn(
+                            "p-2.5 rounded-xl border text-left transition",
+                            isSelected
+                              ? "bg-[#F8EEEA] border-[#C45B3A] text-foreground shadow-xs"
+                              : "bg-[#FFFEFA] border-[#E5E1D7] text-muted-foreground hover:border-[#C45B3A]/40 hover:text-foreground"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                            <span>{opt.flag}</span>
+                            <span>{opt.label}</span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                            {opt.sub}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Topic Input */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground mb-1.5">
@@ -464,66 +430,46 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   />
                 </div>
 
-                {/* Language Selector (Central Project Language Control) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-foreground">
-                      Bahasa Utama Video (Kunci Seluruh Pipeline)
-                    </label>
-                    <span className="text-[10px] text-muted-foreground/80 font-mono">
-                      Mengunci Naskah, Voice TTS & Subtitle
+                {/* Advanced: Tone & Duration (collapsed by default) */}
+                <div className="border-t border-border pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex items-center justify-between w-full text-left py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-primary" />
+                      <span>Pengaturan Lanjut</span>
+                      <span className="text-[10px] opacity-75 font-mono">
+                        {tone} · {targetDuration >= 60 ? `${Math.floor(targetDuration / 60)}m` : `${targetDuration}s`}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-primary">
+                      {showAdvanced ? "Tutup ▲" : "Buka ▼"}
                     </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
-                    <button
-                      type="button"
-                      onClick={() => handleLanguageSelect("id")}
-                      className={cn(
-                        "flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition",
-                        language === "id"
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <span className="text-base">🇮🇩</span>
-                      <span>Bahasa Indonesia</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleLanguageSelect("en")}
-                      className={cn(
-                        "flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition",
-                        language === "en"
-                          ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <span className="text-base">🇬🇧</span>
-                      <span>English Narration</span>
-                    </button>
-                  </div>
-                </div>
+                  </button>
 
-                {/* Tone & Target Duration Row */}
-                <div className="grid grid-cols-2 gap-3">
+                  {showAdvanced && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-1.5">
                       Tone Pembawaan
                     </label>
-                    <select
-                      value={tone}
-                      onChange={(e) => setTone(e.target.value)}
-                      className="h-9 w-full rounded-md border border-input bg-control-background px-2.5 py-1 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="santai">Santai & Akrab</option>
-                      <option value="tegang">Tegang & Mepet</option>
-                      <option value="dramatis">Dramatis & Tegang</option>
-                      <option value="formal">Edukatif / Formal</option>
-                      <option value="kocak">Kocak / Lempeng</option>
-                      <option value="berwibawa">Berwibawa</option>
-                      <option value="mencekam">Mencekam</option>
-                      <option value="hangat">Hangat & Menyentuh</option>
-                    </select>
+                    <Select value={tone} onValueChange={setTone}>
+                      <SelectTrigger className="h-9 w-full text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent appearance="workspace">
+                        <SelectItem value="santai" className="text-xs">Santai & Akrab</SelectItem>
+                        <SelectItem value="tegang" className="text-xs">Tegang & Mepet</SelectItem>
+                        <SelectItem value="dramatis" className="text-xs">Dramatis & Tegang</SelectItem>
+                        <SelectItem value="formal" className="text-xs">Edukatif / Formal</SelectItem>
+                        <SelectItem value="kocak" className="text-xs">Kocak / Lempeng</SelectItem>
+                        <SelectItem value="berwibawa" className="text-xs">Berwibawa</SelectItem>
+                        <SelectItem value="mencekam" className="text-xs">Mencekam</SelectItem>
+                        <SelectItem value="hangat" className="text-xs">Hangat & Menyentuh</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -552,6 +498,8 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       <span>5m</span>
                     </div>
                   </div>
+                </div>
+                  )}
                 </div>
 
                 {/* Live Progress Card */}
@@ -662,7 +610,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               title="Naskah & Segmentasi Storytelling"
               description="Tinjau hasil, edit naskah, lalu lanjutkan ke pembuatan suara."
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
               icon={<FileText className="w-4 h-4 text-primary" />}
               badge={
                 rawText ? (

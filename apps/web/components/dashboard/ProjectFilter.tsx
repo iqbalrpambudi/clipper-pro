@@ -1,8 +1,15 @@
 "use client";
 
 import React from "react";
-import { Film, Image as ImageIcon, Search, X, ArrowUpDown, RotateCcw } from "lucide-react";
-import { Input } from "@/components/ui";
+import { Film, Image as ImageIcon, Search, X, RotateCcw } from "lucide-react";
+import {
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 
 export type ProjectModeFilter = "all" | "short_video" | "long_storyboard";
 export type ProjectSortOption = "newest" | "oldest" | "name_asc" | "name_desc";
@@ -104,18 +111,21 @@ export function ProjectFilter({
           </div>
 
           {/* Sort Dropdown */}
-          <div className="relative shrink-0">
-            <select
+          <div className="shrink-0">
+            <Select
               value={sortOption}
-              onChange={(e) => onSortOptionChange(e.target.value as ProjectSortOption)}
-              className="workspace-filter-input h-9 cursor-pointer appearance-none rounded-xl px-3 py-1 pr-8 text-xs text-muted-foreground focus:outline-none"
+              onValueChange={(val) => onSortOptionChange(val as ProjectSortOption)}
             >
-              <option value="newest">Terbaru</option>
-              <option value="oldest">Terlama</option>
-              <option value="name_asc">Nama (A-Z)</option>
-              <option value="name_desc">Nama (Z-A)</option>
-            </select>
-            <ArrowUpDown className="w-3 h-3 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <SelectTrigger className="h-9 min-w-[120px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                <SelectItem value="newest" className="text-xs">Terbaru</SelectItem>
+                <SelectItem value="oldest" className="text-xs">Terlama</SelectItem>
+                <SelectItem value="name_asc" className="text-xs">Nama (A-Z)</SelectItem>
+                <SelectItem value="name_desc" className="text-xs">Nama (Z-A)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

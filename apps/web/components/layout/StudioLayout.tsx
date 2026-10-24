@@ -203,38 +203,41 @@ export function StudioLayout({
           aria-label="Tahap project"
           className="project-studio-stage-nav border-t border-[#E5E1D7] bg-[#FBFAF7]"
         >
-          <div className="mx-auto flex max-w-[1920px] gap-1 overflow-x-auto px-3 py-2 sm:px-6">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => onTabChange(tab.id)}
-                  aria-current={isActive ? "step" : undefined}
-                  className={`flex min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] focus-visible:ring-offset-2 ${
-                    isActive
-                      ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C]"
-                      : "border-transparent text-[#77766D] hover:border-[#E5E1D7] hover:bg-[#F3F0E8] hover:text-[#26251F]"
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 shrink-0 ${isActive ? "text-[#A9472C]" : "text-[#858176]"}`}
-                    aria-hidden="true"
-                  />
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <Badge
-                      variant={isActive ? "workspace-accent" : "workspace"}
-                      className="px-2 py-0 text-[10px]"
-                    >
-                      {tab.badge}
-                    </Badge>
-                  )}
-                </button>
-              );
-            })}
+          <div className="mx-auto flex max-w-[1920px] px-3 py-2 sm:px-6 no-scrollbar">
+            <div className="workspace-filter-pills flex items-center gap-1.5 overflow-x-auto">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => onTabChange(tab.id)}
+                    aria-current={isActive ? "step" : undefined}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                      isActive
+                        ? "workspace-filter-active"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon
+                      className="h-3.5 w-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden text-[10px]">{tab.label.replace(/^\d+\.\s*/, "").split(" ")[0]}</span>
+                    {tab.badge && (
+                      <Badge
+                        variant={isActive ? "workspace-accent" : "workspace"}
+                        className="px-2 py-0 text-[10px]"
+                      >
+                        {tab.badge}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </nav>
       </header>

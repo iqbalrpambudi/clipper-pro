@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Cpu, FileText, Palette } from "lucide-react";
+import { FilterPills } from "@/components/ui";
 import { WorkspaceShell } from "@/components/layout";
 import { ModelsConfigTab } from "./_components/ModelsConfigTab";
 import { PromptTemplatesTab } from "./_components/PromptTemplatesTab";
@@ -23,44 +24,15 @@ export default function SettingsPage() {
           </p>
         </header>
 
-        <div className="workspace-settings-tabs" role="tablist" aria-label="Kategori pengaturan">
-          <button
-            type="button"
-            role="tab"
-            id="settings-tab-models"
-            aria-controls="settings-panel-models"
-            aria-selected={activeSettingsTab === "models"}
-            onClick={() => setActiveSettingsTab("models")}
-            className={`workspace-settings-tab ${activeSettingsTab === "models" ? "is-active" : ""}`}
-          >
-            <Cpu aria-hidden="true" />
-            Model AI &amp; API Keys
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="settings-tab-prompts"
-            aria-controls="settings-panel-prompts"
-            aria-selected={activeSettingsTab === "prompts"}
-            onClick={() => setActiveSettingsTab("prompts")}
-            className={`workspace-settings-tab ${activeSettingsTab === "prompts" ? "is-active" : ""}`}
-          >
-            <FileText aria-hidden="true" />
-            Prompt AI &amp; Preset Naskah
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="settings-tab-subtitles"
-            aria-controls="settings-panel-subtitles"
-            aria-selected={activeSettingsTab === "subtitles"}
-            onClick={() => setActiveSettingsTab("subtitles")}
-            className={`workspace-settings-tab ${activeSettingsTab === "subtitles" ? "is-active" : ""}`}
-          >
-            <Palette aria-hidden="true" />
-            Preset Gaya Subtitle
-          </button>
-        </div>
+        <FilterPills
+          value={activeSettingsTab}
+          onChange={setActiveSettingsTab}
+          items={[
+            { id: "models", label: "Model AI & API Keys", icon: Cpu },
+            { id: "prompts", label: "Prompt AI & Preset Naskah", icon: FileText },
+            { id: "subtitles", label: "Preset Gaya Subtitle", icon: Palette },
+          ]}
+        />
 
         <section
           role="tabpanel"

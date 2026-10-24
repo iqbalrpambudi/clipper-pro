@@ -17,6 +17,13 @@ import { Scene, SourceVideo } from "@/types";
 import { SCENE_DRAG_MIME } from "./timelineFormat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 
 type Filter = "all" | "used" | "available";
 type Sort = "order" | "longest" | "shortest";
@@ -177,20 +184,19 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     Status Scene
                   </div>
-                  <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-0.5">
+                  <div className="workspace-filter-pills flex items-center gap-1">
                     {pills.map((p) => (
                       <button
                         key={p.id}
                         type="button"
                         onClick={() => setFilter(p.id)}
-                        className={`h-6 rounded-md text-[10px] font-semibold transition flex items-center justify-center gap-1 ${
+                        className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
                           filter === p.id
-                            ? "bg-primary text-black"
+                            ? "workspace-filter-active"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        {p.label}
-                        <span className="text-[9px] opacity-70">({p.count})</span>
+                        {p.label} ({p.count})
                       </button>
                     ))}
                   </div>
@@ -201,18 +207,19 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                       Video Sumber
                     </div>
-                    <select
-                      value={videoId}
-                      onChange={(e) => setVideoId(e.target.value)}
-                      className="h-7 w-full rounded-lg border border-input bg-control-background px-2 text-xs text-foreground transition focus:border-primary focus:outline-none"
-                    >
-                      <option value="all">Semua video</option>
-                      {sourceVideos.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {videoName.get(v.id)}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={videoId} onValueChange={setVideoId}>
+                      <SelectTrigger className="h-7 w-full text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent appearance="workspace">
+                        <SelectItem value="all" className="text-xs">Semua video</SelectItem>
+                        {sourceVideos.map((v) => (
+                          <SelectItem key={v.id} value={v.id} className="text-xs">
+                            {videoName.get(v.id)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
@@ -220,15 +227,16 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     Urutan
                   </div>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value as Sort)}
-                    className="h-7 w-full rounded-lg border border-input bg-control-background px-2 text-xs text-foreground transition focus:border-primary focus:outline-none"
-                  >
-                    <option value="order">Urutan asli (scene index)</option>
-                    <option value="longest">Durasi terpanjang</option>
-                    <option value="shortest">Durasi terpendek</option>
-                  </select>
+                  <Select value={sort} onValueChange={(val) => setSort(val as Sort)}>
+                    <SelectTrigger className="h-7 w-full text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent appearance="workspace">
+                      <SelectItem value="order" className="text-xs">Urutan asli (scene index)</SelectItem>
+                      <SelectItem value="longest" className="text-xs">Durasi terpanjang</SelectItem>
+                      <SelectItem value="shortest" className="text-xs">Durasi terpendek</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex justify-end border-t border-border pt-1">
@@ -278,7 +286,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                   }`}
                   title={`${sc.description || "Scene"}\nSeret ke timeline • Double-click: ${selectedClipNumber !== null ? `ganti klip #${selectedClipNumber}` : "tambah di akhir"}`}
                 >
-                  <div className="relative aspect-video bg-black">
+                  <div className="relative aspect-video bg-muted">
                     {sc.thumbnail_url && !broken[sc.id] ? (
                       <img
                         src={sc.thumbnail_url}
@@ -292,10 +300,10 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                         <Film className="w-5 h-5 text-muted-foreground opacity-50" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 px-1 rounded bg-black/80 text-[9px] font-bold text-foreground">
+                    <span className="absolute top-1 left-1 px-1 rounded bg-background/90 text-[9px] font-bold text-foreground shadow-sm">
                       #{sc.scene_index + 1}
                     </span>
-                    <span className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[9px] font-mono text-foreground">
+                    <span className="absolute bottom-1 right-1 px-1 rounded bg-background/90 text-[9px] font-mono text-foreground shadow-sm">
                       {sc.duration.toFixed(1)}s
                     </span>
                     {used && (
@@ -308,7 +316,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     <button
                       type="button"
                       onClick={() => onPreview(sc)}
-                      className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-black/70 hover:bg-primary hover:text-black border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-background/90 hover:bg-primary hover:text-primary-foreground border border-border text-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm"
                       title="Preview scene"
                     >
                       <Play className="w-3 h-3 ml-0.5 fill-current" />

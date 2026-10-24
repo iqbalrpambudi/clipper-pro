@@ -117,7 +117,7 @@ export function VideoPreviewScreen({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 p-8 text-center text-[#77766D]">
-          <ImageIcon className="w-12 h-12 stroke-[1.5]" />
+          <ImageIcon className="w-12 h-12 stroke-[1.5]" aria-hidden="true" />
           <span className="text-xs font-mono">
             {itemsLength === 0 ? "Belum ada gambar" : "Gambar sedang diproses"}
           </span>
@@ -285,7 +285,7 @@ export function VideoPreviewScreen({
         >
           <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/60 transition-all flex items-center justify-center pointer-events-auto">
             <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-white px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
-              <Move className="w-3 h-3" />
+              <Move className="w-3 h-3" aria-hidden="true" />
               <span>Tarik untuk geser posisi subtitle</span>
             </div>
           </div>

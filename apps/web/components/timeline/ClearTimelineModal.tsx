@@ -24,7 +24,7 @@ export function ClearTimelineModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-xs">
       <div className="w-full max-w-md bg-surface border border-border rounded-xl p-5 shadow-2xl space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
@@ -80,7 +80,7 @@ export function ClearTimelineModal({
               }`}
             >
               {clearScope === "video_only" && (
-                <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
               )}
             </div>
             <div className="flex-1">

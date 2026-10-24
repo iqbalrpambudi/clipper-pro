@@ -1,4 +1,5 @@
 export * from "./button";
+export * from "./filter-pills";
 export * from "./workspace-chip";
 export * from "./input";
 export * from "./native-select";

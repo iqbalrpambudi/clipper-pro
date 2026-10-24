@@ -889,7 +889,7 @@ export function TimelineMonitor({
       <div className="relative flex-1 min-h-0 flex items-center justify-center p-2 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.06),transparent_70%)] overflow-hidden">
         <div
           ref={videoFrameRef}
-          className="relative bg-black rounded-xl overflow-hidden shadow-2xl shadow-black/80 ring-1 ring-white/10 max-h-full max-w-full flex items-center justify-center"
+          className="relative bg-black rounded-xl overflow-hidden shadow-2xl shadow-black/20 ring-1 ring-border max-h-full max-w-full flex items-center justify-center"
           style={{
             aspectRatio: ratio,
             height: "100%",

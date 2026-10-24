@@ -11,6 +11,11 @@ import {
   DialogFooter,
   Button,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui";
 
 interface CreateProjectDialogProps {
@@ -148,26 +153,28 @@ export function CreateProjectDialog({
               <label className="block text-xs font-semibold text-foreground mb-1.5">
                 Aspect Ratio
               </label>
-              <select
-                value={aspectRatio}
-                onChange={(e) => setAspectRatio(e.target.value)}
-                className="w-full h-9 px-3 py-1 bg-card rounded-md border border-border text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer"
-              >
-                <option value="9:16">9:16 (TikTok/Reels/Shorts)</option>
-                <option value="16:9">16:9 (Landscape YouTube)</option>
-                <option value="1:1">1:1 (Square Feed)</option>
-              </select>
+              <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                <SelectTrigger className="h-9 w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent appearance="workspace">
+                  <SelectItem value="9:16" className="text-xs">9:16 (TikTok/Reels/Shorts)</SelectItem>
+                  <SelectItem value="16:9" className="text-xs">16:9 (Landscape YouTube)</SelectItem>
+                  <SelectItem value="1:1" className="text-xs">1:1 (Square Feed)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Resolusi</label>
-              <select
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                className="w-full h-9 px-3 py-1 bg-card rounded-md border border-border text-foreground text-sm focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="1080p">1080p (Full HD)</option>
-                <option value="720p">720p (Fast Render)</option>
-              </select>
+              <Select value={resolution} onValueChange={setResolution}>
+                <SelectTrigger className="h-9 w-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent appearance="workspace">
+                  <SelectItem value="1080p" className="text-xs">1080p (Full HD)</SelectItem>
+                  <SelectItem value="720p" className="text-xs">720p (Fast Render)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

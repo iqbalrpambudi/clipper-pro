@@ -19,7 +19,16 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Project, WatermarkConfig } from "@/types";
-import { Button, Badge } from "@/components/ui";
+import {
+  Button,
+  Badge,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  FilterPills,
+} from "@/components/ui";
 import { useStudioStore } from "@/lib/store";
 import { WatermarkOverlay } from "@/components/watermark/WatermarkOverlay";
 import { WatermarkCustomizePanel } from "@/components/watermark/WatermarkCustomizePanel";
@@ -179,34 +188,14 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
           {/* Sub-tab navigation */}
           <div className="flex items-center gap-3">
-            <div className="flex rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
-              <button
-                onClick={() => setActiveSubTab("watermark")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
-                  activeSubTab === "watermark"
-                    ? "bg-[#C45B3A] text-white shadow-sm"
-                    : "text-[#77766D] hover:text-[#26251F]"
-                }`}
-              >
-                <Stamp className="w-3.5 h-3.5" />
-                <span>Watermark & Branding</span>
-                {liveWatermark?.enabled && <span className="w-2 h-2 rounded-full bg-[#456A4E]" />}
-              </button>
-              <button
-                onClick={() => setActiveSubTab("bgm")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
-                  activeSubTab === "bgm"
-                    ? "bg-[#C45B3A] text-white shadow-sm"
-                    : "text-[#77766D] hover:text-[#26251F]"
-                }`}
-              >
-                <Music2 className="w-3.5 h-3.5" />
-                <span>Musik Latar (BGM)</span>
-                <span className="px-1.5 py-0.2 text-[9px] rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD] font-semibold">
-                  Baru
-                </span>
-              </button>
-            </div>
+            <FilterPills
+              value={activeSubTab}
+              onChange={setActiveSubTab}
+              items={[
+                { id: "watermark", label: "Watermark & Branding", icon: Stamp, badge: liveWatermark?.enabled ? "●" : undefined },
+                { id: "bgm", label: "Musik Latar (BGM)", icon: Music2, badge: "Baru" },
+              ]}
+            />
 
             <Button
               onClick={() => setActiveTab("storyboard_render")}
@@ -240,22 +229,26 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  <select
-                    value={selectedSceneIndex}
-                    onChange={(e) => setSelectedSceneIndex(Number(e.target.value))}
-                    className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                  <Select
+                    value={String(selectedSceneIndex)}
+                    onValueChange={(val) => setSelectedSceneIndex(Number(val))}
                   >
-                    {scenes.length > 0 ? (
-                      scenes.map((sc, idx) => (
-                        <option key={sc.id || idx} value={idx}>
-                          Slot #{idx + 1}: {sc.chapter_title || `Scene ${idx + 1}`} (
-                          {sc.duration ? `${sc.duration.toFixed(1)}s` : "0s"})
-                        </option>
-                      ))
-                    ) : (
-                      <option value={0}>Simulasi Canvas 16:9 (Tanpa Gambar)</option>
-                    )}
-                  </select>
+                    <SelectTrigger className="h-8 max-w-[260px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent appearance="workspace">
+                      {scenes.length > 0 ? (
+                        scenes.map((sc, idx) => (
+                          <SelectItem key={sc.id || idx} value={String(idx)} className="text-xs">
+                            Slot #{idx + 1}: {sc.chapter_title || `Scene ${idx + 1}`} (
+                            {sc.duration ? `${sc.duration.toFixed(1)}s` : "0s"})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="0" className="text-xs">Simulasi Canvas 16:9 (Tanpa Gambar)</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button
@@ -371,7 +364,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
             {/* Bottom: Scene Thumbnails Carousel Strip */}
             {scenes.length > 0 && (
-              <div className="mt-2.5 shrink-0 border-t border-[#E5E1D7] pt-2">
+              <div className="mt-1.5 shrink-0 border-t border-[#E5E1D7] pt-2">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-foreground">
@@ -386,7 +379,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
                   {scenes.map((sc, idx) => {
                     const isSelected = idx === selectedSceneIndex;
                     return (
@@ -424,7 +417,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
           {/* Right Side: Watermark Customizer Inspector Panel with Inner Scroll */}
           <div className="flex h-full min-h-0 w-full shrink-0 flex-col border-t border-[#E5E1D7] bg-[#FBFAF7] lg:w-[420px] lg:border-t-0 xl:w-[460px]">
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-5 space-y-4 scrollbar-thin scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-5 space-y-4">
               <WatermarkCustomizePanel
                 project={{ ...project, watermark: liveWatermark }}
                 onWatermarkChange={(wm) => setLiveWatermark(wm)}

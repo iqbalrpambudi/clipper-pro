@@ -22,12 +22,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-dashed border-[#2E2E2E] bg-[#181818]/40",
+        "flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-dashed border-border bg-muted/40",
         className
       )}
     >
       {Icon && (
-        <div className="w-12 h-12 rounded-xl bg-[#242424] border border-[#2E2E2E] flex items-center justify-center text-muted-foreground mb-3.5">
+        <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground mb-3.5">
           {React.isValidElement(Icon) ? (
             Icon
           ) : typeof Icon === "function" ? (

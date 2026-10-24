@@ -113,7 +113,7 @@ export interface StoryboardNarrationAnalysisResponse {
 
 export interface WatermarkConfig {
   enabled: boolean;
-  watermark_type?: "text" | "image";
+  watermark_type?: "text";
   text: string;
   font_family: string;
   font_size: number;
@@ -139,10 +139,6 @@ export interface WatermarkConfig {
   background_opacity?: number;
   has_shadow?: boolean;
   shadow_color?: string;
-  image_url?: string | null;
-  image_path?: string | null;
-  image_width?: number;
-  image_height?: number | null;
 }
 
 export interface SourceVideo {

@@ -43,7 +43,7 @@ export function AudioParametersPanel({
       description="Sesuaikan tempo, intonasi, dan pantau estimasi biaya"
       icon={<Sliders className="w-4 h-4 text-primary" />}
       className="!border-surface-border !bg-card"
-      headerClassName="!border-surface-border !bg-muted"
+      headerClassName="!border-surface-border !bg-card"
       actions={
         costEstimate ? (
           <Badge variant="outline" className="text-primary border-primary/30 font-mono text-[10px]">

@@ -35,18 +35,13 @@ export function WatermarkOverlay({
     return null;
   }
 
-  const isImage = watermark.watermark_type === "image";
-  if (!isImage && !watermark.text?.trim()) {
-    return null;
-  }
-  if (isImage && !watermark.image_url?.trim()) {
+  if (!watermark.text?.trim()) {
     return null;
   }
 
   // Scale factor based on standard 1080px width
   const scale = Math.max(0.2, (containerWidth || 360) / 1080);
   const scaledFontSize = Math.max(8, Math.round((watermark.font_size || 36) * scale));
-  const scaledImageWidth = Math.max(20, Math.round((watermark.image_width || 160) * scale));
   const scaledOffsetX = Math.max(2, Math.round((watermark.offset_x || 30) * scale));
   const scaledOffsetY = Math.max(2, Math.round((watermark.offset_y || 30) * scale));
 
@@ -186,22 +181,7 @@ export function WatermarkOverlay({
         </div>
       )}
 
-      {isImage ? (
-        <img
-          src={watermark.image_url!}
-          alt="Watermark"
-          style={{
-            width: `${scaledImageWidth}px`,
-            height: "auto",
-            maxHeight: "100%",
-            opacity: watermark.opacity ?? 0.85,
-            filter: hasShadow ? "drop-shadow(0 2px 6px rgba(0,0,0,0.75))" : undefined,
-            objectFit: "contain",
-          }}
-          draggable={false}
-        />
-      ) : (
-        <span
+      <span
           style={{
             fontFamily: `"${watermark.font_family || "Poppins"}", sans-serif`,
             fontSize: `${scaledFontSize}px`,
@@ -229,7 +209,6 @@ export function WatermarkOverlay({
         >
           {watermark.text}
         </span>
-      )}
     </div>
   );
 }

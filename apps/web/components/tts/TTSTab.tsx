@@ -119,7 +119,7 @@ export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TT
               description="Review hasil rendering suara dan sinkronisasi kata"
               icon={<Music className="w-4 h-4 text-primary" />}
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
               badge={
                 state.audio ? (
                   <Badge

@@ -392,7 +392,10 @@ export function useStoryboardTimelineState(project: Project) {
     const deltaX = e.clientX - dragStartPos.current.x;
     const deltaY = e.clientY - dragStartPos.current.y;
     const newAssDeltaX = Math.round(deltaX / (scale || 1));
-    const newAssDeltaY = Math.round(deltaY / (scaleY || 1));
+    // Invert Y when subtitle at bottom — CSS applies negative offset
+    const pos = subtitleStyle.position || "bottom";
+    const ySign = pos === "bottom" ? -1 : 1;
+    const newAssDeltaY = Math.round((deltaY * ySign) / (scaleY || 1));
     setSubtitleStyle((prev) => ({
       ...prev,
       offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
@@ -406,7 +409,11 @@ export function useStoryboardTimelineState(project: Project) {
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
-    updateStyleMutation.mutate(subtitleStyle);
+    // Use functional read to get latest subtitle style (avoids stale closure)
+    setSubtitleStyle((latest) => {
+      updateStyleMutation.mutate(latest);
+      return latest;
+    });
   };
 
   // Compute CSS animation class for active motion effect

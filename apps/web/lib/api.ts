@@ -133,11 +133,6 @@ export const api = {
       >
     >
   ) => request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  uploadWatermarkImage: (projectId: string, formData: FormData) =>
-    request<{ success: boolean; url: string; file_path: string; filename: string }>(
-      `/api/v1/projects/${projectId}/watermark/upload`,
-      { method: "POST", body: formData }
-    ),
   deleteProject: (id: string) => request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
 
   // Media & YouTube

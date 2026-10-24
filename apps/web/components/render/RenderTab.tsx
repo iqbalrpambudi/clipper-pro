@@ -37,6 +37,13 @@ import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 
 interface RenderTabProps {
   project: Project & {
@@ -243,7 +250,7 @@ export function RenderTab({ project }: RenderTabProps) {
               description="Konfigurasi resolusi dan proteksi video sebelum render"
               icon={<Sliders className="w-4 h-4 text-primary" />}
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
             >
               <div className="space-y-4">
                 {/* Resolusi Video Output */}
@@ -251,17 +258,21 @@ export function RenderTab({ project }: RenderTabProps) {
                   <label className="block text-xs font-medium text-foreground mb-1.5">
                     Resolusi Video Output
                   </label>
-                  <select
+                  <Select
                     value={resolution}
-                    onChange={(e) => {
-                      setResolution(e.target.value);
-                      updateProjectMutation.mutate({ resolution: e.target.value });
+                    onValueChange={(val) => {
+                      setResolution(val);
+                      updateProjectMutation.mutate({ resolution: val });
                     }}
-                    className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
                   >
-                    <option value="1080p">1080x1920 (Full HD Vertical)</option>
-                    <option value="720p">720x1280 (HD Fast Export)</option>
-                  </select>
+                    <SelectTrigger className="h-9 w-full text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent appearance="workspace">
+                      <SelectItem value="1080p" className="text-xs">1080x1920 (Full HD Vertical)</SelectItem>
+                      <SelectItem value="720p" className="text-xs">720x1280 (HD Fast Export)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Proteksi Hak Cipta & Transformative Editing (Anti-Copyright) */}
@@ -444,7 +455,7 @@ export function RenderTab({ project }: RenderTabProps) {
               title={`Riwayat Render & File Siap Download (${renderJobs.length})`}
               icon={<Film className="w-4 h-4 text-primary" />}
               className="!border-surface-border !bg-card"
-              headerClassName="!border-surface-border !bg-muted"
+              headerClassName="!border-surface-border !bg-card"
               badge={
                 totalStorageBytes > 0 ? (
                   <Badge

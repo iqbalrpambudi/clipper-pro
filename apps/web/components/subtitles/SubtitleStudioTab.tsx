@@ -25,6 +25,13 @@ import {
   TimelineClip,
 } from "@/types";
 import { PreviewPlayer } from "@/components/render/PreviewPlayer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 
 interface SubtitleStudioTabProps {
   project: Project & {
@@ -323,23 +330,27 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <label className="mb-1 block font-semibold text-muted-foreground">
                   Font Family
                 </label>
-                <select
+                <Select
                   value={style.font_family}
-                  onChange={(e) => {
-                    const updated = { ...style, font_family: e.target.value };
+                  onValueChange={(val) => {
+                    const updated = { ...style, font_family: val };
                     setStyle(updated);
                     updateStyleMutation.mutate(updated);
                   }}
-                  className="w-full rounded-xl border border-input bg-control-background px-2.5 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                 >
-                  <option value="Montserrat">Montserrat (Modern Bold)</option>
-                  <option value="Bebas Neue">Bebas Neue (Punch Hormozi)</option>
-                  <option value="Poppins">Poppins (Clean & Crisp)</option>
-                  <option value="Inter">Inter (Minimalist Clean)</option>
-                  <option value="Anton">Anton (Bold Poster)</option>
-                  <option value="Oswald">Oswald (Condensed Strong)</option>
-                  <option value="Roboto">Roboto (Clean Neutral)</option>
-                </select>
+                  <SelectTrigger className="h-9 w-full text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="Montserrat" className="text-xs">Montserrat (Modern Bold)</SelectItem>
+                    <SelectItem value="Bebas Neue" className="text-xs">Bebas Neue (Punch Hormozi)</SelectItem>
+                    <SelectItem value="Poppins" className="text-xs">Poppins (Clean & Crisp)</SelectItem>
+                    <SelectItem value="Inter" className="text-xs">Inter (Minimalist Clean)</SelectItem>
+                    <SelectItem value="Anton" className="text-xs">Anton (Bold Poster)</SelectItem>
+                    <SelectItem value="Oswald" className="text-xs">Oswald (Condensed Strong)</SelectItem>
+                    <SelectItem value="Roboto" className="text-xs">Roboto (Clean Neutral)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Font Size */}
@@ -370,22 +381,26 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <label className="mb-1 block font-semibold text-muted-foreground">
                   Mode Tampilan Teks
                 </label>
-                <select
+                <Select
                   value={style.display_mode}
-                  onChange={(e) => {
+                  onValueChange={(val) => {
                     const updated = {
                       ...style,
-                      display_mode: e.target.value as SubtitleStyle["display_mode"],
+                      display_mode: val as SubtitleStyle["display_mode"],
                     };
                     setStyle(updated);
                     updateStyleMutation.mutate(updated);
                   }}
-                  className="w-full rounded-xl border border-input bg-control-background px-2.5 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                 >
-                  <option value="per_word">Per-Kata (Word-by-Word)</option>
-                  <option value="burst">Burst 2-3 Kata (Gaya Hormozi)</option>
-                  <option value="full_sentence">Kalimat Penuh Highlight</option>
-                </select>
+                  <SelectTrigger className="h-9 w-full text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="per_word" className="text-xs">Per-Kata (Word-by-Word)</SelectItem>
+                    <SelectItem value="burst" className="text-xs">Burst 2-3 Kata (Gaya Hormozi)</SelectItem>
+                    <SelectItem value="full_sentence" className="text-xs">Kalimat Penuh Highlight</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Burst Count */}
@@ -393,19 +408,23 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <label className="mb-1 block font-semibold text-muted-foreground">
                   Kata per Burst Group
                 </label>
-                <select
-                  value={style.burst_word_count}
-                  onChange={(e) => {
-                    const updated = { ...style, burst_word_count: parseInt(e.target.value) };
+                <Select
+                  value={String(style.burst_word_count)}
+                  onValueChange={(val) => {
+                    const updated = { ...style, burst_word_count: parseInt(val) };
                     setStyle(updated);
                     updateStyleMutation.mutate(updated);
                   }}
                   disabled={style.display_mode !== "burst"}
-                  className="w-full rounded-xl border border-input bg-control-background px-2.5 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none disabled:opacity-40"
                 >
-                  <option value={2}>2 Kata per Burst</option>
-                  <option value={3}>3 Kata per Burst</option>
-                </select>
+                  <SelectTrigger className="h-9 w-full text-xs font-semibold disabled:opacity-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="2" className="text-xs">2 Kata per Burst</SelectItem>
+                    <SelectItem value="3" className="text-xs">3 Kata per Burst</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Primary Color */}
@@ -547,22 +566,26 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <label className="block text-[#77766D] font-semibold mb-1">
                   Posisi Layar Vertikal
                 </label>
-                <select
+                <Select
                   value={style.position}
-                  onChange={(e) => {
+                  onValueChange={(val) => {
                     const updated = {
                       ...style,
-                      position: e.target.value as SubtitleStyle["position"],
+                      position: val as SubtitleStyle["position"],
                     };
                     setStyle(updated);
                     updateStyleMutation.mutate(updated);
                   }}
-                  className="w-full rounded-xl border border-input bg-control-background px-2.5 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                 >
-                  <option value="bottom">Bawah (Default Short)</option>
-                  <option value="center">Tengah Layar (Hormozi Center)</option>
-                  <option value="top">Atas Layar</option>
-                </select>
+                  <SelectTrigger className="h-9 w-full text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="bottom" className="text-xs">Bawah (Default Short)</SelectItem>
+                    <SelectItem value="center" className="text-xs">Tengah Layar (Hormozi Center)</SelectItem>
+                    <SelectItem value="top" className="text-xs">Atas Layar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Animation */}
@@ -570,21 +593,25 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <label className="mb-1 block font-semibold text-muted-foreground">
                   Animasi Kata Aktif
                 </label>
-                <select
+                <Select
                   value={style.highlight_animation}
-                  onChange={(e) => {
+                  onValueChange={(val) => {
                     const updated = {
                       ...style,
-                      highlight_animation: e.target.value as SubtitleStyle["highlight_animation"],
+                      highlight_animation: val as SubtitleStyle["highlight_animation"],
                     };
                     commitStyle(updated);
                   }}
-                  className="w-full rounded-xl border border-input bg-control-background px-2.5 py-2 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                 >
-                  <option value="color">Warna Glow (Halus)</option>
-                  <option value="scale">Scale & Zoom Pop (Hormozi)</option>
-                  <option value="none">Tanpa Animasi</option>
-                </select>
+                  <SelectTrigger className="h-9 w-full text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="color" className="text-xs">Warna Glow (Halus)</SelectItem>
+                    <SelectItem value="scale" className="text-xs">Scale & Zoom Pop (Hormozi)</SelectItem>
+                    <SelectItem value="none" className="text-xs">Tanpa Animasi</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

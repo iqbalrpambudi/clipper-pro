@@ -21,6 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  FilterPills,
 } from "@/components/ui";
 import { CharactersTab } from "./CharactersTab";
 import { LocationsTab } from "./LocationsTab";
@@ -190,55 +191,15 @@ export function ContinuityBibleCard({
         </div>
 
         {/* 3 Sub-tabs navigation */}
-        <div className="flex items-center gap-1.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
-          <button
-            type="button"
-            onClick={() => setBibleTab("characters")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-              bibleTab === "characters"
-                ? "bg-[#C45B3A] text-white shadow-sm"
-                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Karakter & Varian</span>
-            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
-              {charactersList.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setBibleTab("locations")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-              bibleTab === "locations"
-                ? "bg-[#C45B3A] text-white shadow-sm"
-                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-            }`}
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>Latar Tempat</span>
-            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
-              {locationsList.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setBibleTab("world")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
-              bibleTab === "world"
-                ? "bg-[#C45B3A] text-white shadow-sm"
-                : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Era & Atmosfer</span>
-            <span className="rounded-full bg-black/10 px-1.5 py-0.2 font-mono text-[10px]">
-              {worldSetting.era ? "Aktif" : "-"}
-            </span>
-          </button>
-        </div>
+        <FilterPills
+          value={bibleTab}
+          onChange={setBibleTab}
+          items={[
+            { id: "characters", label: "Karakter & Varian", icon: Users, badge: charactersList.length },
+            { id: "locations", label: "Latar Tempat", icon: MapPin, badge: locationsList.length },
+            { id: "world", label: "Era & Atmosfer", icon: Compass, badge: worldSetting.era ? "Aktif" : "-" },
+          ]}
+        />
       </div>
 
       {/* Tab Contents */}

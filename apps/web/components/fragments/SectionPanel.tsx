@@ -27,14 +27,14 @@ export function SectionPanel({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[#2E2E2E] bg-[#181818] overflow-hidden shadow-sm transition-all",
+        "rounded-xl border border-border bg-card overflow-hidden shadow-sm transition-all",
         className
       )}
     >
       {(title || actions) && (
         <div
           className={cn(
-            "px-4 py-3 border-b border-[#2E2E2E] flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#1C1C1C]/40",
+            "px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-card",
             headerClassName
           )}
         >
@@ -53,7 +53,7 @@ export function SectionPanel({
       <div className="p-4">{children}</div>
 
       {footer && (
-        <div className="px-4 py-2.5 bg-[#141414] border-t border-[#2E2E2E] flex items-center justify-between text-xs text-muted-foreground">
+        <div className="px-4 py-2.5 bg-muted/60 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
           {footer}
         </div>
       )}

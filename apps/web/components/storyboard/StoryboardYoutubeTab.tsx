@@ -24,7 +24,7 @@ import {
   ThumbnailTextLayer,
   ThumbnailPreset,
 } from "@/types";
-import { Button } from "@/components/ui";
+import { Button, FilterPills } from "@/components/ui";
 import { StoryboardTabHeader } from "./StoryboardTabHeader";
 
 import { convertLegacyOverlayToLayers, createDefaultTextLayer } from "./thumbnail/thumbnailPresets";
@@ -643,62 +643,16 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
           <div className="lg:col-span-6 space-y-4">
             <div className="space-y-4 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-4 shadow-sm">
               {/* Top Tab Switcher */}
-              <div className="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveSettingsTab("generator")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    activeSettingsTab === "generator"
-                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
-                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>AI Thumbnail Prompt</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveSettingsTab("layers")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    activeSettingsTab === "layers"
-                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
-                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-                  }`}
-                >
-                  <Type className="w-3.5 h-3.5" />
-                  <span>Editor Teks & Layer</span>
-                  <span className="w-4 h-4 rounded-full bg-[#E9C9BD] text-[10px] font-mono flex items-center justify-center text-[#A9472C] ml-0.5">
-                    {layers.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveSettingsTab("presets")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    activeSettingsTab === "presets"
-                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
-                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-                  }`}
-                >
-                  <Palette className="w-3.5 h-3.5" />
-                  <span>Preset Style</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveSettingsTab("metadata")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    activeSettingsTab === "metadata"
-                      ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
-                      : "text-[#77766D] hover:bg-[#EAE6DD] hover:text-[#26251F]"
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Metadata YouTube</span>
-                </button>
-              </div>
+              <FilterPills
+                value={activeSettingsTab}
+                onChange={setActiveSettingsTab}
+                items={[
+                  { id: "generator", label: "AI Thumbnail Prompt", icon: Sparkles },
+                  { id: "layers", label: "Editor Teks & Layer", icon: Type, badge: layers.length },
+                  { id: "presets", label: "Preset Style", icon: Palette },
+                  { id: "metadata", label: "Metadata YouTube", icon: FileText },
+                ]}
+              />
 
               {/* Tab Contents with Inner-scroll */}
               <div className="lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto pr-1">

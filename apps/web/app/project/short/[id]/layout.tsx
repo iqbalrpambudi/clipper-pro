@@ -16,14 +16,13 @@ interface ShortLayoutProps {
   params: Promise<{ id: string }>;
 }
 
-const SHORT_TABS = ["media", "narration", "tts", "timeline", "render"];
-
 export default function ShortVideoStudioLayout({ children, params }: ShortLayoutProps) {
   const { id } = use(params);
   const router = useRouter();
   const {
     activeTab,
     setActiveTab,
+    setProjectMode,
     activeTask,
     setActiveTask,
     setCurrentProjectId,
@@ -34,11 +33,12 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
   // Reset activeTab to initial Tab 1 whenever project opens or switches
   const lastMountedProjectIdRef = useRef<string | null>(null);
   useEffect(() => {
+    setProjectMode("short");
     if (lastMountedProjectIdRef.current !== id) {
       lastMountedProjectIdRef.current = id;
       setActiveTab("media");
     }
-  }, [id, setActiveTab]);
+  }, [id, setActiveTab, setProjectMode]);
 
   // Scope active project ID in store
   useEffect(() => {
@@ -59,17 +59,6 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
       router.replace(`/project/storyboard/${id}`);
     }
   }, [project, id, router]);
-
-  // Normalize activeTab for short video studio
-  useEffect(() => {
-    if (!SHORT_TABS.includes(activeTab)) {
-      if (activeTab === "storyboard_script") setActiveTab("narration");
-      else if (activeTab === "storyboard_voice") setActiveTab("tts");
-      else if (activeTab === "storyboard_timeline") setActiveTab("timeline");
-      else if (activeTab === "storyboard_render") setActiveTab("render");
-      else setActiveTab("media");
-    }
-  }, [activeTab, setActiveTab]);
 
   // Restore activeTask on page refresh from project database state if not yet set by SSE
   useEffect(() => {

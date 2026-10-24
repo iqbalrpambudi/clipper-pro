@@ -14,7 +14,7 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="mt-2.5 shrink-0 border-t border-[#E5E1D7] pt-2">
+    <div className="mt-1.5 shrink-0">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-foreground">
@@ -24,12 +24,12 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
             (Klik adegan untuk melompat ke slot & inspeksi motion)
           </span>
         </div>
-        <span className="text-[10px] text-muted-foreground font-mono">
+        <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
           {items.length} Slot Adegan
         </span>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {items.map((item, idx) => {
           const isSelected = activeItemId === item.id;
           return (
@@ -37,6 +37,7 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
               key={item.id || idx}
               type="button"
               onClick={() => onSeek(item.start_time || 0)}
+              aria-label={`Slot ${idx + 1}: ${item.chapter_title || `Scene ${idx + 1}`}`}
               className={`group relative shrink-0 w-24 aspect-[16/9] rounded-lg overflow-hidden border transition text-left ${
                 isSelected
                   ? "border-[#C45B3A] ring-2 ring-[#C45B3A]/30 scale-[1.03]"
@@ -47,6 +48,7 @@ export function ClipsTrackList({ items, activeItemId, onSeek }: ClipsTrackListPr
                 <img
                   src={item.image_url}
                   alt={item.chapter_title || `Scene ${idx + 1}`}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               ) : (

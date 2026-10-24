@@ -29,7 +29,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-surface-hover hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         supabase:
-          "bg-[#3ECF8E] text-[#032817] font-semibold hover:bg-[#34b27b] shadow-sm active:scale-[0.98] transition-transform border border-[#3ECF8E]/30",
+          "bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-sm active:scale-[0.98] transition-transform border border-primary/30",
       },
       size: {
         default: "h-9 px-4 py-2 text-sm",

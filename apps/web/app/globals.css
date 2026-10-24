@@ -53,60 +53,36 @@
 
 @layer base {
   :root {
-    --background: 0 0% 7%; /* #121212 */
-    --foreground: 0 0% 93%; /* #EDEDED */
-    --card: 0 0% 11%; /* #1C1C1C */
-    --card-foreground: 0 0% 93%;
-    --popover: 0 0% 12%; /* #1F1F1F */
-    --popover-foreground: 0 0% 93%;
-    --primary: 153 60% 53%; /* #3ECF8E Supabase Green */
-    --primary-foreground: 153 100% 7%; /* Dark high-contrast text on green */
-    --secondary: 0 0% 16%; /* #292929 */
-    --secondary-foreground: 0 0% 93%;
-    --muted: 0 0% 15%; /* #262626 */
-    --muted-foreground: 240 5% 65%; /* #A1A1AA */
-    --accent: 0 0% 16%; /* #282828 */
-    --accent-foreground: 0 0% 98%;
+    --background: 40 20% 95%; /* #F3F0E8 */
+    --foreground: 45 10% 15%; /* #26251F */
+    --card: 40 50% 99%; /* #FBFAF7 */
+    --card-foreground: 45 10% 15%;
+    --popover: 40 50% 99%;
+    --popover-foreground: 45 10% 15%;
+    --primary: 15 55% 50%; /* #C45B3A terracotta */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 18% 91%;
+    --secondary-foreground: 45 10% 20%;
+    --muted: 40 18% 91%;
+    --muted-foreground: 50 5% 45%; /* #77766D */
+    --accent: 15 55% 94%;
+    --accent-foreground: 15 50% 35%;
     --destructive: 0 84% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%; /* #2E2E2E */
-    --input: 0 0% 18%; /* #2E2E2E */
-    --control-background: 0 0% 9%;
-    --ring: 153 60% 53%; /* #3ECF8E Supabase Green Ring */
-    --surface: 0 0% 9%; /* #171717 */
-    --surface-hover: 0 0% 15%; /* #262626 */
-    --surface-card: 0 0% 11%; /* #1C1C1C */
-    --surface-secondary: 0 0% 7%; /* #121212 */
-    --surface-border: 0 0% 18%; /* #2E2E2E */
-    --radius: 0.5rem;
+    --border: 40 18% 88%; /* #E5E1D7 */
+    --input: 40 18% 84%;
+    --control-background: 40 50% 99%;
+    --ring: 15 55% 50%; /* #C45B3A */
+    --surface: 40 50% 99%; /* #FBFAF7 */
+    --surface-hover: 40 25% 94%;
+    --surface-card: 40 50% 99%;
+    --surface-secondary: 40 20% 95%;
+    --surface-border: 40 18% 88%;
+    --radius: 0.75rem;
   }
 }
 
 .workspace-theme {
-  --background: 40 20% 95%;
-  --foreground: 45 10% 15%;
-  --card: 40 50% 99%;
-  --card-foreground: 45 10% 15%;
-  --popover: 40 50% 99%;
-  --popover-foreground: 45 10% 15%;
-  --primary: 15 55% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 40 18% 91%;
-  --secondary-foreground: 45 10% 20%;
-  --muted: 40 18% 91%;
-  --muted-foreground: 50 5% 45%;
-  --accent: 15 55% 94%;
-  --accent-foreground: 15 50% 35%;
-  --border: 40 18% 88%;
-  --input: 40 18% 84%;
-  --control-background: 40 50% 99%;
-  --ring: 15 55% 50%;
-  --surface: 40 50% 99%;
-  --surface-hover: 40 25% 94%;
-  --surface-card: 40 50% 99%;
-  --surface-secondary: 40 20% 95%;
-  --surface-border: 40 18% 88%;
-  --radius: 0.75rem;
   min-height: 100vh;
   color: #26251f;
   background: #f3f0e8;
@@ -120,24 +96,6 @@
 }
 
 .workspace-portal-surface {
-  --background: 40 20% 95%;
-  --foreground: 45 10% 15%;
-  --popover: 40 50% 99%;
-  --popover-foreground: 45 10% 15%;
-  --primary: 15 55% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 40 18% 91%;
-  --secondary-foreground: 45 10% 20%;
-  --muted: 40 18% 91%;
-  --muted-foreground: 50 5% 45%;
-  --accent: 15 55% 94%;
-  --accent-foreground: 15 50% 35%;
-  --border: 40 18% 88%;
-  --input: 40 18% 84%;
-  --control-background: 40 50% 99%;
-  --ring: 15 55% 50%;
-  --surface-hover: 40 25% 94%;
-  --surface: 40 50% 99%;
   color-scheme: light;
 }
 
@@ -368,159 +326,11 @@
   background: #a9472c !important;
 }
 
+/* workspace-image-canvas is intentionally dark for media previews */
 .workspace-image-canvas {
   color: #f8fafc;
   background: #171717;
   color-scheme: dark;
-}
-
-.workspace-theme [class~="bg-[#121212]"],
-.workspace-theme [class~="bg-[#141414]"] {
-  background-color: #f3f0e8 !important;
-}
-
-.workspace-theme [class~="bg-[#181818]"],
-.workspace-theme [class~="bg-[#1C1C1C]"],
-.workspace-theme [class~="bg-[#242424]"],
-.workspace-theme [class~="bg-[#2A2A2A]"] {
-  background-color: #fbfaf7 !important;
-}
-
-.workspace-theme [class~="bg-surface"],
-.workspace-theme [class~="bg-card"] {
-  background-color: #fbfaf7 !important;
-}
-
-.workspace-theme [class~="bg-surface/50"] {
-  background-color: #f1eee6 !important;
-}
-
-.workspace-theme [class~="bg-background"] {
-  background-color: #f3f0e8 !important;
-}
-
-.workspace-theme [class~="bg-surface-hover"] {
-  background-color: #f1eee6 !important;
-}
-
-.workspace-theme [class~="border-surface-border"],
-.workspace-theme [class~="border-surface-border/50"] {
-  border-color: #e5e1d7 !important;
-}
-
-.workspace-theme [class~="text-brand-300"],
-.workspace-theme [class~="text-brand-400"] {
-  color: #a9472c !important;
-}
-
-.workspace-theme [class~="border-[#2E2E2E]"],
-.workspace-theme [class~="border-[#222222]"],
-.workspace-theme [class~="border-[#3A3A3A]"] {
-  border-color: #e5e1d7 !important;
-}
-
-.workspace-theme [class~="text-white"],
-.workspace-theme [class~="text-slate-100"],
-.workspace-theme [class~="text-slate-200"],
-.workspace-theme [class~="text-slate-300"] {
-  color: #26251f !important;
-}
-
-.workspace-theme [class~="text-slate-400"],
-.workspace-theme [class~="text-slate-500"],
-.workspace-theme [class~="text-slate-600"] {
-  color: #77766d !important;
-}
-
-.workspace-theme [class~="text-[#3ECF8E]"],
-.workspace-theme [class~="text-[#34D399]"] {
-  color: #a9472c !important;
-}
-
-.workspace-theme [class~="bg-[#3ECF8E]"] {
-  border-color: #c45b3a !important;
-  color: #fffaf6 !important;
-  background-color: #c45b3a !important;
-}
-
-.workspace-theme [class~="bg-[#3ECF8E]"]:hover {
-  background-color: #a9472c !important;
-}
-
-.workspace-theme .workspace-image-canvas [class~="text-white"],
-.workspace-theme .workspace-image-canvas [class~="text-slate-100"],
-.workspace-theme .workspace-image-canvas [class~="text-slate-200"],
-.workspace-theme .workspace-image-canvas [class~="text-slate-300"] {
-  color: #f8fafc !important;
-}
-
-.workspace-theme .workspace-image-canvas [class~="text-slate-400"],
-.workspace-theme .workspace-image-canvas [class~="text-slate-500"],
-.workspace-theme .workspace-image-canvas [class~="text-slate-600"] {
-  color: #cbd5e1 !important;
-}
-
-.workspace-dialog {
-  --background: 40 50% 99%;
-  --foreground: 45 10% 15%;
-  --card: 40 50% 99%;
-  --card-foreground: 45 10% 15%;
-  --popover: 40 50% 99%;
-  --popover-foreground: 45 10% 15%;
-  --secondary: 40 18% 91%;
-  --secondary-foreground: 45 10% 20%;
-  --muted: 40 18% 91%;
-  --muted-foreground: 50 5% 45%;
-  --border: 40 18% 88%;
-  --input: 40 18% 84%;
-  --ring: 15 55% 50%;
-  --surface: 40 50% 99%;
-  --surface-hover: 40 25% 94%;
-  --surface-card: 40 50% 99%;
-  --surface-secondary: 40 20% 95%;
-  --surface-border: 40 18% 88%;
-  color: #26251f;
-  background: #fbfaf7;
-  color-scheme: light;
-}
-
-.workspace-dialog [class~="text-white"],
-.workspace-dialog [class~="text-slate-100"],
-.workspace-dialog [class~="text-slate-200"],
-.workspace-dialog [class~="text-slate-300"] {
-  color: #26251f !important;
-}
-
-.workspace-dialog [class~="bg-[#181818]"],
-.workspace-dialog [class~="bg-[#1C1C1C]"] {
-  background-color: #fbfaf7 !important;
-}
-
-.workspace-dialog [class~="bg-surface"],
-.workspace-dialog [class~="bg-card"] {
-  background-color: #fbfaf7 !important;
-}
-
-.workspace-dialog [class~="bg-background"] {
-  background-color: #f3f0e8 !important;
-}
-
-.workspace-dialog [class~="bg-surface-hover"] {
-  background-color: #f1eee6 !important;
-}
-
-.workspace-dialog [class~="bg-[#3ECF8E]"] {
-  border-color: #c45b3a !important;
-  color: #fffaf6 !important;
-  background-color: #c45b3a !important;
-}
-
-.workspace-dialog [class~="bg-[#3ECF8E]"]:hover {
-  background-color: #a9472c !important;
-}
-
-.workspace-dialog [class~="border-[#2E2E2E]"] {
-  border-color: #e5e1d7 !important;
 }
 
 .workspace-dashboard-intro {
@@ -1309,65 +1119,8 @@
   padding-top: 26px;
 }
 
-.workspace-theme .workspace-image-canvas {
+.workspace-image-canvas {
   border-color: #363b38;
-  background: #171717 !important;
-}
-
-.workspace-theme .workspace-image-canvas [class~="bg-violet-950/20"] {
-  background-color: #251f2f !important;
-}
-
-.workspace-dialog [class~="bg-[#222222]"] {
-  background-color: #f1eee6 !important;
-}
-
-.workspace-theme [class~="text-violet-300"] {
-  color: #70558d !important;
-}
-
-.workspace-theme [class~="text-violet-400"] {
-  color: #765b92 !important;
-}
-
-.workspace-theme [class~="text-emerald-300"] {
-  color: #35684b !important;
-}
-
-.workspace-theme [class~="text-emerald-400"] {
-  color: #3d7654 !important;
-}
-
-.workspace-theme [class~="text-blue-300"] {
-  color: #3e668b !important;
-}
-
-.workspace-theme [class~="text-blue-400"] {
-  color: #466f95 !important;
-}
-
-.workspace-theme [class~="text-rose-400"] {
-  color: #a9472c !important;
-}
-
-.workspace-theme [class~="text-rose-300"] {
-  color: #a9472c !important;
-}
-
-.workspace-theme [class~="text-amber-400"] {
-  color: #946522 !important;
-}
-
-.workspace-theme [class~="text-amber-300"] {
-  color: #946522 !important;
-}
-
-.workspace-theme [class~="text-purple-400"] {
-  color: #70558d !important;
-}
-
-.workspace-theme [class~="text-purple-300"] {
-  color: #70558d !important;
 }
 
 @media (max-width: 980px) {
@@ -1537,58 +1290,61 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Minimal overlay scrollbars — thin, transparent by default, visible on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
 
-::-webkit-scrollbar-track {
-  background: #171717;
+*:hover,
+*:focus-within {
+  scrollbar-color: rgb(210 205 191 / 0.5) transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #2e2e2e;
-  border-radius: 4px;
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(62, 207, 142, 0.4);
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Workspace light scrollbar */
-.workspace-theme ::-webkit-scrollbar-track {
-  background: #f3f0e8;
-}
-.workspace-theme ::-webkit-scrollbar-thumb {
-  background: #d2cdbf;
-  border-radius: 4px;
-}
-.workspace-theme ::-webkit-scrollbar-thumb:hover {
-  background: #b8b2a2;
-}
-.workspace-theme {
-  scrollbar-color: #d2cdbf #f3f0e8;
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 0.2s;
 }
 
-/* Portal surface light scrollbar */
-.workspace-portal-surface ::-webkit-scrollbar-track {
-  background: #f3f0e8;
-}
-.workspace-portal-surface ::-webkit-scrollbar-thumb {
-  background: #d2cdbf;
-  border-radius: 4px;
-}
-.workspace-portal-surface ::-webkit-scrollbar-thumb:hover {
-  background: #b8b2a2;
+*:hover::-webkit-scrollbar-thumb {
+  background: rgb(210 205 191 / 0.55);
 }
 
-/* Supabase Glass & Panel Classes */
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: rgb(184 178 162 / 0.8);
+}
+
+body {
+  scrollbar-color: rgb(210 205 191 / 0.5) transparent;
+}
+
+/* workspace-image-canvas dark scrollbar */
+.workspace-image-canvas *:hover::-webkit-scrollbar-thumb {
+  background: rgb(60 60 60 / 0.6);
+}
+.workspace-image-canvas * {
+  scrollbar-color: transparent transparent;
+}
+.workspace-image-canvas *:hover {
+  scrollbar-color: rgb(60 60 60 / 0.6) transparent;
+}
+
+/* Glass panels — now warm-tinted for light mode */
 .glass-panel {
-  background: rgba(28, 28, 28, 0.85);
+  background: rgba(251, 250, 247, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(38, 37, 31, 0.08);
 }
 
 .glass-panel-hover {
@@ -1596,21 +1352,21 @@ body {
 }
 
 .glass-panel-hover:hover {
-  background: rgba(38, 38, 38, 0.95);
-  border-color: rgba(62, 207, 142, 0.35);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  background: rgba(241, 238, 230, 0.95);
+  border-color: rgba(196, 91, 58, 0.3);
+  box-shadow: 0 8px 30px rgba(49, 41, 30, 0.1);
 }
 
 .glass-button {
-  background: rgba(62, 207, 142, 0.12);
-  border: 1px solid rgba(62, 207, 142, 0.28);
+  background: rgba(196, 91, 58, 0.08);
+  border: 1px solid rgba(196, 91, 58, 0.22);
   backdrop-filter: blur(8px);
   transition: all 0.2s ease;
 }
 
 .glass-button:hover {
-  background: rgba(62, 207, 142, 0.22);
-  border-color: rgba(62, 207, 142, 0.5);
+  background: rgba(196, 91, 58, 0.15);
+  border-color: rgba(196, 91, 58, 0.4);
   transform: translateY(-1px);
 }
 
@@ -1620,13 +1376,10 @@ body {
 }
 
 .glow-brand {
-  box-shadow: 0 0 25px rgba(62, 207, 142, 0.35);
+  box-shadow: 0 0 18px rgba(196, 91, 58, 0.25);
 }
 
 /* Range input accent color */
 input[type="range"] {
-  accent-color: #3ecf8e;
-}
-.workspace-theme input[type="range"] {
   accent-color: #C45B3A;
 }

@@ -1,53 +1,27 @@
-"use client";
+import { redirect, notFound } from "next/navigation";
 
-import { use, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { useProject } from "@/hooks/useProjects";
-import { Button } from "@/components/ui";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function ProjectRedirectPage({ params }: PageProps) {
-  const { id } = use(params);
-  const router = useRouter();
-  const { data: project, isLoading, error } = useProject(id);
+export default async function ProjectRedirectPage({ params }: PageProps) {
+  const { id } = await params;
 
-  useEffect(() => {
-    if (!project) return;
-    const mode = project.project_type === "long_storyboard" ? "storyboard" : "short";
-    router.replace(`/project/${mode}/${id}`);
-  }, [project, id, router]);
+  try {
+    const res = await fetch(`${API_URL}/api/v1/projects/${id}`, {
+      cache: "no-store",
+    });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-        <Loader2 className="w-8 h-8 text-[#C45B3A] animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">Mengarahkan ke Studio...</p>
-      </div>
-    );
+    if (!res.ok) notFound();
+
+    const project = await res.json();
+    const mode =
+      project.project_type === "long_storyboard" ? "storyboard" : "short";
+
+    redirect(`/project/${mode}/${id}`);
+  } catch {
+    notFound();
   }
-
-  if (error || !project) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-        <p className="text-sm text-rose-400 mb-4">Project tidak ditemukan atau gagal dimuat.</p>
-        <Link href="/">
-          <Button variant="outline" size="sm" className="border-[#2E2E2E]">
-            Kembali ke Dashboard
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] text-white">
-      <Loader2 className="w-8 h-8 text-[#C45B3A] animate-spin mb-3" />
-      <p className="text-sm text-muted-foreground">Membuka Studio Project...</p>
-    </div>
-  );
 }

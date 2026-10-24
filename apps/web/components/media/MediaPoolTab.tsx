@@ -743,7 +743,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary/50 hover:shadow-lg"
                 >
                   {/* Thumbnail Container */}
-                  <div className="relative aspect-video overflow-hidden bg-black">
+                  <div className="relative aspect-video overflow-hidden bg-muted">
                     {scene.thumbnail_url && !brokenThumbnails[scene.id] ? (
                       <img
                         src={scene.thumbnail_url}
@@ -761,14 +761,14 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     )}
 
                     {/* Play hover overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-110">
                         <Play className="w-4 h-4 ml-0.5 fill-current" />
                       </span>
                     </div>
 
                     {/* Top Badges: Scene Index & Dialog */}
-                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-mono font-bold text-white">
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-background/90 text-[9px] font-mono font-bold text-foreground shadow-sm">
                       #{scene.scene_index + 1}
                     </span>
 
@@ -779,7 +779,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     )}
 
                     {/* Duration Badge */}
-                    <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/75 text-[9px] font-mono text-white">
+                    <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-background/90 text-[9px] font-mono text-foreground shadow-sm">
                       {scene.duration}s
                     </span>
                   </div>

@@ -226,8 +226,8 @@ export function SubtitlePresetsTab() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-accent-yellow" />
-            <h3 className="text-sm font-bold text-white">Preset Gaya Subtitle Video</h3>
-            <span className="text-[11px] text-slate-400">
+            <h3 className="text-sm font-bold text-foreground">Preset Gaya Subtitle Video</h3>
+            <span className="text-[11px] text-muted-foreground">
               ({subtitlePresets.length} preset tersedia)
             </span>
           </div>
@@ -264,7 +264,7 @@ export function SubtitlePresetsTab() {
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <Palette className="w-3.5 h-3.5 text-accent-yellow shrink-0" />
                       <span
-                        className="text-xs font-bold text-white truncate min-w-0"
+                        className="text-xs font-bold text-foreground truncate min-w-0"
                         title={preset.name}
                       >
                         {preset.name}
@@ -272,7 +272,7 @@ export function SubtitlePresetsTab() {
                     </div>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">
                     {preset.description || "Gaya subtitle kustom"}
                   </p>
                 </div>
@@ -289,14 +289,14 @@ export function SubtitlePresetsTab() {
                         style={{ backgroundColor: preset.highlight_color }}
                         title={`Highlight: ${preset.highlight_color}`}
                       />
-                      <span className="text-slate-400 font-mono text-[9px] uppercase">
+                      <span className="text-muted-foreground font-mono text-[9px] uppercase">
                         {preset.display_mode}
                       </span>
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-[10px] text-slate-500">
-                    <span className="font-mono text-slate-400 truncate max-w-[120px]">
+                  <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                    <span className="font-mono text-muted-foreground truncate max-w-[120px]">
                       {preset.id}
                     </span>
                     <Badge
@@ -320,18 +320,18 @@ export function SubtitlePresetsTab() {
             e.preventDefault();
             updateSubtitlePresetMutation.mutate(subtitlePresetForm);
           }}
-          className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs"
+          className="rounded-xl border border-border bg-card p-6 space-y-6 shadow-xs"
         >
           {/* Editor Header */}
           <div className="flex items-center justify-between border-b border-surface-border pb-4 flex-wrap gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2 truncate">
                 <Sliders className="w-4 h-4 text-accent-yellow shrink-0" />
                 <span className="truncate">
                   Editor Gaya Subtitle: {currentSelectedSubtitlePreset.name}
                 </span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                 <span>ID Preset:</span>
                 <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                   {currentSelectedSubtitlePreset.id}
@@ -395,7 +395,7 @@ export function SubtitlePresetsTab() {
                   {deleteSubtitlePresetMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                   )}
                   <span>Hapus Preset</span>
                 </Button>
@@ -406,11 +406,11 @@ export function SubtitlePresetsTab() {
           {/* LIVE VISUAL PREVIEW BOX */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-white flex items-center gap-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
                 <span>Live Visual Preview Animasi Subtitle</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[10px] text-muted-foreground font-mono">
                 Animasi Otomatis (Demo Karaoke)
               </span>
             </div>
@@ -502,7 +502,7 @@ export function SubtitlePresetsTab() {
           {/* META INFO */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Nama Preset Subtitle
               </label>
               <Input
@@ -518,7 +518,7 @@ export function SubtitlePresetsTab() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Deskripsi Ringkas
               </label>
               <Input
@@ -540,12 +540,12 @@ export function SubtitlePresetsTab() {
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
               <Type className="w-4 h-4 text-brand-400" />
-              <h4 className="text-xs font-bold text-white">1. Tipografi & Huruf</h4>
+              <h4 className="text-xs font-bold text-foreground">1. Tipografi & Huruf</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Font Family
                 </label>
                 <NativeSelect
@@ -568,7 +568,7 @@ export function SubtitlePresetsTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">Ukuran Font</label>
+                  <label className="text-[11px] font-semibold text-muted-foreground">Ukuran Font</label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.font_size}px
                   </span>
@@ -591,7 +591,7 @@ export function SubtitlePresetsTab() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Ketebalan Font (Weight)
                 </label>
                 <NativeSelect
@@ -615,13 +615,13 @@ export function SubtitlePresetsTab() {
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="w-4 h-4 text-accent-yellow" />
-              <h4 className="text-xs font-bold text-white">2. Warna Teks, Highlight & Outline</h4>
+              <h4 className="text-xs font-bold text-foreground">2. Warna Teks, Highlight & Outline</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Primary Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Warna Utama Teks
                 </label>
                 <div className="flex items-center gap-2">
@@ -652,7 +652,7 @@ export function SubtitlePresetsTab() {
 
               {/* Highlight Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Warna Highlight (Kata Aktif)
                 </label>
                 <div className="flex items-center gap-2">
@@ -704,7 +704,7 @@ export function SubtitlePresetsTab() {
               {/* Outline Color & Width */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
+                  <label className="text-[11px] font-semibold text-muted-foreground">
                     Warna & Lebar Outline
                   </label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
@@ -746,7 +746,7 @@ export function SubtitlePresetsTab() {
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-400" />
-              <h4 className="text-xs font-bold text-white">
+              <h4 className="text-xs font-bold text-foreground">
                 3. Mode Tampilan, Animasi & Kotak Background
               </h4>
             </div>
@@ -754,7 +754,7 @@ export function SubtitlePresetsTab() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Display Mode */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Mode Penampilan Kata
                 </label>
                 <NativeSelect
@@ -774,7 +774,7 @@ export function SubtitlePresetsTab() {
 
               {/* Highlight Animation */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Animasi Highlight
                 </label>
                 <NativeSelect
@@ -796,7 +796,7 @@ export function SubtitlePresetsTab() {
               {/* Scale Factor */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
+                  <label className="text-[11px] font-semibold text-muted-foreground">
                     Skala Pembesaran Kata
                   </label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
@@ -824,7 +824,7 @@ export function SubtitlePresetsTab() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-surface-border/50">
               {/* Box Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Warna Kotak Background
                 </label>
                 <div className="flex items-center gap-2">
@@ -856,7 +856,7 @@ export function SubtitlePresetsTab() {
               {/* Box Opacity */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
+                  <label className="text-[11px] font-semibold text-muted-foreground">
                     Opasitas Kotak Background
                   </label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
@@ -885,13 +885,13 @@ export function SubtitlePresetsTab() {
           {/* 4. POSISI & OFFSET */}
           <div className="p-4 rounded-xl bg-surface/50 border border-surface-border space-y-3">
             <div className="flex items-center gap-2">
-              <Move className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-xs font-bold text-white">4. Posisi Layar & Offset Presisi</h4>
+              <Move className="w-4 h-4 text-emerald-600" />
+              <h4 className="text-xs font-bold text-foreground">4. Posisi Layar & Offset Presisi</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                   Posisi Vertikal Dasar
                 </label>
                 <NativeSelect
@@ -911,7 +911,7 @@ export function SubtitlePresetsTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
+                  <label className="text-[11px] font-semibold text-muted-foreground">
                     Offset Y (Vertikal)
                   </label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
@@ -937,7 +937,7 @@ export function SubtitlePresetsTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-300">
+                  <label className="text-[11px] font-semibold text-muted-foreground">
                     Offset X (Horizontal)
                   </label>
                   <span className="text-[10px] font-mono text-brand-400 font-bold">
@@ -989,15 +989,15 @@ export function SubtitlePresetsTab() {
       {/* MODAL: TAMBAH PRESET SUBTITLE BARU */}
       {isCreateSubtitleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between bg-surface/50">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-accent-yellow/10 text-accent-yellow">
                   <Palette className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Buat Preset Gaya Subtitle Baru</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 className="text-sm font-bold text-foreground">Buat Preset Gaya Subtitle Baru</h3>
+                  <p className="text-[11px] text-muted-foreground">
                     Rancang kombinasi font, warna, animasi, dan layout subtitle kustom
                   </p>
                 </div>
@@ -1019,8 +1019,8 @@ export function SubtitlePresetsTab() {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Nama Preset Subtitle <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Nama Preset Subtitle <span className="text-rose-600">*</span>
                   </label>
                   <Input
                     type="text"
@@ -1044,8 +1044,8 @@ export function SubtitlePresetsTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    ID Identifier (Slug Unik) <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    ID Identifier (Slug Unik) <span className="text-rose-600">*</span>
                   </label>
                   <Input
                     type="text"
@@ -1064,7 +1064,7 @@ export function SubtitlePresetsTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Deskripsi Ringkas
                 </label>
                 <Input
@@ -1083,7 +1083,7 @@ export function SubtitlePresetsTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Font Family
                   </label>
                   <NativeSelect
@@ -1104,7 +1104,7 @@ export function SubtitlePresetsTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Ukuran Font ({newSubtitlePresetForm.font_size}px)
                   </label>
                   <Slider
@@ -1125,7 +1125,7 @@ export function SubtitlePresetsTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Ketebalan (Weight)
                   </label>
                   <NativeSelect
@@ -1146,7 +1146,7 @@ export function SubtitlePresetsTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Warna Utama
                   </label>
                   <div className="flex items-center gap-2">
@@ -1170,13 +1170,13 @@ export function SubtitlePresetsTab() {
                           primary_color: e.target.value,
                         })
                       }
-                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
+                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-foreground font-mono text-xs focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Warna Highlight
                   </label>
                   <div className="flex items-center gap-2">
@@ -1200,13 +1200,13 @@ export function SubtitlePresetsTab() {
                           highlight_color: e.target.value,
                         })
                       }
-                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-white font-mono text-xs focus:outline-none"
+                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-foreground font-mono text-xs focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Mode Penampilan
                   </label>
                   <NativeSelect
@@ -1227,7 +1227,7 @@ export function SubtitlePresetsTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Animasi Highlight
                   </label>
                   <NativeSelect
@@ -1247,7 +1247,7 @@ export function SubtitlePresetsTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Posisi Layar
                   </label>
                   <NativeSelect

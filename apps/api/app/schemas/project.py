@@ -15,15 +15,15 @@ class BackgroundFillSchema(BaseModel):
 
 class WatermarkSchema(BaseModel):
     enabled: bool = False
-    watermark_type: str = "text"  # text | image
+    watermark_type: str = "text"
     text: str = ""
     font_family: str = "Poppins"
     font_size: int = 36
     font_color: str = "#FFFFFF"
     opacity: float = 0.85
-    position: str = "bottom-right"  # top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right, custom
-    custom_x: Optional[float] = 50.0  # percentage 0 - 100 for custom drag position
-    custom_y: Optional[float] = 50.0  # percentage 0 - 100 for custom drag position
+    position: str = "bottom-right"
+    custom_x: Optional[float] = 50.0
+    custom_y: Optional[float] = 50.0
     offset_x: int = 30
     offset_y: int = 30
     has_background: bool = False
@@ -31,10 +31,6 @@ class WatermarkSchema(BaseModel):
     background_opacity: float = 0.5
     has_shadow: bool = True
     shadow_color: str = "#000000"
-    image_url: Optional[str] = None
-    image_path: Optional[str] = None
-    image_width: int = 160
-    image_height: Optional[int] = None
 
 
 

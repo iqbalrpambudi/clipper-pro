@@ -167,8 +167,8 @@ export function PromptTemplatesTab() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-brand-400" />
-            <h3 className="text-sm font-bold text-white">Preset Template Naskah</h3>
-            <span className="text-[11px] text-slate-400">({templates.length} preset tersedia)</span>
+            <h3 className="text-sm font-bold text-foreground">Preset Template Naskah</h3>
+            <span className="text-[11px] text-muted-foreground">({templates.length} preset tersedia)</span>
           </div>
           <Button
             type="button"
@@ -213,13 +213,13 @@ export function PromptTemplatesTab() {
                         <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
                       )}
                       {tpl.category === "opini" && (
-                        <MessageSquareQuote className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <MessageSquareQuote className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                       )}
                       {!["recap", "fakta", "edukasi", "showcase", "opini"].includes(
                         tpl.category
-                      ) && <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                      ) && <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                       <span
-                        className="text-xs font-bold text-white truncate min-w-0"
+                        className="text-xs font-bold text-foreground truncate min-w-0"
                         title={tpl.name}
                       >
                         {tpl.name}
@@ -227,13 +227,13 @@ export function PromptTemplatesTab() {
                     </div>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-3 line-clamp-2">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">
                     {tpl.description || "Tidak ada deskripsi"}
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-surface-border/50 text-[10px] text-slate-500 flex justify-between items-center gap-1.5">
-                  <span className="font-mono text-slate-400 truncate max-w-[100px]">{tpl.id}</span>
+                <div className="pt-2 border-t border-surface-border/50 text-[10px] text-muted-foreground flex justify-between items-center gap-1.5">
+                  <span className="font-mono text-muted-foreground truncate max-w-[100px]">{tpl.id}</span>
                   {tpl.sub_category && (
                     <Badge
                       variant="workspace"
@@ -263,15 +263,15 @@ export function PromptTemplatesTab() {
             e.preventDefault();
             updateTemplateMutation.mutate(templateForm);
           }}
-          className="rounded-xl border border-[#2E2E2E] bg-[#181818] p-6 space-y-6 shadow-xs"
+          className="rounded-xl border border-border bg-card p-6 space-y-6 shadow-xs"
         >
           <div className="flex items-center justify-between border-b border-surface-border pb-4 flex-wrap gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2 truncate">
                 <Code className="w-4 h-4 text-accent-yellow shrink-0" />
                 <span className="truncate">Editor Preset: {currentSelectedTemplate.name}</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                 <span>ID Preset:</span>
                 <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
                   {currentSelectedTemplate.id}
@@ -331,7 +331,7 @@ export function PromptTemplatesTab() {
                   {deleteTemplateMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                   )}
                   <span>Hapus Preset</span>
                 </Button>
@@ -342,7 +342,7 @@ export function PromptTemplatesTab() {
           {/* Template Meta Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-1">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Nama Preset Naskah
               </label>
               <Input
@@ -356,7 +356,7 @@ export function PromptTemplatesTab() {
             </div>
 
             <div className="sm:col-span-1">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Tone Bawaan (Gaya Bahasa)
               </label>
               <NativeSelect
@@ -375,7 +375,7 @@ export function PromptTemplatesTab() {
             </div>
 
             <div className="sm:col-span-1">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Preset / Kategori
               </label>
               <NativeSelect
@@ -392,7 +392,7 @@ export function PromptTemplatesTab() {
             </div>
 
             <div className="sm:col-span-1">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Sub-kategori (Opsional)
               </label>
               <Input
@@ -405,7 +405,7 @@ export function PromptTemplatesTab() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Deskripsi Ringkas
               </label>
               <Input
@@ -421,12 +421,12 @@ export function PromptTemplatesTab() {
           {/* 1. System Prompt Editor */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-white flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-foreground flex items-center gap-1.5">
                 <span>1. System Prompt (Aturan Persona, Gaya Bahasa & Struktur AI)</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">Instruksi Primer LLM</span>
+              <span className="text-[10px] text-muted-foreground font-mono">Instruksi Primer LLM</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata),
               struktur poin cerita/klimaks, larangan tanda kurung arahan panggung, dan pertanyaan
               penutup (CTA).
@@ -444,12 +444,12 @@ export function PromptTemplatesTab() {
           {/* 2. User Prompt Template Editor */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-white">
+              <label className="block text-xs font-bold text-foreground">
                 2. User Prompt Template (Format Input & Variabel)
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">Template Format Dinamis</span>
+              <span className="text-[10px] text-muted-foreground font-mono">Template Format Dinamis</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam prompt:
             </p>
             <div className="flex flex-wrap gap-1.5 py-1">
@@ -508,15 +508,15 @@ export function PromptTemplatesTab() {
       {/* MODAL: TAMBAH PRESET NASKAH BARU */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="w-full max-w-2xl bg-[#181818] border border-[#2E2E2E] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between bg-surface/50">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-brand-500/10 text-brand-400">
                   <Plus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Buat Preset Naskah Baru</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 className="text-sm font-bold text-foreground">Buat Preset Naskah Baru</h3>
+                  <p className="text-[11px] text-muted-foreground">
                     Tambahkan struktur dan formula prompt khusus untuk video Anda
                   </p>
                 </div>
@@ -538,8 +538,8 @@ export function PromptTemplatesTab() {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Nama Preset <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Nama Preset <span className="text-rose-600">*</span>
                   </label>
                   <Input
                     type="text"
@@ -563,8 +563,8 @@ export function PromptTemplatesTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    ID Identifier (Slug Unik) <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    ID Identifier (Slug Unik) <span className="text-rose-600">*</span>
                   </label>
                   <Input
                     type="text"
@@ -584,7 +584,7 @@ export function PromptTemplatesTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Tone Bawaan
                   </label>
                   <NativeSelect
@@ -605,7 +605,7 @@ export function PromptTemplatesTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Deskripsi Ringkas
                   </label>
                   <Input
@@ -622,7 +622,7 @@ export function PromptTemplatesTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Preset / Kategori
                   </label>
                   <NativeSelect
@@ -641,7 +641,7 @@ export function PromptTemplatesTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Sub-kategori (Opsional)
                   </label>
                   <Input
@@ -657,9 +657,9 @@ export function PromptTemplatesTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   1. System Prompt (Instruksi Persona & Struktur Naskah){" "}
-                  <span className="text-rose-400">*</span>
+                  <span className="text-rose-600">*</span>
                 </label>
                 <Textarea
                   rows={5}
@@ -675,8 +675,8 @@ export function PromptTemplatesTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    2. User Prompt Template (Format Input) <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-muted-foreground">
+                    2. User Prompt Template (Format Input) <span className="text-rose-600">*</span>
                   </label>
                   <div className="flex flex-wrap gap-1">
                     {[

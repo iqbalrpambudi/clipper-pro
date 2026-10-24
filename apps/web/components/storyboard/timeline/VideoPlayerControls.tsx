@@ -36,12 +36,13 @@ export function VideoPlayerControls({
             type="button"
             onClick={togglePlay}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#C45B3A] text-white shadow-sm transition hover:bg-[#A9472C]"
+            aria-label={isPlaying ? "Jeda" : "Putar"}
             title={isPlaying ? "Jeda" : "Putar"}
           >
             {isPlaying ? (
-              <Pause className="w-3.5 h-3.5" />
+              <Pause className="w-3.5 h-3.5" aria-hidden="true" />
             ) : (
-              <Play className="w-3.5 h-3.5 ml-0.5" />
+              <Play className="w-3.5 h-3.5 ml-0.5" aria-hidden="true" />
             )}
           </button>
 
@@ -49,18 +50,20 @@ export function VideoPlayerControls({
             type="button"
             onClick={() => handleSeek(Math.max(0, currentTime - 5))}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
+            aria-label="Mundur 5 detik"
             title="Mundur 5 detik"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
 
           <button
             type="button"
             onClick={() => handleSeek(Math.min(duration, currentTime + 5))}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
+            aria-label="Maju 5 detik"
             title="Maju 5 detik"
           >
-            <RotateCw className="w-3.5 h-3.5" />
+            <RotateCw className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
 
@@ -74,8 +77,9 @@ export function VideoPlayerControls({
                 : "bg-[#F3F0E8] text-[#77766D] border-[#E5E1D7]"
             }`}
             title={subtitleEnabled ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
+            aria-label={subtitleEnabled ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
           >
-            <Type className="w-3 h-3" />
+            <Type className="w-3 h-3" aria-hidden="true" />
             <span className="text-[10px] font-bold hidden sm:inline">
               {subtitleEnabled ? "SUBTITLE ON" : "SUBTITLE OFF"}
             </span>
@@ -85,12 +89,13 @@ export function VideoPlayerControls({
             type="button"
             onClick={toggleMute}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] text-[#5E5C54] transition hover:bg-[#EAE6DD]"
+            aria-label={isMuted ? "Unmute Audio" : "Mute Audio"}
             title={isMuted ? "Unmute Audio" : "Mute Audio"}
           >
             {isMuted ? (
-              <VolumeX className="w-3.5 h-3.5 text-[#A9472C]" />
+              <VolumeX className="w-3.5 h-3.5 text-[#A9472C]" aria-hidden="true" />
             ) : (
-              <Volume2 className="w-3.5 h-3.5" />
+              <Volume2 className="w-3.5 h-3.5" aria-hidden="true" />
             )}
           </button>
 
@@ -108,6 +113,7 @@ export function VideoPlayerControls({
         step={0.1}
         value={currentTime}
         onChange={(e) => handleSeek(Number(e.target.value))}
+        aria-label="Posisi playback"
         className="block h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
       />
     </div>

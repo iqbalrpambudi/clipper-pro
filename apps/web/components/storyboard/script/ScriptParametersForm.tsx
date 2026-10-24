@@ -15,7 +15,17 @@ import {
   Loader2,
 } from "lucide-react";
 import { ImagePreset } from "@/types";
-import { Button, Input, Textarea } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import {
+  Button,
+  Input,
+  Textarea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 import { ScriptPreset } from "@/lib/presetStorage";
 
 interface ScriptParametersFormProps {
@@ -92,84 +102,44 @@ export function ScriptParametersForm({
         </div>
       </div>
 
-      {/* Preset Selector & Save Bar */}
-      <div className="space-y-2.5 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Bookmark className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
-            <span className="shrink-0 text-xs font-semibold text-[#4D4A42]">Preset:</span>
-            <select
-              value={selectedScriptPresetId}
-              onChange={(e) => onLoadScriptPreset(e.target.value)}
-              className="max-w-[210px] truncate rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs font-medium text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
-            >
-              <option value="" disabled>
-                -- Muat Preset Tersimpan --
-              </option>
-              {scriptPresets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
-                </option>
-              ))}
-            </select>
-            {selectedScriptPresetId &&
-              !scriptPresets.find((p) => p.id === selectedScriptPresetId)?.isBuiltin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const cur = scriptPresets.find((p) => p.id === selectedScriptPresetId);
-                    if (cur) onDeleteScriptPreset(cur.id, cur.name);
-                  }}
-                  title="Hapus Preset Kustom Ini"
-                  className="shrink-0 rounded p-1 text-[#858176] transition hover:bg-[#F8EEEA] hover:text-[#A9472C]"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowSaveScriptModal(!showSaveScriptModal)}
-            className="px-2.5 py-1 text-xs rounded-lg bg-[#F8EEEA] hover:bg-[#F3E1D9] border border-[#E9C9BD] text-[#A9472C] hover:text-[#A9472C] transition flex items-center gap-1 font-medium shrink-0"
-          >
-            <BookmarkPlus className="w-3.5 h-3.5" />
-            <span>Simpan Preset</span>
-          </button>
+      {/* Preset Selector */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-[#4D4A42]">
+            <Bookmark className="w-3.5 h-3.5 text-[#C45B3A]" />
+            <span>Preset Naskah AI</span>
+          </label>
+          {selectedScriptPresetId &&
+            !scriptPresets.find((p) => p.id === selectedScriptPresetId)?.isBuiltin && (
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = scriptPresets.find((p) => p.id === selectedScriptPresetId);
+                  if (cur) onDeleteScriptPreset(cur.id, cur.name);
+                }}
+                title="Hapus Preset Kustom Ini"
+                className="flex items-center gap-1 text-[11px] text-[#A9472C] hover:underline"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Hapus Preset</span>
+              </button>
+            )}
         </div>
-
-        {/* Save Preset Inline Form */}
-        {showSaveScriptModal && (
-          <form
-            onSubmit={onSaveScriptPreset}
-            className="flex items-center gap-2 border-t border-[#E5E1D7] pt-2"
-          >
-            <Input
-              type="text"
-              placeholder="Nama preset baru (mis. Dokumenter Favorit 8m)..."
-              value={newScriptPresetName}
-              onChange={(e) => setNewScriptPresetName(e.target.value)}
-              autoFocus
-              className="h-9 flex-1 text-xs"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              variant="workspace-primary"
-              className="h-9 shrink-0 gap-1 px-3 text-xs"
-            >
-              <Save className="w-3 h-3" />
-              <span>Simpan</span>
-            </Button>
-            <button
-              type="button"
-              onClick={() => setShowSaveScriptModal(false)}
-              className="shrink-0 rounded-lg p-1.5 text-[#77766D] transition hover:bg-[#F1EEE6] hover:text-[#26251F]"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        )}
+        <Select
+          value={selectedScriptPresetId || undefined}
+          onValueChange={(val) => onLoadScriptPreset(val)}
+        >
+          <SelectTrigger className="h-9 w-full text-xs font-medium">
+            <SelectValue placeholder="-- Muat Preset Tersimpan --" />
+          </SelectTrigger>
+          <SelectContent appearance="workspace">
+            {scriptPresets.map((p) => (
+              <SelectItem key={p.id} value={p.id} className="text-xs">
+                {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <form onSubmit={onGenerate} className="space-y-4">
@@ -197,31 +167,34 @@ export function ScriptParametersForm({
               Mengunci Naskah, Voice TTS & YouTube
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-1">
-            <button
-              type="button"
-              onClick={() => onLanguageSelect("id")}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
-                language === "id"
-                  ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
-                  : "text-[#77766D] hover:text-[#26251F]"
-              }`}
-            >
-              <span className="text-base">🇮🇩</span>
-              <span>Bahasa Indonesia</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onLanguageSelect("en")}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition ${
-                language === "en"
-                  ? "bg-[#C45B3A] text-white font-semibold shadow-sm"
-                  : "text-[#77766D] hover:text-[#26251F]"
-              }`}
-            >
-              <span className="text-base">🇬🇧</span>
-              <span>English Explainer</span>
-            </button>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { code: "id", flag: "🇮🇩", label: "Bahasa Indonesia", sub: "Naskah & Voice ID" },
+              { code: "en", flag: "🇬🇧", label: "English Explainer", sub: "Script & Voice EN" },
+            ].map((opt) => {
+              const isSelected = language === opt.code;
+              return (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => onLanguageSelect(opt.code)}
+                  className={cn(
+                    "p-2.5 rounded-xl border text-left transition",
+                    isSelected
+                      ? "bg-[#F8EEEA] border-[#C45B3A] text-[#26251F] shadow-xs"
+                      : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:border-[#C45B3A]/40 hover:text-[#26251F]"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
+                    <span>{opt.flag}</span>
+                    <span>{opt.label}</span>
+                  </div>
+                  <div className="text-[10px] text-[#77766D] mt-0.5 pl-5">
+                    {opt.sub}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -295,17 +268,21 @@ export function ScriptParametersForm({
               <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
-          <select
+          <Select
             value={selectedPresetId || activePreset?.id || ""}
-            onChange={(e) => setSelectedPresetId(e.target.value)}
-            className="w-full rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] px-3 py-2 text-xs font-medium text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+            onValueChange={(val) => setSelectedPresetId(val)}
           >
-            {presets.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.is_active ? "(Aktif)" : ""}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-9 w-full text-xs font-medium">
+              <SelectValue placeholder="Pilih preset..." />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              {presets.map((p) => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  {p.name} {p.is_active ? "(Aktif)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {presets.find((p) => p.id === (selectedPresetId || activePreset?.id)) && (
             <div className="text-[10px] text-[#858176] mt-1 flex items-center justify-between">
               <span className="truncate max-w-[260px]">
@@ -358,28 +335,91 @@ export function ScriptParametersForm({
           />
         </div>
 
-        <Button
-          type="submit"
-          disabled={isGenerating}
-          variant="workspace-primary"
-          className="w-full gap-2 py-2.5 text-xs"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Merancang Naskah ({durationMins} Mnt) & Visual AI...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              <span>
-                {hasSegments
-                  ? `Generate Ulang Naskah (${durationMins} Menit)`
-                  : `Generate Naskah Storyboard (${durationMins} Menit)`}
-              </span>
-            </>
+        {/* Bottom Action & Save Preset Bar */}
+        <div className="space-y-2 pt-2 border-t border-[#E5E1D7]">
+          {showSaveScriptModal && (
+            <div className="space-y-2 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-[#26251F]">
+                <span className="flex items-center gap-1.5">
+                  <BookmarkPlus className="w-3.5 h-3.5 text-[#C45B3A]" />
+                  <span>Simpan Preset Naskah Baru</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveScriptModal(false)}
+                  className="text-[#77766D] hover:text-[#26251F]"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Nama preset baru (mis. Dokumenter Favorit 8m)..."
+                  value={newScriptPresetName}
+                  onChange={(e) => setNewScriptPresetName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      onSaveScriptPreset(e as unknown as React.FormEvent);
+                    }
+                  }}
+                  autoFocus
+                  className="h-9 flex-1 text-xs"
+                />
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSaveScriptPreset(e as unknown as React.FormEvent);
+                  }}
+                  size="sm"
+                  variant="workspace-primary"
+                  className="h-9 shrink-0 gap-1 px-3 text-xs"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Simpan</span>
+                </Button>
+              </div>
+            </div>
           )}
-        </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSaveScriptModal(!showSaveScriptModal)}
+              className="h-10 shrink-0 gap-1.5 px-3 text-xs border-[#E5E1D7] bg-[#FFFEFA] text-[#4D4A42] hover:bg-[#F8EEEA] hover:text-[#A9472C]"
+            >
+              <BookmarkPlus className="w-3.5 h-3.5 text-[#C45B3A]" />
+              <span>Simpan Preset</span>
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={isGenerating}
+              variant="workspace-primary"
+              className="h-10 flex-1 gap-2 text-xs"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Merancang Naskah ({durationMins} Mnt) & Visual AI...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>
+                    {hasSegments
+                      ? `Generate Ulang Naskah (${durationMins} Menit)`
+                      : `Generate Naskah Storyboard (${durationMins} Menit)`}
+                  </span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </form>
     </div>
   );

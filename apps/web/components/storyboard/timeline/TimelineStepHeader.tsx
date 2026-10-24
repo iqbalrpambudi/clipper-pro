@@ -19,7 +19,6 @@ export function TimelineStepHeader({
       icon={Layers}
       title="Timeline, Subtitle & Visual Studio"
       badge="Langkah 4 • Studio"
-      secondaryBadge="Live WYSIWYG"
       description="Simulasi preview video 16:9 dengan live karaoke subtitle, efek motion Ken Burns, watermark branding, dan musik latar."
       actions={
         <>

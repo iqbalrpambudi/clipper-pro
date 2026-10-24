@@ -3,6 +3,13 @@
 import React from "react";
 import { Type, Zap } from "lucide-react";
 import { SubtitleStyle } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 
 interface SubtitleTypographyColumnProps {
   style: SubtitleStyle;
@@ -24,19 +31,23 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
           <label className="text-muted-foreground block mb-1 text-[11px] font-medium">
             Jenis Font (Font Family)
           </label>
-          <select
+          <Select
             value={style.font_family}
-            onChange={(e) => onCommitStyle({ ...style, font_family: e.target.value })}
-            className="w-full px-3 py-1.5 bg-card rounded-lg border border-border text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
+            onValueChange={(val) => onCommitStyle({ ...style, font_family: val })}
           >
-            <option value="Montserrat">Montserrat (Modern Viral)</option>
-            <option value="Bebas Neue">Bebas Neue (Hormozi Impact)</option>
-            <option value="Poppins">Poppins (Clean & Friendly)</option>
-            <option value="Inter">Inter (Minimalist Tech)</option>
-            <option value="Anton">Anton (Bold Poster)</option>
-            <option value="Oswald">Oswald (Condensed)</option>
-            <option value="Roboto">Roboto (Neutral Clean)</option>
-          </select>
+            <SelectTrigger className="h-9 w-full text-xs font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              <SelectItem value="Montserrat" className="text-xs">Montserrat (Modern Viral)</SelectItem>
+              <SelectItem value="Bebas Neue" className="text-xs">Bebas Neue (Hormozi Impact)</SelectItem>
+              <SelectItem value="Poppins" className="text-xs">Poppins (Clean & Friendly)</SelectItem>
+              <SelectItem value="Inter" className="text-xs">Inter (Minimalist Tech)</SelectItem>
+              <SelectItem value="Anton" className="text-xs">Anton (Bold Poster)</SelectItem>
+              <SelectItem value="Oswald" className="text-xs">Oswald (Condensed)</SelectItem>
+              <SelectItem value="Roboto" className="text-xs">Roboto (Neutral Clean)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Font Size Slider with Step Buttons */}
@@ -93,15 +104,19 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
           <label className="text-muted-foreground block mb-1 text-[11px] font-medium">
             Ketebalan Huruf (Weight)
           </label>
-          <select
+          <Select
             value={style.font_weight}
-            onChange={(e) => onCommitStyle({ ...style, font_weight: e.target.value })}
-            className="w-full px-2.5 py-1.5 bg-card rounded-lg border border-border text-foreground text-xs font-semibold focus:outline-none focus:border-primary transition"
+            onValueChange={(val) => onCommitStyle({ ...style, font_weight: val })}
           >
-            <option value="Bold">Bold (Tebal)</option>
-            <option value="ExtraBold">Extra Bold (Sangat Tebal)</option>
-            <option value="Black">Black / Heavy</option>
-          </select>
+            <SelectTrigger className="h-9 w-full text-xs font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              <SelectItem value="Bold" className="text-xs">Bold (Tebal)</SelectItem>
+              <SelectItem value="ExtraBold" className="text-xs">Extra Bold (Sangat Tebal)</SelectItem>
+              <SelectItem value="Black" className="text-xs">Black / Heavy</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Display Mode */}

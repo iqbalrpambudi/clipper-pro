@@ -22,6 +22,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { VoicePreset } from "@/lib/presetStorage";
 import {
   GEMINI_TTS_MODELS,
@@ -112,143 +119,79 @@ export function VoiceSelectorPanel({
       description="Pilih narrator voice yang sesuai dengan tema video"
       icon={<Mic className="w-4 h-4 text-primary" />}
       className="!border-surface-border !bg-card"
-      headerClassName="!border-surface-border !bg-muted"
-      actions={
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
-          <button
-            type="button"
-            onClick={() => {
-              setProvider("gemini");
-              setSelectedVoice("Puck");
-            }}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
-              provider === "gemini"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Gemini
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setProvider("elevenlabs");
-              setSelectedVoice("Adam");
-            }}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
-              provider === "elevenlabs"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            ElevenLabs
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setProvider("runware");
-              setSelectedVoice("fishaudio:s2.1@pro");
-            }}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
-              provider === "runware"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Runware
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setProvider("edge");
-              setSelectedVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
-            }}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
-              provider === "edge"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Edge
-          </button>
-        </div>
-      }
+      headerClassName="!border-surface-border !bg-card"
     >
-      {/* Voice Preset Bar */}
-      <div className="mb-3.5 space-y-2.5 rounded-xl border border-border bg-background p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Bookmark className="h-3.5 w-3.5 shrink-0 text-primary" />
-            <span className="shrink-0 text-xs font-semibold text-foreground">Preset:</span>
-            <select
-              value={selectedVoicePresetId}
-              onChange={(e) => handleLoadVoicePreset(e.target.value)}
-              className="max-w-[200px] truncate rounded-lg border border-input bg-control-background px-2.5 py-1 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
-            >
-              <option value="" disabled>
-                -- Muat Preset Suara --
-              </option>
-              {voicePresets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
-                </option>
-              ))}
-            </select>
-            {selectedPreset && !selectedPreset.isBuiltin && (
-              <button
-                type="button"
-                onClick={() => handleDeleteVoicePreset(selectedPreset.id, selectedPreset.name)}
-                title="Hapus Preset Kustom Ini"
-                className="shrink-0 rounded p-1 text-primary transition hover:bg-accent"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          <Button
-            type="button"
-            variant="workspace-secondary"
-            size="xs"
-            onClick={() => setShowSaveVoiceModal(!showSaveVoiceModal)}
-            className="shrink-0 gap-1"
-          >
-            <BookmarkPlus className="h-3.5 w-3.5" />
-            <span>Simpan Preset</span>
-          </Button>
-        </div>
-
-        {showSaveVoiceModal && (
-          <form
-            onSubmit={handleSaveVoicePreset}
-            className="flex items-center gap-2 border-t border-border pt-2"
-          >
-            <Input
-              type="text"
-              placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
-              value={newVoicePresetName}
-              onChange={(e) => setNewVoicePresetName(e.target.value)}
-              autoFocus
-              className="h-9 flex-1 text-xs"
-            />
-            <Button
-              type="submit"
-              variant="workspace-primary"
-              size="workspace-sm"
-              className="shrink-0 gap-1"
-            >
-              <Save className="h-3 w-3" />
-              <span>Simpan</span>
-            </Button>
+      {/* Voice Preset Selector */}
+      <div className="mb-3.5 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <Bookmark className="h-3.5 w-3.5 text-primary" />
+            <span>Preset Suara</span>
+          </label>
+          {selectedPreset && !selectedPreset.isBuiltin && (
             <button
               type="button"
-              onClick={() => setShowSaveVoiceModal(false)}
-              className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              onClick={() => handleDeleteVoicePreset(selectedPreset.id, selectedPreset.name)}
+              title="Hapus Preset Kustom Ini"
+              className="flex items-center gap-1 text-[11px] text-destructive hover:underline"
             >
-              <X className="h-3.5 w-3.5" />
+              <Trash2 className="h-3 w-3" />
+              <span>Hapus Preset</span>
             </button>
-          </form>
-        )}
+          )}
+        </div>
+        <Select
+          value={selectedVoicePresetId || undefined}
+          onValueChange={(val) => handleLoadVoicePreset(val)}
+        >
+          <SelectTrigger className="h-9 w-full text-xs font-medium">
+            <SelectValue placeholder="-- Muat Preset Suara --" />
+          </SelectTrigger>
+          <SelectContent appearance="workspace">
+            {voicePresets.map((p) => (
+              <SelectItem key={p.id} value={p.id} className="text-xs">
+                {p.name} {p.isBuiltin ? "(Bawaan)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Voice Provider Selector */}
+      <div className="mb-3.5 space-y-1.5">
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Cpu className="h-3.5 w-3.5 text-primary" />
+          <span>Penyedia Suara (Voice Provider)</span>
+        </label>
+        <Select
+          value={provider}
+          onValueChange={(val) => {
+            setProvider(val);
+            if (val === "gemini") setSelectedVoice("Puck");
+            else if (val === "elevenlabs") setSelectedVoice("Adam");
+            else if (val === "runware") setSelectedVoice("fishaudio:s2.1@pro");
+            else if (val === "edge")
+              setSelectedVoice(isEnProject ? "en-US-JennyNeural" : "id-ID-ArdiNeural");
+          }}
+        >
+          <SelectTrigger className="h-9 w-full text-xs font-medium">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent appearance="workspace">
+            <SelectItem value="gemini" className="text-xs">
+              Google Gemini TTS (Ekspresif)
+            </SelectItem>
+            <SelectItem value="elevenlabs" className="text-xs">
+              ElevenLabs (High Quality)
+            </SelectItem>
+            <SelectItem value="runware" className="text-xs">
+              Runware Fast TTS
+            </SelectItem>
+            <SelectItem value="edge" className="text-xs">
+              Microsoft Edge TTS (Gratis)
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Gemini Model Selection Box */}
@@ -267,17 +210,18 @@ export function VoiceSelectorPanel({
             </Badge>
           </div>
 
-          <select
-            value={geminiModel}
-            onChange={(e) => setGeminiModel(e.target.value)}
-            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
-          >
-            {GEMINI_TTS_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.badge}
-              </option>
-            ))}
-          </select>
+          <Select value={geminiModel} onValueChange={setGeminiModel}>
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              {GEMINI_TTS_MODELS.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">
+                  {m.name} — {m.badge}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
@@ -307,17 +251,18 @@ export function VoiceSelectorPanel({
             </Badge>
           </div>
 
-          <select
-            value={elevenlabsModel}
-            onChange={(e) => setElevenlabsModel(e.target.value)}
-            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
-          >
-            {ELEVENLABS_TTS_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.badge}
-              </option>
-            ))}
-          </select>
+          <Select value={elevenlabsModel} onValueChange={setElevenlabsModel}>
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              {ELEVENLABS_TTS_MODELS.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">
+                  {m.name} — {m.badge}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
@@ -449,17 +394,18 @@ export function VoiceSelectorPanel({
             </Badge>
           </div>
 
-          <select
-            value={runwareModel}
-            onChange={(e) => setRunwareModel(e.target.value)}
-            className="w-full rounded-lg border border-input bg-control-background px-2.5 py-1.5 text-xs text-foreground transition focus:border-primary focus:outline-none"
-          >
-            {RUNWARE_TTS_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.badge}
-              </option>
-            ))}
-          </select>
+          <Select value={runwareModel} onValueChange={setRunwareModel}>
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent appearance="workspace">
+              {RUNWARE_TTS_MODELS.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">
+                  {m.name} — {m.badge}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
@@ -621,6 +567,57 @@ export function VoiceSelectorPanel({
             </div>
           );
         })}
+      </div>
+
+      {/* Bottom Save Preset Section */}
+      <div className="mt-3.5 pt-3 border-t border-border">
+        {showSaveVoiceModal ? (
+          <form onSubmit={handleSaveVoicePreset} className="space-y-2 rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+              <span className="flex items-center gap-1.5">
+                <BookmarkPlus className="h-3.5 w-3.5 text-primary" />
+                <span>Simpan Preset Suara Baru</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSaveVoiceModal(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder="Nama preset suara (mis. ElevenLabs Adam Cepat)..."
+                value={newVoicePresetName}
+                onChange={(e) => setNewVoicePresetName(e.target.value)}
+                autoFocus
+                className="h-9 flex-1 text-xs"
+              />
+              <Button
+                type="submit"
+                variant="workspace-primary"
+                size="workspace-sm"
+                className="h-9 shrink-0 gap-1 text-xs"
+              >
+                <Save className="h-3.5 w-3.5" />
+                <span>Simpan</span>
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSaveVoiceModal(true)}
+            className="w-full h-9 gap-1.5 text-xs border-border bg-card text-foreground hover:bg-muted"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5 text-primary" />
+            <span>Simpan Pengaturan Suara Sebagai Preset</span>
+          </Button>
+        )}
       </div>
     </SectionPanel>
   );
