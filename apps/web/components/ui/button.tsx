@@ -11,15 +11,15 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow hover:bg-primary/90 font-semibold active:scale-[0.98] transition-transform",
         "workspace-primary":
-          "rounded-xl border border-[#C45B3A] bg-[#C45B3A] px-4 font-semibold text-[#FFFAF6] shadow-sm hover:border-[#A9472C] hover:bg-[#A9472C] active:scale-[0.98]",
+          "rounded-xl border border-[#C45B3A] dark:border-primary bg-[#C45B3A] dark:bg-primary px-4 font-semibold text-[#FFFAF6] shadow-sm hover:border-[#A9472C] dark:hover:border-primary/90 hover:bg-[#A9472C] dark:hover:bg-primary/90 active:scale-[0.98]",
         "workspace-secondary":
-          "rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] px-4 font-semibold text-[#4D4A42] shadow-sm hover:bg-[#F1EEE6] active:scale-[0.98]",
+          "rounded-xl border border-[#E5E1D7] dark:border-border bg-[#FBFAF7] dark:bg-card px-4 font-semibold text-[#4D4A42] dark:text-foreground shadow-sm hover:bg-[#F1EEE6] dark:hover:bg-muted active:scale-[0.98]",
         "workspace-outline":
-          "rounded-xl border border-[#D2CDBF] bg-transparent px-4 font-semibold text-[#4D4A42] hover:bg-[#F1EEE6] active:scale-[0.98]",
+          "rounded-xl border border-[#D2CDBF] dark:border-border bg-transparent px-4 font-semibold text-[#4D4A42] dark:text-foreground hover:bg-[#F1EEE6] dark:hover:bg-muted active:scale-[0.98]",
         "workspace-quiet":
-          "rounded-lg px-3 font-semibold text-[#5E5C54] hover:bg-[#F1EEE6] hover:text-[#26251F]",
+          "rounded-lg px-3 font-semibold text-[#5E5C54] dark:text-muted-foreground hover:bg-[#F1EEE6] dark:hover:bg-muted hover:text-[#26251F] dark:hover:text-foreground",
         "workspace-destructive":
-          "rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] px-3 font-semibold text-[#A9472C] hover:bg-[#F3E1D9]",
+          "rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/15 px-3 font-semibold text-[#A9472C] dark:text-rose-400 hover:bg-[#F3E1D9] dark:hover:bg-destructive/25",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:scale-[0.98] transition-transform",
         outline:

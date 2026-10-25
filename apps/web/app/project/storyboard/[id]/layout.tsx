@@ -140,9 +140,9 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
 
   if (isLoading) {
     return (
-      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
-        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#C45B3A]" aria-hidden="true" />
-        <p role="status" className="text-sm text-[#77766D]">
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+        <p role="status" className="text-sm text-muted-foreground">
           Memuat Studio Long Storyboard...
         </p>
       </div>
@@ -151,8 +151,8 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
 
   if (error || !project) {
     return (
-      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-[#F3F0E8] px-4 text-[#26251F]">
-        <p role="alert" className="mb-4 text-sm text-rose-700">
+      <div className="workspace-theme flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
+        <p role="alert" className="mb-4 text-sm text-rose-500">
           Project tidak ditemukan atau gagal dimuat.
         </p>
         <Link href="/">

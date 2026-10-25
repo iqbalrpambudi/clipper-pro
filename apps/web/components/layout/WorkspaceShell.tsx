@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Film, LayoutGrid, Palette, Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 export type WorkspacePage = "projects" | "image-studio" | "settings";
 
@@ -53,21 +54,27 @@ export function WorkspaceShell({
           <WorkspaceNavigation activePage={activePage} />
 
           <div className="workspace-sidebar-footer">
-            <strong>Ruang kerja kreatif</strong>
+            <div className="flex items-center justify-between mb-2">
+              <strong className="!mb-0">Tema Tampilan</strong>
+              <ThemeToggle align="start" />
+            </div>
             Kelola project, gaya visual, dan pengaturan produksi Anda.
           </div>
         </aside>
 
         <div className="workspace-mobile-header">
-          <Link className="workspace-brand" href="/" aria-label="Cliper Pro, dashboard">
-            <span className="workspace-brand-mark">
-              <Film className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-            <span className="workspace-brand-copy">
-              Cliper Pro
-              <small>Creator studio</small>
-            </span>
-          </Link>
+          <div className="flex items-center justify-between w-full">
+            <Link className="workspace-brand" href="/" aria-label="Cliper Pro, dashboard">
+              <span className="workspace-brand-mark">
+                <Film className="h-[18px] w-[18px]" aria-hidden="true" />
+              </span>
+              <span className="workspace-brand-copy">
+                Cliper Pro
+                <small>Creator studio</small>
+              </span>
+            </Link>
+            <ThemeToggle align="end" />
+          </div>
           <WorkspaceNavigation activePage={activePage} />
         </div>
 

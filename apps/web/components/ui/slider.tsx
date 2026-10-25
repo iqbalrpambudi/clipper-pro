@@ -16,13 +16,13 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, S
       <SliderPrimitive.Track
         className={cn(
           "relative h-1.5 w-full grow overflow-hidden rounded-full",
-          appearance === "workspace" ? "bg-[#E5E1D7]" : "bg-muted"
+          appearance === "workspace" ? "bg-[#E5E1D7] dark:bg-muted" : "bg-muted"
         )}
       >
         <SliderPrimitive.Range
           className={cn(
             "absolute h-full",
-            appearance === "workspace" ? "bg-[#C45B3A]" : "bg-primary"
+            appearance === "workspace" ? "bg-[#C45B3A] dark:bg-primary" : "bg-primary"
           )}
         />
       </SliderPrimitive.Track>
@@ -31,8 +31,8 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, S
         className={cn(
           "block h-4 w-4 cursor-grab rounded-full shadow transition-transform hover:scale-110 active:cursor-grabbing disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2",
           appearance === "workspace"
-            ? "border border-[#C45B3A] bg-[#FBFAF7] focus-visible:ring-[#C45B3A]/50"
-            : "border border-primary/50 bg-white focus-visible:ring-ring"
+            ? "border border-[#C45B3A] dark:border-primary bg-[#FBFAF7] dark:bg-card focus-visible:ring-[#C45B3A]/50 dark:focus-visible:ring-primary/50"
+            : "border border-primary/50 bg-white dark:bg-card focus-visible:ring-ring"
         )}
       />
     </SliderPrimitive.Root>

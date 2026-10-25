@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button, Input, Badge } from "@/components/ui";
 import { GlobalTaskIndicator } from "@/components/common/GlobalTaskIndicator";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { StudioTab } from "@/lib/store";
 
 export interface StudioNavTab {
@@ -67,11 +68,11 @@ export function StudioLayout({
 
   return (
     <div
-      className={`workspace-theme flex flex-col bg-[#F3F0E8] text-[#26251F] ${
+      className={`workspace-theme flex flex-col bg-background text-foreground ${
         isFullHeightTab ? "h-screen overflow-hidden" : "min-h-screen"
       }`}
     >
-      <header className="sticky top-0 z-40 border-b border-[#DCD6C8] bg-[#FBFAF7]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
         <div className="mx-auto flex min-h-16 max-w-[1920px] items-center gap-3 px-3 py-2 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Button
@@ -134,7 +135,7 @@ export function StudioLayout({
                     setEditTitle(projectName);
                     setIsEditingTitle(true);
                   }}
-                  className="max-w-[min(42vw,20rem)] truncate rounded text-left font-serif text-lg text-[#26251F] transition-colors hover:text-[#A9472C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] sm:max-w-md sm:text-xl"
+                  className="max-w-[min(42vw,20rem)] truncate rounded text-left font-serif text-lg text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-md sm:text-xl"
                   title="Ubah nama project"
                 >
                   {projectName}
@@ -169,6 +170,7 @@ export function StudioLayout({
             <Badge variant="workspace" className="font-mono text-[10px] sm:hidden">
               {aspectRatio}
             </Badge>
+            <ThemeToggle align="end" />
             <Button
               asChild
               variant="workspace-secondary"
@@ -201,7 +203,7 @@ export function StudioLayout({
 
         <nav
           aria-label="Tahap project"
-          className="project-studio-stage-nav border-t border-[#E5E1D7] bg-[#FBFAF7]"
+          className="project-studio-stage-nav border-t border-border bg-card"
         >
           <div className="mx-auto flex max-w-[1920px] px-3 py-2 sm:px-6 no-scrollbar">
             <div className="workspace-filter-pills flex items-center gap-1.5 overflow-x-auto">
