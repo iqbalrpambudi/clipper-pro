@@ -107,6 +107,12 @@ export function RenderTab({ project }: RenderTabProps) {
 
   const totalStorageBytes = renderJobs.reduce((acc, j) => acc + (j.file_size_bytes || 0), 0);
 
+  const safeProjectFilename = React.useMemo(() => {
+    const raw = (project?.name || "video").trim();
+    const cleaned = raw.replace(/[\\/*?:"<>|]/g, "").replace(/\s+/g, " ").trim();
+    return (cleaned || `video_${project?.id?.slice(0, 8) || "export"}`) + ".mp4";
+  }, [project?.name, project?.id]);
+
   const updateProjectMutation = useMutation({
     mutationFn: (data: Parameters<typeof api.updateProject>[1]) =>
       api.updateProject(project.id, data),
@@ -805,6 +811,7 @@ export function RenderTab({ project }: RenderTabProps) {
                               >
                                 <a
                                   href={`/api/v1/projects/${project.id}/render/download/${job.id}`}
+                                  download={safeProjectFilename}
                                 >
                                   <Download className="w-3 h-3" />
                                   <span>Download MP4</span>
@@ -870,7 +877,7 @@ export function RenderTab({ project }: RenderTabProps) {
                     asChild
                     className="h-8 gap-1.5 text-xs"
                   >
-                    <a href={previewModalVideo.url} download>
+                    <a href={previewModalVideo.url} download={safeProjectFilename}>
                       <Download className="w-3.5 h-3.5" />
                       <span>Download</span>
                     </a>

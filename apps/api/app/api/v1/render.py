@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import List, Optional
 
 from arq import create_pool
@@ -266,9 +267,18 @@ async def download_rendered_video(
     if not job.output_file_path or not Path(job.output_file_path).exists():
         raise HTTPException(status_code=404, detail="File video hasil render belum tersedia")
 
+    project = await db.get(Project, project_id)
+    raw_name = (project.name if project and project.name else f"video_{project_id[:8]}").strip()
+    safe_name = re.sub(r'[\\/*?:"<>|]', "", raw_name)
+    safe_name = re.sub(r"\s+", " ", safe_name).strip()
+    if not safe_name:
+        safe_name = f"video_{project_id[:8]}"
+
+    filename = f"{safe_name}.mp4"
+
     return FileResponse(
         path=job.output_file_path,
-        filename=f"cliper_short_{job.id[:8]}.mp4",
+        filename=filename,
         media_type="video/mp4",
     )
 

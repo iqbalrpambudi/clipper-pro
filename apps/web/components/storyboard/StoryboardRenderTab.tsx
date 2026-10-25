@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Download,
@@ -57,6 +57,12 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
   const audio = project.audio || project.audio_track;
   const items: StoryboardItem[] = project.storyboard_items || [];
   const readyItemsCount = items.filter((it) => it.status === "ready" && it.image_url).length;
+
+  const safeProjectFilename = useMemo(() => {
+    const raw = (project?.name || "storyboard").trim();
+    const cleaned = raw.replace(/[\\/*?:"<>|]/g, "").replace(/\s+/g, " ").trim();
+    return (cleaned || `storyboard_${project?.id?.slice(0, 8) || "export"}`) + ".mp4";
+  }, [project?.name, project?.id]);
 
   const { data: renderJobs = [] } = useQuery({
     queryKey: ["render-jobs", project.id],
@@ -484,8 +490,8 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                             </Button>
 
                             <a
-                              href={job.output_url}
-                              download={`storyboard_${project.id}.mp4`}
+                              href={`/api/v1/projects/${project.id}/render/download/${job.id}`}
+                              download={safeProjectFilename}
                               className="flex items-center gap-1.5 rounded-lg bg-[#C45B3A] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#A9472C]"
                             >
                               <Download className="w-3.5 h-3.5" />
