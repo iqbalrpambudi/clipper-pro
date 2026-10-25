@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import {
   Project,
   ProjectDetail,
@@ -82,6 +83,17 @@ export function useStoryboardScriptState(project: Project) {
 
   // Sync script draft across tab switches
   useEffect(() => {
+    const scriptPayload = {
+      language,
+      topic,
+      preset: selectedPresetId,
+      scriptPresetId: selectedScriptPresetId,
+      tone,
+      durationMins,
+      imagesPerSegment,
+      customInstructions,
+    };
+
     setScriptDraft(project.id, {
       topic,
       durationMins,
@@ -91,8 +103,11 @@ export function useStoryboardScriptState(project: Project) {
       imagesPerSegment,
       customInstructions,
     });
+
+    useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "script", scriptPayload);
   }, [
     project.id,
+    language,
     topic,
     durationMins,
     tone,
@@ -102,6 +117,7 @@ export function useStoryboardScriptState(project: Project) {
     customInstructions,
     setScriptDraft,
   ]);
+
 
   useEffect(() => {
     setScriptPresets(presetStorage.getScriptPresets());

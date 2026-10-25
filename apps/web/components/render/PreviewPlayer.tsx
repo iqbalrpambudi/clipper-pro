@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Move } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat } from "lucide-react";
 import {
   Project,
   TimelineClip,
@@ -74,6 +74,11 @@ export function PreviewPlayer({
   const lastPublishedTimeRef = useRef(0);
   const [durationSec, setDurationSec] = useState(project.timeline?.total_duration || 30);
   const [isMuted, setIsMuted] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const isLoopingRef = useRef(false);
+  useEffect(() => {
+    isLoopingRef.current = isLooping;
+  }, [isLooping]);
   const [frameWidth, setFrameWidth] = useState(320);
   const [isJassubReady, setIsJassubReady] = useState(false);
   const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
@@ -114,7 +119,7 @@ export function PreviewPlayer({
     return () => ro.disconnect();
   }, []);
 
-  // Active Segment & Active Word Calculation (with micro-pause buffer)
+  // Active Segment & Active Word Calculation (with micro-pause buffer & fallback preview)
   const curMs = currentTimeSec * 1000;
   const activeSegmentIndex = segments.findIndex((s, idx) => {
     const nextSeg = segments[idx + 1];
@@ -122,8 +127,23 @@ export function PreviewPlayer({
     return curMs >= s.start_ms && curMs <= maxEnd;
   });
   const activeSegment = activeSegmentIndex !== -1 ? segments[activeSegmentIndex] : null;
+  const displaySegment =
+    activeSegment ||
+    segments[0] ||
+    (subtitleStyle?.enabled !== false
+      ? {
+          id: "preview-default",
+          start_ms: 0,
+          end_ms: 2000,
+          text: "PREVIEW SUBTITLE",
+          words: [
+            { word: "PREVIEW", start_ms: 0, end_ms: 1000 },
+            { word: "SUBTITLE", start_ms: 1000, end_ms: 2000 },
+          ],
+        }
+      : null);
 
-  const segWords = activeSegment?.words || [];
+  const segWords = displaySegment?.words || [];
   let activeWordIndex = -1;
 
   if (segWords.length > 0) {
@@ -145,6 +165,9 @@ export function PreviewPlayer({
           break;
         }
       }
+    }
+    if (activeWordIndex === -1) {
+      activeWordIndex = 0;
     }
   }
 
@@ -181,6 +204,16 @@ export function PreviewPlayer({
         break;
       }
     }
+    if (activeBurstGroup.length === 0) {
+      activeBurstGroup = segWords.slice(0, burstCount).map((item, localIdx) => {
+        const clean = item.word.toLowerCase().replace(/[^\w]/g, "");
+        return {
+          ...item,
+          cleanWord: clean,
+          isActive: isHighlightEnabled && localIdx === 0,
+        };
+      });
+    }
   }
 
   // Update total duration when project updates
@@ -196,61 +229,7 @@ export function PreviewPlayer({
     currentTimeRef.current = currentTimeSec;
   }, [currentTimeSec]);
 
-  // Audio event listeners
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
 
-    const handleTimeUpdate = () => {
-      setCurrentTimeSec(audio.currentTime);
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTimeSec(0);
-      handleReset();
-    };
-
-    const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
-        setDurationSec(audio.duration);
-      }
-    };
-
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-    };
-  }, []);
-
-  // Timer fallback if no audio track exists yet
-  useEffect(() => {
-    if (project.audio?.audio_url) return;
-    if (!isPlaying) return;
-
-    let lastTime = performance.now();
-    const interval = setInterval(() => {
-      const now = performance.now();
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
-      setCurrentTimeSec((cur) => {
-        const next = cur + delta;
-        if (next >= durationSec) {
-          setIsPlaying(false);
-          handleReset();
-          return 0;
-        }
-        return next;
-      });
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, project.audio?.audio_url, durationSec]);
 
   // Initial & Clips-Change Setup for Video Elements
   useEffect(() => {
@@ -515,6 +494,153 @@ export function PreviewPlayer({
     });
   }, [clips, isPlaying, renderCanvasFrame]);
 
+  // Playback Control Lifecycle: Reset, Stop, and Looping Restart
+  const handleReset = useCallback(() => {
+    setCurrentTimeSec(0);
+    currentTimeRef.current = 0;
+    lastPublishedTimeRef.current = 0;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (videoRefA.current) {
+      videoRefA.current.pause();
+    }
+    if (videoRefB.current) {
+      videoRefB.current.pause();
+    }
+
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+    currentClipIndexRef.current = 0;
+
+    if (clips.length > 0 && videoRefA.current) {
+      if (videoRefA.current.getAttribute("src") !== (clips[0].video_url || "")) {
+        videoRefA.current.src = clips[0].video_url || "";
+      }
+      videoRefA.current.currentTime = clips[0].clip_start;
+      videoRefA.current.playbackRate = clips[0].speed || 1.0;
+    }
+    if (clips.length > 1 && videoRefB.current) {
+      if (videoRefB.current.getAttribute("src") !== (clips[1].video_url || "")) {
+        videoRefB.current.src = clips[1].video_url || "";
+      }
+      videoRefB.current.currentTime = clips[1].clip_start;
+      videoRefB.current.playbackRate = clips[1].speed || 1.0;
+      lastPreloadedClipIndex.current = 1;
+    }
+
+    renderCanvasFrame(0);
+  }, [clips, renderCanvasFrame]);
+
+  const restartPlayback = useCallback(() => {
+    setCurrentTimeSec(0);
+    currentTimeRef.current = 0;
+    lastPublishedTimeRef.current = 0;
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+    currentClipIndexRef.current = 0;
+
+    if (clips.length > 0 && videoRefA.current) {
+      if (videoRefA.current.getAttribute("src") !== (clips[0].video_url || "")) {
+        videoRefA.current.src = clips[0].video_url || "";
+      }
+      videoRefA.current.currentTime = clips[0].clip_start;
+      videoRefA.current.playbackRate = clips[0].speed || 1.0;
+      videoRefA.current.play().catch(() => {});
+    }
+    if (clips.length > 1 && videoRefB.current) {
+      if (videoRefB.current.getAttribute("src") !== (clips[1].video_url || "")) {
+        videoRefB.current.src = clips[1].video_url || "";
+      }
+      videoRefB.current.currentTime = clips[1].clip_start;
+      videoRefB.current.playbackRate = clips[1].speed || 1.0;
+      videoRefB.current.pause();
+      lastPreloadedClipIndex.current = 1;
+    }
+
+    // Audio HARUS menyala kembali saat loop diaktifkan
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.muted = isMuted;
+      audio.play().catch((err) => {
+        console.warn("[PreviewPlayer] Gagal memutar audio saat loop:", err);
+      });
+    }
+
+    setIsPlaying(true);
+    renderCanvasFrame(0);
+  }, [clips, isMuted, renderCanvasFrame]);
+
+  const stopPlayback = useCallback(() => {
+    setIsPlaying(false);
+    handleReset();
+  }, [handleReset]);
+
+  // Audio event listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTimeSec(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      if (isLoopingRef.current) {
+        restartPlayback();
+      } else {
+        stopPlayback();
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setDurationSec(audio.duration);
+      }
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, [restartPlayback, stopPlayback]);
+
+  // Timer fallback if no audio track exists yet
+  useEffect(() => {
+    if (project.audio?.audio_url) return;
+    if (!isPlaying) return;
+
+    let lastTime = performance.now();
+    const interval = setInterval(() => {
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+      setCurrentTimeSec((cur) => {
+        const next = cur + delta;
+        if (next >= durationSec && durationSec > 0) {
+          if (isLoopingRef.current) {
+            restartPlayback();
+            return 0;
+          } else {
+            stopPlayback();
+            return 0;
+          }
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, project.audio?.audio_url, durationSec, restartPlayback, stopPlayback]);
+
   // High-Precision Unified Compositor Loop (Audio Clock + Dual-Video Ping-Pong + Canvas + JASSUB)
   useEffect(() => {
     let animId: number;
@@ -525,6 +651,16 @@ export function PreviewPlayer({
       // closure value would be frozen and paused seeks would not repaint.
       const curTime =
         isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeRef.current;
+
+      // Handle video reached duration limit
+      if (isPlaying && durationSec > 0 && curTime >= durationSec) {
+        if (isLoopingRef.current) {
+          restartPlayback();
+        } else {
+          stopPlayback();
+        }
+        return;
+      }
 
       if (isPlaying && audio && !audio.paused) {
         // Only push to state ~20x/sec; the loop itself reads currentTimeRef at 60fps.
@@ -550,14 +686,19 @@ export function PreviewPlayer({
           const targetClip = clips[validIdx];
           if (newActiveVid && targetClip) {
             const clipProg = Math.max(0, curTime - targetClip.timeline_start);
-            const targetVideoTime = targetClip.clip_start + clipProg * (targetClip.speed || 1.0);
+            const targetVideoTime = Math.min(
+              targetClip.clip_end,
+              targetClip.clip_start + clipProg * (targetClip.speed || 1.0)
+            );
 
             if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.1) {
               newActiveVid.currentTime = targetVideoTime;
             }
             newActiveVid.playbackRate = targetClip.speed || 1.0;
             newActiveVid.muted = true;
-            newActiveVid.play().catch(() => {});
+            if (targetVideoTime < targetClip.clip_end - 0.03) {
+              newActiveVid.play().catch(() => {});
+            }
           }
 
           if (oldActiveVid) {
@@ -592,11 +733,16 @@ export function PreviewPlayer({
               }
               const expectedVidTime =
                 curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
-              if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
-                activeVid.currentTime = expectedVidTime;
-              }
-              if (activeVid.paused && !audio.paused) {
-                activeVid.play().catch(() => {});
+              if (expectedVidTime >= curClip.clip_end - 0.03) {
+                activeVid.pause();
+                activeVid.currentTime = curClip.clip_end;
+              } else {
+                if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
+                  activeVid.currentTime = expectedVidTime;
+                }
+                if (activeVid.paused && !audio.paused && !activeVid.ended && curTime < durationSec) {
+                  activeVid.play().catch(() => {});
+                }
               }
             }
           }
@@ -818,12 +964,23 @@ export function PreviewPlayer({
       if (videoRefB.current) videoRefB.current.pause();
       setIsPlaying(false);
     } else {
+      let t = currentTimeRef.current;
+      if (durationSec > 0 && t >= durationSec - 0.05) {
+        t = 0;
+        setCurrentTimeSec(0);
+        currentTimeRef.current = 0;
+      }
       if (audioRef.current) {
-        audioRef.current.currentTime = currentTimeSec;
+        audioRef.current.currentTime = t;
+        audioRef.current.muted = isMuted;
         audioRef.current.play().catch(() => {});
       }
       const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
       if (activeVid) {
+        if (t === 0 && clips.length > 0) {
+          activeVid.src = clips[0].video_url || "";
+          activeVid.currentTime = clips[0].clip_start;
+        }
         activeVid.play().catch(() => {});
       }
       setIsPlaying(true);
@@ -840,7 +997,8 @@ export function PreviewPlayer({
     }
 
     const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
-    const idx = seekIdx !== -1 ? seekIdx : 0;
+    const idx =
+      seekIdx !== -1 ? seekIdx : t >= durationSec ? Math.max(0, clips.length - 1) : 0;
     currentClipIndexRef.current = idx;
     const seekClip = clips[idx];
 
@@ -850,8 +1008,8 @@ export function PreviewPlayer({
 
       const clipProgress = Math.max(0, t - seekClip.timeline_start);
       const targetTime = Math.min(
-        seekClip.clip_start + clipProgress * (seekClip.speed || 1.0),
-        seekClip.clip_end
+        seekClip.clip_end,
+        seekClip.clip_start + clipProgress * (seekClip.speed || 1.0)
       );
 
       if (activeVid) {
@@ -860,7 +1018,9 @@ export function PreviewPlayer({
         }
         activeVid.currentTime = targetTime;
         activeVid.playbackRate = seekClip.speed || 1.0;
-        if (isPlaying) activeVid.play().catch(() => {});
+        if (isPlaying && targetTime < seekClip.clip_end - 0.03) {
+          activeVid.play().catch(() => {});
+        }
       }
 
       // Pre-seek next clip on the other slot
@@ -886,28 +1046,6 @@ export function PreviewPlayer({
         mediaTime: t,
       });
     }
-  };
-
-  const handleReset = () => {
-    setCurrentTimeSec(0);
-    if (audioRef.current) audioRef.current.currentTime = 0;
-    activeVideoSlot.current = 0;
-    setActiveSlotState(0);
-    currentClipIndexRef.current = 0;
-
-    if (clips.length > 0 && videoRefA.current) {
-      videoRefA.current.src = clips[0].video_url || "";
-      videoRefA.current.currentTime = clips[0].clip_start;
-      videoRefA.current.playbackRate = clips[0].speed || 1.0;
-    }
-    if (clips.length > 1 && videoRefB.current) {
-      videoRefB.current.src = clips[1].video_url || "";
-      videoRefB.current.currentTime = clips[1].clip_start;
-      videoRefB.current.playbackRate = clips[1].speed || 1.0;
-      lastPreloadedClipIndex.current = 1;
-    }
-
-    renderCanvasFrame(0);
   };
 
   const toggleMute = () => {
@@ -1114,12 +1252,7 @@ export function PreviewPlayer({
               transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
             }}
           >
-            <div className="pointer-events-auto flex h-14 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">
-              <div className="pointer-events-none flex items-center gap-1 rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] text-white transition-opacity group-hover:opacity-100">
-                <Move className="w-2.5 h-2.5" />
-                <span>Geser Posisi Subtitle</span>
-              </div>
-            </div>
+            <div className="pointer-events-auto flex h-14 w-full max-w-[280px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/50 cursor-move" />
           </div>
         )}
 
@@ -1209,7 +1342,7 @@ export function PreviewPlayer({
                   );
                 })()
               ) : null
-            ) : activeSegment ? (
+            ) : displaySegment ? (
               /* 3. Full Sentence Mode (Classic Karaoke) */
               <div
                 style={{
@@ -1247,7 +1380,7 @@ export function PreviewPlayer({
                     );
                   })
                 ) : (
-                  <span>{activeSegment.text.toUpperCase()}</span>
+                  <span>{displaySegment.text.toUpperCase()}</span>
                 )}
               </div>
             ) : null}
@@ -1318,6 +1451,21 @@ export function PreviewPlayer({
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsLooping(!isLooping)}
+              className={`rounded-lg border p-1.5 text-xs transition flex items-center gap-1 ${
+                isLooping
+                  ? "border-primary/40 bg-primary/10 text-primary font-medium"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+              }`}
+              title={isLooping ? "Loop aktif (Klik untuk matikan)" : "Loop nonaktif (Klik untuk nyalakan)"}
+            >
+              <Repeat className="w-4 h-4" />
+              <span className="text-[10px] hidden sm:inline">
+                {isLooping ? "Loop On" : "Loop"}
+              </span>
+            </button>
             <button
               type="button"
               onClick={toggleMute}

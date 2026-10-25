@@ -544,3 +544,5 @@ export interface CostEstimateResponse {
 }
 
 export type JassubInstance = JASSUB;
+
+export * from "./editorConfig";

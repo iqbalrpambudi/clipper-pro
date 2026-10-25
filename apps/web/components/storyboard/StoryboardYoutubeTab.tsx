@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import {
   Project,
   YouTubeMetadata,
@@ -24,6 +25,7 @@ import {
   ThumbnailTextLayer,
   ThumbnailPreset,
 } from "@/types";
+
 import { Button, FilterPills } from "@/components/ui";
 import { StoryboardTabHeader } from "./StoryboardTabHeader";
 
@@ -56,31 +58,75 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   const { showToast, setActiveTab } = useStudioStore();
   const canvasRef = useRef<ThumbnailCanvasRef>(null);
 
-  // Core metadata states
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
-  const [thumbnailPrompt, setThumbnailPrompt] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [thumbnailHistory, setThumbnailHistory] = useState<YouTubeThumbnailHistory[]>([]);
-  const [titleOptions, setTitleOptions] = useState<string[]>([]);
-  const [thumbnailConcept, setThumbnailConcept] = useState("");
+  // Single Source of Truth from Editor Config Store
+  const { getStoryboardConfig, setStoryboardStepConfig } = useEditorConfigStore();
+  const savedPublishing = getStoryboardConfig(project.id, project).publishing;
+  const meta: YouTubeMetadata = project.youtube_metadata || {};
+
+  // Core metadata states initialized from store draft or project meta
+  const [title, setTitle] = useState(savedPublishing.metadata.title || meta.title || "");
+  const [description, setDescription] = useState(
+    savedPublishing.metadata.description || meta.description || ""
+  );
+  const [tagsInput, setTagsInput] = useState(
+    savedPublishing.metadata.tags && savedPublishing.metadata.tags.length > 0
+      ? savedPublishing.metadata.tags.join(", ")
+      : meta.tags
+        ? meta.tags.join(", ")
+        : ""
+  );
+  const [thumbnailPrompt, setThumbnailPrompt] = useState(
+    savedPublishing.thumbnail.generator.prompt || meta.thumbnail_prompt || ""
+  );
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
+    savedPublishing.thumbnail.activeBackgroundUrl || meta.thumbnail_url || null
+  );
+  const [thumbnailHistory, setThumbnailHistory] = useState<YouTubeThumbnailHistory[]>(
+    meta.thumbnail_history || []
+  );
+  const [titleOptions, setTitleOptions] = useState<string[]>(
+    savedPublishing.metadata.titleOptions && savedPublishing.metadata.titleOptions.length > 0
+      ? savedPublishing.metadata.titleOptions
+      : meta.title_options || []
+  );
+  const [thumbnailConcept, setThumbnailConcept] = useState(
+    savedPublishing.metadata.thumbnailConcept || meta.thumbnail_concept || ""
+  );
 
   // Multi-layer text states (react-konva)
-  const [layers, setLayers] = useState<ThumbnailTextLayer[]>([]);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
-  const [customPresets, setCustomPresets] = useState<ThumbnailPreset[]>([]);
+  const initialLayers =
+    savedPublishing.thumbnail.canvas.layers && savedPublishing.thumbnail.canvas.layers.length > 0
+      ? savedPublishing.thumbnail.canvas.layers
+      : convertLegacyOverlayToLayers(
+          meta.thumbnail_overlay,
+          project.name || "MISTERI BESAR"
+        );
+  const [layers, setLayers] = useState<ThumbnailTextLayer[]>(initialLayers);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(
+    savedPublishing.thumbnail.canvas.selectedLayerId || initialLayers[0]?.id || null
+  );
+  const [customPresets, setCustomPresets] = useState<ThumbnailPreset[]>(
+    savedPublishing.thumbnail.canvas.customPresets && savedPublishing.thumbnail.canvas.customPresets.length > 0
+      ? savedPublishing.thumbnail.canvas.customPresets
+      : meta.thumbnail_overlay?.custom_presets || []
+  );
 
   // Navigation tabs in right settings panel
   const [activeSettingsTab, setActiveSettingsTab] = useState<
     "generator" | "layers" | "presets" | "metadata"
   >("generator");
-  const [activeFormula, setActiveFormula] = useState<string>("comic_reaction");
+  const [activeFormula, setActiveFormula] = useState<string>(
+    savedPublishing.thumbnail.generator.formula || "comic_reaction"
+  );
 
   // Metadata generation options
   const ytLanguage = (project.narration?.language || project.language || "id").toLowerCase();
-  const [focusAngle, setFocusAngle] = useState<string>("curiosity_gap");
-  const [customPrompt, setCustomPrompt] = useState<string>("");
+  const [focusAngle, setFocusAngle] = useState<string>(
+    savedPublishing.thumbnail.generator.focusAngle || "curiosity_gap"
+  );
+  const [customPrompt, setCustomPrompt] = useState<string>(
+    savedPublishing.thumbnail.generator.customPrompt || ""
+  );
 
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -92,70 +138,68 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
   });
   const activePreset = presets.find((p) => p.is_active);
 
-  // Story identity tracking for auto-clearing stale data
-  const currentProjectId = project.id;
-  const lastProjectIdRef = useRef<string>("");
-  const layersInitializedRef = useRef<boolean>(false);
-
-  // Sync initial metadata from project
+  // Sync to zustand store & schedule debounced autosave to backend
   useEffect(() => {
-    const meta: YouTubeMetadata = project.youtube_metadata || {};
-    const projectChanged =
-      lastProjectIdRef.current !== "" && lastProjectIdRef.current !== currentProjectId;
-    const isMetaEmpty = !meta.title && !meta.description && (!meta.tags || meta.tags.length === 0);
+    const tagsArray = tagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
 
-    if (projectChanged || isMetaEmpty) {
-      setTitle(meta.title || "");
-      setDescription(meta.description || "");
-      setTagsInput(meta.tags ? meta.tags.join(", ") : "");
-      setThumbnailPrompt(meta.thumbnail_prompt || "");
-      setThumbnailUrl(meta.thumbnail_url || null);
-      setThumbnailHistory(meta.thumbnail_history || []);
-      setTitleOptions(meta.title_options || []);
-      setThumbnailConcept(meta.thumbnail_concept || "");
-    } else {
-      if (meta.title && !title) setTitle(meta.title);
-      if (meta.description && !description) setDescription(meta.description);
-      if (meta.tags && !tagsInput) setTagsInput(meta.tags.join(", "));
-      if (meta.thumbnail_prompt && !thumbnailPrompt) setThumbnailPrompt(meta.thumbnail_prompt);
-      if (meta.thumbnail_url && !thumbnailUrl) setThumbnailUrl(meta.thumbnail_url);
-      if (meta.thumbnail_history && thumbnailHistory.length === 0)
-        setThumbnailHistory(meta.thumbnail_history);
-      if (meta.title_options && titleOptions.length === 0) setTitleOptions(meta.title_options);
-      if (meta.thumbnail_concept && !thumbnailConcept) setThumbnailConcept(meta.thumbnail_concept);
-    }
+    setStoryboardStepConfig(
+      project.id,
+      "publishing",
+      {
+        thumbnail: {
+          generator: {
+            formula: activeFormula,
+            focusAngle,
+            customPrompt,
+            prompt: thumbnailPrompt,
+            aspectRatio: "16:9",
+          },
+          activeBackgroundUrl: thumbnailUrl,
+          canvas: {
+            width: 1920,
+            height: 1080,
+            selectedLayerId,
+            activePresetId: null,
+            layers,
+            customPresets,
+          },
+        },
+        metadata: {
+          language: ytLanguage,
+          title,
+          description,
+          tags: tagsArray,
+          titleOptions,
+          thumbnailConcept,
+          category: "Film & Animation",
+          privacyStatus: "unlisted",
+          madeForKids: false,
+        },
+      },
+      true
+    );
+  }, [
+    project.id,
+    activeFormula,
+    focusAngle,
+    customPrompt,
+    thumbnailPrompt,
+    thumbnailUrl,
+    selectedLayerId,
+    layers,
+    customPresets,
+    ytLanguage,
+    title,
+    description,
+    tagsInput,
+    titleOptions,
+    thumbnailConcept,
+    setStoryboardStepConfig,
+  ]);
 
-    // Text Editor Layers sync: ONLY on first load or when switching to a different project
-    // NEVER overwrite layers if already initialized or edited by user
-    if (!layersInitializedRef.current || projectChanged) {
-      const initialLayers = convertLegacyOverlayToLayers(
-        meta.thumbnail_overlay,
-        project.name || "MISTERI BESAR"
-      );
-      setLayers(initialLayers);
-      if (initialLayers.length > 0) {
-        setSelectedLayerId(initialLayers[0].id);
-      }
-      layersInitializedRef.current = true;
-    }
-    lastProjectIdRef.current = currentProjectId;
-
-    // Load custom presets from project or localStorage
-    const savedProjectPresets = meta.thumbnail_overlay?.custom_presets || [];
-    try {
-      const localPresetsStr = localStorage.getItem("cliper_thumbnail_presets");
-      const localPresets: ThumbnailPreset[] = localPresetsStr ? JSON.parse(localPresetsStr) : [];
-      const mergedPresets = [...savedProjectPresets];
-      localPresets.forEach((lp) => {
-        if (!mergedPresets.some((p) => p.id === lp.id)) {
-          mergedPresets.push(lp);
-        }
-      });
-      setCustomPresets(mergedPresets);
-    } catch {
-      setCustomPresets(savedProjectPresets);
-    }
-  }, [project.id]);
 
   // Continuity Context for Character, Location & Era Consistency
   const characters = project.characters || [];
@@ -487,12 +531,13 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
         icon={Youtube}
         iconColor="text-[#A9472C]"
         iconBg="bg-[#F8EEEA] border-[#E9C9BD]"
-        title="YouTube Packaging & Thumbnail Studio"
-        badge="Langkah 6 • Packaging"
+        title="Publishing & Thumbnail Studio"
+        badge="Langkah 6 • Publishing"
         badgeColor="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
         secondaryBadge="Kanvas Bebas"
-        description="Editor teks thumbnail kanvas grafis bebas ala Photoshop dan generator paket metadata YouTube."
+        description="Studio pembuatan visual thumbnail viral dengan layer teks interaktif dan pengelolaan metadata publishing YouTube."
         actions={
+
           <>
             <Button
               size="sm"
@@ -739,4 +784,5 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
     </div>
   );
 }
+export const StoryboardPublishingTab = StoryboardYoutubeTab;
 export default StoryboardYoutubeTab;

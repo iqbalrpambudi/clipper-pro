@@ -32,6 +32,9 @@ export interface ColorPresetItem {
   burst_word_count: number;
   highlight_animation: "color" | "scale" | "none";
   scale_factor: number;
+  position?: "top" | "center" | "bottom";
+  offset_x?: number;
+  offset_y?: number;
 }
 
 // Popular 1-Click Color Schemes matching Short Clipper
@@ -55,6 +58,9 @@ export const COLOR_PRESETS: ColorPresetItem[] = [
   {
     name: "Alex Hormozi",
     icon: Zap,
+    position: "center",
+    offset_y: 0,
+    offset_x: 0,
     font_family: "Bebas Neue",
     font_weight: "Bold",
     primary_color: "#FFFFFF",

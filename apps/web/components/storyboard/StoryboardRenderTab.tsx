@@ -494,12 +494,13 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
 
                             <Button
                               size="sm"
-                              onClick={() => setActiveTab("storyboard_youtube")}
+                              onClick={() => setActiveTab("storyboard_publishing")}
                               className="bg-[#F8EEEA] hover:bg-[#F3E1D9] text-[#A9472C] text-xs h-8 gap-1.5 font-semibold"
                             >
                               <Youtube className="w-3.5 h-3.5 fill-current" />
-                              <span>YouTube & Thumbnail</span>
+                              <span>Publishing & Thumbnail</span>
                             </Button>
+
                           </>
                         )}
 

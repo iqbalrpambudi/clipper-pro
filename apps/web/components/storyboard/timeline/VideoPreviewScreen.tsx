@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Image as ImageIcon, Move } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 import {
   StoryboardItem,
   SentenceSegment,
@@ -285,12 +285,7 @@ export function VideoPreviewScreen({
             transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle.position, scaledOffsetY)})`,
           }}
         >
-          <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/60 transition-all flex items-center justify-center pointer-events-auto">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/85 text-[10px] text-white px-2.5 py-1 rounded font-mono flex items-center gap-1.5 shadow-lg pointer-events-none">
-              <Move className="w-3 h-3" aria-hidden="true" />
-              <span>Tarik untuk geser posisi subtitle</span>
-            </div>
-          </div>
+          <div className="w-full max-w-[340px] h-14 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/50 transition-all flex items-center justify-center pointer-events-auto cursor-move" />
         </div>
       )}
 

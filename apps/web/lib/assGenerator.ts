@@ -51,10 +51,21 @@ export function msToAssTime(ms: number): string {
 
 export function generateAssSubtitles(
   segments: SentenceSegment[],
-  styleConfig: Partial<SubtitleStyle>,
-  playResX: number = 1080,
-  playResY: number = 1920
+  styleConfig: Partial<SubtitleStyle> = {},
+  playResXOrOptions: number | { playResX?: number; playResY?: number } = 1080,
+  playResYParam: number = 1920
 ): string {
+  let playResX = 1080;
+  let playResY = 1920;
+
+  if (typeof playResXOrOptions === "object" && playResXOrOptions !== null) {
+    playResX = playResXOrOptions.playResX || 1080;
+    playResY = playResXOrOptions.playResY || 1920;
+  } else if (typeof playResXOrOptions === "number") {
+    playResX = playResXOrOptions;
+    playResY = playResYParam || 1920;
+  }
+
   const fontName = styleConfig.font_family || "Montserrat";
   const baseFontSize = Number(styleConfig.font_size || 56);
 

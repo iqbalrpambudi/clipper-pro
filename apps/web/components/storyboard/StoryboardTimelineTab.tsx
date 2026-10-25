@@ -19,6 +19,7 @@ import {
   RotateCw,
   Volume2,
   VolumeX,
+  Repeat,
 } from "lucide-react";
 import { Project } from "@/types";
 import { useStudioStore } from "@/lib/store";
@@ -105,7 +106,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
           src={state.audio.audio_url || state.audio.file_url || undefined}
           onTimeUpdate={state.handleTimeUpdate}
           onLoadedMetadata={state.handleLoadedMetadata}
-          onEnded={() => state.togglePlay()}
+          onEnded={state.handleEnded}
         />
       )}
 
@@ -368,8 +369,15 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 </div>
               </div>
 
-              {/* Right: Subtitle toggle, Mute, Safe Zones */}
+              {/* Right: Loop, Subtitle toggle, Mute, Safe Zones */}
               <div className="flex items-center gap-1">
+                <TBtn
+                  title={state.isLooping ? "Matikan Loop Video" : "Aktifkan Loop Video"}
+                  onClick={() => state.setIsLooping(!state.isLooping)}
+                  active={state.isLooping}
+                >
+                  <Repeat className="w-3.5 h-3.5" />
+                </TBtn>
                 <TBtn
                   title={state.isMuted ? "Unmute Audio" : "Mute Audio"}
                   onClick={() => {

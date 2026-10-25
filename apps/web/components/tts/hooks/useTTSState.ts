@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { presetStorage, VoicePreset } from "@/lib/presetStorage";
 import { Project, ProjectDetail, Narration, AudioTrack, SentenceSegment, VoiceInfo } from "@/types";
 import { GEMINI_TTS_MODELS, ELEVENLABS_TTS_MODELS, RUNWARE_TTS_MODELS } from "../constants";
@@ -56,21 +57,39 @@ export function useTTSState({ project }: UseTTSStateProps) {
     draft?.selectedVoicePresetId || ""
   );
 
-  // Sync draft whenever user changes voice settings in short studio
+  // Sync draft & editorConfigStore whenever user changes voice settings
   useEffect(() => {
-    setVoiceDraft(project.id, {
+    const voicePayload = {
       provider,
       voice: selectedVoice,
+      model:
+        provider === "gemini"
+          ? geminiModel
+          : provider === "elevenlabs"
+            ? elevenlabsModel
+            : runwareModel,
+      rate,
+      pitch,
+      customVoiceInput: draft?.customVoiceInput || "",
+      runwareCustomVoiceInput: draft?.runwareCustomVoiceInput || "",
+      selectedVoicePresetId,
+    };
+
+    setVoiceDraft(project.id, {
+      ...voicePayload,
       geminiModel,
       elevenlabsModel,
       runwareModel,
-      rate,
-      pitch,
-      customVoiceInput: draft?.customVoiceInput,
-      selectedVoicePresetId,
     });
+
+    if (project.project_type === "long_storyboard") {
+      useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "voice", voicePayload);
+    } else {
+      useEditorConfigStore.getState().setShortsStepConfig(project.id, "tts", voicePayload);
+    }
   }, [
     project.id,
+    project.project_type,
     provider,
     selectedVoice,
     geminiModel,
@@ -79,8 +98,11 @@ export function useTTSState({ project }: UseTTSStateProps) {
     rate,
     pitch,
     selectedVoicePresetId,
+    draft?.customVoiceInput,
+    draft?.runwareCustomVoiceInput,
     setVoiceDraft,
   ]);
+
 
   // Fetch active config to sync saved tts_provider & models
   const { data: appConfig } = useQuery({

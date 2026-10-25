@@ -38,6 +38,7 @@ export function useStoryboardTimelineState(project: Project) {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isLooping, setIsLooping] = useState<boolean>(false);
 
   // Inspector tab: "subtitles" vs "motion" vs "watermark" vs "bgm"
   const [activeRightTab, setActiveRightTab] = useState<
@@ -247,8 +248,30 @@ export function useStoryboardTimelineState(project: Project) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
+      if (duration > 0 && currentTime >= duration - 0.05) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+      }
       audioRef.current.play().catch(() => {});
       setIsPlaying(true);
+    }
+  };
+
+  const handleEnded = () => {
+    if (isLooping) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+      setCurrentTime(0);
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     }
   };
 
@@ -350,6 +373,9 @@ export function useStoryboardTimelineState(project: Project) {
         }
       }
     }
+    if (activeWordIndex === -1) {
+      activeWordIndex = 0;
+    }
   }
 
   const burstCount = Math.max(2, subtitleStyle.burst_word_count || 2);
@@ -372,6 +398,12 @@ export function useStoryboardTimelineState(project: Project) {
         }));
         break;
       }
+    }
+    if (activeBurstGroup.length === 0) {
+      activeBurstGroup = segWords.slice(0, burstCount).map((item: WordTimestamp, localIdx: number) => ({
+        ...item,
+        isActive: isHighlightEnabled && localIdx === 0,
+      }));
     }
   }
 
@@ -448,6 +480,9 @@ export function useStoryboardTimelineState(project: Project) {
     duration,
     isMuted,
     setIsMuted,
+    isLooping,
+    setIsLooping,
+    handleEnded,
     togglePlay,
     handleSeek,
     handleTimeUpdate,

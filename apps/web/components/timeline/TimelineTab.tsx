@@ -264,7 +264,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
               onStep={stepFrames}
               onJumpCut={jumpCut}
               onToggleLoop={toggleLoop}
-              canLoop={selectedClipIndex !== null}
+              canLoop={clips.length > 0}
               onUndo={undo}
               onRedo={redo}
               canUndo={canUndo}
@@ -359,7 +359,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 onStep={stepFrames}
                 onJumpCut={jumpCut}
                 onToggleLoop={toggleLoop}
-                canLoop={selectedClipIndex !== null}
+                canLoop={clips.length > 0}
                 onUndo={undo}
                 onRedo={redo}
                 canUndo={canUndo}

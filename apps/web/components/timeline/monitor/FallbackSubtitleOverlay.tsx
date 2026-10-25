@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Move } from "lucide-react";
 import { SentenceSegment, SubtitleStyle } from "@/types";
 
 interface FallbackSubtitleOverlayProps {
@@ -59,7 +58,19 @@ export function FallbackSubtitleOverlay({
 
   const curMs = time * 1000;
   const activeSegment = segments.find((s) => curMs >= s.start_ms && curMs <= s.end_ms + 250);
-  const segWords = activeSegment?.words || [];
+  const displaySegment =
+    activeSegment ||
+    segments[0] || {
+      id: "preview-default",
+      start_ms: 0,
+      end_ms: 2000,
+      text: "PREVIEW SUBTITLE",
+      words: [
+        { word: "PREVIEW", start_ms: 0, end_ms: 1000 },
+        { word: "SUBTITLE", start_ms: 1000, end_ms: 2000 },
+      ],
+    };
+  const segWords = displaySegment?.words || [];
   let activeWordIndex = -1;
   if (segWords.length > 0) {
     activeWordIndex = segWords.findIndex((w) => curMs >= w.start_ms && curMs <= w.end_ms + 180);
@@ -79,6 +90,9 @@ export function FallbackSubtitleOverlay({
         }
       }
     }
+    if (activeWordIndex === -1) {
+      activeWordIndex = 0;
+    }
   }
 
   const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
@@ -93,7 +107,7 @@ export function FallbackSubtitleOverlay({
       const maxGEnd =
         nextSlice.length > 0
           ? Math.min(nextSlice[0].start_ms, gEnd + 350)
-          : Math.min(activeSegment?.end_ms ?? gEnd + 350, gEnd + 350);
+          : Math.min(displaySegment?.end_ms ?? gEnd + 350, gEnd + 350);
 
       if (curMs >= gStart && curMs <= maxGEnd) {
         activeBurstGroup = group.map((item, localIdx) => ({
@@ -102,6 +116,12 @@ export function FallbackSubtitleOverlay({
         }));
         break;
       }
+    }
+    if (activeBurstGroup.length === 0) {
+      activeBurstGroup = segWords.slice(0, burstCount).map((item, localIdx) => ({
+        ...item,
+        isActive: isHighlightEnabled && localIdx === 0,
+      }));
     }
   }
 
@@ -157,7 +177,7 @@ export function FallbackSubtitleOverlay({
   return (
     <>
       {/* Fallback CSS Subtitle Overlay (if WASM not yet ready) */}
-      {!isJassubReady && subtitleStyle?.enabled !== false && activeSegment && (
+      {!isJassubReady && subtitleStyle?.enabled !== false && displaySegment && (
         <div
           className="absolute left-0 right-0 z-20 px-4 flex justify-center text-center select-none pointer-events-none"
           style={{
@@ -268,7 +288,7 @@ export function FallbackSubtitleOverlay({
                       </span>
                     );
                   })
-                : activeSegment.text}
+                : displaySegment?.text || ""}
             </div>
           )}
         </div>
@@ -295,12 +315,7 @@ export function FallbackSubtitleOverlay({
             transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
           }}
         >
-          <div className="pointer-events-auto flex h-12 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">
-            <div className="pointer-events-none flex items-center gap-1 rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] text-white transition-opacity group-hover:opacity-100">
-              <Move className="w-2.5 h-2.5" />
-              <span>Geser Posisi Subtitle</span>
-            </div>
-          </div>
+          <div className="pointer-events-auto flex h-14 w-full max-w-[280px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/50 cursor-move" />
         </div>
       )}
     </>

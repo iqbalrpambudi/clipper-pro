@@ -6,6 +6,7 @@ import { useHistoryState } from "@/hooks/useHistoryState";
 import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import {
   Project,
   Timeline,
@@ -175,7 +176,21 @@ export function useTimelineState(project: TimelineProjectData) {
         return { ...old, subtitle_style: newStyle };
       });
 
+      // Sync to EditorConfigStore single source of truth
+      const subPayload = {
+        enabled: newStyle.enabled !== false,
+        style: newStyle,
+        position: (newStyle.position as any) || "bottom",
+        customOffset: { x: newStyle.offset_x ?? 0, y: newStyle.offset_y ?? 0 },
+      };
+      if (project.project_type === "long_storyboard") {
+        useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "subtitle", subPayload, false);
+      } else {
+        useEditorConfigStore.getState().setShortsStepConfig(project.id, "subtitle", subPayload, false);
+      }
+
       if (subtitleAutosaveTimerRef.current) {
+
         clearTimeout(subtitleAutosaveTimerRef.current);
         subtitleAutosaveTimerRef.current = null;
       }
@@ -277,7 +292,23 @@ export function useTimelineState(project: TimelineProjectData) {
         return { ...old, watermark: newWm };
       });
 
+      // Sync to EditorConfigStore single source of truth
+      const wmPayload = {
+        ...newWm,
+        customOffset: {
+          x: newWm.custom_x ?? newWm.offset_x ?? 0,
+          y: newWm.custom_y ?? newWm.offset_y ?? 0,
+        },
+      };
+
+      if (project.project_type === "long_storyboard") {
+        useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "watermark", wmPayload, false);
+      } else {
+        useEditorConfigStore.getState().setShortsStepConfig(project.id, "watermark", wmPayload, false);
+      }
+
       if (watermarkAutosaveTimerRef.current) {
+
         clearTimeout(watermarkAutosaveTimerRef.current);
         watermarkAutosaveTimerRef.current = null;
       }
@@ -415,20 +446,32 @@ export function useTimelineState(project: TimelineProjectData) {
     [clips, seekTo, totalDuration]
   );
 
-  // Loop range for active clip
+  // Loop range for active clip or whole timeline
   const loopRange = useMemo(() => {
-    if (!isLoopingClip || selectedClipIndex === null || !clips[selectedClipIndex]) return null;
-    const c = clips[selectedClipIndex];
-    return { start: c.timeline_start, end: c.timeline_end };
-  }, [isLoopingClip, selectedClipIndex, clips]);
+    if (!isLoopingClip) return null;
+    if (selectedClipIndex !== null && clips[selectedClipIndex]) {
+      const c = clips[selectedClipIndex];
+      return { start: c.timeline_start, end: c.timeline_end };
+    }
+    if (totalDuration > 0) {
+      return { start: 0, end: totalDuration };
+    }
+    return null;
+  }, [isLoopingClip, selectedClipIndex, clips, totalDuration]);
 
   const toggleLoop = useCallback(() => {
-    if (selectedClipIndex === null) {
-      showToast("Pilih salah satu klip untuk mengaktifkan loop", "info");
-      return;
+    const next = !isLoopingClip;
+    setIsLoopingClip(next);
+    if (next) {
+      if (selectedClipIndex !== null) {
+        showToast(`Loop klip #${selectedClipIndex + 1} aktif`, "info");
+      } else {
+        showToast("Loop seluruh video aktif", "info");
+      }
+    } else {
+      showToast("Loop dinonaktifkan", "info");
     }
-    setIsLoopingClip((prev) => !prev);
-  }, [selectedClipIndex, showToast]);
+  }, [isLoopingClip, selectedClipIndex, showToast]);
 
   // Audio peaks
   const { peaks } = useAudioPeaks(isAudioAttached ? project.audio?.audio_url : null);

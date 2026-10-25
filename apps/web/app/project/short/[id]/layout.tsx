@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Film, FileText, Volume2, Layers, Download, Loader2 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { StudioLayout, StudioNavTab } from "@/components/layout";
@@ -52,6 +53,15 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
   useProjectEvents(id);
 
   const { data: project, isLoading, error } = useProject(id);
+  const syncShortsConfigFromProject = useEditorConfigStore(
+    (s) => s.syncShortsConfigFromProject
+  );
+
+  useEffect(() => {
+    if (project) {
+      syncShortsConfigFromProject(project);
+    }
+  }, [project, syncShortsConfigFromProject]);
 
   // If this project is actually a long storyboard, redirect to storyboard studio
   useEffect(() => {

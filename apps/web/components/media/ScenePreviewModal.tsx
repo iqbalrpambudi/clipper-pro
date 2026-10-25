@@ -51,7 +51,7 @@ export function ScenePreviewModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(startTime);
   const [isMuted, setIsMuted] = useState(false);
-  const [isLooping, setIsLooping] = useState(true);
+  const [isLooping, setIsLooping] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [brokenThumb, setBrokenThumb] = useState(false);
@@ -112,6 +112,7 @@ export function ScenePreviewModal({
         if (t >= effectiveEndTime) {
           if (isLooping) {
             video.currentTime = startTime;
+            video.muted = isMuted;
             video.play().catch(() => {});
           } else {
             video.pause();
@@ -126,7 +127,7 @@ export function ScenePreviewModal({
 
     animId = requestAnimationFrame(checkFrame);
     return () => cancelAnimationFrame(animId);
-  }, [isOpen, isPlaying, startTime, endTime, isLooping]);
+  }, [isOpen, isPlaying, startTime, endTime, isLooping, isMuted]);
 
   // Fallback boundary check on timeupdate
   const handleTimeUpdate = () => {
@@ -140,6 +141,7 @@ export function ScenePreviewModal({
     if (t >= effectiveEndTime) {
       if (isLooping) {
         video.currentTime = startTime;
+        video.muted = isMuted;
         video.play().catch(() => {});
       } else {
         video.pause();

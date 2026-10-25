@@ -617,7 +617,8 @@ export function SubtitleStudioPanel({
             setSubtitleStyle((prev) => ({
               ...prev,
               position: id as SubtitleStyle["position"],
-              offset_y: id === "bottom" ? -30 : 0,
+              offset_y: id === "center" ? 0 : id === "top" ? 120 : -30,
+              offset_x: 0,
             }))
           }
         />

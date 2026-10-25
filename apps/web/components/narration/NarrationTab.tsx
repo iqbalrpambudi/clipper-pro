@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { StudioTabHeader } from "@/components/layout";
 import { Project, ProjectDetail, Narration, NarrationTemplate, Scene } from "@/types";
 import {
@@ -58,16 +59,32 @@ type NarrationCategory = "all" | "recap" | "fakta" | "edukasi" | "showcase" | "o
 export function NarrationTab({ project }: NarrationTabProps) {
   const queryClient = useQueryClient();
   const { showToast, setActiveTab } = useStudioStore();
+  const { getShortsConfig, setShortsStepConfig } = useEditorConfigStore();
+  const savedNarration = getShortsConfig(project.id, project).narration;
 
-  const [selectedCategory, setSelectedCategory] = useState<NarrationCategory>("all");
-  const [selectedTemplateId, setSelectedTemplateId] = useState("recap_cinematic");
-  const [topic, setTopic] = useState("");
-  const [tone, setTone] = useState("dramatis");
-  const [targetDuration, setTargetDuration] = useState(60);
-  const [language, setLanguage] = useState<string>(
-    project.narration?.language || project.language || "id"
+  const [selectedCategory, setSelectedCategory] = useState<NarrationCategory>(
+    (savedNarration.category as NarrationCategory) || "all"
   );
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    savedNarration.preset || project.narration?.template_id || "recap_cinematic"
+  );
+  const [topic, setTopic] = useState(
+    savedNarration.topic !== undefined
+      ? savedNarration.topic
+      : project.narration?.topic || ""
+  );
+  const [tone, setTone] = useState(
+    savedNarration.tone || project.narration?.tone || "dramatis"
+  );
+  const [targetDuration, setTargetDuration] = useState(
+    savedNarration.targetDurationSec || project.narration?.target_duration || 60
+  );
+  const [language, setLanguage] = useState<string>(
+    savedNarration.language || project.narration?.language || project.language || "id"
+  );
+  const [customPrompt, setCustomPrompt] = useState(
+    savedNarration.customPrompt || savedNarration.additionalPrompt || ""
+  );
   const [showPromptDetails, setShowPromptDetails] = useState(false);
   const [rawText, setRawText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -100,12 +117,42 @@ export function NarrationTab({ project }: NarrationTabProps) {
     if (project.narration) {
       setRawText(project.narration.raw_text);
       if (project.narration.language) setLanguage(project.narration.language);
-      if (project.narration.template_id) setSelectedTemplateId(project.narration.template_id);
-      if (project.narration.topic) setTopic(project.narration.topic);
-      if (project.narration.tone) setTone(project.narration.tone);
-      if (project.narration.target_duration) setTargetDuration(project.narration.target_duration);
+      if (project.narration.template_id && !savedNarration.preset)
+        setSelectedTemplateId(project.narration.template_id);
+      if (project.narration.topic && savedNarration.topic === "")
+        setTopic(project.narration.topic);
+      if (project.narration.tone && !savedNarration.tone)
+        setTone(project.narration.tone);
+      if (project.narration.target_duration && !savedNarration.targetDurationSec)
+        setTargetDuration(project.narration.target_duration);
     }
   }, [project.narration]);
+
+  // Sync narration config to store
+  useEffect(() => {
+    setShortsStepConfig(project.id, "narration", {
+      language,
+      topic,
+      preset: selectedTemplateId,
+      tone,
+      duration: String(targetDuration),
+      targetDurationSec: targetDuration,
+      additionalPrompt: customPrompt,
+      category: selectedCategory,
+      customPrompt,
+    });
+  }, [
+    project.id,
+    language,
+    topic,
+    selectedTemplateId,
+    tone,
+    targetDuration,
+    customPrompt,
+    selectedCategory,
+    setShortsStepConfig,
+  ]);
+
 
   // Helper categorization across the 5 pillars
   const getTemplateCategory = (

@@ -444,7 +444,8 @@ export function TimelineMonitor({
       }
 
       const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
-      const idx = seekIdx !== -1 ? seekIdx : 0;
+      const idx =
+        seekIdx !== -1 ? seekIdx : t >= duration ? Math.max(0, clips.length - 1) : 0;
       currentClipIndexRef.current = idx;
       const seekClip = clips[idx];
 
@@ -615,9 +616,15 @@ export function TimelineMonitor({
       if (loopRange && curTime >= loopRange.end) {
         curTime = loopRange.start;
         clock = curTime;
-        if (audio && audioUrl) audio.currentTime = curTime;
+        if (audio && audioUrl) {
+          audio.currentTime = curTime;
+          audio.play().catch(() => {});
+        }
         executeSeek(curTime);
-      } else if (curTime >= duration) {
+      } else if (
+        curTime >= duration ||
+        (audio && audioUrl && audio.ended && curTime >= duration - 0.5)
+      ) {
         audio?.pause();
         videoRefA.current?.pause();
         videoRefB.current?.pause();
@@ -647,14 +654,19 @@ export function TimelineMonitor({
         const targetClip = clips[validIdx];
         if (newActiveVid && targetClip) {
           const clipProg = Math.max(0, curTime - targetClip.timeline_start);
-          const targetVideoTime = targetClip.clip_start + clipProg * (targetClip.speed || 1.0);
+          const targetVideoTime = Math.min(
+            targetClip.clip_end,
+            targetClip.clip_start + clipProg * (targetClip.speed || 1.0)
+          );
 
           if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.1) {
             newActiveVid.currentTime = targetVideoTime;
           }
           newActiveVid.playbackRate = targetClip.speed || 1.0;
           newActiveVid.muted = true;
-          newActiveVid.play().catch(() => {});
+          if (targetVideoTime < targetClip.clip_end - 0.03 && playingRef.current) {
+            newActiveVid.play().catch(() => {});
+          }
         }
 
         if (oldActiveVid) oldActiveVid.pause();
@@ -684,11 +696,16 @@ export function TimelineMonitor({
             }
             const expectedVidTime =
               curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
-            if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.25) {
-              activeVid.currentTime = expectedVidTime;
-            }
-            if (activeVid.paused) {
-              activeVid.play().catch(() => {});
+            if (expectedVidTime >= curClip.clip_end - 0.03) {
+              activeVid.pause();
+              activeVid.currentTime = curClip.clip_end;
+            } else {
+              if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.25) {
+                activeVid.currentTime = expectedVidTime;
+              }
+              if (activeVid.paused && playingRef.current && curTime < duration && !activeVid.ended) {
+                activeVid.play().catch(() => {});
+              }
             }
           }
         }
@@ -883,7 +900,31 @@ export function TimelineMonitor({
       ref={containerRef}
       className="flex flex-col h-full rounded-xl border border-border bg-background overflow-hidden shadow-sm"
     >
-      {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" muted={isMuted} />}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="auto"
+          muted={isMuted}
+          onEnded={() => {
+            if (loopRange) {
+              const restartTime = loopRange.start;
+              if (audioRef.current) {
+                audioRef.current.currentTime = restartTime;
+                audioRef.current.play().catch(() => {});
+              }
+              executeSeek(restartTime);
+            } else {
+              audioRef.current?.pause();
+              videoRefA.current?.pause();
+              videoRefB.current?.pause();
+              cbRef.current.onTimeChange(duration);
+              cbRef.current.onPlayingChange(false);
+              renderCanvasFrame(duration);
+            }
+          }}
+        />
+      )}
 
       {/* Hidden Dual-Video Decoder Pipeline */}
       <video

@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { StudioLayout, StudioNavTab } from "@/components/layout";
@@ -60,6 +61,15 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
   useProjectEvents(id);
 
   const { data: project, isLoading, error } = useProject(id);
+  const syncStoryboardConfigFromProject = useEditorConfigStore(
+    (s) => s.syncStoryboardConfigFromProject
+  );
+
+  useEffect(() => {
+    if (project) {
+      syncStoryboardConfigFromProject(project);
+    }
+  }, [project, syncStoryboardConfigFromProject]);
 
   // If this project is actually a short video, redirect to short studio
   useEffect(() => {
@@ -188,8 +198,8 @@ export default function StoryboardLayout({ children, params }: StoryboardLayoutP
       badge: project.render_jobs?.length ? `${project.render_jobs.length} Job` : undefined,
     },
     {
-      id: "storyboard_youtube",
-      label: "6. YouTube & Thumbnail",
+      id: "storyboard_publishing",
+      label: "6. Publishing & Thumbnail",
       icon: Youtube,
       badge: project.youtube_metadata?.title ? "Siap" : undefined,
     },

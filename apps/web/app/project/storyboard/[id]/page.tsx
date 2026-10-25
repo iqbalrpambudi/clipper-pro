@@ -32,6 +32,7 @@ export default function StoryboardStudioPage({ params }: PageProps) {
           "storyboard_timeline",
           "storyboard_watermark",
           "storyboard_render",
+          "storyboard_publishing",
           "storyboard_youtube",
         ].includes(activeTab)) && <StoryboardScriptTab project={project} />}
       {activeTab === "storyboard_voice" && <StoryboardVoiceTab project={project} />}
@@ -40,7 +41,10 @@ export default function StoryboardStudioPage({ params }: PageProps) {
         <StoryboardTimelineTab project={project} />
       )}
       {activeTab === "storyboard_render" && <StoryboardRenderTab project={project} />}
-      {activeTab === "storyboard_youtube" && <StoryboardYoutubeTab project={project} />}
+      {(activeTab === "storyboard_publishing" || activeTab === "storyboard_youtube") && (
+        <StoryboardYoutubeTab project={project} />
+      )}
     </>
+
   );
 }

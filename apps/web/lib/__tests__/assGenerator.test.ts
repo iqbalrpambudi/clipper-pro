@@ -130,5 +130,18 @@ describe("assGenerator", () => {
     );
     // baseY = 960, posY = 960 + 45 = 1005, posX = 540 - 20 = 520
     expect(assCenter).toContain("{\\an5\\pos(520,1005)}");
+
+    // Center with offset_y=0 using options object
+    const assCenterZero = generateAssSubtitles(
+      segments,
+      {
+        position: "center",
+        offset_x: 0,
+        offset_y: 0,
+      },
+      { playResX: 1080, playResY: 1920 }
+    );
+    expect(assCenterZero).toContain("{\\an5\\pos(540,960)}");
+    expect(assCenterZero).not.toContain("NaN");
   });
 });

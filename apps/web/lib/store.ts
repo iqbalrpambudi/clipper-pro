@@ -14,6 +14,7 @@ export type StudioTab =
   | "storyboard_timeline"
   | "storyboard_watermark"
   | "storyboard_render"
+  | "storyboard_publishing"
   | "storyboard_youtube";
 
 export interface TaskEvent {
@@ -38,8 +39,12 @@ export interface TaskEvent {
 
 const SHORT_TABS: StudioTab[] = ["media", "narration", "tts", "timeline", "render"];
 const STORYBOARD_TABS: StudioTab[] = [
-  "storyboard_script", "storyboard_voice", "storyboard_images",
-  "storyboard_timeline", "storyboard_render", "storyboard_youtube",
+  "storyboard_script",
+  "storyboard_voice",
+  "storyboard_images",
+  "storyboard_timeline",
+  "storyboard_render",
+  "storyboard_publishing",
 ];
 
 const SHORT_FALLBACK: Record<string, StudioTab> = {
@@ -47,6 +52,8 @@ const SHORT_FALLBACK: Record<string, StudioTab> = {
   storyboard_voice: "tts",
   storyboard_timeline: "timeline",
   storyboard_render: "render",
+  storyboard_publishing: "media",
+  storyboard_youtube: "media",
 };
 
 const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
@@ -55,9 +62,13 @@ const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
   timeline: "storyboard_timeline",
   storyboard_watermark: "storyboard_timeline",
   render: "storyboard_render",
+  storyboard_youtube: "storyboard_publishing",
 };
 
 function normalizeTab(tab: StudioTab, mode: "short" | "storyboard" | null): StudioTab {
+  if (tab === "storyboard_youtube") {
+    tab = "storyboard_publishing";
+  }
   if (!mode) return tab;
   if (mode === "short") {
     if (SHORT_TABS.includes(tab)) return tab;
@@ -66,6 +77,7 @@ function normalizeTab(tab: StudioTab, mode: "short" | "storyboard" | null): Stud
   if (STORYBOARD_TABS.includes(tab)) return tab;
   return STORYBOARD_FALLBACK[tab] ?? "storyboard_script";
 }
+
 
 interface StudioState {
   projectMode: "short" | "storyboard" | null;
@@ -256,3 +268,5 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
   hideToast: () => set({ toast: null }),
 }));
+
+export { useEditorConfigStore } from "./editorConfigStore";

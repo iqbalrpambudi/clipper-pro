@@ -24,7 +24,9 @@ import { ScenePreviewModal } from "./ScenePreviewModal";
 import { SourceVideoPlayer } from "./SourceVideoPlayer";
 import { StudioTabHeader } from "@/components/layout";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { Project, SourceVideo, Scene, YTInfoResponse, YTFormatOption } from "@/types";
+
 import { api } from "@/lib/api";
 import {
   useDeleteMedia,
@@ -65,9 +67,17 @@ interface MediaPoolTabProps {
 
 export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const { activeTask } = useStudioStore();
+  const { getShortsConfig, setShortsStepConfig } = useEditorConfigStore();
+  const savedMedia = getShortsConfig(project.id, project).mediaPool;
+
   const [isYTOpen, setIsYTOpen] = useState(false);
-  const [ytUrl, setYtUrl] = useState("");
+  const [ytUrl, setYtUrl] = useState(savedMedia.ytUrl || "");
   const [ytInfo, setYtInfo] = useState<YTInfoResponse | null>(null);
+
+  useEffect(() => {
+    setShortsStepConfig(project.id, "mediaPool", { ytUrl });
+  }, [project.id, ytUrl, setShortsStepConfig]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [retaggingMode, setRetaggingMode] = useState<"quick" | "force" | null>(null);
