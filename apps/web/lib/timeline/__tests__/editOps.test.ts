@@ -24,6 +24,7 @@ describe("editOps", () => {
       {
         id: "c1",
         scene_id: "s1",
+        source_video_id: "v1",
         timeline_start: 0,
         timeline_end: 5,
         clip_start: 0,
@@ -33,6 +34,7 @@ describe("editOps", () => {
       {
         id: "c2",
         scene_id: "s2",
+        source_video_id: "v1",
         timeline_start: 5,
         timeline_end: 12,
         clip_start: 0,
@@ -51,6 +53,7 @@ describe("editOps", () => {
     const clip: TimelineClip = {
       id: "orig",
       scene_id: "s1",
+      source_video_id: "v1",
       timeline_start: 0,
       timeline_end: 10,
       clip_start: 0,
@@ -74,6 +77,7 @@ describe("editOps", () => {
       {
         id: "c1",
         scene_id: "s1",
+        source_video_id: "v1",
         timeline_start: 0,
         timeline_end: 5,
         clip_start: 0,
@@ -83,6 +87,7 @@ describe("editOps", () => {
       {
         id: "c2",
         scene_id: "s2",
+        source_video_id: "v1",
         timeline_start: 5,
         timeline_end: 12,
         clip_start: 0,
@@ -94,18 +99,26 @@ describe("editOps", () => {
     const scene1: Scene = {
       id: "s1",
       project_id: "p1",
+      source_video_id: "v1",
       start_time: 0,
       end_time: 10,
       duration: 10,
       scene_index: 0,
+      tags: [],
+      status: "ready",
+      created_at: new Date().toISOString(),
     };
     const scene2: Scene = {
       id: "s2",
       project_id: "p1",
+      source_video_id: "v1",
       start_time: 0,
       end_time: 15,
       duration: 15,
       scene_index: 1,
+      tags: [],
+      status: "ready",
+      created_at: new Date().toISOString(),
     };
     scenes.set("s1", scene1);
     scenes.set("s2", scene2);
@@ -120,6 +133,7 @@ describe("editOps", () => {
     const clip: TimelineClip = {
       id: "c1",
       scene_id: "s1",
+      source_video_id: "v1",
       timeline_start: 0,
       timeline_end: 5,
       clip_start: 0,
@@ -130,10 +144,14 @@ describe("editOps", () => {
     const scene: Scene = {
       id: "s1",
       project_id: "p1",
+      source_video_id: "v1",
       start_time: 0,
       end_time: 20,
       duration: 20,
       scene_index: 0,
+      tags: [],
+      status: "ready",
+      created_at: new Date().toISOString(),
     };
     scenes.set("s1", scene);
 

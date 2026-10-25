@@ -77,6 +77,9 @@ export function RenderTab({ project }: RenderTabProps) {
   const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(
     project.watermark || null
   );
+  const liveWatermarkRef = React.useRef(liveWatermark);
+  liveWatermarkRef.current = liveWatermark;
+
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
   const [previewModalVideo, setPreviewModalVideo] = useState<{
     url: string;
@@ -86,7 +89,9 @@ export function RenderTab({ project }: RenderTabProps) {
 
   useEffect(() => {
     if (project.watermark) {
-      setLiveWatermark(project.watermark);
+      if (JSON.stringify(project.watermark) !== JSON.stringify(liveWatermarkRef.current)) {
+        setLiveWatermark(project.watermark);
+      }
     }
   }, [project.watermark]);
 
@@ -239,7 +244,44 @@ export function RenderTab({ project }: RenderTabProps) {
                 Compositor Live
               </Badge>
             </div>
-            <PreviewPlayer project={projectWithLiveSettings} />
+            <PreviewPlayer
+              project={projectWithLiveSettings}
+              isWatermarkDraggable={Boolean(
+                liveWatermark?.enabled &&
+                  (liveWatermark.position === "custom" || showWatermarkModal)
+              )}
+              onUpdateWatermarkPosition={(pos) => {
+                const base: WatermarkConfig =
+                  liveWatermark ||
+                  project.watermark || {
+                    enabled: true,
+                    text: project.name || "Watermark",
+                    font_family: "Poppins",
+                    font_size: 24,
+                    font_color: "#FFFFFF",
+                    opacity: 0.8,
+                    position: "bottom-right",
+                    offset_x: 30,
+                    offset_y: 30,
+                  };
+                const updated: WatermarkConfig = {
+                  ...base,
+                  position: "custom",
+                  custom_x: pos.custom_x,
+                  custom_y: pos.custom_y,
+                };
+                setLiveWatermark(updated);
+                queryClient.setQueryData<Project>(["project", project.id], (old) => {
+                  if (!old) return old;
+                  return { ...old, watermark: updated };
+                });
+              }}
+              onWatermarkDragEnd={() => {
+                if (liveWatermarkRef.current) {
+                  updateProjectMutation.mutate({ watermark: liveWatermarkRef.current });
+                }
+              }}
+            />
           </div>
 
           {/* Right Column: Render Controls & History */}
@@ -412,8 +454,14 @@ export function RenderTab({ project }: RenderTabProps) {
                   {showWatermarkModal && (
                     <div className="border-t border-border pt-3">
                       <WatermarkCustomizePanel
-                        project={{ ...project, watermark: liveWatermark }}
-                        onWatermarkChange={(wm) => setLiveWatermark(wm)}
+                        project={{ ...project, watermark: liveWatermark || project.watermark }}
+                        onWatermarkChange={(wm) => {
+                          setLiveWatermark(wm);
+                          queryClient.setQueryData<Project>(["project", project.id], (old) => {
+                            if (!old) return old;
+                            return { ...old, watermark: wm };
+                          });
+                        }}
                       />
                     </div>
                   )}

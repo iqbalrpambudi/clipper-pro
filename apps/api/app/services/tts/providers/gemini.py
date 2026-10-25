@@ -57,14 +57,6 @@ async def generate_gemini_tts(
 
     clean_text = " ".join(line.strip() for line in text.splitlines() if line.strip())
 
-    # Language hint: Gemini TTS follows voice-specific accent bias without it
-    # (e.g. Puck reads English text with Indonesian pronunciation).
-    target_lang = (language or "").strip().lower()
-    if target_lang == "en":
-        clean_text = f"Read the following in natural English:\n{clean_text}"
-    elif target_lang == "id":
-        clean_text = f"Bacakan teks berikut dengan bahasa Indonesia yang natural:\n{clean_text}"
-
     # CRITICAL: Gemini TTS models read whatever text is in the parts directly.
     # Never add meta-prompt instructions or systemInstruction.
     # Do NOT pass temperature or maxOutputTokens: passing temperature causes Google API to hang or timeout,

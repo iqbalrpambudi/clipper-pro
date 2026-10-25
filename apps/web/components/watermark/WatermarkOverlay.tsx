@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Move } from "lucide-react";
 import { WatermarkConfig } from "@/types";
 
 interface WatermarkOverlayProps {
@@ -168,16 +169,24 @@ export function WatermarkOverlay({
         isDragging ? "duration-0" : "duration-100 ease-out"
       } ${
         isDraggable
-          ? "cursor-grab active:cursor-grabbing pointer-events-auto hover:ring-2 hover:ring-[#E9C9BD] rounded group"
+          ? "cursor-grab active:cursor-grabbing pointer-events-auto hover:ring-2 hover:ring-[#C45B3A] rounded group touch-none"
           : "pointer-events-none"
-      } ${isDragging ? "ring-2 ring-[#E9C9BD] shadow-xl" : ""}`}
+      } ${isDragging ? "ring-2 ring-[#C45B3A] shadow-xl" : ""}`}
       style={positionStyles}
       title={isDraggable ? "Tarik untuk memposisikan watermark bebas" : undefined}
     >
       {/* Visual coordinate badge during drag */}
       {isDragging && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#F8EEEA] text-[#A9472C] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-50">
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#26251F] text-[#F3F0E8] border border-[#C45B3A] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-50">
           X: {Math.round(watermark.custom_x ?? 50)}% | Y: {Math.round(watermark.custom_y ?? 50)}%
+        </div>
+      )}
+
+      {/* Hover drag badge when draggable but not actively dragging */}
+      {isDraggable && !isDragging && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[9px] font-medium px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap flex items-center gap-1 z-40">
+          <Move className="w-2.5 h-2.5 text-[#C45B3A]" />
+          <span>Drag posisi</span>
         </div>
       )}
 

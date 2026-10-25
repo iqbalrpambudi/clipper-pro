@@ -50,6 +50,8 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
             "thumbnail_url": storage.to_relative_url(s.thumbnail_path),
             "description": s.description,
             "tags": s.tags,
+            "transcript": s.transcript,
+            "shot_info": s.shot_info,
             "embedding": s.embedding,
         }
         for s in scenes

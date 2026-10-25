@@ -900,6 +900,12 @@ export function SubtitlePresetsTab() {
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
                       position: e.target.value as SubtitlePreset["position"],
+                      offset_y:
+                        e.target.value === "center"
+                          ? 0
+                          : e.target.value === "top"
+                            ? 120
+                            : -120,
                     })
                   }
                 >
@@ -1256,6 +1262,12 @@ export function SubtitlePresetsTab() {
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
                         position: e.target.value as "bottom" | "center" | "top",
+                        offset_y:
+                          e.target.value === "center"
+                            ? 0
+                            : e.target.value === "top"
+                              ? 120
+                              : -120,
                       })
                     }
                   >

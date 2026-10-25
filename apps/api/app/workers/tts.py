@@ -195,6 +195,9 @@ async def generate_tts_and_align_job(
                     "duration": s.duration,
                     "thumbnail_url": storage.to_relative_url(s.thumbnail_path),
                     "description": s.description,
+                    "tags": s.tags,
+                    "transcript": s.transcript,
+                    "shot_info": s.shot_info,
                     "embedding": s.embedding,
                 }
                 for s in scenes_res.scalars().all()

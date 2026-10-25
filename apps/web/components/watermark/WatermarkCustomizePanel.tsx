@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   Type,
@@ -7,8 +5,10 @@ import {
   Palette,
   Move,
   Check,
+  Loader2,
 } from "lucide-react";
-
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, WatermarkConfig } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -200,28 +200,73 @@ export function WatermarkCustomizePanel({
   onWatermarkChange,
 }: WatermarkCustomizePanelProps) {
   const { showToast } = useStudioStore();
+  const queryClient = useQueryClient();
 
   const [watermark, setWatermark] = useState<WatermarkConfig>(() =>
     getInitialWatermark(project.watermark)
   );
 
+  const lastCommitRef = useRef<WatermarkConfig | null>(project.watermark || null);
+  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync when project.watermark updates externally (only if not mid-edit)
-  const lastCommitRef = useRef<WatermarkConfig | null>(null);
+  const saveMutation = useMutation({
+    mutationFn: (wm: WatermarkConfig) => api.updateProject(project.id, { watermark: wm }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["project", project.id], (old: any) =>
+        old ? { ...old, watermark: updated.watermark } : old
+      );
+    },
+  });
+
+  // Sync when project.watermark updates externally (e.g. from canvas drag or server)
   useEffect(() => {
-    if (project.watermark && project.watermark !== lastCommitRef.current) {
-      setWatermark(getInitialWatermark(project.watermark));
+    if (project.watermark) {
+      const serverKey = JSON.stringify(project.watermark);
+      const localKey = JSON.stringify(lastCommitRef.current);
+      if (serverKey !== localKey) {
+        setWatermark(getInitialWatermark(project.watermark));
+        lastCommitRef.current = project.watermark;
+      }
     }
   }, [project.watermark]);
 
-  const commitWatermark = (next: WatermarkConfig, showToastNotice?: string) => {
+  const commitWatermark = (next: WatermarkConfig, showToastNotice?: string, immediate = false) => {
     setWatermark(next);
     lastCommitRef.current = next;
     onWatermarkChange?.(next);
+
+    // Optimistic cache update so all tabs immediately reflect the new watermark
+    queryClient.setQueryData(["project", project.id], (old: any) =>
+      old ? { ...old, watermark: next } : old
+    );
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    if (immediate) {
+      saveMutation.mutate(next);
+    } else {
+      autosaveTimerRef.current = setTimeout(() => {
+        saveMutation.mutate(next);
+      }, 500);
+    }
+
     if (showToastNotice) {
       showToast(showToastNotice, "info");
     }
   };
+
+  // Flush pending save on unmount (e.g. switching tabs / pages)
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current && lastCommitRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        api.updateProject(project.id, { watermark: lastCommitRef.current }).catch(() => {});
+      }
+    };
+  }, [project.id]);
 
   const applyPreset = (preset: (typeof PRESETS)[0]) => {
     const next: WatermarkConfig = {
@@ -229,7 +274,7 @@ export function WatermarkCustomizePanel({
       ...preset.config,
       enabled: true,
     };
-    commitWatermark(next, `Preset "${preset.name}" diterapkan`);
+    commitWatermark(next, `Preset "${preset.name}" diterapkan`, true);
   };
 
   const addPrefix = (prefix: string) => {
@@ -275,16 +320,24 @@ export function WatermarkCustomizePanel({
             </div>
           </label>
 
-          <Badge
-            variant={watermark.enabled ? "default" : "secondary"}
-            className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
-              watermark.enabled
-                ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
-                : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
-            }`}
-          >
-            {watermark.enabled ? "AKTIF" : "NONAKTIF"}
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            {saveMutation.isPending && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground animate-pulse">
+                <Loader2 className="w-3 h-3 animate-spin text-[#C45B3A]" />
+                <span className="hidden sm:inline">Menyimpan...</span>
+              </span>
+            )}
+            <Badge
+              variant={watermark.enabled ? "default" : "secondary"}
+              className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+                watermark.enabled
+                  ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
+                  : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
+              }`}
+            >
+              {watermark.enabled ? "AKTIF" : "NONAKTIF"}
+            </Badge>
+          </div>
         </div>
 
         {/* Quick Presets Grid */}

@@ -35,10 +35,22 @@ interface PreviewPlayerProps {
     subtitle_style?: SubtitleStyle | null;
   };
   onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
+  onSubtitleDragEnd?: () => void;
+  onUpdateWatermarkPosition?: (pos: { custom_x: number; custom_y: number }) => void;
+  onWatermarkDragEnd?: () => void;
+  isWatermarkDraggable?: boolean;
   compact?: boolean;
 }
 
-export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: PreviewPlayerProps) {
+export function PreviewPlayer({
+  project,
+  onUpdateSubtitlePosition,
+  onSubtitleDragEnd,
+  onUpdateWatermarkPosition,
+  onWatermarkDragEnd,
+  isWatermarkDraggable,
+  compact,
+}: PreviewPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRefA = useRef<HTMLVideoElement | null>(null);
   const videoRefB = useRef<HTMLVideoElement | null>(null);
@@ -746,23 +758,33 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
   // Update JASSUB track in real-time when subtitleStyle or segments change
   useEffect(() => {
     if (!jassubRef.current || !isJassubReady) return;
-    try {
-      const newAss = generateAssSubtitles(segments, subtitleStyle || {}, canvasWidth, canvasHeight);
-      if (jassubRef.current.renderer?.setTrack) {
-        jassubRef.current.renderer.setTrack(newAss);
+    let isCancelled = false;
+    const updateTrack = async () => {
+      try {
+        const newAss = generateAssSubtitles(segments, subtitleStyle || {}, canvasWidth, canvasHeight);
+        if (jassubRef.current?.renderer?.setTrack) {
+          await jassubRef.current.renderer.setTrack(newAss);
+        }
+        if (!isCancelled && jassubRef.current) {
+          await jassubRef.current.manualRender(
+            {
+              expectedDisplayTime: performance.now(),
+              width: canvasWidth,
+              height: canvasHeight,
+              mediaTime: currentTimeRef.current,
+            },
+            true
+          );
+        }
+      } catch (err) {
+        console.error("Failed to update JASSUB track:", err);
       }
-      jassubRef.current.manualRender(
-        {
-          expectedDisplayTime: performance.now(),
-          width: canvasWidth,
-          height: canvasHeight,
-          mediaTime: currentTimeRef.current,
-        },
-        true
-      );
-    } catch (err) {
-      console.error("Failed to update JASSUB track:", err);
-    }
+    };
+    updateTrack();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight]);
 
   // Listen for video decoder seeked/loaded events to redraw canvas when paused
@@ -927,6 +949,20 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       : "transparent";
 
   // Drag position handlers
+  const getSubtitleTranslateY = (
+    pos: string | undefined,
+    offsetPx: number
+  ): string => {
+    if (pos === "center") {
+      if (offsetPx === 0) return "-50%";
+      return offsetPx > 0 ? `calc(-50% + ${offsetPx}px)` : `calc(-50% - ${Math.abs(offsetPx)}px)`;
+    }
+    if (pos === "bottom" || !pos) {
+      return `${-offsetPx}px`;
+    }
+    return `${offsetPx}px`;
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!onUpdateSubtitlePosition) return;
     setIsDraggingSubtitle(true);
@@ -945,7 +981,9 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
     const deltaY = e.clientY - dragStartPos.current.y;
 
     const newAssDeltaX = Math.round(deltaX / scale);
-    const newAssDeltaY = Math.round(deltaY / scaleY);
+    const isBottom = subtitleStyle?.position === "bottom" || !subtitleStyle?.position;
+    const ySign = isBottom ? -1 : 1;
+    const newAssDeltaY = Math.round((deltaY * ySign) / scaleY);
 
     onUpdateSubtitlePosition({
       offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
@@ -959,6 +997,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
       try {
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       } catch {}
+      onSubtitleDragEnd?.();
     }
   };
 
@@ -1009,6 +1048,12 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
           watermark={project.watermark}
           containerWidth={frameWidth}
           containerHeight={frameWidth * (canvasHeight / canvasWidth)}
+          isDraggable={
+            isWatermarkDraggable ??
+            Boolean(project.watermark?.enabled && project.watermark?.position === "custom")
+          }
+          onCustomPositionChange={onUpdateWatermarkPosition}
+          onDragEnd={onWatermarkDragEnd}
         />
 
         {/* Hidden Dual-Video Decoder Pipeline */}
@@ -1066,13 +1111,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                 subtitleStyle?.position === "bottom" || !subtitleStyle?.position
                   ? "11.45%"
                   : undefined,
-              transform: `translate(${scaledOffsetX}px, ${
-                subtitleStyle?.position === "center"
-                  ? `calc(-50% + ${scaledOffsetY}px)`
-                  : subtitleStyle?.position === "bottom"
-                    ? `${-scaledOffsetY}px`
-                    : `${scaledOffsetY}px`
-              })`,
+              transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
             }}
           >
             <div className="pointer-events-auto flex h-14 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">
@@ -1099,13 +1138,7 @@ export function PreviewPlayer({ project, onUpdateSubtitlePosition, compact }: Pr
                 subtitleStyle?.position === "bottom" || !subtitleStyle?.position
                   ? "11.45%"
                   : undefined,
-              transform: `translate(${scaledOffsetX}px, ${
-                subtitleStyle?.position === "center"
-                  ? `calc(-50% + ${scaledOffsetY}px)`
-                  : subtitleStyle?.position === "bottom"
-                    ? `${-scaledOffsetY}px`
-                    : `${scaledOffsetY}px`
-              })`,
+              transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
             }}
           >
             {/* 1. Burst Mode (Hormozi 2-3 words group) */}

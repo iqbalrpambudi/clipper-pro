@@ -106,6 +106,7 @@ class SceneResponse(BaseModel):
     tags: List[str] = []
     analysis: Optional[dict] = None
     transcript: Optional[str] = None
+    shot_info: Optional[dict] = None
     status: str
     created_at: datetime
 

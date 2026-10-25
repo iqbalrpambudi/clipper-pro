@@ -345,13 +345,274 @@ def pick_sharpest(candidates: List[str], final_path: str) -> str:
     return final_path
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Shot-precise detection
+#
+# Prinsip: over-detect aman, under-detect fatal. Cut palsu hanya mempersempit
+# area aman (usable range); cut yang terlewat bocor jadi flash scene di timeline.
+# Karena itu SEMUA cut dideteksi (multi-detektor, tanpa frame_skip, min_scene_len
+# kecil), lalu shot pendek digabung untuk tampilan Media Pool — tetapi posisi
+# cut-nya dicatat di `shot_info` agar matching tidak pernah mengiris melewatinya.
+# ─────────────────────────────────────────────────────────────────────────────
+SHOT_INFO_VERSION = 1
+FLASH_MIN_SEC = 1.5          # shot < ini = flash, tidak boleh tampil sendiri di timeline
+MONTAGE_MIN_SEC = 3.0        # rangkaian flash >= ini jadi scene sendiri (tanpa usable range)
+CUT_HEAD_MARGIN = 0.12       # jarak aman setelah cut (≈ 3-4 frame)
+CUT_TAIL_MARGIN = 0.15       # jarak aman sebelum cut
+SOFT_EDGE_MARGIN = 0.05      # margin batas non-cut (awal/akhir video, titik silence)
+MIN_USABLE_RANGE_SEC = 1.0
+DETECT_MIN_SHOT_SEC = 0.25   # min_scene_len detektor (anti double-trigger flash frame)
+CUT_DEDUP_FRAMES = 2         # cut dari detektor berbeda yang berjarak <= N frame = cut yang sama
+
+
+def _build_shot_detectors(fps: float) -> list:
+    """Kombinasi detektor yang saling menutup titik buta masing-masing."""
+    min_len = max(3, int(round(DETECT_MIN_SHOT_SEC * fps)))
+    detectors: list = [
+        # Cut umum, adaptif terhadap gerakan kamera
+        AdaptiveDetector(adaptive_threshold=3.0, min_scene_len=min_len, min_content_val=15.0),
+        # Cut saat gerakan tinggi (Adaptive cenderung meredam cut seperti ini)
+        ContentDetector(threshold=27.0, min_scene_len=min_len),
+    ]
+    try:
+        # Shot-reverse-shot / warna mirip: perbandingan struktur (perceptual hash)
+        from scenedetect.detectors import HashDetector
+
+        detectors.append(HashDetector(threshold=0.395, min_scene_len=min_len))
+    except Exception as e:  # pragma: no cover - tergantung versi scenedetect
+        log.debug("HashDetector unavailable: %s", e)
+    try:
+        # Fade in/out & flash hitam
+        from scenedetect.detectors import ThresholdDetector
+
+        detectors.append(ThresholdDetector(threshold=12.0, min_scene_len=min_len, add_final_scene=False))
+    except Exception as e:  # pragma: no cover
+        log.debug("ThresholdDetector unavailable: %s", e)
+    return detectors
+
+
+def _open_video_safe(video_path: str):
+    """Buka video dengan backend PyAV sebagai prioritas utama (mendukung AV1, VP9, H.264, HEVC, ProRes)
+    dengan fallback ke OpenCV bila PyAV tidak tersedia."""
+    try:
+        import av
+        av.logging.set_level(av.logging.ERROR)
+    except Exception:
+        pass
+
+    from scenedetect import open_video
+
+    try:
+        return open_video(video_path, backend="pyav")
+    except Exception as e:
+        log.warning("PySceneDetect open_video(backend='pyav') failed for %s: %s, falling back to default/opencv", video_path, e)
+        return open_video(video_path)
+
+
+def find_shot_cuts_ffmpeg(
+    video_path: str,
+    start_sec: Optional[float] = None,
+    end_sec: Optional[float] = None,
+    threshold: float = 0.28,
+) -> List[float]:
+    """Deteksi cut visual menggunakan filter scene detection native FFmpeg.
+    Sangat tangguh untuk semua format/codec tanpa kendala decoding (AV1, VP9, H.264, dll)."""
+    cmd = ["ffmpeg"]
+    if start_sec and start_sec > 0:
+        cmd.extend(["-ss", str(start_sec)])
+    cmd.extend(["-i", str(video_path)])
+    if end_sec and start_sec and end_sec > start_sec:
+        cmd.extend(["-t", str(end_sec - start_sec)])
+    elif end_sec:
+        cmd.extend(["-t", str(end_sec)])
+
+    cmd.extend([
+        "-filter_complex", f"select='gt(scene,{threshold})',metadata=print",
+        "-f", "null", "-",
+    ])
+
+    try:
+        res = subprocess.run(cmd, capture_output=True, timeout=300)
+        output = res.stderr.decode(errors="replace")
+        cuts: List[float] = []
+        offset = float(start_sec) if start_sec and start_sec > 0 else 0.0
+        for m in re.finditer(r"pts_time:([0-9.]+)", output):
+            t = float(m.group(1)) + offset
+            cuts.append(round(t, 4))
+        return cuts
+    except Exception as e:
+        log.warning("FFmpeg native scene detect failed for %s: %s", video_path, e)
+        return []
+
+
+def find_shot_cuts(
+    video_path: str,
+    start_sec: Optional[float] = None,
+    end_sec: Optional[float] = None,
+) -> Tuple[List[float], float]:
+    """Deteksi semua cut (detik, absolut) dalam video / rentang [start_sec, end_sec].
+    Menggunakan Dual-Engine: PySceneDetect (PyAV backend) + FFmpeg native scene detection
+    untuk akurasi 100% dan kekebalan terhadap codec failure (AV1/VP9).
+
+    Return (cuts, fps). Blocking — jalankan di executor.
+    """
+    from scenedetect import SceneManager
+
+    fps = 30.0
+    pyscene_cuts: List[float] = []
+
+    # Engine 1: PySceneDetect dengan PyAV backend
+    try:
+        video = _open_video_safe(video_path)
+        fps = float(video.frame_rate or 30.0) or 30.0
+        sm = SceneManager()
+        # Kecepatan dari downscale (bukan frame_skip yang merusak perbandingan antar frame)
+        sm.auto_downscale = True
+        for det in _build_shot_detectors(fps):
+            sm.add_detector(det)
+
+        if start_sec and start_sec > 0:
+            video.seek(float(start_sec))
+        sm.detect_scenes(video, end_time=float(end_sec) if end_sec else None, frame_skip=0)
+        scene_list = sm.get_scene_list()
+
+        cut_frames = sorted({sc[0].get_frames() for sc in scene_list[1:]})
+        deduped: List[int] = []
+        for f in cut_frames:
+            if deduped and f - deduped[-1] <= CUT_DEDUP_FRAMES:
+                continue
+            deduped.append(f)
+        pyscene_cuts = [round(f / fps, 4) for f in deduped]
+    except Exception as e:
+        log.warning("PySceneDetect engine failed for %s: %s", video_path, e)
+
+    # Engine 2: FFmpeg native scene detection
+    ffmpeg_cuts: List[float] = []
+    try:
+        ffmpeg_cuts = find_shot_cuts_ffmpeg(video_path, start_sec=start_sec, end_sec=end_sec)
+    except Exception as e:
+        log.warning("FFmpeg native scene detect failed for %s: %s", video_path, e)
+
+    # Union & Deduplicate (toleransi 0.15s ≈ 4-5 frame)
+    all_cuts = sorted(pyscene_cuts + ffmpeg_cuts)
+    final_cuts: List[float] = []
+    for c in all_cuts:
+        if final_cuts and abs(c - final_cuts[-1]) <= 0.15:
+            continue
+        final_cuts.append(c)
+
+    log.info(
+        "Dual-engine shot detection for %s: PySceneDetect=%d cuts, FFmpeg=%d cuts -> Unified=%d cuts (fps=%.2f)",
+        video_path, len(pyscene_cuts), len(ffmpeg_cuts), len(final_cuts), fps,
+    )
+    return final_cuts, fps
+
+
+def find_cuts_in_range(video_path: str, start_sec: float, end_sec: float) -> List[float]:
+    """Cut yang berada di dalam (start_sec, end_sec). Dipakai verifikasi scene lama."""
+    if end_sec <= start_sec:
+        return []
+    # Mulai sedikit sebelum start agar detektor punya frame pembanding
+    lead = 0.2
+    cuts, fps = find_shot_cuts(video_path, max(0.0, start_sec - lead), end_sec + 0.05)
+    frame = 1.0 / fps
+    return [c for c in cuts if start_sec + frame < c < end_sec - frame]
+
+
+def _usable_range(s: float, e: float, head_cut: bool, tail_cut: bool) -> Optional[List[float]]:
+    a = s + (CUT_HEAD_MARGIN if head_cut else (SOFT_EDGE_MARGIN if s > 0 else 0.0))
+    b = e - (CUT_TAIL_MARGIN if tail_cut else SOFT_EDGE_MARGIN)
+    if b - a >= MIN_USABLE_RANGE_SEC:
+        return [round(a, 3), round(b, 3)]
+    return None
+
+
+def group_shots_into_scenes(
+    boundaries: List[float],
+    total_duration: float,
+    fps: float,
+    hard_cuts: bool = True,
+) -> List[Dict[str, Any]]:
+    """Kelompokkan shot menjadi scene Media Pool.
+
+    - Shot >= FLASH_MIN_SEC menjadi jangkar scene.
+    - Rangkaian shot flash pendek ditempel ke jangkar sebelumnya (atau berikutnya bila
+      di awal video). Rangkaian flash panjang (montage) jadi scene sendiri tanpa usable range.
+    - `usable_ranges` hanya berisi shot utuh (>= FLASH_MIN_SEC) dikurangi margin cut.
+
+    boundaries: titik batas shot (detik, tanpa 0 & total). hard_cuts=False untuk batas
+    non-visual (silence split) sehingga margin lebih kecil.
+    """
+    frame = 1.0 / fps if fps > 0 else 1.0 / 30.0
+    pts = [0.0] + sorted(b for b in boundaries if frame < b < total_duration - frame) + [total_duration]
+    shots = [(pts[i], pts[i + 1]) for i in range(len(pts) - 1) if pts[i + 1] > pts[i]]
+    if not shots:
+        return []
+
+    groups: List[List[Tuple[float, float]]] = []
+    pending: List[Tuple[float, float]] = []  # rangkaian flash yang belum punya jangkar
+    carry_to_next: List[Tuple[float, float]] = []
+
+    def _run_dur(run: List[Tuple[float, float]]) -> float:
+        return run[-1][1] - run[0][0] if run else 0.0
+
+    for shot in shots:
+        if shot[1] - shot[0] >= FLASH_MIN_SEC:
+            if pending:
+                if _run_dur(pending) >= MONTAGE_MIN_SEC:
+                    groups.append(pending)
+                elif groups:
+                    groups[-1].extend(pending)
+                else:
+                    carry_to_next = pending  # flash di awal video -> tempel ke jangkar pertama
+                pending = []
+            groups.append(carry_to_next + [shot])
+            carry_to_next = []
+        else:
+            pending.append(shot)
+
+    if pending:
+        if groups and _run_dur(pending) < MONTAGE_MIN_SEC:
+            groups[-1].extend(pending)
+        else:
+            groups.append(pending)
+
+    scenes: List[Dict[str, Any]] = []
+    for g in groups:
+        g_start, g_end = g[0][0], g[-1][1]
+        ranges: List[List[float]] = []
+        for s, e in g:
+            if e - s < FLASH_MIN_SEC:
+                continue
+            r = _usable_range(
+                s, e,
+                head_cut=hard_cuts and s > frame,
+                tail_cut=hard_cuts and e < total_duration - frame,
+            )
+            if r:
+                ranges.append(r)
+        # Anti-bleeding: end_time = frame terakhir scene ini (batas = frame pertama scene berikut)
+        end_time = g_end - frame if g_end < total_duration - frame and g_end - frame > g_start else g_end
+        scenes.append({
+            "start_time": round(g_start, 3),
+            "end_time": round(end_time, 3),
+            "shot_info": {
+                "version": SHOT_INFO_VERSION,
+                "internal_cuts": [round(s, 3) for s, _ in g[1:]] if hard_cuts else [],
+                "usable_ranges": ranges,
+                "usable_duration": round(max((b - a for a, b in ranges), default=0.0), 3),
+                "shot_count": len(g),
+                "montage": not ranges,
+            },
+        })
+    return scenes
+
+
 async def detect_scenes(
     video_path: str,
     output_dir: str,
-    threshold: float = 27.0,
-    min_scene_len_sec: float = 1.2,
 ) -> List[Dict[str, Any]]:
-    """Detect scenes in video and extract representative thumbnails."""
+    """Detect scenes (shot-precise) in video and extract representative thumbnails."""
     meta = await get_video_metadata(video_path)
     total_duration = meta["duration"]
     fps = float(meta.get("fps") or 30.0)
@@ -363,113 +624,73 @@ async def detect_scenes(
 
     loop = asyncio.get_running_loop()
 
-    def _run_pyscenedetect(adaptive_threshold: float, frame_skip: int) -> List[Tuple[float, float]]:
+    def _run_detection() -> Optional[List[float]]:
         try:
-            from scenedetect import SceneManager, open_video
-            min_scene_frames = max(1, int(min_scene_len_sec * fps))
-
-            def _detect(detector) -> List[Tuple[float, float]]:
-                # SceneManager + frame_skip: skip N frame per iterasi untuk speed
-                video = open_video(video_path)
-                sm = SceneManager()
-                sm.add_detector(detector)
-                sm.detect_scenes(video, frame_skip=frame_skip)
-                return sm.get_scene_list()
-
-            # 1. AdaptiveDetector: adaptif terhadap gerakan kamera & cut dinamis
-            scene_list = _detect(
-                AdaptiveDetector(adaptive_threshold=adaptive_threshold, min_scene_len=min_scene_frames)
-            )
-
-            # 2. Fallback ke ContentDetector jika AdaptiveDetector tidak mendeteksi adegan
-            if not scene_list:
-                scene_list = _detect(
-                    ContentDetector(threshold=threshold, min_scene_len=min_scene_frames)
-                )
-
-            results = []
-            for scene in scene_list:
-                start_sec = scene[0].get_seconds()
-                start_frame = scene[0].get_frames()
-                end_frame = scene[1].get_frames()
-
-                # Anti-bleeding: scene[1] adalah frame pertama scene berikutnya,
-                # kurangi 1 frame agar end_time tepat di frame terakhir scene ini:
-                if end_frame > start_frame:
-                    safe_end_frame = end_frame - 1
-                    end_sec = safe_end_frame / fps
-                else:
-                    end_sec = scene[1].get_seconds()
-
-                end_sec = max(start_sec, end_sec)
-                results.append((start_sec, end_sec))
-            return results
+            cuts, det_fps = find_shot_cuts(video_path)
+            return cuts
         except Exception as e:
-            log.warning("PySceneDetect error: %s, falling back to time segmentation", e)
-            return []
+            log.warning("PySceneDetect error: %s, falling back to silence segmentation", e)
+            return None
 
-    # Adaptasi threshold: bila hasil terlalu sedikit/banyak, coba sekali lagi
-    raw_scenes = await loop.run_in_executor(_DETECT_EXECUTOR, _run_pyscenedetect, 3.0, 1)
-    min_expected = max(2, int(total_duration / 12.0))   # rata-rata scene <= 12s
-    max_expected = max(4, int(total_duration / 0.8))    # rata-rata scene >= 0.8s
-    if len(raw_scenes) < min_expected:
+    cuts = await loop.run_in_executor(_DETECT_EXECUTOR, _run_detection)
+
+    if cuts:
+        raw_scenes = group_shots_into_scenes(cuts, total_duration, fps, hard_cuts=True)
         log.info(
-            "Scene detection returned %d scenes (< %d expected), retrying with lower threshold",
-            len(raw_scenes), min_expected,
+            "Shot detection: %d cuts -> %d scenes (%d montage) for %s (duration=%.1fs, fps=%.2f)",
+            len(cuts), len(raw_scenes),
+            sum(1 for s in raw_scenes if s["shot_info"]["montage"]),
+            video_path, total_duration, fps,
         )
-        raw_scenes = await loop.run_in_executor(_DETECT_EXECUTOR, _run_pyscenedetect, 1.5, 0)
-    elif len(raw_scenes) > max_expected:
-        log.info(
-            "Scene detection returned %d scenes (> %d expected), retrying with higher threshold",
-            len(raw_scenes), max_expected,
-        )
-        raw_scenes = await loop.run_in_executor(_DETECT_EXECUTOR, _run_pyscenedetect, 5.0, 1)
-
-    log.info(
-        "Scene detection finished: %d scenes for %s (duration=%.1fs, fps=%.2f)",
-        len(raw_scenes), video_path, total_duration, fps,
-    )
-
-    # Fallback if no cut detected: bagi di titik silence audio (batas natural), bukan grid buta
-    if not raw_scenes:
+    else:
+        # Tidak ada cut visual (atau deteksi gagal): bagi di titik silence audio.
+        # Batasnya bukan cut visual, jadi seluruh segmen aman dipakai.
         silences = await detect_silences(video_path)
-        raw_scenes = _split_at_silences(silences, total_duration, fps)
+        segments = _split_at_silences(silences, total_duration, fps)
+        boundaries = [s for s, _ in segments[1:]]
+        raw_scenes = group_shots_into_scenes(boundaries, total_duration, fps, hard_cuts=cuts is None)
         log.info(
-            "No scenes detected by PySceneDetect; split into %d segments using %d silence points",
+            "No visual cuts detected; split into %d segments using %d silence points",
             len(raw_scenes), len(silences),
         )
 
     scenes_data: List[Dict[str, Any]] = []
     extraction_tasks: List[Tuple[float, str]] = []
 
-    for idx, (start_t, end_t) in enumerate(raw_scenes):
+    for idx, raw in enumerate(raw_scenes):
+        start_t, end_t = raw["start_time"], raw["end_time"]
+        shot_info = raw["shot_info"]
         duration = round(end_t - start_t, 3)
-        if duration < 0.8 and idx > 0 and idx == len(raw_scenes) - 1:
-            # Append tiny last chunk to previous
-            scenes_data[-1]["end_time"] = round(end_t, 3)
-            scenes_data[-1]["duration"] = round(end_t - scenes_data[-1]["start_time"], 3)
-            continue
 
-        mid_t = start_t + (duration / 2.0)
+        # Thumbnail & keyframe diambil dari shot terpanjang (bukan tengah scene yang
+        # bisa saja jatuh di shot flash)
+        ranges = shot_info["usable_ranges"]
+        if ranges:
+            rep_s, rep_e = max(ranges, key=lambda r: r[1] - r[0])
+        else:
+            rep_s, rep_e = start_t, end_t
+        rep_dur = max(0.0, rep_e - rep_s)
+
+        mid_t = rep_s + (rep_dur / 2.0)
         thumb_filename = f"thumb_{idx:04d}_{int(start_t*1000)}.jpg"
         thumb_abs = str(out_p / thumb_filename)
 
         # Kandidat thumbnail: 25% / 50% / 75% durasi — pilih paling tajam (anti motion blur)
         cands = [thumb_abs]
-        if duration >= 1.2:
+        if rep_dur >= 1.2:
             for ci, frac in enumerate((0.25, 0.75)):
                 cp = str(out_p / f"thumbcand_{idx:04d}_{ci}.jpg")
                 cands.append(cp)
-                extraction_tasks.append((start_t + duration * frac, cp))
+                extraction_tasks.append((rep_s + rep_dur * frac, cp))
         extraction_tasks.append((mid_t, thumb_abs))
 
         # Extract keyframes for vision model (start, middle, end)
         keyframe_paths = [thumb_abs]
-        if duration >= 3.0:
+        if rep_dur >= 3.0:
             kf2 = str(out_p / f"kf_{idx:04d}_2.jpg")
-            # Clamp keyframe start+0.5 agar tetap di dalam scene
-            kf2_t = min(start_t + 0.5, end_t - 0.1)
-            if kf2_t > start_t:
+            # Clamp keyframe start+0.5 agar tetap di dalam shot
+            kf2_t = min(rep_s + 0.5, rep_e - 0.1)
+            if kf2_t > rep_s:
                 extraction_tasks.append((kf2_t, kf2))
                 keyframe_paths.append(kf2)
 
@@ -480,6 +701,7 @@ async def detect_scenes(
             "duration": duration,
             "thumbnail_path": thumb_abs,
             "keyframe_paths": keyframe_paths,
+            "shot_info": shot_info,
             "_thumb_candidates": cands,
         })
 

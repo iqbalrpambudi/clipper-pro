@@ -141,7 +141,8 @@ CATEGORY_SUMMARY_PROMPTS = {
         "MOMEN PUNCAK / KLIMAKS: <adegan paling menegangkan atau titik balik terbesar dengan timestamp>\n"
         "RESOLUSI: <bagaimana cerita berakhir atau nasib akhir karakter, 1-2 kalimat>\n"
         "\n"
-        "ATURAN: Pahami materi video sebagai satu kesatuan cerita yang utuh. Dialog adalah sumber utama alur."
+        "ATURAN: Pahami materi video sebagai satu kesatuan cerita yang utuh. Dialog adalah sumber utama alur. "
+        "Fokus pada peristiwa dan ketegangan emosional; abaikan detail fisik remeh seperti warna pakaian atau perabot."
     ),
     "fakta": (
         "Anda adalah peneliti fakta dan trivia sains populer. Tugas Anda: menemukan informasi paling unik dan mencengangkan dari log video.\n"
@@ -247,7 +248,8 @@ def build_narration_context(
         f"durasi total ~{int(total_sec)} detik):\n"
         f"{timeline}\n\n"
         "PENTING: Gunakan ringkasan isi video di atas sebagai tulang punggung narasi cerita yang mengalir utuh. "
-        "Jangan mendeskripsikan scene satu per satu; ceritakan peristiwanya secara hidup sesuai kategori naskah yang dipilih."
+        "DILARANG mendeskripsikan scene satu per satu secara harfiah (seperti warna pakaian karakter, perabot, atau istilah teknis kamera). "
+        "Ceritakan peristiwa, emosi, dan ketegangan secara hidup dan bernyawa sesuai kategori naskah yang dipilih."
     )
 
 
@@ -317,6 +319,7 @@ async def generate_narration_script(
             f"• Tone / Delivery: {tone}\n"
             f"• Target Duration: {target_duration}s (STRICT CORRIDOR: {min_words} - {max_words} words, target ~{word_count} words).\n"
             f"• Narrative Flow: Must flow naturally with connective phrases; NO robotic staccato sentences or AI clichés.\n"
+            f"• Voiceover Pure Delivery: NEVER include camera shot names (close-up, wide shot, fade to black) or stiff audio descriptions (clothing colors, furniture). Focus on narrative tension and emotion.\n"
             f"Write ONLY the final spoken English narration script ready for TTS voiceover:"
         )
     else:
@@ -327,6 +330,7 @@ async def generate_narration_script(
             f"• Intonasi / Nada Bicara: {tone}\n"
             f"• Target Durasi: {target_duration} detik (KORIDOR KETAT: {min_words} - {max_words} kata, target ~{word_count} kata).\n"
             f"• Alur Bicara: Wajib mengalir alami dengan kalimat penghubung/jembatan antar tahapan; DILARANG kalimat patah-patah/staccato.\n"
+            f"• Anti-Istilah Teknis & Deskripsi Kaku: DILARANG menyebut istilah kamera (close-up, wide shot, layar hitam/menghitam, cut) dan DILARANG gaya audio-description kaku (seperti menyebutkan warna pakaian atau perabot). Fokus pada rasa, emosi, dan tensi cerita.\n"
             f"Tulis HANYA naskah narasi final yang padat, mengalir hidup, dan langsung siap dibacakan oleh voiceover (TTS):"
         )
 
@@ -349,8 +353,13 @@ async def generate_narration_script(
         line_s = line.strip()
         if not line_s:
             continue
-        if re.match(r"^(tentu|ini dia|berikut|halo|oke|sure|here is|here's|certainly|welcome|alright)[^.!?:;]*[:\-]", line_s, re.IGNORECASE):
+        if re.match(r"^(?:tentu|ini dia|berikut|halo|oke|sure|here is|here's|certainly|welcome|alright)\b.*?(?:[:\-]|!|\.)$", line_s, re.IGNORECASE):
             continue
-        clean_lines.append(line_s)
+        # Strip accidental bracketed or parenthesized stage directions like [Musik Tegang], (SFX: ...), [Layar Menghitam], (Close up ...)
+        line_s = re.sub(r"\[(?:musik|music|sfx|sound|visual|scene|shot|layar|camera|fade|close|angle|pan|zoom|cut)[^\]]*\]", "", line_s, flags=re.IGNORECASE)
+        line_s = re.sub(r"\((?:musik|music|sfx|sound|visual|scene|shot|layar|camera|fade|close|angle|pan|zoom|cut)[^\)]*\)", "", line_s, flags=re.IGNORECASE)
+        line_s = " ".join(line_s.split())
+        if line_s:
+            clean_lines.append(line_s)
 
     return " ".join(clean_lines)

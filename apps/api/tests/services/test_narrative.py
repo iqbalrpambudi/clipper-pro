@@ -28,12 +28,12 @@ def test_split_into_sentence_segments():
 def test_openai_adapter_sse_and_json_parsing():
     adapter = OpenAICompatibleAdapter(base_url="https://api.openai.com/v1", api_key="sk-fake")
     line = 'data: {"choices": [{"delta": {"content": "Halo"}}]}'
-    chunk = adapter._parse_sse_line(line)
+    chunk = adapter._extract_content_from_response(line)
     assert chunk == "Halo"
 
-    line_done = "data: [DONE]"
-    chunk_done = adapter._parse_sse_line(line_done)
-    assert chunk_done is None
+    line_done = 'data: {"choices": [{"delta": {"content": "Halo"}}]}\n\ndata: [DONE]'
+    chunk_done = adapter._extract_content_from_response(line_done)
+    assert chunk_done == "Halo"
 
 
 def test_build_master_scriptwriting_directive_includes_parameters():
@@ -56,18 +56,20 @@ async def test_generate_narration_script_injects_parameters_into_master_prompt()
         "Tahukah kamu bahwa luar angkasa sangat sunyi? Tidak ada udara untuk merambatkan suara."
     )
 
-    with patch("app.services.narrative.get_active_llm_adapter", return_value=mock_adapter):
-        script = await generate_narration_script(
-            topic="Keheningan Luar Angkasa",
-            tone="misterius",
-            duration=45,
-            language="id",
-        )
-        assert "luar angkasa" in script.lower()
-        mock_adapter.generate_chat.assert_called_once()
-        call_prompt = mock_adapter.generate_chat.call_args[0][0]
-        assert "Keheningan Luar Angkasa" in call_prompt
-        assert "misterius" in call_prompt.lower()
+    script = await generate_narration_script(
+        adapter=mock_adapter,
+        system_prompt="Anda adalah narator profesional.",
+        user_prompt_template="Topik: {topic}\nTone: {tone}\nDurasi: {target_duration}\nKata: {word_count}\n{scene_context}",
+        topic="Keheningan Luar Angkasa",
+        tone="misterius",
+        target_duration=45,
+        language="id",
+    )
+    assert "luar angkasa" in script.lower()
+    mock_adapter.generate_chat.assert_called_once()
+    call_prompt = mock_adapter.generate_chat.call_args[1].get("prompt") or mock_adapter.generate_chat.call_args[0][0]
+    assert "Keheningan Luar Angkasa" in call_prompt
+    assert "misterius" in call_prompt.lower()
 
 
 def test_multilingual_script_and_storyboard_directives():
@@ -137,3 +139,44 @@ def test_multilingual_script_and_storyboard_directives():
 
     proj_up = ProjectUpdate(language="en")
     assert proj_up.language == "en"
+
+
+@pytest.mark.asyncio
+async def test_recap_cinematic_preset_and_anti_stiffness_rules():
+    from app.prompts.narrative import DEFAULT_TEMPLATES
+    recap_tpl = next((t for t in DEFAULT_TEMPLATES if t["id"] == "recap_cinematic"), None)
+    assert recap_tpl is not None
+    sys_prompt = recap_tpl["system_prompt"]
+
+    # Verify anti-stiffness & camera direction prohibitions
+    assert "DILARANG KERAS MENYEBUT ISTILAH KAMERA" in sys_prompt
+    assert "close-up" in sys_prompt.lower()
+    assert "layar menghitam" in sys_prompt.lower()
+    assert "HINDARI DESKRIPSI VISUAL HARFIAH" in sys_prompt
+    assert "HINDARI REPETISI KATA" in sys_prompt
+
+    # Verify stage direction stripping in generate_narration_script
+    mock_adapter = AsyncMock()
+    mock_adapter.generate_chat.return_value = (
+        "Tentu! Ini naskahnya:\n"
+        "[Musik Tegang Memuncak]\n"
+        "Anak itu tahu ada bahaya mengintai dari sudut ruangan.\n"
+        "(Close up mata melebar)\n"
+        "Bahkan saat makan malam, sunyi mencekam terasa menekan dadanya."
+    )
+
+    clean_script = await generate_narration_script(
+        adapter=mock_adapter,
+        system_prompt=sys_prompt,
+        user_prompt_template=recap_tpl["user_prompt_template"],
+        topic="Misteri Rumah Tua",
+        tone="dramatis",
+        target_duration=30,
+        language="id",
+    )
+
+    assert "Tentu!" not in clean_script
+    assert "[Musik Tegang Memuncak]" not in clean_script
+    assert "(Close up mata melebar)" not in clean_script
+    assert "Anak itu tahu ada bahaya mengintai" in clean_script
+    assert "sunyi mencekam terasa menekan" in clean_script

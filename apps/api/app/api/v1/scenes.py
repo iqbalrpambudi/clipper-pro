@@ -60,6 +60,7 @@ async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db
             description=s.description,
             tags=s.tags or [],
             transcript=s.transcript,
+            shot_info=s.shot_info,
             status=s.status,
             created_at=s.created_at,
         )

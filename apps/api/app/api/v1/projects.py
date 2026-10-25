@@ -189,6 +189,8 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             video_url=video_url_map.get(s.source_video_id),
             description=s.description,
             tags=s.tags or [],
+            transcript=s.transcript,
+            shot_info=s.shot_info,
             status=s.status,
             created_at=s.created_at,
         )

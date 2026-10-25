@@ -52,16 +52,10 @@ async def generate_elevenlabs_tts(
         voice_settings["style"] = 0.0
         voice_settings["use_speaker_boost"] = True
 
-    # Language hint: multilingual models default to voice's accent bias without it.
-    target_lang = (language or "").strip().lower()
-    spoken_text = text
-    if target_lang == "en":
-        spoken_text = f"Read the following in natural English:\n{text}"
-    elif target_lang == "id":
-        spoken_text = f"Bacakan teks berikut dengan bahasa Indonesia yang natural:\n{text}"
-
+    # Note: Do not prepend meta-prompts or instruction strings to text;
+    # TTS engines speak the text verbatim.
     payload = {
-        "text": spoken_text,
+        "text": text,
         "model_id": model_id,
         "voice_settings": voice_settings,
     }

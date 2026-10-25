@@ -52,8 +52,14 @@ export function TimelineTab({ project }: TimelineTabProps) {
     isVertical,
     liveSubtitleStyle,
     setLiveSubtitleStyle,
+    handleSubtitleChange,
+    handleCustomSubtitlePositionChange,
+    handleSubtitleDragEnd,
     liveWatermark,
     setLiveWatermark,
+    handleWatermarkChange,
+    handleCustomWatermarkPositionChange,
+    handleWatermarkDragEnd,
     isAudioAttached,
     isSubtitlesAttached,
     attachedSegments,
@@ -96,6 +102,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
     handlePreviewSelectedClipSource,
     setActiveTab,
   } = useTimelineState(project);
+
+  const isWatermarkDraggable = Boolean(
+    liveWatermark?.enabled && (liveWatermark.position === "custom" || activeSideTab === "watermark")
+  );
 
   return (
     <div className="flex h-[calc(100vh-130px)] max-h-[calc(100vh-120px)] min-h-[640px] w-full flex-col overflow-hidden border border-surface-border bg-surface-secondary shadow-md">
@@ -166,7 +176,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 setLiveAspectRatio={setLiveAspectRatio}
                 setLiveBackgroundFill={setLiveBackgroundFill}
                 setLiveWatermark={setLiveWatermark}
+                liveWatermark={liveWatermark}
+                onWatermarkChange={handleWatermarkChange}
                 setLiveSubtitleStyle={setLiveSubtitleStyle}
+                liveSubtitleStyle={liveSubtitleStyle}
+                onSubtitleChange={handleSubtitleChange}
                 seekTo={seekTo}
               />
             </div>
@@ -237,6 +251,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
               bgMode={liveBackgroundFill?.mode || "blur"}
               subtitleStyle={liveSubtitleStyle}
               watermark={liveWatermark}
+              isWatermarkDraggable={isWatermarkDraggable}
+              onUpdateWatermarkPosition={handleCustomWatermarkPositionChange}
+              onWatermarkDragEnd={handleWatermarkDragEnd}
               time={time}
               seekRequest={seekRequest}
               isPlaying={isPlaying}
@@ -254,9 +271,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
               canRedo={canRedo}
               onSplit={handleSplit}
               canSplit={canSplit}
-              onUpdateSubtitlePosition={(pos) => {
-                setLiveSubtitleStyle((prev) => (prev ? { ...prev, ...pos } : null));
-              }}
+              onUpdateSubtitlePosition={handleCustomSubtitlePositionChange}
+              onSubtitleDragEnd={handleSubtitleDragEnd}
             />
           </div>
         </div>
@@ -299,7 +315,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
               setLiveAspectRatio={setLiveAspectRatio}
               setLiveBackgroundFill={setLiveBackgroundFill}
               setLiveWatermark={setLiveWatermark}
+              liveWatermark={liveWatermark}
+              onWatermarkChange={handleWatermarkChange}
               setLiveSubtitleStyle={setLiveSubtitleStyle}
+              liveSubtitleStyle={liveSubtitleStyle}
+              onSubtitleChange={handleSubtitleChange}
               seekTo={seekTo}
             />
 
@@ -326,6 +346,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 bgMode={liveBackgroundFill?.mode || "blur"}
                 subtitleStyle={liveSubtitleStyle}
                 watermark={liveWatermark}
+                isWatermarkDraggable={isWatermarkDraggable}
+                onUpdateWatermarkPosition={handleCustomWatermarkPositionChange}
+                onWatermarkDragEnd={handleWatermarkDragEnd}
                 time={time}
                 seekRequest={seekRequest}
                 isPlaying={isPlaying}
@@ -343,9 +366,8 @@ export function TimelineTab({ project }: TimelineTabProps) {
                 canRedo={canRedo}
                 onSplit={handleSplit}
                 canSplit={canSplit}
-                onUpdateSubtitlePosition={(pos) => {
-                  setLiveSubtitleStyle((prev) => (prev ? { ...prev, ...pos } : null));
-                }}
+                onUpdateSubtitlePosition={handleCustomSubtitlePositionChange}
+                onSubtitleDragEnd={handleSubtitleDragEnd}
               />
             </div>
           </div>

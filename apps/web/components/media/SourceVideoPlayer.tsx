@@ -11,7 +11,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { SourceVideo, HeatmapBucket } from "@/types";
+import type { SourceVideo } from "@/types";
 
 interface SourceVideoPlayerProps {
   isOpen: boolean;
@@ -38,7 +38,6 @@ export function SourceVideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSeeking, setIsSeeking] = useState(false);
 
   const lastPublishedTimeRef = useRef(0);
   const publishTime = useCallback((t: number) => {
@@ -139,8 +138,10 @@ export function SourceVideoPlayer({
     publishTime(v.currentTime);
   };
 
+  const isSeekingRef = useRef(false);
+
   const handleSeekStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsSeeking(true);
+    isSeekingRef.current = true;
     handleSeek(e);
 
     const handleMove = (ev: MouseEvent) => {
@@ -154,7 +155,7 @@ export function SourceVideoPlayer({
     };
 
     const handleUp = () => {
-      setIsSeeking(false);
+      isSeekingRef.current = false;
       document.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseup", handleUp);
     };

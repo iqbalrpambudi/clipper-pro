@@ -17,6 +17,8 @@ import {
   Wrench,
   MoreVertical,
   StopCircle,
+  Scissors,
+  Zap,
 } from "lucide-react";
 import { ScenePreviewModal } from "./ScenePreviewModal";
 import { SourceVideoPlayer } from "./SourceVideoPlayer";
@@ -796,6 +798,25 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       </span>
                     )}
 
+                    {/* Internal Cuts / Multi-shot Badge */}
+                    {scene.shot_info?.montage ? (
+                      <span
+                        title="Montage / Fast Cuts: scene berisi rangkaian transisi cepat"
+                        className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8.5px] font-medium text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm backdrop-blur-xs"
+                      >
+                        <Zap className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                        <span>Montage</span>
+                      </span>
+                    ) : scene.shot_info?.internal_cuts && scene.shot_info.internal_cuts.length > 0 ? (
+                      <span
+                        title={`${scene.shot_info.internal_cuts.length} cut internal terdeteksi (${(scene.shot_info.shot_count || scene.shot_info.internal_cuts.length + 1)} shot). AI hanya mengambil potongan aman dari shot utuh.`}
+                        className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8.5px] font-medium text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm backdrop-blur-xs"
+                      >
+                        <Scissors className="w-2.5 h-2.5 text-amber-400" />
+                        <span>{scene.shot_info.internal_cuts.length} cut</span>
+                      </span>
+                    ) : null}
+
                     {/* Duration Badge */}
                     <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-background/90 text-[9px] font-mono text-foreground shadow-sm">
                       {scene.duration}s
@@ -1061,6 +1082,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             tags={previewScene.tags}
             transcript={previewScene.transcript}
             sceneIndex={previewScene.scene_index}
+            shotInfo={previewScene.shot_info}
           />
         )}
 

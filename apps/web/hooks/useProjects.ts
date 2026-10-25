@@ -98,6 +98,7 @@ export function useUpdateProject() {
           | "aspect_ratio"
           | "resolution"
           | "background_fill"
+          | "watermark"
           | "language"
         >
       >;

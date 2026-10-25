@@ -40,20 +40,14 @@ async def generate_runware_tts(
     elif actual_model in ("minimax:speech", "minimax:speech-2.8"):
         actual_model = "minimax:speech@2.8"
 
-    # Language hint: Fish/Qwen3 default to voice accent without it.
-    target_lang = (language or "").strip().lower()
-    spoken_text = text
-    if target_lang == "en":
-        spoken_text = f"Read the following in natural English:\n{text}"
-    elif target_lang == "id":
-        spoken_text = f"Bacakan teks berikut dengan bahasa Indonesia yang natural:\n{text}"
-
+    # Note: Do not prepend meta-prompts or instruction strings to text;
+    # TTS engines speak the text verbatim.
     task_payload: Dict[str, Any] = {
         "taskType": "audioInference",
         "taskUUID": str(uuid.uuid4()),
         "model": actual_model,
-        "text": spoken_text,
-        "positivePrompt": spoken_text,
+        "text": text,
+        "positivePrompt": text,
         "outputType": "base64Data",
         "outputFormat": "MP3",
     }

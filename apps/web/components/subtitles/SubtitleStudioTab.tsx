@@ -569,9 +569,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <Select
                   value={style.position}
                   onValueChange={(val) => {
+                    const newOffsetY = val === "center" ? 0 : val === "top" ? 120 : -120;
                     const updated = {
                       ...style,
                       position: val as SubtitleStyle["position"],
+                      offset_y: newOffsetY,
+                      offset_x: 0,
                     };
                     setStyle(updated);
                     updateStyleMutation.mutate(updated);

@@ -79,6 +79,7 @@ class Scene(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[list] = mapped_column(JSON, default=list)
     analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # structured: characters, action, location, objects, state, confidence
+    shot_info: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # shot-precise: internal_cuts, usable_ranges, usable_duration, montage
     transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     embedding: Mapped[Optional[list]] = mapped_column(Vector(768), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="detected")  # detected, analyzing, ready, failed

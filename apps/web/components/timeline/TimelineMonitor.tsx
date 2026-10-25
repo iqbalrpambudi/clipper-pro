@@ -60,7 +60,11 @@ interface TimelineMonitorProps {
   onSplit?: () => void;
   canSplit?: boolean;
   watermark?: WatermarkConfig | null;
+  isWatermarkDraggable?: boolean;
+  onUpdateWatermarkPosition?: (pos: { custom_x: number; custom_y: number }) => void;
+  onWatermarkDragEnd?: () => void;
   onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
+  onSubtitleDragEnd?: () => void;
 }
 
 export function TimelineMonitor({
@@ -70,6 +74,11 @@ export function TimelineMonitor({
   segments,
   subtitleStyle,
   watermark,
+  isWatermarkDraggable = false,
+  onUpdateWatermarkPosition,
+  onWatermarkDragEnd,
+  onUpdateSubtitlePosition,
+  onSubtitleDragEnd,
   aspectRatio,
   backgroundFill,
   bgMode = "blur",
@@ -90,7 +99,6 @@ export function TimelineMonitor({
   canRedo = false,
   onSplit,
   canSplit = false,
-  onUpdateSubtitlePosition,
 }: TimelineMonitorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -114,6 +122,12 @@ export function TimelineMonitor({
 
   const currentTimeRef = useRef(time);
   currentTimeRef.current = time;
+
+  const subtitleStyleRef = useRef(subtitleStyle);
+  subtitleStyleRef.current = subtitleStyle;
+
+  const segmentsRef = useRef(segments);
+  segmentsRef.current = segments;
 
   const playingRef = useRef(isPlaying);
   playingRef.current = isPlaying;
@@ -744,7 +758,12 @@ export function TimelineMonitor({
 
         const refResX = aspectRatio === "16:9" ? 1920 : 1080;
         const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-        const initialAss = generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY);
+        const initialAss = generateAssSubtitles(
+          segmentsRef.current,
+          subtitleStyleRef.current || {},
+          refResX,
+          refResY
+        );
 
         const baseUrl = window.location.origin;
 
@@ -806,33 +825,44 @@ export function TimelineMonitor({
       }
       if (canvasEl) canvasEl.remove();
     };
-  }, [canvasWidth, canvasHeight, segments, subtitleStyle, aspectRatio]);
+  }, [canvasWidth, canvasHeight, aspectRatio]);
 
   // Update JASSUB track live when subtitleStyle or segments change
   useEffect(() => {
     if (!jassubRef.current || !isJassubReady) return;
-    try {
-      const refResX = aspectRatio === "16:9" ? 1920 : 1080;
-      const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-      const newAss =
-        subtitleStyle?.enabled !== false
-          ? generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY)
-          : "";
-      if (jassubRef.current.renderer?.setTrack) {
-        jassubRef.current.renderer.setTrack(newAss);
+    const refResX = aspectRatio === "16:9" ? 1920 : 1080;
+    const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
+    const newAss =
+      subtitleStyle?.enabled !== false
+        ? generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY)
+        : "";
+
+    let isCancelled = false;
+    const updateTrack = async () => {
+      try {
+        if (jassubRef.current?.renderer?.setTrack) {
+          await jassubRef.current.renderer.setTrack(newAss);
+        }
+        if (!isCancelled && jassubRef.current) {
+          await jassubRef.current.manualRender(
+            {
+              expectedDisplayTime: performance.now(),
+              width: canvasWidth,
+              height: canvasHeight,
+              mediaTime: currentTimeRef.current,
+            },
+            true
+          );
+        }
+      } catch (err) {
+        console.error("Failed to update JASSUB track in timeline:", err);
       }
-      jassubRef.current.manualRender(
-        {
-          expectedDisplayTime: performance.now(),
-          width: canvasWidth,
-          height: canvasHeight,
-          mediaTime: currentTimeRef.current,
-        },
-        true
-      );
-    } catch (err) {
-      console.error("Failed to update JASSUB track in timeline:", err);
-    }
+    };
+    updateTrack();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight, aspectRatio]);
 
   const handleToggleFullscreen = () => {
@@ -916,6 +946,9 @@ export function TimelineMonitor({
             watermark={watermark}
             containerWidth={frameDimensions.width}
             containerHeight={frameDimensions.height}
+            isDraggable={isWatermarkDraggable}
+            onCustomPositionChange={onUpdateWatermarkPosition}
+            onDragEnd={onWatermarkDragEnd}
           />
 
           {/* Fallback CSS Subtitle Overlay */}
@@ -927,6 +960,7 @@ export function TimelineMonitor({
             frameDimensions={frameDimensions}
             aspectRatio={aspectRatio}
             onUpdateSubtitlePosition={onUpdateSubtitlePosition}
+            onSubtitleDragEnd={onSubtitleDragEnd}
           />
 
           {/* Empty timeline state */}

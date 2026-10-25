@@ -11,9 +11,12 @@ import {
   Repeat,
   Film,
   MessageSquare,
+  Scissors,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Scene } from "@/types";
 
 export interface ScenePreviewModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ export interface ScenePreviewModalProps {
   tags?: string[];
   transcript?: string | null;
   sceneIndex?: number;
+  shotInfo?: Scene["shot_info"];
 }
 
 export function ScenePreviewModal({
@@ -41,6 +45,7 @@ export function ScenePreviewModal({
   tags = [],
   transcript,
   sceneIndex,
+  shotInfo,
 }: ScenePreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -245,6 +250,32 @@ export function ScenePreviewModal({
                 >
                   {duration.toFixed(1)}s Snippet
                 </Badge>
+                {shotInfo ? (
+                  shotInfo.montage ? (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-[10px] gap-1 font-mono py-0"
+                    >
+                      <Zap className="w-3 h-3 fill-amber-400 text-amber-400" /> Fast Cuts Montage
+                    </Badge>
+                  ) : shotInfo.internal_cuts && shotInfo.internal_cuts.length > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-[10px] gap-1 font-mono py-0"
+                      title={`${shotInfo.internal_cuts.length} cut internal. AI hanya mengambil irisan dari shot utuh (usable: ${shotInfo.usable_duration || 0}s).`}
+                    >
+                      <Scissors className="w-3 h-3 text-amber-400" /> {shotInfo.internal_cuts.length} Internal Cut ({shotInfo.shot_count || shotInfo.internal_cuts.length + 1} Shots)
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] gap-1 font-mono py-0"
+                      title="Scene ini adalah 1 shot visual tunggal tanpa pergantian cut di dalamnya."
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 1 Clean Shot (Utuh)
+                    </Badge>
+                  )
+                ) : null}
               </h3>
               <p className="text-[11px] text-muted-foreground font-mono">
                 Rentang: {formatSec(startTime)} → {formatSec(endTime)}
@@ -320,21 +351,46 @@ export function ScenePreviewModal({
 
         {/* Scrubber & Controls */}
         <div className="space-y-3 border-t border-border bg-card p-4">
-          {/* Progress Bar */}
+          {/* Progress Bar with Internal Cut Markers */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
               <span className="text-primary font-semibold">+{currentOffset.toFixed(1)}s</span>
+              {shotInfo?.internal_cuts && shotInfo.internal_cuts.length > 0 && (
+                <span className="text-amber-500 font-sans text-[10px] flex items-center gap-1">
+                  <Scissors className="w-3 h-3" /> {shotInfo.internal_cuts.length} cut terdeteksi
+                </span>
+              )}
               <span>{duration.toFixed(1)}s</span>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={duration}
-              step={0.05}
-              value={currentOffset}
-              onChange={handleSeek}
-              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
-            />
+            <div className="relative flex items-center">
+              {/* Internal cut markers on track */}
+              {shotInfo?.internal_cuts?.map((cutTime, idx) => {
+                const cutOffset = cutTime - startTime;
+                if (cutOffset <= 0 || cutOffset >= duration) return null;
+                const pct = (cutOffset / duration) * 100;
+                return (
+                  <div
+                    key={idx}
+                    title={`Internal Cut @ +${cutOffset.toFixed(2)}s`}
+                    style={{ left: `${pct}%` }}
+                    className="absolute top-0 bottom-0 w-0.5 bg-amber-400 z-10 pointer-events-none shadow-xs flex flex-col items-center"
+                  >
+                    <span className="absolute -top-3 text-[9px] font-mono text-amber-400 font-bold leading-none select-none">
+                      ✂
+                    </span>
+                  </div>
+                );
+              })}
+              <input
+                type="range"
+                min={0}
+                max={duration}
+                step={0.05}
+                value={currentOffset}
+                onChange={handleSeek}
+                className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+              />
+            </div>
           </div>
 
           {/* Action Toolbar */}

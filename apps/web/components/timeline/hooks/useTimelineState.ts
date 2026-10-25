@@ -146,27 +146,200 @@ export function useTimelineState(project: TimelineProjectData) {
 
   const isVertical = liveAspectRatio !== "16:9";
 
-  // Active subtitle style preview state
+  // Active subtitle style preview state with persistence & autosave
   const [liveSubtitleStyle, setLiveSubtitleStyle] = useState<SubtitleStyle | null>(
     project.subtitle_style || null
   );
+  const liveSubtitleStyleRef = useRef<SubtitleStyle | null>(liveSubtitleStyle);
+  liveSubtitleStyleRef.current = liveSubtitleStyle;
 
+  const subtitleAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync when project.subtitle_style from server changes (only if different to prevent clobbering mid-edit)
   useEffect(() => {
     if (project.subtitle_style) {
-      setLiveSubtitleStyle(project.subtitle_style);
+      if (JSON.stringify(project.subtitle_style) !== JSON.stringify(liveSubtitleStyleRef.current)) {
+        setLiveSubtitleStyle(project.subtitle_style);
+      }
     }
   }, [project.subtitle_style]);
 
-  // Active watermark preview state
+  const handleSubtitleChange = useCallback(
+    (newStyle: SubtitleStyle, immediate = false) => {
+      setLiveSubtitleStyle(newStyle);
+      liveSubtitleStyleRef.current = newStyle;
+
+      // Optimistically update React Query cache so other tabs/components have the new state immediately
+      queryClient.setQueryData<Project>(["project", project.id], (old) => {
+        if (!old) return old;
+        return { ...old, subtitle_style: newStyle };
+      });
+
+      if (subtitleAutosaveTimerRef.current) {
+        clearTimeout(subtitleAutosaveTimerRef.current);
+        subtitleAutosaveTimerRef.current = null;
+      }
+
+      const saveToServer = async (styleToSave: SubtitleStyle) => {
+        try {
+          await api.updateSubtitleStyle(project.id, styleToSave);
+        } catch (err) {
+          console.error("Autosave subtitle style failed:", err);
+        }
+      };
+
+      if (immediate) {
+        saveToServer(newStyle);
+      } else {
+        subtitleAutosaveTimerRef.current = setTimeout(() => {
+          saveToServer(newStyle);
+        }, 500);
+      }
+    },
+    [project.id, queryClient]
+  );
+
+  const handleCustomSubtitlePositionChange = useCallback(
+    (pos: { offset_x: number; offset_y: number }) => {
+      const base: SubtitleStyle = liveSubtitleStyleRef.current || project.subtitle_style || {
+        enabled: true,
+        preset_name: "custom",
+        font_family: "Poppins",
+        font_size: 56,
+        font_weight: "Bold",
+        primary_color: "#FFFFFF",
+        highlight_color: "#FFE600",
+        outline_color: "#000000",
+        outline_width: 5,
+        box_color: "#000000",
+        box_opacity: 0.0,
+        position: "bottom",
+        offset_y: -120,
+        offset_x: 0,
+        display_mode: "per_word",
+        burst_word_count: 2,
+        highlight_animation: "color",
+        scale_factor: 1.0,
+        emoji_enabled: false,
+      };
+      const updated: SubtitleStyle = {
+        ...base,
+        offset_x: pos.offset_x,
+        offset_y: pos.offset_y,
+      };
+      handleSubtitleChange(updated, false);
+    },
+    [project.subtitle_style, handleSubtitleChange]
+  );
+
+  const handleSubtitleDragEnd = useCallback(() => {
+    if (liveSubtitleStyleRef.current) {
+      handleSubtitleChange(liveSubtitleStyleRef.current, true);
+    }
+  }, [handleSubtitleChange]);
+
+  // Flush any pending subtitle autosave on unmount (e.g. switching tabs/pages)
+  useEffect(() => {
+    return () => {
+      if (subtitleAutosaveTimerRef.current && liveSubtitleStyleRef.current) {
+        clearTimeout(subtitleAutosaveTimerRef.current);
+        api.updateSubtitleStyle(project.id, liveSubtitleStyleRef.current).catch(() => {});
+      }
+    };
+  }, [project.id]);
+
+  // Active watermark preview state with persistence & autosave
   const [liveWatermark, setLiveWatermark] = useState<WatermarkConfig | null>(
     project.watermark || null
   );
+  const liveWatermarkRef = useRef<WatermarkConfig | null>(liveWatermark);
+  liveWatermarkRef.current = liveWatermark;
 
+  const watermarkAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync when project.watermark from server changes (only if different to prevent clobbering mid-edit)
   useEffect(() => {
     if (project.watermark) {
-      setLiveWatermark(project.watermark);
+      if (JSON.stringify(project.watermark) !== JSON.stringify(liveWatermarkRef.current)) {
+        setLiveWatermark(project.watermark);
+      }
     }
   }, [project.watermark]);
+
+  const handleWatermarkChange = useCallback(
+    (newWm: WatermarkConfig, immediate = false) => {
+      setLiveWatermark(newWm);
+      liveWatermarkRef.current = newWm;
+
+      // Optimistically update React Query cache so other tabs/components have the new state immediately
+      queryClient.setQueryData<Project>(["project", project.id], (old) => {
+        if (!old) return old;
+        return { ...old, watermark: newWm };
+      });
+
+      if (watermarkAutosaveTimerRef.current) {
+        clearTimeout(watermarkAutosaveTimerRef.current);
+        watermarkAutosaveTimerRef.current = null;
+      }
+
+      const saveToServer = async (cfg: WatermarkConfig) => {
+        try {
+          await api.updateProject(project.id, { watermark: cfg });
+        } catch (err) {
+          console.error("Autosave watermark failed:", err);
+        }
+      };
+
+      if (immediate) {
+        saveToServer(newWm);
+      } else {
+        watermarkAutosaveTimerRef.current = setTimeout(() => {
+          saveToServer(newWm);
+        }, 500);
+      }
+    },
+    [project.id, queryClient]
+  );
+
+  const handleCustomWatermarkPositionChange = useCallback(
+    (pos: { custom_x: number; custom_y: number }) => {
+      const base: WatermarkConfig = liveWatermarkRef.current || project.watermark || {
+        enabled: true,
+        text: project.name || "Watermark",
+        font_family: "Poppins",
+        font_size: 24,
+        font_color: "#FFFFFF",
+        opacity: 0.8,
+        position: "bottom-right",
+        offset_x: 30,
+        offset_y: 30,
+      };
+      const updated: WatermarkConfig = {
+        ...base,
+        position: "custom",
+        custom_x: pos.custom_x,
+        custom_y: pos.custom_y,
+      };
+      handleWatermarkChange(updated, false);
+    },
+    [project.name, project.watermark, handleWatermarkChange]
+  );
+
+  const handleWatermarkDragEnd = useCallback(() => {
+    if (liveWatermarkRef.current) {
+      handleWatermarkChange(liveWatermarkRef.current, true);
+    }
+  }, [handleWatermarkChange]);
+
+  // Flush any pending watermark autosave on unmount (e.g. switching tabs/pages)
+  useEffect(() => {
+    return () => {
+      if (watermarkAutosaveTimerRef.current && liveWatermarkRef.current) {
+        clearTimeout(watermarkAutosaveTimerRef.current);
+        api.updateProject(project.id, { watermark: liveWatermarkRef.current }).catch(() => {});
+      }
+    };
+  }, [project.id]);
 
   // Track attachment state
   const [isAudioAttached, setIsAudioAttached] = useState<boolean>(
@@ -776,8 +949,14 @@ export function useTimelineState(project: TimelineProjectData) {
     isVertical,
     liveSubtitleStyle,
     setLiveSubtitleStyle,
+    handleSubtitleChange,
+    handleCustomSubtitlePositionChange,
+    handleSubtitleDragEnd,
     liveWatermark,
     setLiveWatermark,
+    handleWatermarkChange,
+    handleCustomWatermarkPositionChange,
+    handleWatermarkDragEnd,
     isAudioAttached,
     isSubtitlesAttached,
     attachedSegments,

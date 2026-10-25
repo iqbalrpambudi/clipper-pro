@@ -12,6 +12,7 @@ interface FallbackSubtitleOverlayProps {
   frameDimensions: { width: number; height: number };
   aspectRatio: string;
   onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
+  onSubtitleDragEnd?: () => void;
 }
 
 export function FallbackSubtitleOverlay({
@@ -22,6 +23,7 @@ export function FallbackSubtitleOverlay({
   frameDimensions,
   aspectRatio,
   onUpdateSubtitlePosition,
+  onSubtitleDragEnd,
 }: FallbackSubtitleOverlayProps) {
   const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
 
@@ -103,6 +105,20 @@ export function FallbackSubtitleOverlay({
     }
   }
 
+  const getSubtitleTranslateY = (
+    pos: string | undefined,
+    offsetPx: number
+  ): string => {
+    if (pos === "center") {
+      if (offsetPx === 0) return "-50%";
+      return offsetPx > 0 ? `calc(-50% + ${offsetPx}px)` : `calc(-50% - ${Math.abs(offsetPx)}px)`;
+    }
+    if (pos === "bottom" || !pos) {
+      return `${-offsetPx}px`;
+    }
+    return `${offsetPx}px`;
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!onUpdateSubtitlePosition) return;
     setIsDraggingSubtitle(true);
@@ -120,7 +136,9 @@ export function FallbackSubtitleOverlay({
     const deltaX = e.clientX - dragStartPos.current.x;
     const deltaY = e.clientY - dragStartPos.current.y;
     const newAssDeltaX = Math.round(deltaX / scale);
-    const newAssDeltaY = Math.round(deltaY / scaleY);
+    const isBottom = subtitleStyle?.position === "bottom" || !subtitleStyle?.position;
+    const ySign = isBottom ? -1 : 1;
+    const newAssDeltaY = Math.round((deltaY * ySign) / scaleY);
     onUpdateSubtitlePosition({
       offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
       offset_y: dragStartPos.current.initialOffsetY + newAssDeltaY,
@@ -133,6 +151,7 @@ export function FallbackSubtitleOverlay({
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
+    onSubtitleDragEnd?.();
   };
 
   return (
@@ -152,13 +171,7 @@ export function FallbackSubtitleOverlay({
               subtitleStyle?.position === "bottom" || !subtitleStyle?.position
                 ? "11.45%"
                 : undefined,
-            transform: `translate(${scaledOffsetX}px, ${
-              subtitleStyle?.position === "center"
-                ? `calc(-50% + ${scaledOffsetY}px)`
-                : subtitleStyle?.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
-            })`,
+            transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
           }}
         >
           {subtitleStyle?.display_mode === "burst" ? (
@@ -279,13 +292,7 @@ export function FallbackSubtitleOverlay({
               subtitleStyle?.position === "bottom" || !subtitleStyle?.position
                 ? "11.45%"
                 : undefined,
-            transform: `translate(${scaledOffsetX}px, ${
-              subtitleStyle?.position === "center"
-                ? `calc(-50% + ${scaledOffsetY}px)`
-                : subtitleStyle?.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
-            })`,
+            transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
           }}
         >
           <div className="pointer-events-auto flex h-12 w-full max-w-[260px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/60">

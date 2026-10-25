@@ -76,10 +76,32 @@ export function SubtitleCustomizePanel({
 
   useEffect(() => {
     if (project.subtitle_style) {
-      setStyle((prev) => ({
-        ...prev,
-        ...project.subtitle_style,
-      }));
+      setStyle((prev) => {
+        if (
+          prev.position === project.subtitle_style?.position &&
+          prev.offset_x === project.subtitle_style?.offset_x &&
+          prev.offset_y === project.subtitle_style?.offset_y &&
+          prev.font_family === project.subtitle_style?.font_family &&
+          prev.font_size === project.subtitle_style?.font_size &&
+          prev.primary_color === project.subtitle_style?.primary_color &&
+          prev.highlight_color === project.subtitle_style?.highlight_color &&
+          prev.outline_color === project.subtitle_style?.outline_color &&
+          prev.outline_width === project.subtitle_style?.outline_width &&
+          prev.box_color === project.subtitle_style?.box_color &&
+          prev.box_opacity === project.subtitle_style?.box_opacity &&
+          prev.display_mode === project.subtitle_style?.display_mode &&
+          prev.burst_word_count === project.subtitle_style?.burst_word_count &&
+          prev.highlight_animation === project.subtitle_style?.highlight_animation &&
+          prev.scale_factor === project.subtitle_style?.scale_factor &&
+          prev.enabled === project.subtitle_style?.enabled
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ...project.subtitle_style,
+        };
+      });
     }
   }, [project.subtitle_style]);
 
@@ -154,6 +176,11 @@ export function SubtitleCustomizePanel({
     setStyle(updated);
     if (onStyleChange) onStyleChange(updated);
     if (persist) {
+      // Optimistically update React Query cache immediately
+      queryClient.setQueryData<Project>(["project", project.id], (old) => {
+        if (!old) return old;
+        return { ...old, subtitle_style: updated };
+      });
       updateStyleMutation.mutate(updated);
     }
   };

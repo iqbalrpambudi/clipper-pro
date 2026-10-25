@@ -179,6 +179,14 @@ export interface Scene {
   description?: string | null;
   tags: string[];
   transcript?: string | null;
+  shot_info?: {
+    version?: number;
+    internal_cuts?: number[];
+    usable_ranges?: [number, number][];
+    usable_duration?: number;
+    montage?: boolean;
+    shot_count?: number;
+  } | null;
   status: string;
   created_at: string;
 }

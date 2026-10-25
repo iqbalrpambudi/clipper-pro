@@ -1,6 +1,6 @@
 import re
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -172,6 +172,103 @@ def build_visual_shot_windows(
     return windows
 
 
+def _get_scene_usable_range(
+    scene: Dict[str, Any],
+    target_duration: float = 2.0,
+) -> Tuple[float, float, float, bool]:
+    """Extract single contiguous safe shot window from scene metadata.
+
+    Guarantees:
+    - Never slices across internal cuts within a merged scene.
+    - Preserves head and tail safety margins away from cut boundaries.
+    - Returns (safe_start, safe_end, safe_dur, is_montage).
+    """
+    shot_info = scene.get("shot_info") or {}
+    ranges = shot_info.get("usable_ranges")
+    is_montage = bool(shot_info.get("montage", False))
+
+    if ranges:
+        valid_ranges = [r for r in ranges if len(r) == 2 and r[1] > r[0]]
+        if valid_ranges:
+            # Prefer contiguous shot ranges that are long enough for target_duration
+            fit_ranges = [r for r in valid_ranges if (r[1] - r[0]) >= target_duration]
+            if fit_ranges:
+                # Pick the fit range closest to target_duration
+                best_r = min(fit_ranges, key=lambda r: (r[1] - r[0]) - target_duration)
+            else:
+                # Pick the longest available contiguous shot
+                best_r = max(valid_ranges, key=lambda r: r[1] - r[0])
+            s_start, s_end = round(float(best_r[0]), 3), round(float(best_r[1]), 3)
+            return s_start, s_end, round(max(0.1, s_end - s_start), 3), is_montage
+
+    # Fallback for legacy scenes without shot_info
+    scene_start = float(scene.get("start_time", 0.0))
+    scene_end = float(scene.get("end_time", scene_start + float(scene.get("duration", 4.0))))
+    head_margin = 0.120 if scene_start > 0.15 else 0.033
+    tail_margin = 0.150
+    s_start = round(scene_start + head_margin, 3)
+    s_end = round(max(s_start + 0.4, scene_end - tail_margin), 3)
+    s_dur = round(max(0.3, s_end - s_start), 3)
+    return s_start, s_end, s_dur, is_montage
+
+
+def verify_and_heal_timeline_clips(
+    clips: List[Dict[str, Any]],
+    min_clip_dur: float = 1.8,
+) -> List[Dict[str, Any]]:
+    """Safety guard (Layer 3): Guarantees timeline never has flash cuts (< 1.8s).
+
+    If any clip on timeline is shorter than min_clip_dur, it is safely merged
+    into its neighbor, and strict timestamp continuity is preserved.
+    """
+    if not clips:
+        return []
+
+    if len(clips) == 1:
+        c = clips[0]
+        c["timeline_start"] = 0.0
+        c["timeline_end"] = snap_to_frame(c["timeline_end"])
+        return [c]
+
+    # Pass 1: Merge any micro-clips shorter than min_clip_dur into neighbor
+    merged: List[Dict[str, Any]] = []
+    for c in clips:
+        c_dur = round(float(c.get("timeline_end", 0.0)) - float(c.get("timeline_start", 0.0)), 3)
+        if c_dur < min_clip_dur and merged:
+            # Merge into preceding clip
+            prev = merged[-1]
+            prev["timeline_end"] = snap_to_frame(c.get("timeline_end", prev["timeline_end"]))
+            if c.get("text") and c["text"] not in prev.get("text", ""):
+                prev["text"] = f"{prev.get('text', '')} {c['text']}".strip()
+            # If preceding clip was using speed stretch, adjust slightly
+            new_target = round(prev["timeline_end"] - prev["timeline_start"], 3)
+            src_dur = round(float(prev.get("clip_end", 0.0)) - float(prev.get("clip_start", 0.0)), 3)
+            if src_dur > 0 and new_target > 0:
+                prev["speed"] = max(0.68, min(1.0, round(src_dur / new_target, 3)))
+        else:
+            merged.append(dict(c))
+
+    # If first clip ended up < min_clip_dur and there's a second clip, merge with second
+    if len(merged) > 1:
+        first_dur = round(float(merged[0]["timeline_end"]) - float(merged[0]["timeline_start"]), 3)
+        if first_dur < min_clip_dur:
+            second = merged[1]
+            second["timeline_start"] = merged[0]["timeline_start"]
+            if merged[0].get("text") and merged[0]["text"] not in second.get("text", ""):
+                second["text"] = f"{merged[0]['text']} {second.get('text', '')}".strip()
+            merged.pop(0)
+
+    # Pass 2: Ensure strict mathematical continuity across timeline
+    if merged:
+        merged[0]["timeline_start"] = 0.0
+        for k in range(len(merged) - 1):
+            boundary = snap_to_frame(merged[k]["timeline_end"])
+            merged[k]["timeline_end"] = boundary
+            merged[k + 1]["timeline_start"] = boundary
+
+    return merged
+
+
 async def match_scenes_to_segments(
     adapter: BaseLLMAdapter,
     segments: List[Dict[str, Any]],
@@ -210,7 +307,7 @@ async def match_scenes_to_segments(
         win_emb = window_embeddings[i]
         start_sec = win["start_sec"]
         end_sec = win["end_sec"]
-        target_duration = max(round(end_sec - start_sec, 2), 1.5)
+        target_duration = max(round(end_sec - start_sec, 2), 1.8)
         p_win = (start_sec + end_sec) / (2.0 * max(total_audio_dur, 1.0))
 
         # 3. Score all candidate scenes with Hybrid Search + Recency + Chrono Flow + Duration Fit
@@ -238,17 +335,18 @@ async def match_scenes_to_segments(
             else:
                 recency_penalty = 1.0
 
-            # Anti-Flash & Anti-Micro-Cut Duration Fit
-            # In professional video editing, a visual shot must be at least 1.8s (or 54 frames)
-            # to be comprehensible to human viewers without feeling like an abrupt flash.
-            # Micro-scenes (<1.8s) get an 85% penalty so they are strictly avoided if normal footage exists.
-            sc_dur = sc.get("duration", 4.0)
-            ratio = sc_dur / target_duration
-            if sc_dur < 1.8:
-                dur_fit = 0.15  # Severe penalty against micro-scenes (<1.8s) to prevent "scene nyempil"
-            elif sc_dur >= target_duration + 0.5:
-                dur_fit = 1.15  # Generous headroom: centers smoothly without touching cut boundaries
-            elif sc_dur >= target_duration:
+            # Anti-Flash & Anti-Micro-Cut Duration Fit (Layer 2)
+            # Evaluate against single contiguous usable shot duration (NOT whole merged scene)
+            _, _, usable_dur, is_montage = _get_scene_usable_range(sc, target_duration)
+            ratio = usable_dur / target_duration
+
+            if is_montage or usable_dur < 1.5:
+                dur_fit = 0.05  # Severe penalty: montage / micro-cuts almost never selected
+            elif usable_dur < 1.8:
+                dur_fit = 0.20  # Strong penalty for marginal length
+            elif usable_dur >= target_duration + 0.5:
+                dur_fit = 1.15  # Generous headroom: centers smoothly without touching boundaries
+            elif usable_dur >= target_duration:
                 dur_fit = 1.05  # Perfect fit
             elif ratio >= 0.75:
                 dur_fit = 0.92  # Gentle smooth stretch (speed 0.75x - 0.95x)
@@ -275,20 +373,12 @@ async def match_scenes_to_segments(
         recent_scene_ids.append(best_scene["id"])
         global_used_ids.add(best_scene["id"])
 
-        scene_dur = best_scene.get("duration", 4.0)
-        scene_start = best_scene.get("start_time", 0.0)
-        scene_end = best_scene.get("end_time", scene_start + scene_dur)
+        # Usable range within best_scene that is guaranteed to have NO internal cuts
+        safe_scene_start, safe_scene_end, safe_available_dur, _ = _get_scene_usable_range(
+            best_scene, target_duration
+        )
 
-        # Anti-bleed safe boundaries: keep a strict safety margin
-        # (120ms at start, 150ms at end; approx 4 to 5 frames at 30fps)
-        # to ensure cuts NEVER touch or bleed into the first/last frame of adjacent scenes.
-        head_margin = 0.120 if scene_start > 0.15 else 0.033
-        tail_margin = 0.150
-        safe_scene_start = round(scene_start + head_margin, 3)
-        safe_scene_end = round(max(safe_scene_start + 0.4, scene_end - tail_margin), 3)
-        safe_available_dur = round(max(0.3, safe_scene_end - safe_scene_start), 3)
-
-        # Metode A: Center-Weighted Slice Extraction (Scene cukup panjang untuk window narasi)
+        # Metode A: Center-Weighted Slice Extraction (Safe shot cukup panjang untuk window narasi)
         if safe_available_dur >= target_duration:
             slack = max(0.0, safe_available_dur - target_duration)
             center_offset = round(slack / 2.0, 3)
@@ -309,9 +399,8 @@ async def match_scenes_to_segments(
                 "background_fill_override": None,
             })
         else:
-            # Scene lebih pendek dari window narasi:
-            # Hanya bagi menjadi 2 scene jika window narasi panjang (>= 4.4s) DAN kedua potongan >= 2.2s.
-            # Ini mencegah rapid micro-cuts (scene berganti terlalu cepat di tengah kalimat).
+            # Safe shot lebih pendek dari window narasi:
+            # Hanya bagi menjadi 2 scene jika window narasi panjang (>= 4.4s) DAN kedua potongan >= 2.0s.
             should_split = (
                 target_duration >= 4.4
                 and len(scored_scenes) >= 2
@@ -321,16 +410,12 @@ async def match_scenes_to_segments(
             if should_split:
                 half_time = round(target_duration / 2.0, 2)
                 second_scene = scored_scenes[1][1]
-                s2_dur = second_scene.get("duration", 4.0)
-                s2_start = second_scene.get("start_time", 0.0)
-                s2_end = second_scene.get("end_time", s2_start + s2_dur)
-                s2_head_margin = 0.120 if s2_start > 0.15 else 0.033
-                s2_safe_start = round(s2_start + s2_head_margin, 3)
-                s2_safe_end = round(max(s2_safe_start + 0.4, s2_end - 0.150), 3)
-                s2_safe_dur = round(max(0.3, s2_safe_end - s2_safe_start), 3)
+                s2_safe_start, s2_safe_end, s2_safe_dur, _ = _get_scene_usable_range(
+                    second_scene, half_time
+                )
 
                 if s2_safe_dur >= 2.0:
-                    # Clip 1
+                    # Clip 1 (strictly inside best_scene's safe shot)
                     s1_slack = max(0.0, safe_available_dur - half_time)
                     s1_offset = round(s1_slack / 2.0, 3)
                     c1_start = round(safe_scene_start + s1_offset, 3)
@@ -352,7 +437,7 @@ async def match_scenes_to_segments(
                         "background_fill_override": None,
                     })
 
-                    # Clip 2
+                    # Clip 2 (strictly inside second_scene's safe shot)
                     s2_dur_needed = round(end_sec - mid_timeline, 2)
                     s2_slack = max(0.0, s2_safe_dur - s2_dur_needed)
                     s2_offset = round(s2_slack / 2.0, 3)
@@ -378,7 +463,7 @@ async def match_scenes_to_segments(
                     continue
 
             # Default: Single continuous shot dengan Smart Speed Stretch
-            # Menjamin 1 ide kalimat = 1 visual utuh tanpa potongan 'nyempil' di tengah kalimat.
+            # Strictly stays within [safe_scene_start, safe_scene_end] - NEVER crosses internal cut!
             exact_speed = round(safe_available_dur / target_duration, 3)
             clips.append({
                 "id": str(uuid.uuid4()),
@@ -395,4 +480,6 @@ async def match_scenes_to_segments(
                 "background_fill_override": None,
             })
 
-    return clips
+    # Layer 3: Post-match verification guard ensuring no timeline clip < 1.8s
+    healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=1.8)
+    return healed_clips

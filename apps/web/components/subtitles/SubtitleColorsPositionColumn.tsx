@@ -275,17 +275,23 @@ export function SubtitleColorsPositionColumn({
         <div className="space-y-1.5 p-2.5 rounded-lg bg-card border border-border">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground font-medium">Offset Vertikal (Y)</span>
-            <div className="flex items-center gap-1 font-mono text-[11px]">
-              <span className="text-primary font-bold">{style.offset_y || 0}px</span>
-              <button
-                type="button"
-                onClick={() => onCommitStyle({ ...style, offset_y: -120 })}
-                className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-                title="Reset ke -120px"
-              >
-                Reset
-              </button>
-            </div>
+            {(() => {
+              const defaultOffsetY =
+                style.position === "top" ? 120 : style.position === "center" ? 0 : -120;
+              return (
+                <div className="flex items-center gap-1 font-mono text-[11px]">
+                  <span className="text-primary font-bold">{style.offset_y || 0}px</span>
+                  <button
+                    type="button"
+                    onClick={() => onCommitStyle({ ...style, offset_y: defaultOffsetY })}
+                    className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                    title={`Reset ke ${defaultOffsetY}px`}
+                  >
+                    Reset
+                  </button>
+                </div>
+              );
+            })()}
           </div>
           <input
             type="range"

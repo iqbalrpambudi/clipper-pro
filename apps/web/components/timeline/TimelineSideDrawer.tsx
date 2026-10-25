@@ -80,7 +80,11 @@ interface TimelineSideDrawerProps {
   setLiveAspectRatio: (ratio: string) => void;
   setLiveBackgroundFill: (fill: BackgroundFill | null) => void;
   setLiveWatermark: (wm: WatermarkConfig | null) => void;
+  liveWatermark?: WatermarkConfig | null;
+  onWatermarkChange?: (wm: WatermarkConfig) => void;
   setLiveSubtitleStyle: (style: SubtitleStyle | null) => void;
+  liveSubtitleStyle?: SubtitleStyle | null;
+  onSubtitleChange?: (style: SubtitleStyle, immediate?: boolean) => void;
   seekTo: (t: number) => void;
 }
 
@@ -119,7 +123,11 @@ export function TimelineSideDrawer({
   setLiveAspectRatio,
   setLiveBackgroundFill,
   setLiveWatermark,
+  liveWatermark,
+  onWatermarkChange,
   setLiveSubtitleStyle,
+  liveSubtitleStyle,
+  onSubtitleChange,
   seekTo,
 }: TimelineSideDrawerProps) {
   const selectedClip = selectedClipIndex !== null ? clips[selectedClipIndex] || null : null;
@@ -214,8 +222,17 @@ export function TimelineSideDrawer({
       return (
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           <WatermarkCustomizePanel
-            project={project}
-            onWatermarkChange={(wm) => setLiveWatermark(wm)}
+            project={{
+              ...project,
+              watermark: liveWatermark || project.watermark,
+            }}
+            onWatermarkChange={(wm) => {
+              if (onWatermarkChange) {
+                onWatermarkChange(wm);
+              } else {
+                setLiveWatermark(wm);
+              }
+            }}
           />
         </div>
       );
@@ -223,10 +240,19 @@ export function TimelineSideDrawer({
 
     return (
       <SubtitleCustomizePanel
-        project={project}
+        project={{
+          ...project,
+          subtitle_style: liveSubtitleStyle || project.subtitle_style,
+        }}
         currentTime={time}
         onSeek={seekTo}
-        onStyleChange={(style) => setLiveSubtitleStyle(style)}
+        onStyleChange={(style) => {
+          if (onSubtitleChange) {
+            onSubtitleChange(style);
+          } else {
+            setLiveSubtitleStyle(style);
+          }
+        }}
       />
     );
   };

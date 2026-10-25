@@ -64,4 +64,71 @@ describe("assGenerator", () => {
     expect(ass).toContain("Style: KaraokeDefault,Bebas Neue");
     expect(ass).toContain("Dialogue:");
   });
+
+  it("handles position 'center' correctly with \\an5 and centered coordinates", () => {
+    const segments: SentenceSegment[] = [
+      {
+        id: "seg-center",
+        text: "Pusat layar",
+        start_ms: 0,
+        end_ms: 1000,
+        words: [{ word: "Pusat", start_ms: 0, end_ms: 1000 }],
+      },
+    ];
+
+    const ass = generateAssSubtitles(
+      segments,
+      {
+        position: "center",
+        offset_x: 0,
+        offset_y: 0,
+      },
+      1080,
+      1920
+    );
+
+    // PlayResX=1080 -> posX=540, PlayResY=1920 -> posY=960, align=5
+    expect(ass).toContain("{\\an5\\pos(540,960)}");
+    expect(ass).toContain(",0,5,40,40,40,1");
+  });
+
+  it("preserves custom offsets for top, bottom, and center positions", () => {
+    const segments: SentenceSegment[] = [
+      {
+        id: "seg-custom",
+        text: "Custom offset",
+        start_ms: 0,
+        end_ms: 1000,
+        words: [{ word: "Custom", start_ms: 0, end_ms: 1000 }],
+      },
+    ];
+
+    // Bottom with custom offset_x=35, offset_y=-80
+    const assBottom = generateAssSubtitles(
+      segments,
+      {
+        position: "bottom",
+        offset_x: 35,
+        offset_y: -80,
+      },
+      1080,
+      1920
+    );
+    // baseY = 1700, posY = 1700 - (-80) = 1780, posX = 540 + 35 = 575
+    expect(assBottom).toContain("{\\an2\\pos(575,1780)}");
+
+    // Center with custom offset_x=-20, offset_y=45
+    const assCenter = generateAssSubtitles(
+      segments,
+      {
+        position: "center",
+        offset_x: -20,
+        offset_y: 45,
+      },
+      1080,
+      1920
+    );
+    // baseY = 960, posY = 960 + 45 = 1005, posX = 540 - 20 = 520
+    expect(assCenter).toContain("{\\an5\\pos(520,1005)}");
+  });
 });

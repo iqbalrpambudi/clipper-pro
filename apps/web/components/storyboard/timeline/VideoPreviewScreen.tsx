@@ -95,6 +95,20 @@ export function VideoPreviewScreen({
     return () => ro.disconnect();
   }, [videoFrameRef]);
 
+  const getSubtitleTranslateY = (
+    pos: string | undefined,
+    offsetPx: number
+  ): string => {
+    if (pos === "center") {
+      if (offsetPx === 0) return "-50%";
+      return offsetPx > 0 ? `calc(-50% + ${offsetPx}px)` : `calc(-50% - ${Math.abs(offsetPx)}px)`;
+    }
+    if (pos === "bottom" || !pos) {
+      return `${-offsetPx}px`;
+    }
+    return `${offsetPx}px`;
+  };
+
   return (
     <div
       ref={videoFrameRef}
@@ -137,13 +151,7 @@ export function VideoPreviewScreen({
                   : undefined,
             bottom:
               subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-            transform: `translate(${scaledOffsetX}px, ${
-              subtitleStyle.position === "center"
-                ? `calc(-50% + ${scaledOffsetY}px)`
-                : subtitleStyle.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
-            })`,
+            transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle.position, scaledOffsetY)})`,
           }}
         >
           {/* 1. Burst Mode (2-3 kata) */}
@@ -274,13 +282,7 @@ export function VideoPreviewScreen({
                   : undefined,
             bottom:
               subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-            transform: `translate(${scaledOffsetX}px, ${
-              subtitleStyle.position === "center"
-                ? `calc(-50% + ${scaledOffsetY}px)`
-                : subtitleStyle.position === "bottom"
-                  ? `${-scaledOffsetY}px`
-                  : `${scaledOffsetY}px`
-            })`,
+            transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle.position, scaledOffsetY)})`,
           }}
         >
           <div className="w-full max-w-[340px] h-12 rounded-xl border border-dashed border-transparent group-hover:border-[#C45B3A]/60 transition-all flex items-center justify-center pointer-events-auto">

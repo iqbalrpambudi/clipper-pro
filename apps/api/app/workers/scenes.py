@@ -119,6 +119,7 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                             description=description,
                             tags=tags,
                             analysis=analysis,
+                            shot_info=item.get("shot_info"),
                             embedding=embedding,
                             status="ready",
                         )
