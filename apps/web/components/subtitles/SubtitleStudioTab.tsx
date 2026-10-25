@@ -11,6 +11,7 @@ import {
   Download,
   Sliders,
   CheckCircle2,
+  Loader2,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -313,14 +314,17 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 >
                   Simpan Preset
                 </button>
-                <button
-                  type="button"
-                  onClick={() => updateStyleMutation.mutate(style)}
-                  disabled={updateStyleMutation.isPending}
-                  className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-                >
-                  {updateStyleMutation.isPending ? "Menyimpan..." : "Simpan Style"}
-                </button>
+                {updateStyleMutation.isPending ? (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-primary px-2 py-0.5 rounded border border-primary/30 bg-primary/10">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground px-2 py-0.5 rounded border border-surface-border bg-surface">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                    <span>Autosave aktif</span>
+                  </span>
+                )}
               </div>
             </div>
 

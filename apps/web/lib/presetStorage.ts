@@ -1,4 +1,4 @@
-import { SubtitleStyle } from "@/types";
+import { SubtitleStyle, WatermarkConfig, BackgroundFill } from "@/types";
 
 // ==========================================
 // 1. TAB 1: SCRIPT & NARRATION PRESETS
@@ -116,10 +116,220 @@ export interface SubtitleCustomPreset {
   isBuiltin?: boolean;
 }
 
+// ==========================================
+// 4. TIMELINE STUDIO PRESETS (Subtitle + Watermark + Layout/Ratio)
+// ==========================================
+export interface TimelineStudioPreset {
+  id: string;
+  name: string;
+  subtitle: SubtitleStyle;
+  watermark: WatermarkConfig;
+  aspectRatio: string;
+  backgroundFill: BackgroundFill;
+  createdAt?: string;
+  isBuiltin?: boolean;
+}
+
+export const DEFAULT_TIMELINE_STUDIO_PRESETS: TimelineStudioPreset[] = [
+  {
+    id: "builtin-tiktok-viral",
+    name: "TikTok / Shorts Viral (9:16)",
+    isBuiltin: true,
+    aspectRatio: "9:16",
+    backgroundFill: {
+      mode: "blur",
+      zoom: 1.0,
+      color: "#000000",
+      anti_copyright: true,
+      dynamic_zoom: true,
+      color_grading: true,
+    },
+    subtitle: {
+      enabled: true,
+      preset_name: "viral_tiktok",
+      font_family: "Poppins",
+      font_size: 56,
+      font_weight: "Bold",
+      primary_color: "#FFFFFF",
+      highlight_color: "#FFE600",
+      outline_color: "#000000",
+      outline_width: 5,
+      box_color: "#000000",
+      box_opacity: 0.0,
+      position: "bottom",
+      offset_y: -120,
+      offset_x: 0,
+      display_mode: "per_word",
+      burst_word_count: 2,
+      highlight_animation: "color",
+      scale_factor: 1.0,
+      emoji_enabled: false,
+    },
+    watermark: {
+      enabled: true,
+      watermark_type: "text",
+      text: "@cliperpro",
+      font_family: "Poppins",
+      font_size: 26,
+      font_color: "#FFFFFF",
+      opacity: 0.8,
+      position: "bottom-right",
+      offset_x: 28,
+      offset_y: 28,
+      has_shadow: true,
+    },
+  },
+  {
+    id: "builtin-reels-box",
+    name: "Instagram Reels Box (9:16)",
+    isBuiltin: true,
+    aspectRatio: "9:16",
+    backgroundFill: {
+      mode: "blur",
+      zoom: 1.0,
+      color: "#000000",
+      anti_copyright: true,
+      dynamic_zoom: true,
+      color_grading: true,
+    },
+    subtitle: {
+      enabled: true,
+      preset_name: "reels_box",
+      font_family: "Inter",
+      font_size: 48,
+      font_weight: "Bold",
+      primary_color: "#FFFFFF",
+      highlight_color: "#00F0FF",
+      outline_color: "#000000",
+      outline_width: 3,
+      box_color: "#000000",
+      box_opacity: 0.45,
+      position: "bottom",
+      offset_y: -100,
+      offset_x: 0,
+      display_mode: "per_word",
+      burst_word_count: 3,
+      highlight_animation: "color",
+      scale_factor: 1.0,
+      emoji_enabled: false,
+    },
+    watermark: {
+      enabled: true,
+      watermark_type: "text",
+      text: "@cliperpro",
+      font_family: "Inter",
+      font_size: 22,
+      font_color: "#FFFFFF",
+      opacity: 0.7,
+      position: "top-right",
+      offset_x: 24,
+      offset_y: 24,
+      has_shadow: true,
+    },
+  },
+  {
+    id: "builtin-yt-landscape",
+    name: "YouTube Landscape (16:9)",
+    isBuiltin: true,
+    aspectRatio: "16:9",
+    backgroundFill: {
+      mode: "cover",
+      zoom: 1.0,
+      color: "#000000",
+      anti_copyright: true,
+      dynamic_zoom: true,
+      color_grading: true,
+    },
+    subtitle: {
+      enabled: true,
+      preset_name: "cinematic_landscape",
+      font_family: "Montserrat",
+      font_size: 42,
+      font_weight: "Bold",
+      primary_color: "#FFFFFF",
+      highlight_color: "#FFD700",
+      outline_color: "#000000",
+      outline_width: 4,
+      box_color: "#000000",
+      box_opacity: 0.0,
+      position: "bottom",
+      offset_y: -60,
+      offset_x: 0,
+      display_mode: "full_sentence",
+      burst_word_count: 4,
+      highlight_animation: "color",
+      scale_factor: 1.0,
+      emoji_enabled: false,
+    },
+    watermark: {
+      enabled: true,
+      watermark_type: "text",
+      text: "Cliper Pro",
+      font_family: "Montserrat",
+      font_size: 22,
+      font_color: "#FFFFFF",
+      opacity: 0.75,
+      position: "bottom-right",
+      offset_x: 32,
+      offset_y: 32,
+      has_shadow: true,
+    },
+  },
+  {
+    id: "builtin-square-punch",
+    name: "Instagram Square (1:1)",
+    isBuiltin: true,
+    aspectRatio: "1:1",
+    backgroundFill: {
+      mode: "blur",
+      zoom: 1.0,
+      color: "#000000",
+      anti_copyright: true,
+      dynamic_zoom: true,
+      color_grading: true,
+    },
+    subtitle: {
+      enabled: true,
+      preset_name: "square_punch",
+      font_family: "Poppins",
+      font_size: 50,
+      font_weight: "Bold",
+      primary_color: "#FFFFFF",
+      highlight_color: "#FF3366",
+      outline_color: "#000000",
+      outline_width: 4,
+      box_color: "#000000",
+      box_opacity: 0.0,
+      position: "bottom",
+      offset_y: -80,
+      offset_x: 0,
+      display_mode: "per_word",
+      burst_word_count: 2,
+      highlight_animation: "color",
+      scale_factor: 1.0,
+      emoji_enabled: false,
+    },
+    watermark: {
+      enabled: true,
+      watermark_type: "text",
+      text: "@cliperpro",
+      font_family: "Poppins",
+      font_size: 24,
+      font_color: "#FFFFFF",
+      opacity: 0.8,
+      position: "top-left",
+      offset_x: 24,
+      offset_y: 24,
+      has_shadow: true,
+    },
+  },
+];
+
 // Storage keys
 const SCRIPT_PRESETS_KEY = "cliper_storyboard_script_presets";
 const VOICE_PRESETS_KEY = "cliper_storyboard_voice_presets";
 const SUBTITLE_PRESETS_KEY = "cliper_storyboard_subtitle_presets";
+const TIMELINE_STUDIO_PRESETS_KEY = "cliper_timeline_studio_presets";
 
 export const presetStorage = {
   // Script Presets
@@ -239,6 +449,53 @@ export const presetStorage = {
     const list = presetStorage.getSubtitlePresets().filter((p) => p.id !== id);
     if (typeof window !== "undefined") {
       localStorage.setItem(SUBTITLE_PRESETS_KEY, JSON.stringify(list));
+    }
+  },
+
+  // Timeline Studio Presets (Subtitle + Watermark + Layout/Ratio)
+  getTimelineStudioPresets: (): TimelineStudioPreset[] => {
+    if (typeof window === "undefined") return DEFAULT_TIMELINE_STUDIO_PRESETS;
+    try {
+      const stored = localStorage.getItem(TIMELINE_STUDIO_PRESETS_KEY);
+      if (!stored) return DEFAULT_TIMELINE_STUDIO_PRESETS;
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const customOnly = parsed.filter((p: TimelineStudioPreset) => !p.isBuiltin);
+        return [...DEFAULT_TIMELINE_STUDIO_PRESETS, ...customOnly];
+      }
+      return DEFAULT_TIMELINE_STUDIO_PRESETS;
+    } catch {
+      return DEFAULT_TIMELINE_STUDIO_PRESETS;
+    }
+  },
+  saveTimelineStudioPreset: (
+    preset: Omit<TimelineStudioPreset, "id" | "createdAt" | "isBuiltin">
+  ): TimelineStudioPreset => {
+    const list = presetStorage.getTimelineStudioPresets().filter((p) => !p.isBuiltin);
+    const newPreset: TimelineStudioPreset = {
+      ...preset,
+      id: `custom-timeline-preset-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      isBuiltin: false,
+    };
+    const updated = [newPreset, ...list];
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        TIMELINE_STUDIO_PRESETS_KEY,
+        JSON.stringify([...DEFAULT_TIMELINE_STUDIO_PRESETS, ...updated])
+      );
+    }
+    return newPreset;
+  },
+  deleteTimelineStudioPreset: (id: string) => {
+    const list = presetStorage
+      .getTimelineStudioPresets()
+      .filter((p) => p.id !== id && !p.isBuiltin);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        TIMELINE_STUDIO_PRESETS_KEY,
+        JSON.stringify([...DEFAULT_TIMELINE_STUDIO_PRESETS, ...list])
+      );
     }
   },
 };

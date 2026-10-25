@@ -13,6 +13,7 @@ import {
   Sliders,
   Palette,
   Move,
+  Loader2,
   LucideIcon,
 } from "lucide-react";
 import { UseMutationResult } from "@tanstack/react-query";
@@ -689,21 +690,23 @@ export function SubtitleStudioPanel({
             <span>Simpan Preset</span>
           </Button>
 
-          <Button
-            onClick={() => updateStyleMutation.mutate(subtitleStyle)}
-            disabled={updateStyleMutation.isPending}
-            variant="workspace-primary"
-            className="h-10 flex-1 gap-2 text-xs"
-          >
-            {updateStyleMutation.isPending ? (
+          {updateStyleMutation.isPending ? (
+            <Badge
+              variant="outline"
+              className="h-10 flex-1 justify-center border-[#C45B3A]/40 text-[#C45B3A] text-xs font-mono flex items-center gap-1.5 px-3 bg-[#F8EEEA]"
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Menyimpan...</span>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>Simpan Gaya Subtitle</span>
-              </>
-            )}
-          </Button>
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="h-10 flex-1 justify-center border-[#E5E1D7] text-[#77766D] text-xs font-mono flex items-center gap-1.5 px-3 bg-[#FFFEFA]"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Autosave aktif</span>
+            </Badge>
+          )}
         </div>
       </div>
     </div>

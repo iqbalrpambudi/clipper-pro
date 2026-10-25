@@ -4,6 +4,9 @@ import React from "react";
 import { Film, Sparkles, Loader2, Trash2, ArrowRight, CheckCircle2, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SubtitleStyle, WatermarkConfig, BackgroundFill } from "@/types";
+import { TimelineStudioPreset } from "@/lib/presetStorage";
+import { TimelineStudioPresetControls } from "./TimelineStudioPresetControls";
 
 interface TimelineHeaderProps {
   clipsCount: number;
@@ -19,6 +22,11 @@ interface TimelineHeaderProps {
   onOpenClearModal: () => void;
   onAutoMatch: () => void;
   onRender: () => void;
+  liveSubtitleStyle?: SubtitleStyle | null;
+  liveWatermark?: WatermarkConfig | null;
+  liveAspectRatio?: string;
+  liveBackgroundFill?: BackgroundFill | null;
+  onApplyStudioPreset?: (preset: TimelineStudioPreset) => void;
 }
 
 export function TimelineHeader({
@@ -35,47 +43,64 @@ export function TimelineHeader({
   onOpenClearModal,
   onAutoMatch,
   onRender,
+  liveSubtitleStyle,
+  liveWatermark,
+  liveAspectRatio,
+  liveBackgroundFill,
+  onApplyStudioPreset,
 }: TimelineHeaderProps) {
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="font-semibold text-xs text-foreground tracking-tight flex items-center gap-1.5">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface shrink-0 gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="font-semibold text-xs text-foreground tracking-tight flex items-center gap-1.5 shrink-0">
             <Film className="w-4 h-4 text-primary" />
             Timeline Studio
           </span>
           <Badge
             variant="outline"
-            className="font-mono text-[10px] text-muted-foreground border-border"
+            className="font-mono text-[10px] text-muted-foreground border-border shrink-0"
           >
             {clipsCount} klip
           </Badge>
           {isSaving ? (
             <Badge
               variant="outline"
-              className="border-primary/40 text-primary text-[10px] flex items-center gap-1"
+              className="border-primary/40 text-primary text-[10px] flex items-center gap-1 shrink-0"
             >
               <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
             </Badge>
           ) : isDirty ? (
             <Badge
               variant="outline"
-              className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1"
+              className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1 shrink-0"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Autosave...
             </Badge>
           ) : clipsCount > 0 ? (
             <Badge
               variant="outline"
-              className="border-primary/40 text-primary text-[10px] flex items-center gap-1"
+              className="border-primary/40 text-primary text-[10px] flex items-center gap-1 shrink-0"
             >
               <CheckCircle2 className="w-3 h-3" /> Tersimpan
             </Badge>
           ) : null}
-          <span className="text-[11px] text-muted-foreground hidden sm:inline">
+          <span className="text-[11px] text-muted-foreground hidden sm:inline shrink-0">
             Durasi:{" "}
             <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
           </span>
+
+          {/* Divider */}
+          <div className="h-4 w-[1px] bg-border shrink-0 hidden md:block" />
+
+          {/* Studio Preset Selector & Save Button */}
+          <TimelineStudioPresetControls
+            currentSubtitleStyle={liveSubtitleStyle}
+            currentWatermark={liveWatermark}
+            currentAspectRatio={liveAspectRatio}
+            currentBackgroundFill={liveBackgroundFill}
+            onApplyPreset={onApplyStudioPreset}
+          />
         </div>
 
         <div className="flex items-center gap-2">

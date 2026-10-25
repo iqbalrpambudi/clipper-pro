@@ -20,6 +20,7 @@ import {
   SentenceSegment,
   SubtitleStyle,
 } from "@/types";
+import { TimelineStudioPreset } from "@/lib/presetStorage";
 import {
   SceneMap,
   appendScene,
@@ -953,6 +954,51 @@ export function useTimelineState(project: TimelineProjectData) {
     jumpCut,
   ]);
 
+  const handleApplyStudioPreset = useCallback(
+    async (preset: TimelineStudioPreset) => {
+      try {
+        if (preset.subtitle) {
+          handleSubtitleChange(preset.subtitle, true);
+        }
+        if (preset.watermark) {
+          handleWatermarkChange(preset.watermark, true);
+        }
+        if (preset.aspectRatio) {
+          setLiveAspectRatio(preset.aspectRatio);
+        }
+        if (preset.backgroundFill) {
+          setLiveBackgroundFill(preset.backgroundFill);
+        }
+
+        await api.updateProject(project.id, {
+          aspect_ratio: preset.aspectRatio,
+          background_fill: preset.backgroundFill,
+          watermark: preset.watermark,
+        });
+
+        if (preset.subtitle) {
+          await api.updateSubtitleStyle(project.id, preset.subtitle);
+        }
+
+        queryClient.setQueryData<Project>(["project", project.id], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            aspect_ratio: preset.aspectRatio,
+            background_fill: preset.backgroundFill,
+            watermark: preset.watermark,
+            subtitle_style: preset.subtitle,
+          };
+        });
+
+        showToast(`Preset "${preset.name}" berhasil diterapkan!`, "success");
+      } catch (err: any) {
+        showToast(err.message || "Gagal menerapkan preset studio", "error");
+      }
+    },
+    [project.id, handleSubtitleChange, handleWatermarkChange, queryClient, showToast]
+  );
+
   return {
     clips,
     setClips,
@@ -1041,5 +1087,6 @@ export function useTimelineState(project: TimelineProjectData) {
     handleSwapNeighbor,
     handlePreviewSelectedClipSource,
     setActiveTab,
+    handleApplyStudioPreset,
   };
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Palette, FileCode, Bookmark } from "lucide-react";
+import { Palette, FileCode, Bookmark, Check, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, SubtitleStyle, SubtitlePreset, Narration, AudioTrack } from "@/types";
@@ -302,16 +302,23 @@ export function SubtitleCustomizePanel({
             <span>Simpan Preset</span>
           </Button>
 
-          <Button
-            type="button"
-            variant="workspace-primary"
-            size="sm"
-            onClick={() => commitStyle(style, true)}
-            disabled={updateStyleMutation.isPending}
-            className="h-7 text-xs font-semibold px-3 gap-1 shadow-sm"
-          >
-            {updateStyleMutation.isPending ? "Menyimpan..." : "Simpan Style"}
-          </Button>
+          {updateStyleMutation.isPending ? (
+            <Badge
+              variant="outline"
+              className="h-7 border-primary/40 text-primary text-[10px] font-mono flex items-center gap-1.5 px-2"
+            >
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Menyimpan...</span>
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="h-7 border-border text-muted-foreground text-[10px] font-mono flex items-center gap-1.5 px-2 bg-surface/50"
+            >
+              <Check className="w-3 h-3 text-emerald-500" />
+              <span>Autosave aktif</span>
+            </Badge>
+          )}
         </div>
       </div>
 

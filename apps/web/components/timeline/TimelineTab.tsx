@@ -101,6 +101,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
     handleSwapNeighbor,
     handlePreviewSelectedClipSource,
     setActiveTab,
+    handleApplyStudioPreset,
   } = useTimelineState(project);
 
   const isWatermarkDraggable = Boolean(
@@ -132,6 +133,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
           }
           setActiveTab("render");
         }}
+        liveSubtitleStyle={liveSubtitleStyle}
+        liveWatermark={liveWatermark}
+        liveAspectRatio={liveAspectRatio}
+        liveBackgroundFill={liveBackgroundFill}
+        onApplyStudioPreset={handleApplyStudioPreset}
       />
 
       {/* Main Studio Body: Zero-Scroll NLE Layout */}
