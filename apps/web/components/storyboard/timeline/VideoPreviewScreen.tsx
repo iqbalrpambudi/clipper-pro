@@ -45,6 +45,7 @@ interface VideoPreviewScreenProps {
   isWatermarkDraggable?: boolean;
   onCustomWatermarkPositionChange?: (pos: { custom_x: number; custom_y: number }) => void;
   onWatermarkDragEnd?: () => void;
+  onDimensionsChange?: (dims: { width: number; height: number }) => void;
 }
 
 export function VideoPreviewScreen({
@@ -79,21 +80,44 @@ export function VideoPreviewScreen({
   isWatermarkDraggable,
   onCustomWatermarkPositionChange,
   onWatermarkDragEnd,
+  onDimensionsChange,
 }: VideoPreviewScreenProps) {
-  const [containerWidth, setContainerWidth] = React.useState(640);
+  const [containerWidth, setContainerWidth] = React.useState(960);
+  const [containerHeight, setContainerHeight] = React.useState(540);
 
   React.useEffect(() => {
     if (!videoFrameRef.current) return;
     const update = () => {
       if (videoFrameRef.current) {
-        setContainerWidth(videoFrameRef.current.clientWidth || 640);
+        const w = videoFrameRef.current.clientWidth;
+        const h = videoFrameRef.current.clientHeight;
+        if (w > 0 && h > 0) {
+          setContainerWidth(w);
+          setContainerHeight(h);
+          onDimensionsChange?.({ width: w, height: h });
+        }
       }
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(videoFrameRef.current);
     return () => ro.disconnect();
-  }, [videoFrameRef]);
+  }, [videoFrameRef, onDimensionsChange]);
+
+  // True WYSIWYG Responsive Subtitle Calculations matching 1920x1080 canvas coordinates
+  const liveScale = containerWidth / 1920;
+  const liveScaleY = containerHeight / 1080;
+  const fontBaseSize = subtitleStyle.font_size || 38;
+  const effectiveFontSize =
+    containerWidth > 0
+      ? Math.max(9, Math.round(fontBaseSize * liveScale))
+      : scaledFontSize;
+  const effectiveOutlineWidth =
+    containerWidth > 0
+      ? Math.max(0, Number(((subtitleStyle.outline_width ?? 4) * liveScale).toFixed(2)))
+      : scaledOutlineWidth;
+  const effectiveOffsetX = Math.round((subtitleStyle.offset_x || 0) * liveScale);
+  const effectiveOffsetY = Math.round((subtitleStyle.offset_y || 0) * liveScaleY);
 
   const getSubtitleTranslateY = (
     pos: string | undefined,
@@ -151,7 +175,7 @@ export function VideoPreviewScreen({
                   : undefined,
             bottom:
               subtitleStyle.position === "bottom" || !subtitleStyle.position ? "12%" : undefined,
-            transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle.position, scaledOffsetY)})`,
+            transform: `translate(${effectiveOffsetX}px, ${getSubtitleTranslateY(subtitleStyle.position, effectiveOffsetY)})`,
           }}
         >
           {/* 1. Burst Mode (2-3 kata) */}
@@ -159,11 +183,11 @@ export function VideoPreviewScreen({
             activeBurstGroup.length > 0 ? (
               <div
                 style={{
-                  fontSize: `${scaledFontSize}px`,
+                  fontSize: `${effectiveFontSize}px`,
                   fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
                   fontWeight: fontWeightValue,
                   color: subtitleStyle.primary_color || "#FFFFFF",
-                  WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                  WebkitTextStroke: `${effectiveOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
                   paintOrder: "stroke fill",
                   textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                   backgroundColor:
@@ -197,13 +221,13 @@ export function VideoPreviewScreen({
             activeWordIndex !== -1 && segWords[activeWordIndex] ? (
               <div
                 style={{
-                  fontSize: `${scaledFontSize * 1.05}px`,
+                  fontSize: `${effectiveFontSize * 1.05}px`,
                   fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
                   fontWeight: fontWeightValue,
                   color: isHighlightEnabled
                     ? subtitleStyle.highlight_color || "#FFE600"
                     : subtitleStyle.primary_color || "#FFFFFF",
-                  WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                  WebkitTextStroke: `${effectiveOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
                   paintOrder: "stroke fill",
                   textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                   transform: isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
@@ -224,11 +248,11 @@ export function VideoPreviewScreen({
             /* 3. Full Sentence Mode with Karaoke Word Highlight */
             <div
               style={{
-                fontSize: `${Math.round(scaledFontSize * 0.9)}px`,
+                fontSize: `${Math.round(effectiveFontSize * 0.9)}px`,
                 fontFamily: `"${subtitleStyle.font_family || "Poppins"}", sans-serif`,
                 fontWeight: fontWeightValue,
                 color: subtitleStyle.primary_color || "#FFFFFF",
-                WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
+                WebkitTextStroke: `${effectiveOutlineWidth}px ${subtitleStyle.outline_color || "#000000"}`,
                 paintOrder: "stroke fill",
                 textShadow: "0 2px 8px rgba(0,0,0,0.8)",
                 backgroundColor:
@@ -324,6 +348,7 @@ export function VideoPreviewScreen({
         <WatermarkOverlay
           watermark={watermark}
           containerWidth={containerWidth}
+          containerHeight={containerHeight}
           isDraggable={isWatermarkDraggable}
           onCustomPositionChange={onCustomWatermarkPositionChange}
           onDragEnd={onWatermarkDragEnd}

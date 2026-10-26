@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
+import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import {
   Project,
   ProjectDetail,
@@ -138,6 +139,16 @@ export function useStoryboardTimelineState(project: Project) {
       style: subtitleStyle,
       selectedPresetId: selectedSubtitlePresetId,
     });
+    useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "subtitle", {
+      enabled: subtitleStyle.enabled !== false,
+      presetId: selectedSubtitlePresetId,
+      style: subtitleStyle,
+      position: subtitleStyle.position || "bottom",
+      customOffset: {
+        x: subtitleStyle.offset_x ?? 0,
+        y: subtitleStyle.offset_y ?? 0,
+      },
+    });
   }, [project.id, subtitleStyle, selectedSubtitlePresetId, setSubtitleDraft]);
 
   // Debounced auto-save to backend
@@ -222,25 +233,34 @@ export function useStoryboardTimelineState(project: Project) {
   };
 
   // Frame dimension measurement for pixel-perfect responsive scaling
-  const [frameDimensions, setFrameDimensions] = useState({ width: 640, height: 360 });
+  const [frameDimensions, setFrameDimensions] = useState({ width: 960, height: 540 });
   const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0, initialOffsetX: 0, initialOffsetY: 0 });
+
+  const handleDimensionsChange = useCallback((dims: { width: number; height: number }) => {
+    if (!dims.width || !dims.height) return;
+    setFrameDimensions((prev) => {
+      if (prev.width === dims.width && prev.height === dims.height) return prev;
+      return dims;
+    });
+  }, []);
 
   useEffect(() => {
     if (!videoFrameRef.current) return;
     const updateSize = () => {
       if (videoFrameRef.current) {
-        setFrameDimensions({
-          width: videoFrameRef.current.clientWidth || 640,
-          height: videoFrameRef.current.clientHeight || 360,
-        });
+        const w = videoFrameRef.current.clientWidth;
+        const h = videoFrameRef.current.clientHeight;
+        if (w > 0 && h > 0) {
+          setFrameDimensions({ width: w, height: h });
+        }
       }
     };
     updateSize();
     const observer = new ResizeObserver(updateSize);
     observer.observe(videoFrameRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [videoFrameRef.current]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -508,6 +528,8 @@ export function useStoryboardTimelineState(project: Project) {
     handleSaveSubtitlePreset,
     handleDeleteSubtitlePreset,
     // Subtitle responsive metrics & drag handlers
+    frameDimensions,
+    handleDimensionsChange,
     scaledFontSize,
     scaledOutlineWidth,
     scaledOffsetY,

@@ -43,6 +43,34 @@ export const DEFAULT_SCRIPT_PRESETS: ScriptPreset[] = [
     customInstructions: "Bahasa jelas, terstruktur, gunakan analogi yang mudah.",
     isBuiltin: true,
   },
+  {
+    id: "default-curiosity-explainer",
+    name: "Curiosity Explainer (1-2 Mnt - Viral Curiosity)",
+    durationMins: 1.5,
+    tone: "edukatif",
+    imagesPerSegment: 2,
+    customInstructions: `Gunakan formula Curiosity Explainer (5 Babak) yang dinamis:
+1. Hook Misteri/Aksi Tak Biasa (0-4s): Buka langsung dengan anomali visual yang memancing rasa penasaran tanpa kata klise pembuka. Variasikan bentuk kalimat:
+   - Pola Pertanyaan Penasaran: "Kenapa [subjek] [melakukan aksi tidak lazim] ini?"
+   - Pola Tindakan Langsung: "Saat [objek] ini [diberi perlakuan ekstrem], [perubahan aneh] langsung terlihat."
+   - Pola Observasi Rahasia: "Beginilah cara sebenarnya [subjek/industri] [menghasilkan/membuat produk]."
+   - Pola Ajakan Perhatian: "Perhatikan baik-baik bagaimana [benda/material] ini [diproses dengan cara tak terduga]."
+2. Patahkan Asumsi Umum / Misconception (5-15s): Benturkan dengan persepsi umum audiens.
+   - Contoh variasi: "Banyak yang mengira ini [asumsi salah], padahal...", "Sekilas terlihat seperti [hal sepele], namun fungsi aslinya jauh berbeda.", "Ini bukan sekadar [tindakan biasa], melainkan..."
+3. Mekanisme Mikro & Logika Sains/Teknik (15-40s): Bedah proses fisik, reaksi kimia, atau trik engineering di baliknya langkah demi langkah secara runtut.
+   - Jelaskan hubungan sebab-akibat: "Saat [tahap A dilakukan], [reaksi B terjadi] sehingga [masalah C teratasi secara alami]."
+   - Tautkan setiap klausa dengan tindakan fisik konkret (air dingin membuang buttermilk, serat sintetis mengikat akar, kisi-kisi mengalirkan arus air).
+4. Manfaat Nyata & Pembuktian Hasil (40-55s): Tunjukkan payoff konkret dan alasan kenapa metode ini krusial.
+   - Pola variasi: "Hasilnya...", "Karena itulah...", "Kondisi ini memastikan [produk/objek] tetap [kualitas unggul] dan terhindar dari [masalah fatal]."
+5. Refleksi / Punchline Elevasi (55-70s): Angkat objek biasa menjadi kejeniusan inovasi/keahlian.
+   - Pola variasi: "Meski terlihat [sederhana/kasar/sepele], proses ini membuktikan...", "Di balik [tampilan luar biasa], tersimpan sistem cerdas yang dirancang untuk [tujuan besar]."
+
+Kaidah Narasi:
+- Sinkronisasi Nomina-Verba: Sebutkan benda dan aksi yang nyata terlihat pada visual di detik tersebut.
+- Jangan gunakan istilah teknis kamera (jangan sebut scene, shot, kamera, layar).
+- Kalimat mengalir alami (8-14 kata per kalimat), hindari kalimat patah-patah atau kalimat kaku seperti robot.`,
+    isBuiltin: true,
+  },
 ];
 
 // ==========================================

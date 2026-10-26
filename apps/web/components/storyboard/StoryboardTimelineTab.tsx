@@ -278,6 +278,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                 isWatermarkDraggable={state.activeRightTab === "watermark"}
                 onCustomWatermarkPositionChange={state.handleCustomWatermarkPositionChange}
                 onWatermarkDragEnd={state.handleWatermarkDragEnd}
+                onDimensionsChange={state.handleDimensionsChange}
                 className="group relative flex aspect-video h-full w-auto max-h-full max-w-full shrink-0 select-none items-center justify-center overflow-hidden rounded-xl border-2 border-[#E5E1D7] bg-[#FFFEFA] shadow-lg"
               />
             </div>

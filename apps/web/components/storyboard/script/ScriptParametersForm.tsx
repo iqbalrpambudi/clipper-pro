@@ -160,10 +160,10 @@ export function ScriptParametersForm({
         {/* Language Selector (Central Project Language Control) */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold text-[#4D4A42]">
+            <label className="block text-xs font-semibold text-foreground">
               Bahasa Utama Video (Kunci Seluruh Pipeline)
             </label>
-            <span className="text-[10px] text-[#A9472C]/80 font-mono">
+            <span className="text-[10px] text-primary/80 font-mono">
               Mengunci Naskah, Voice TTS & YouTube
             </span>
           </div>
@@ -181,15 +181,15 @@ export function ScriptParametersForm({
                   className={cn(
                     "p-2.5 rounded-xl border text-left transition",
                     isSelected
-                      ? "bg-[#F8EEEA] border-[#C45B3A] text-[#26251F] shadow-xs"
-                      : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:border-[#C45B3A]/40 hover:text-[#26251F]"
+                      ? "bg-primary/10 border-primary text-foreground shadow-xs"
+                      : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   )}
                 >
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#26251F]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                     <span>{opt.flag}</span>
                     <span>{opt.label}</span>
                   </div>
-                  <div className="text-[10px] text-[#77766D] mt-0.5 pl-5">
+                  <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">
                     {opt.sub}
                   </div>
                 </button>
@@ -227,7 +227,7 @@ export function ScriptParametersForm({
 
         {/* Tone Selector */}
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-[#4D4A42]">
+          <label className="mb-1.5 block text-xs font-semibold text-foreground">
             Gaya Bahasa & Tone
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -243,8 +243,8 @@ export function ScriptParametersForm({
                 onClick={() => setTone(t.id)}
                 className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition ${
                   tone === t.id
-                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] font-semibold"
-                    : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    ? "bg-primary/10 border-primary text-primary font-semibold"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 }`}
               >
                 {t.label}
@@ -295,7 +295,7 @@ export function ScriptParametersForm({
 
         {/* Images Per Segment */}
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-[#4D4A42]">
+          <label className="mb-1.5 block text-xs font-semibold text-foreground">
             Jumlah Ilustrasi Gambar per Segmen
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -310,8 +310,8 @@ export function ScriptParametersForm({
                 onClick={() => setImagesPerSegment(opt.count)}
                 className={`p-2.5 rounded-xl border text-center transition ${
                   imagesPerSegment === opt.count
-                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#4D4A42]"
-                    : "bg-[#FFFEFA] border-[#E5E1D7] text-[#77766D] hover:text-[#26251F]"
+                    ? "bg-primary/10 border-primary text-foreground font-semibold"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 }`}
               >
                 <div className="text-xs font-bold">{opt.label}</div>

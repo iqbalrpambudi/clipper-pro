@@ -226,12 +226,20 @@ export const ThumbnailKonvaCanvas = forwardRef<ThumbnailCanvasRef, ThumbnailKonv
                   }}
                   onTransformEnd={(e) => {
                     const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    const effectiveScale = (Math.abs(scaleX) + Math.abs(scaleY)) / 2;
+                    const currentFontSize = layer.fontSize || 56;
+                    const newFontSize = Math.max(16, Math.min(160, Math.round(currentFontSize * effectiveScale)));
+                    node.scaleX(1);
+                    node.scaleY(1);
                     onUpdateLayer(layer.id, {
                       x: Math.round(node.x()),
                       y: Math.round(node.y()),
                       rotation: Math.round(node.rotation()),
-                      scaleX: node.scaleX(),
-                      scaleY: node.scaleY(),
+                      fontSize: newFontSize,
+                      scaleX: 1,
+                      scaleY: 1,
                     });
                   }}
                 >

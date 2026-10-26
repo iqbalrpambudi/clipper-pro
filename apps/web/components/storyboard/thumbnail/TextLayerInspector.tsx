@@ -259,23 +259,27 @@ export function TextLayerInspector({
               <Slider
                 value={[selectedLayer.fontSize]}
                 min={24}
-                max={110}
+                max={140}
                 step={2}
                 onValueChange={([val]) =>
                   onUpdateLayer(selectedLayer.id, {
                     fontSize: val,
+                    scaleX: 1,
+                    scaleY: 1,
                   })
                 }
                 className="py-1 cursor-pointer"
               />
               <div className="flex flex-wrap gap-1 pt-0.5">
-                {[36, 48, 56, 68, 80].map((sz) => (
+                {[36, 48, 56, 68, 80, 96].map((sz) => (
                   <button
                     key={sz}
                     type="button"
                     onClick={() =>
                       onUpdateLayer(selectedLayer.id, {
                         fontSize: sz,
+                        scaleX: 1,
+                        scaleY: 1,
                       })
                     }
                     className={`px-2 py-0.5 rounded text-[10px] font-mono border ${

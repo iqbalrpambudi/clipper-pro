@@ -108,16 +108,17 @@ export function PreviewPlayer({
   // Measure actual preview container width for 100% pixel-perfect scaling
   useEffect(() => {
     if (!frameRef.current) return;
+    const defaultWidth = project.aspect_ratio === "16:9" ? 960 : 360;
     const updateSize = () => {
       if (frameRef.current) {
-        setFrameWidth(frameRef.current.clientWidth || 320);
+        setFrameWidth(frameRef.current.clientWidth || defaultWidth);
       }
     };
     updateSize();
     const ro = new ResizeObserver(updateSize);
     ro.observe(frameRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [project.aspect_ratio, frameRef.current]);
 
   // Active Segment & Active Word Calculation (with micro-pause buffer & fallback preview)
   const curMs = currentTimeSec * 1000;

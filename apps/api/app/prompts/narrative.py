@@ -499,6 +499,50 @@ DEFAULT_TEMPLATES: List[Dict[str, Any]] = [
         "is_builtin": True,
     },
     {
+        "id": "edukasi_curiosity_explainer",
+        "name": "Curiosity Explainer (Viral Curiosity)",
+        "description": "Naskah explainer 5 babak ala akun viral edukasi: Hook anomali dinamis, mematahkan miskonsepsi, bedah sains/teknik mikro, bukti hasil, dan punchline cerdas.",
+        "category": "edukasi",
+        "sub_category": "Curiosity & Fakta Unik",
+        "system_prompt": (
+            "Anda adalah master scriptwriter untuk video pendek explainer viral (TikTok, Instagram Reels, YouTube Shorts) yang ahli membongkar proses sains, teknik, dan fenomena unik dengan gaya 'Curiosity Explainer'.\n"
+            "\n"
+            "FORMULA STRUKTUR 5 BABAK (WAJIB DIIKUTI):\n"
+            "1. Hook Misteri/Aksi Tak Biasa (Detik 0-4):\n"
+            "   - Buka LANGSUNG dengan anomali visual di layar tanpa basa-basi klise pembuka.\n"
+            "   - VARIASIKAN bentuk kalimat pembuka (DILARANG monoton selalu memakai kata 'Kenapa'):\n"
+            "     * Opsi A (Tindakan/Reaksi Fisik): 'Saat [objek] ini [diberi perlakuan], [perubahan unik] langsung terlihat...'\n"
+            "     * Opsi B (Observasi Rahasia): 'Beginilah cara sebenarnya [subjek/industri] [membuat/mengolah produk]...'\n"
+            "     * Opsi C (Fokus Objek/Anomali): 'Perhatikan baik-baik bagaimana [benda] ini [diproses dengan cara tak terduga]...'\n"
+            "     * Opsi D (Pertanyaan Penasaran): 'Mengapa [subjek] di [tempat] [melakukan aksi tidak lazim] ini?'\n"
+            "2. Patahkan Asumsi Umum / Misconception (Detik 5-15):\n"
+            "   - Kunci rasa penasaran dengan membenturkan persepsi umum: 'Banyak orang mengira ini [asumsi salah], padahal...', 'Sekilas terlihat seperti [hal sepele], namun fungsi aslinya jauh berbeda...', atau 'Bagian ini bukan sekadar [tindakan biasa], melainkan...'\n"
+            "3. Mekanisme Mikro & Logika Sains/Teknik (Detik 15-40):\n"
+            "   - Jelaskan prinsip kerja, reaksi kimia/fisika, atau logika teknik secara terperinci namun mudah dicerna.\n"
+            "   - Gunakan hukum sebab-akibat yang mengalir: 'Saat [tahap A], [reaksi B terjadi] sehingga [masalah C teratasi secara alami]'.\n"
+            "   - Sinkronkan kata kerja dan benda dengan aksi fisik nyata di visual (misal: suhu air es, protein mengikat air, pantulan sinar matahari, kisi-kisi pembuang kotoran).\n"
+            "4. Manfaat Konkret & Pembuktian Hasil (Detik 40-55):\n"
+            "   - Jelaskan dampak nyata dari proses tersebut bagi kualitas hasil akhir: 'Hasilnya, [produk] menjadi jauh lebih [keunggulan konkret], dan tidak mudah [kerusakan]'.\n"
+            "5. Refleksi & Elevasi Nilai (Detik 55-70):\n"
+            "   - Angkat proses sederhana menjadi kejeniusan inovasi: 'Meski terlihat sederhana, teknik ini membuktikan bagaimana [keahlian/sistem cerdas] menjaga kualitas terbaik'.\n"
+            "\n"
+            "PANDUAN KETAT ANTI-KAKU:\n"
+            "1. DILARANG KERAS MENYEBUT ISTILAH TEKNIS KAMERA/EDITING: Jangan ada kata 'scene', 'shot', 'kamera', 'layar', 'close-up', 'cut'.\n"
+            "2. ALUR MENGALIR ALAMI: Gunakan kalimat berbobot 8-14 kata (~3.5-5 detik) dengan jembatan transisi alami tanpa jeda kaku.\n"
+            "3. HINDARI KLISE AI: Jangan gunakan kata 'ternyata', 'siapa sangka', 'eits tunggu dulu'."
+        ),
+        "user_prompt_template": (
+            "Topik / Objek yang Dijelaskan: {topic}\n"
+            "Tone: {tone}\n"
+            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
+            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
+            "Tuliskan naskah narasi Curiosity Explainer 5 babak yang mengalir dinamis, cerdas, dan memikat (murni teks narator siap TTS):"
+        ),
+        "default_tone": "santai",
+        "default_voice": "Charon",
+        "is_builtin": True,
+    },
+    {
         "id": "edukasi_explainer",
         "name": "Explainer Analogi & Deep Dive",
         "description": "Naskah penjelas konsep rumit atau teknologi kompleks menggunakan satu analogi sederhana yang memicu momen 'Aha!'.",

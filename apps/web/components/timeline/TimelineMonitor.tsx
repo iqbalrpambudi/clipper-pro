@@ -160,19 +160,24 @@ export function TimelineMonitor({
   // Measure actual preview container width & height
   useEffect(() => {
     if (!videoFrameRef.current) return;
+    const defaultW = aspectRatio === "16:9" ? 960 : aspectRatio === "1:1" ? 540 : 360;
+    const defaultH = aspectRatio === "16:9" ? 540 : aspectRatio === "1:1" ? 540 : 640;
     const updateSize = () => {
       if (videoFrameRef.current) {
-        setFrameDimensions({
-          width: videoFrameRef.current.clientWidth || 360,
-          height: videoFrameRef.current.clientHeight || 640,
-        });
+        const w = videoFrameRef.current.clientWidth;
+        const h = videoFrameRef.current.clientHeight;
+        if (w > 0 && h > 0) {
+          setFrameDimensions({ width: w, height: h });
+        } else {
+          setFrameDimensions({ width: defaultW, height: defaultH });
+        }
       }
     };
     updateSize();
     const ro = new ResizeObserver(updateSize);
     ro.observe(videoFrameRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [aspectRatio, videoFrameRef.current]);
 
   // Sync dual-video sources when clips change
   useEffect(() => {

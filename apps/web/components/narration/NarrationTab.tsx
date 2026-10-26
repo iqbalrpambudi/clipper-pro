@@ -447,8 +447,8 @@ export function NarrationTab({ project }: NarrationTabProps) {
                           className={cn(
                             "p-2.5 rounded-xl border text-left transition",
                             isSelected
-                              ? "bg-[#F8EEEA] border-[#C45B3A] text-foreground shadow-xs"
-                              : "bg-[#FFFEFA] border-[#E5E1D7] text-muted-foreground hover:border-[#C45B3A]/40 hover:text-foreground"
+                              ? "bg-primary/10 border-primary text-foreground shadow-xs"
+                              : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                           )}
                         >
                           <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
