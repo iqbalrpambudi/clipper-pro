@@ -1,0 +1,115 @@
+name: cliper-pro-prod
+
+x-api-env: &api-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://cliper:cliper@postgres:5432/cliper_db}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  STORAGE_PATH: /app/storage
+  MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-2147483648}
+  MAX_SOURCE_DURATION_MINS: ${MAX_SOURCE_DURATION_MINS:-30}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3030,http://127.0.0.1:3030,http://localhost:8080}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dGhpcy1pcy1hLTMyLWJ5dGUtc2VjcmV0LWtleS1mb3ItZGI=}
+  AI_BASE_URL: ${AI_BASE_URL:-}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-2.0-flash}
+  AI_VISION_MODEL: ${AI_VISION_MODEL:-gemini-2.0-flash}
+  TTS_PROVIDER: ${TTS_PROVIDER:-gemini}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_TTS_VOICE: ${GEMINI_TTS_VOICE:-Puck}
+  HF_HOME: /app/.cache/huggingface
+
+services:
+  web:
+    build:
+      context: ../../apps/web
+      target: prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3030}:3030"
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:8080
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    depends_on:
+      api:
+        condition: service_started
+
+  api:
+    build:
+      context: ../../apps/api
+      target: prod
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment: *api-env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../../apps/api
+      target: prod
+    command: ["arq", "app.workers.WorkerSettings"]
+    restart: unless-stopped
+    environment: *api-env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../storage:/app/storage
+      - cliper_hf_cache:/app/.cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 6G
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cliper_db}
+      POSTGRES_USER: ${POSTGRES_USER:-cliper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cliper}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - cliper_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cliper} -d ${POSTGRES_DB:-cliper_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - cliper_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  cliper_postgres_data:
+    name: cliper-pro_cliper_postgres_data
+  cliper_redis_data:
+    name: cliper-pro_cliper_redis_data
+  cliper_hf_cache:
+    name: cliper-pro_cliper_hf_cache

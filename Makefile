@@ -1,8 +1,9 @@
 COMPOSE := docker compose -f infrastructure/docker/docker-compose.yml --env-file .env
+COMPOSE_PROD := docker compose -f infrastructure/docker/docker-compose.prod.yml --env-file .env
 WEB_PORT ?= $(shell sed -n 's/^WEB_PORT=//p' .env 2>/dev/null | tail -1)
 API_PORT ?= $(shell sed -n 's/^API_PORT=//p' .env 2>/dev/null | tail -1)
 
-.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean lint format lint-web lint-api format-web format-api migrate migration
+.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean lint format lint-web lint-api format-web format-api migrate migration prod-up prod-down prod-restart prod-logs prod-build
 
 up: .env
 	$(COMPOSE) up -d
@@ -24,6 +25,26 @@ logs:
 rebuild:
 	$(COMPOSE) build
 	$(COMPOSE) up -d
+
+prod-build: .env
+	$(COMPOSE_PROD) build
+
+prod-up: .env
+	$(COMPOSE_PROD) up -d
+	@echo "===================================================="
+	@echo "Cliper Pro (PRODUCTION) is running!"
+	@echo "Web UI:   http://localhost:$(or $(WEB_PORT),3030)"
+	@echo "API Docs: http://localhost:$(or $(API_PORT),8080)/docs"
+	@echo "===================================================="
+
+prod-down:
+	$(COMPOSE_PROD) down
+
+prod-restart:
+	$(COMPOSE_PROD) restart
+
+prod-logs:
+	$(COMPOSE_PROD) logs -f --tail=100
 
 lint-web:
 	cd apps/web && npm run typecheck && npm run lint

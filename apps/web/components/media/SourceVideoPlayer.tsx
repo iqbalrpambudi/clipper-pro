@@ -94,7 +94,11 @@ export function SourceVideoPlayer({
       switch (e.key) {
         case " ":
           e.preventDefault();
-          v.paused ? v.play() : v.pause();
+          if (v.paused) {
+            v.play();
+          } else {
+            v.pause();
+          }
           break;
         case "Escape":
           onClose();
@@ -121,7 +125,7 @@ export function SourceVideoPlayer({
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
-      v.play().then(() => setIsPlaying(true)).catch(() => {});
+      v.play().then(() => setIsPlaying(true)).catch(() => { });
     } else {
       v.pause();
       setIsPlaying(false);
