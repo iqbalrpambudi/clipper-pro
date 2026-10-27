@@ -172,6 +172,13 @@ async def _run_ffmpeg(
     return proc.returncode or 0, stderr
 
 
+async def run_ffmpeg_with_timeout(cmd: List[str], timeout_seconds: float = 30.0) -> tuple[int, str, str]:
+    rc, stderr_bytes = await _run_ffmpeg(cmd, timeout=timeout_seconds)
+    out_str = stderr_bytes.decode("utf-8", errors="replace")
+    return rc, out_str, ""
+
+
+
 def _build_watermark_filter(
     watermark: Dict[str, Any],
     temp_dir: Path,
@@ -292,6 +299,9 @@ def _build_watermark_filter(
         filter_opts.append(f"borderw={b_stroke}:bordercolor=0x{shadow_hex}@0.7")
 
     return "drawtext=" + ":".join(filter_opts)
+
+
+build_watermark_filter = _build_watermark_filter
 
 
 async def render_timeline_video(

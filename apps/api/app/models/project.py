@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -81,7 +80,7 @@ class Scene(Base):
     analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # structured: characters, action, location, objects, state, confidence
     shot_info: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # shot-precise: internal_cuts, usable_ranges, usable_duration, montage
     transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    embedding: Mapped[Optional[list]] = mapped_column(Vector(768), nullable=True)
+    embedding: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="detected")  # detected, analyzing, ready, failed
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

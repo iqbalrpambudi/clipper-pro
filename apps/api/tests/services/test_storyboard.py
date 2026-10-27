@@ -1,11 +1,11 @@
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from app.schemas.storyboard import (
-    StoryboardItemResponse,
     NarrationSegmentImprovement,
-    StoryboardNarrationAnalysisResponse,
+    StoryboardItemResponse,
 )
 from app.services.storyboard import (
     build_chapter_expansion_prompt,

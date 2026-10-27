@@ -27,6 +27,9 @@ class TimelineUpdateRequest(BaseModel):
     has_subtitles: Optional[bool] = None
 
 
+TimelineSaveRequest = TimelineUpdateRequest
+
+
 class TimelineResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

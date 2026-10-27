@@ -1,3 +1,3 @@
-from app.workers.settings import WorkerSettings
+"""Workers package."""
 
-__all__ = ["WorkerSettings"]
+from app.workers.tasks import *  # noqa: F403

@@ -170,9 +170,9 @@ async def analyze_storyboard_narration(
 
     if proj.locations and isinstance(proj.locations, list):
         loc_tags = [
-            f"[loc:{l.get('id')}] ({l.get('name') or l.get('id')})"
-            for l in proj.locations
-            if isinstance(l, dict) and l.get("id")
+            f"[loc:{loc_item.get('id')}] ({loc_item.get('name') or loc_item.get('id')})"
+            for loc_item in proj.locations
+            if isinstance(loc_item, dict) and loc_item.get("id")
         ]
         if loc_tags:
             bible_anchors.append("Lokasi Terkunci: " + ", ".join(loc_tags))

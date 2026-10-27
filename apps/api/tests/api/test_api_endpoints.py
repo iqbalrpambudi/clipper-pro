@@ -18,13 +18,12 @@ from app.services.matching import hash_embedding
 
 @pytest.mark.asyncio
 async def test_publish_project_event():
-    from app.services.cancellation import publish_project_event
+    from app.core.events import event_bus, publish_project_event
 
-    with patch("arq.create_pool") as mock_pool:
-        mock_redis = AsyncMock()
-        mock_pool.return_value = mock_redis
-        await publish_project_event("p1", "test_event", {"status": "ok"})
-        assert mock_redis.publish.called or mock_redis.set.called or True
+    q = event_bus.subscribe("p1")
+    await publish_project_event("p1", "test_event", "progress", 50, "rendering", "Rendering video...")
+    event_bus.unsubscribe("p1", q)
+    assert q.qsize() > 0
 
 
 def test_list_available_models_takes_key_from_header():

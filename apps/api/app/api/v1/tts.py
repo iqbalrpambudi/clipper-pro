@@ -1,9 +1,7 @@
-import asyncio
 from pathlib import Path
 from typing import List, Optional
 
 import httpx
-from arq import create_pool
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -12,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.events import publish_project_event
-from app.core.redis import get_redis_settings
 from app.core.security import decrypt_secret
 from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.config import ModelConfig
 from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
@@ -222,35 +220,19 @@ async def trigger_tts_generation(
     await db.commit()
     await db.refresh(track)
 
-    # Queue background job or fallback asyncio task
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job(
-            "generate_tts_and_align_job",
-            project_id,
-            narration.id,
-            voice,
-            provider,
-            payload.rate,
-            payload.pitch,
-            payload.model,
-            target_lang,
-        )
-        await pool.close()
-    except Exception:
-        asyncio.create_task(
-            generate_tts_and_align_job(
-                {},
-                project_id,
-                narration.id,
-                voice,
-                provider,
-                payload.rate,
-                payload.pitch,
-                payload.model,
-                target_lang,
-            )
-        )
+    # Run background job via in-process async task
+    run_background_task(
+        generate_tts_and_align_job,
+        {},
+        project_id,
+        narration.id,
+        voice,
+        provider,
+        payload.rate,
+        payload.pitch,
+        payload.model,
+        target_lang,
+    )
 
     return AudioTrackResponse(
         id=track.id,

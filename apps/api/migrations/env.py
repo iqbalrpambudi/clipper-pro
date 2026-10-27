@@ -3,7 +3,6 @@ import concurrent.futures
 from logging.config import fileConfig
 
 from alembic import context
-from pgvector.sqlalchemy import Vector  # noqa: F401
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config

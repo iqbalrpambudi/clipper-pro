@@ -14,9 +14,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DATABASE_URL: str = "postgresql+asyncpg://cliper:cliper@postgres:5432/cliper_db"
-    REDIS_URL: str = "redis://redis:6379/0"
-    STORAGE_PATH: str = "/app/storage"
+    DATABASE_URL: str = "sqlite+aiosqlite:///storage/cliper.db"
+    STORAGE_PATH: str = "./storage"
 
     MAX_UPLOAD_SIZE: int = 2147483648  # 2GB
     MAX_SOURCE_DURATION_MINS: int = 30

@@ -33,6 +33,9 @@ class WatermarkSchema(BaseModel):
     shadow_color: str = "#000000"
 
 
+ProjectWatermarkUpdate = WatermarkSchema
+
+
 
 class ProjectBase(BaseModel):
     name: str

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -55,11 +55,10 @@ async def test_render_job_thumbnail_resolution(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_trigger_final_render_resolution(monkeypatch):
-    mock_redis = AsyncMock()
-    mock_redis.enqueue_job = AsyncMock(return_value="job-123")
-
-    with patch("arq.create_pool", return_value=mock_redis):
-        assert mock_redis is not None
+    from app.api.v1.render import enqueue_render_task
+    with patch("app.api.v1.render.run_background_task") as mock_task:
+        await enqueue_render_task("job-123")
+        assert mock_task.called
 
 
 @pytest.mark.asyncio

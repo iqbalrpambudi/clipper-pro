@@ -1,9 +1,7 @@
 import asyncio
-import json
 import logging
+import time
 from typing import Dict, Optional
-
-from app.core.redis import get_redis_client
 
 log = logging.getLogger("cliper-cancellation")
 
@@ -15,7 +13,9 @@ class TaskCancelledException(Exception):
 
 # Local in-memory registry of active subprocesses (keyed by task identifier, e.g. "video:<video_id>" or "render:<job_id>")
 _active_processes: Dict[str, asyncio.subprocess.Process] = {}
-_listener_task: Optional[asyncio.Task] = None
+
+# In-memory dictionary of cancellation flags with expiration timestamps: { "cancel:project:<id>": expire_timestamp }
+_cancellation_flags: Dict[str, float] = {}
 
 
 def register_process(key: str, proc: asyncio.subprocess.Process) -> None:
@@ -68,30 +68,17 @@ async def request_cancellation(
     video_id: Optional[str] = None,
     job_id: Optional[str] = None,
 ) -> None:
-    """Set cancellation flags in Redis and broadcast an immediate cancellation signal to all workers."""
-    redis = get_redis_client()
-    try:
-        # If job_id or video_id is targeted, only cancel that specific resource.
-        # Only set project-wide cancellation if neither is specified (i.e. universal cancel).
-        if job_id:
-            await redis.set(f"cancel:render:{job_id}", "1", ex=300)
-        elif video_id:
-            await redis.set(f"cancel:video:{video_id}", "1", ex=300)
-        elif project_id:
-            await redis.set(f"cancel:project:{project_id}", "1", ex=300)
+    """Set in-memory cancellation flags and immediately terminate all matching subprocesses."""
+    expiry = time.time() + 300.0  # Expire after 5 minutes
+    if job_id:
+        _cancellation_flags[f"cancel:render:{job_id}"] = expiry
+    elif video_id:
+        _cancellation_flags[f"cancel:video:{video_id}"] = expiry
+    elif project_id:
+        _cancellation_flags[f"cancel:project:{project_id}"] = expiry
 
-        # Broadcast via Redis pubsub channel so all worker processes kill subprocesses immediately
-        payload = json.dumps({
-            "project_id": project_id,
-            "video_id": video_id,
-            "job_id": job_id,
-        })
-        await redis.publish("system:cancellations", payload)
-        log.info("Requested cancellation for project %s (video=%s, job=%s)", project_id, video_id, job_id)
-    except Exception as e:
-        log.warning("Failed to set cancellation in Redis: %s", e)
-
-    # Also kill any processes running in the current Python process
+    log.info("Requested cancellation for project %s (video=%s, job=%s)", project_id, video_id, job_id)
+    # Immediately kill any matching subprocesses running in-process
     kill_all_matching_processes(project_id, video_id, job_id)
 
 
@@ -100,29 +87,24 @@ async def is_cancelled(
     video_id: Optional[str] = None,
     job_id: Optional[str] = None,
 ) -> bool:
-    """Check if a cancellation flag has been set in Redis for this project, video, or job."""
-    try:
-        redis = get_redis_client()
-        keys = []
-        if project_id:
-            keys.append(f"cancel:project:{project_id}")
-        if video_id:
-            keys.append(f"cancel:video:{video_id}")
-        if job_id:
-            keys.append(f"cancel:render:{job_id}")
+    """Check if an in-memory cancellation flag has been set for this project, video, or job."""
+    now = time.time()
+    keys = []
+    if project_id:
+        keys.append(f"cancel:project:{project_id}")
+    if video_id:
+        keys.append(f"cancel:video:{video_id}")
+    if job_id:
+        keys.append(f"cancel:render:{job_id}")
 
-        if not keys:
-            return False
-
-        # Check each key
-        for k in keys:
-            val = await redis.get(k)
-            if val == "1" or val == 1 or val == b"1":
+    for k in keys:
+        exp = _cancellation_flags.get(k)
+        if exp is not None:
+            if now < exp:
                 return True
-        return False
-    except Exception as e:
-        log.warning("Error checking cancellation status: %s", e)
-        return False
+            else:
+                _cancellation_flags.pop(k, None)  # Expired
+    return False
 
 
 async def clear_cancellation(
@@ -130,55 +112,15 @@ async def clear_cancellation(
     video_id: Optional[str] = None,
     job_id: Optional[str] = None,
 ) -> None:
-    """Clear cancellation flags in Redis so subsequent task runs are not aborted."""
-    try:
-        redis = get_redis_client()
-        keys = []
-        if project_id:
-            keys.append(f"cancel:project:{project_id}")
-        if video_id:
-            keys.append(f"cancel:video:{video_id}")
-        if job_id:
-            keys.append(f"cancel:render:{job_id}")
-        if keys:
-            await redis.delete(*keys)
-    except Exception as e:
-        log.warning("Error clearing cancellation status: %s", e)
+    """Clear in-memory cancellation flags."""
+    if project_id:
+        _cancellation_flags.pop(f"cancel:project:{project_id}", None)
+    if video_id:
+        _cancellation_flags.pop(f"cancel:video:{video_id}", None)
+    if job_id:
+        _cancellation_flags.pop(f"cancel:render:{job_id}", None)
 
 
 async def start_cancellation_listener() -> None:
-    """Background listener for cancellation broadcasts from Redis pubsub."""
-    global _listener_task
-    if _listener_task is not None and not _listener_task.done():
-        return
-
-    async def _listener_loop():
-        while True:
-            try:
-                redis = get_redis_client()
-                pubsub = redis.pubsub()
-                await pubsub.subscribe("system:cancellations")
-                log.info("Cancellation listener subscribed to 'system:cancellations'")
-                while True:
-                    msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                    if msg and msg.get("type") == "message":
-                        data_str = msg.get("data", "")
-                        if isinstance(data_str, bytes):
-                            data_str = data_str.decode("utf-8")
-                        try:
-                            payload = json.loads(data_str)
-                            p_id = payload.get("project_id", "")
-                            v_id = payload.get("video_id")
-                            j_id = payload.get("job_id")
-                            killed = kill_all_matching_processes(p_id, v_id, j_id)
-                            log.info("Cancellation broadcast received: killed %d subprocesses for project %s", killed, p_id)
-                        except Exception as parse_err:
-                            log.warning("Failed to parse cancellation message: %s", parse_err)
-                    await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                log.warning("Cancellation listener connection error: %s, retrying in 3s...", e)
-                await asyncio.sleep(3.0)
-
-    _listener_task = asyncio.create_task(_listener_loop())
+    """No-op in standalone in-process mode."""
+    pass

@@ -5,7 +5,7 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from app.core.redis import get_redis_client
+from app.core.events import event_bus
 
 log = logging.getLogger("cliper-events-api")
 
@@ -14,26 +14,19 @@ router = APIRouter(prefix="/projects/{project_id}/events", tags=["events"])
 
 @router.get("")
 async def stream_project_events(project_id: str, request: Request) -> StreamingResponse:
-    """Stream real-time progress, status, and error events for a project via SSE."""
+    """Stream real-time progress, status, and error events for a project via SSE (In-Memory)."""
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        redis = get_redis_client()
-        pubsub = redis.pubsub()
-        channel = f"project:{project_id}:events"
-        await pubsub.subscribe(channel)
-        log.info("Client connected to SSE stream for project %s", project_id)
+        queue = event_bus.subscribe(project_id)
+        log.info("Client connected to in-memory SSE stream for project %s", project_id)
 
         # Initial connection acknowledgment
         yield f'data: {{"type": "connected", "project_id": "{project_id}"}}\n\n'
 
-        # Immediately replay currently active task if one is running (so page refresh shows progress bar immediately)
-        try:
-            cached_active = await redis.get(f"project:{project_id}:active_task")
-            if cached_active:
-                # redis client uses decode_responses=True -> always str
-                yield f"data: {cached_active}\n\n"
-        except Exception as e:
-            log.warning("Failed to replay cached active task for project %s: %s", project_id, e)
+        # Immediately replay currently active task if one is running
+        cached_active = event_bus.get_active_task(project_id)
+        if cached_active:
+            yield f"data: {cached_active}\n\n"
 
         heartbeat_counter = 0
 
@@ -44,15 +37,11 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
                     log.info("Client disconnected from project %s SSE stream", project_id)
                     break
 
-                # Block up to 1s waiting for a message instead of polling + sleeping
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message and message.get("type") == "message":
-                    payload_str = message.get("data", "")
-                    if isinstance(payload_str, bytes):
-                        payload_str = payload_str.decode("utf-8")
+                try:
+                    payload_str = await asyncio.wait_for(queue.get(), timeout=1.0)
                     yield f"data: {payload_str}\n\n"
                     heartbeat_counter = 0
-                else:
+                except asyncio.TimeoutError:
                     heartbeat_counter += 1
                     # Send keep-alive comment every ~15 seconds
                     if heartbeat_counter >= 15:
@@ -64,12 +53,8 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
         except Exception as e:
             log.warning("Exception in SSE stream for project %s: %s", project_id, e)
         finally:
-            try:
-                await pubsub.unsubscribe(channel)
-                await pubsub.close()
-            except Exception:
-                pass
-            log.info("Cleaned up SSE subscription for project %s", project_id)
+            event_bus.unsubscribe(project_id, queue)
+            log.info("Cleaned up in-memory SSE subscription for project %s", project_id)
 
     return StreamingResponse(
         event_generator(),
@@ -82,4 +67,3 @@ async def stream_project_events(project_id: str, request: Request) -> StreamingR
             "Content-Encoding": "identity",
         },
     )
-

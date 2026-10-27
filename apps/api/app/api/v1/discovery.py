@@ -1,14 +1,12 @@
-import asyncio
 import logging
 from typing import List
 
-from arq import create_pool
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.core.events import publish_project_event
-from app.core.redis import get_redis_settings
+from app.core.tasks import run_background_task
 from app.models.project import Project, SourceVideo
 from app.models.timeline import SubtitleStyle, Timeline
 from app.schemas.discovery import (
@@ -25,20 +23,11 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
-_background_tasks: set = set()
-
 
 async def _enqueue_download(video_id: str):
-    """Enqueue download_youtube_job ke Redis pool atau fallback ke asyncio task."""
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job("download_youtube_job", video_id)
-        await pool.close()
-    except Exception as e:
-        log.warning("Gagal enqueue via Redis, fallback ke asyncio task: %s", e)
-        task = asyncio.create_task(download_youtube_job({}, video_id))
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
+    """Enqueue download_youtube_job via in-process background task."""
+    run_background_task(download_youtube_job, {}, video_id)
+
 
 
 @router.get("/presets", response_model=List[PresetCategory])

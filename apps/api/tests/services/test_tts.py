@@ -11,9 +11,9 @@ from app.services.tts import (
     generate_speech_audio,
     test_tts_connection,
 )
+from app.services.tts.audio_utils import _split_text_for_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
 from app.services.tts.providers.runware import generate_runware_tts
-from app.services.tts.audio_utils import _split_text_for_tts
 
 
 def test_estimate_tts_cost():

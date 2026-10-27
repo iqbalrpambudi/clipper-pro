@@ -1,9 +1,7 @@
-import asyncio
 import uuid
 from pathlib import Path
 from typing import List
 
-from arq import create_pool
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.events import publish_project_event
-from app.core.redis import get_redis_settings
 from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.project import Project, SourceVideo
 from app.schemas.media import (
     YTDownloadRequest,
@@ -27,24 +25,13 @@ from app.workers.tasks import detect_scenes_job, download_youtube_job
 
 router = APIRouter(prefix="/projects/{project_id}/media", tags=["media"])
 
-_background_tasks: set = set()
 
 async def enqueue_task(job_name: str, *args, **kwargs):
-    """Enqueue job into arq redis queue or run via asyncio background task."""
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job(job_name, *args, **kwargs)
-        await pool.close()
-    except Exception:
-        # Fallback to local asyncio task (keep a strong ref so it is not GC'd mid-run)
-        task = None
-        if job_name == "detect_scenes_job":
-            task = asyncio.create_task(detect_scenes_job({}, *args))
-        elif job_name == "download_youtube_job":
-            task = asyncio.create_task(download_youtube_job({}, *args))
-        if task is not None:
-            _background_tasks.add(task)
-            task.add_done_callback(_background_tasks.discard)
+    """Run job via in-process background task."""
+    if job_name == "detect_scenes_job":
+        run_background_task(detect_scenes_job, {}, *args)
+    elif job_name == "download_youtube_job":
+        run_background_task(download_youtube_job, {}, *args)
 
 
 @router.get("", response_model=List[SourceVideoResponse])
@@ -343,18 +330,16 @@ async def delete_source_video(
                 except Exception:
                     pass
 
-    # Clear cached task in Redis if it belongs to this video
+    # Clear cached task in event_bus if it belongs to this video
     try:
         import json
 
-        from app.core.redis import get_redis_client
-        redis_client = get_redis_client()
-        cache_key = f"project:{project_id}:active_task"
-        cached = await redis_client.get(cache_key)
+        from app.core.events import event_bus
+        cached = event_bus.get_active_task(project_id)
         if cached:
             task_dict = json.loads(cached)
             if task_dict.get("data", {}).get("video_id") == video_id:
-                await redis_client.delete(cache_key)
+                event_bus._active_tasks.pop(project_id, None)
     except Exception:
         pass
 

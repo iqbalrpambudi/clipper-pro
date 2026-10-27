@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -44,17 +43,6 @@ async def lifespan(app: FastAPI):
         log.error("Database initialization failed: %s", e)
         raise
     yield
-    # Close the shared Redis client on shutdown
-    try:
-        from app.core.redis import get_redis_client
-        await get_redis_client().aclose()
-    except asyncio.CancelledError:
-        # --reload force-cancels us once the graceful window expires (open SSE streams
-        # never disconnect on their own). The process is exiting anyway, so skipping
-        # the Redis close is harmless; re-raising would log a bogus shutdown failure.
-        pass
-    except Exception as e:
-        log.debug("Redis client close skipped: %s", e)
     log.info("Cliper Pro API is shutting down...")
 
 
@@ -99,31 +87,22 @@ app.include_router(api_router)
 
 @app.get("/healthz", tags=["health"])
 async def healthz():
-    # Real readiness: verify DB and Redis, not just that the process is alive.
     db_ok = False
-    redis_ok = False
     try:
         async with SessionLocal() as db:
             await db.execute(text("SELECT 1"))
         db_ok = True
     except Exception as e:
         log.warning("Healthcheck DB failed: %s", e)
-    try:
-        from app.core.redis import get_redis_client
-        await get_redis_client().ping()
-        redis_ok = True
-    except Exception as e:
-        log.warning("Healthcheck Redis failed: %s", e)
 
-    ok = db_ok and redis_ok
     return JSONResponse(
-        status_code=200 if ok else 503,
+        status_code=200 if db_ok else 503,
         content={
-            "status": "ok" if ok else "degraded",
+            "status": "ok" if db_ok else "degraded",
             "app": "cliper-pro-api",
             "version": "1.0.0",
             "db": db_ok,
-            "redis": redis_ok,
+            "mode": "standalone",
         },
     )
 

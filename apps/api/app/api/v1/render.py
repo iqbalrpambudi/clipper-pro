@@ -1,10 +1,8 @@
-import asyncio
+import re
 from datetime import datetime
 from pathlib import Path
-import re
 from typing import List, Optional
 
-from arq import create_pool
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -12,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.redis import get_redis_settings
 from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.project import Project, RenderJob
 from app.schemas.project import RenderJobResponse
 from app.services.cancellation import clear_cancellation, kill_all_matching_processes
@@ -27,12 +25,7 @@ class FinalRenderRequest(BaseModel):
 
 
 async def enqueue_render_task(job_id: str):
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job("render_video_job", job_id)
-        await pool.close()
-    except Exception:
-        asyncio.create_task(render_video_job({}, job_id))
+    run_background_task(render_video_job, {}, job_id)
 
 
 @router.post("", response_model=RenderJobResponse)

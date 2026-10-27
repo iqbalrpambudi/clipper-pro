@@ -2,7 +2,6 @@ import pytest
 
 from app.services.matching import (
     _get_scene_usable_range,
-    build_visual_shot_windows,
     match_scenes_to_segments,
     verify_and_heal_timeline_clips,
 )
@@ -169,7 +168,6 @@ async def test_match_scenes_to_segments_no_flash_scenes():
 
 
 def test_dual_engine_cut_deduplication():
-    from app.services.scene_detector import find_shot_cuts_ffmpeg
     import unittest.mock as mock
 
     # Mock PySceneDetect and FFmpeg to verify union and deduplication
@@ -181,7 +179,7 @@ def test_dual_engine_cut_deduplication():
         with mock.patch("scenedetect.SceneManager") as mock_sm_cls:
             mock_sm = mock.MagicMock()
             mock_sm_cls.return_value = mock_sm
-            
+
             # PySceneDetect finds cuts at frame 30 (1.0s), 60 (2.0s), 150 (5.0s)
             mock_sc1 = (mock.MagicMock(get_frames=lambda: 0), mock.MagicMock())
             mock_sc2 = (mock.MagicMock(get_frames=lambda: 30), mock.MagicMock())
