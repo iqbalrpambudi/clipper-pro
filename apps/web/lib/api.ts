@@ -27,7 +27,13 @@ import {
   YouTubeThumbnailHistory,
   YTInfoResponse,
   CostEstimateResponse,
+  PresetCategory,
+  VideoSearchRequest,
+  VideoSearchResponse,
+  VideoImportRequest,
+  VideoImportResponse,
 } from "@/types";
+
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const REQUEST_TIMEOUT_MS = 120_000;
@@ -134,6 +140,19 @@ export const api = {
     >
   ) => request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteProject: (id: string) => request<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
+
+  // Video Discovery & Scouting
+  getDiscoveryPresets: () => request<PresetCategory[]>("/api/v1/discovery/presets"),
+  searchVideoCandidates: (params: VideoSearchRequest) =>
+    request<VideoSearchResponse>("/api/v1/discovery/search", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  importDiscoveredVideo: (params: VideoImportRequest) =>
+    request<VideoImportResponse>("/api/v1/discovery/import", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
 
   // Media & YouTube
   uploadMedia: (projectId: string, formData: FormData) =>

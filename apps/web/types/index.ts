@@ -543,6 +543,67 @@ export interface CostEstimateResponse {
   provider: string;
 }
 
+export interface PresetCategory {
+  id: string;
+  title: string;
+  description: string;
+  badge: string;
+  search_query: string;
+  icon_name: string;
+}
+
+export interface VideoCandidate {
+  id: string;
+  title: string;
+  url: string;
+  duration: number;
+  duration_str: string;
+  views: number;
+  views_str: string;
+  channel: string;
+  channel_url?: string | null;
+  thumbnail?: string | null;
+  is_already_imported: boolean;
+  existing_project_id?: string | null;
+  existing_project_name?: string | null;
+}
+
+export interface VideoSearchRequest {
+  preset_id?: string | null;
+  custom_query?: string | null;
+  exclude_ai: boolean;
+  min_duration?: number;
+  max_duration?: number;
+  min_views?: number;
+  limit?: number;
+}
+
+export interface VideoSearchResponse {
+  query_used: string;
+  preset_id?: string | null;
+  exclude_ai: boolean;
+  candidates: VideoCandidate[];
+}
+
+export interface VideoImportRequest {
+  url: string;
+  title: string;
+  project_name?: string | null;
+  aspect_ratio?: string;
+  resolution?: string;
+  download_resolution?: string;
+  language?: string;
+}
+
+
+export interface VideoImportResponse {
+  project_id: string;
+  project_name: string;
+  video_id: string;
+  status: string;
+}
+
 export type JassubInstance = JASSUB;
 
 export * from "./editorConfig";
+

@@ -14,6 +14,7 @@ import {
   Trash2,
   Edit3,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import {
   useProjects,
@@ -34,7 +35,9 @@ import {
   CreateProjectDialog,
   EditProjectDialog,
   DeleteProjectDialog,
+  VideoDiscoveryDialog,
 } from "@/components/dashboard";
+
 
 const projectDateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -61,6 +64,7 @@ function formatProjectDate(value: string) {
 export default function DashboardPage() {
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"short_video" | "long_storyboard">("short_video");
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
@@ -244,14 +248,25 @@ export default function DashboardPage() {
               dimulai atau buka ruang cerita baru.
             </p>
           </div>
-          <Button
-            onClick={() => handleOpenCreate("short_video")}
-            className="workspace-create-button"
-          >
-            <Plus className="h-4 w-4" />
-            Buat project
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => setIsDiscoveryOpen(true)}
+              className="h-10 px-4 text-xs font-semibold gap-2 border-border/80 hover:border-amber-500/50 hover:bg-amber-500/10 text-foreground transition-all shadow-sm"
+            >
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              Cari Sumber Video
+            </Button>
+            <Button
+              onClick={() => handleOpenCreate("short_video")}
+              className="workspace-create-button"
+            >
+              <Plus className="h-4 w-4" />
+              Buat project
+            </Button>
+          </div>
         </header>
+
 
         {/* Onboarding banner: API key not configured */}
         {needsApiKeySetup && (
@@ -498,6 +513,13 @@ export default function DashboardPage() {
         onConfirm={handleDeleteConfirm}
         isPending={deleteMutation.isPending}
       />
+
+      {/* Dialog: Video Discovery / Scraper */}
+      <VideoDiscoveryDialog
+        open={isDiscoveryOpen}
+        onOpenChange={setIsDiscoveryOpen}
+      />
     </WorkspaceShell>
   );
 }
+

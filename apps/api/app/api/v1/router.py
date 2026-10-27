@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.discovery import router as discovery_router
 from app.api.v1.events import router as events_router
 from app.api.v1.image_studio import router as image_studio_router
 from app.api.v1.media import router as media_router
@@ -19,6 +20,7 @@ api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(projects_router)
 api_router.include_router(media_router)
+api_router.include_router(discovery_router)
 api_router.include_router(scenes_router)
 api_router.include_router(templates_router)
 api_router.include_router(narration_router)
@@ -31,4 +33,3 @@ api_router.include_router(events_router)
 api_router.include_router(tasks_router)
 api_router.include_router(storyboard_router)
 api_router.include_router(image_studio_router)
-
