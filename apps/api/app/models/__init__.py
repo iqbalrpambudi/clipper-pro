@@ -1,5 +1,6 @@
 from app.models.config import ModelConfig
 from app.models.image_preset import ImagePreset
+from app.models.motion import MotionScene
 from app.models.narration import AudioTrack, Narration, NarrationTemplate
 from app.models.project import Project, RenderJob, Scene, SourceVideo
 from app.models.storyboard import StoryboardItem
@@ -18,4 +19,5 @@ __all__ = [
     "ModelConfig",
     "StoryboardItem",
     "ImagePreset",
+    "MotionScene",
 ]

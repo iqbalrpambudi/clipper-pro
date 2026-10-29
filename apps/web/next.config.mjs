@@ -39,6 +39,11 @@ const nextConfig = {
         destination: "/project/storyboard/:id",
         permanent: false,
       },
+      {
+        source: "/projects/motion/:id",
+        destination: "/project/motion/:id",
+        permanent: false,
+      },
     ];
   },
 };

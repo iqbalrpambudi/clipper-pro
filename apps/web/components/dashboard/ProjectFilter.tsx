@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Film, Image as ImageIcon, Search, X, RotateCcw } from "lucide-react";
+import { Film, Image as ImageIcon, Code2, Search, X, RotateCcw } from "lucide-react";
 import {
   Input,
   Select,
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui";
 
-export type ProjectModeFilter = "all" | "short_video" | "long_storyboard";
+export type ProjectModeFilter = "all" | "short_video" | "long_storyboard" | "motion_graphic";
 export type ProjectSortOption = "newest" | "oldest" | "name_asc" | "name_desc";
 
 interface ProjectFilterProps {
@@ -24,6 +24,7 @@ interface ProjectFilterProps {
   totalCount: number;
   shortCount: number;
   storyboardCount: number;
+  motionCount: number;
   filteredCount: number;
   onResetFilters: () => void;
 }
@@ -38,6 +39,7 @@ export function ProjectFilter({
   totalCount,
   shortCount,
   storyboardCount,
+  motionCount,
   filteredCount,
   onResetFilters,
 }: ProjectFilterProps) {
@@ -82,7 +84,19 @@ export function ProjectFilter({
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5" />
-            <span>Storyboard (16:9) ({storyboardCount})</span>
+            <span>Storyboard ({storyboardCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onModeFilterChange("motion_graphic")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap ${
+              modeFilter === "motion_graphic"
+                ? "workspace-filter-active"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Motion Studio ({motionCount})</span>
           </button>
         </div>
 

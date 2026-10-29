@@ -9,11 +9,13 @@ export interface BackgroundFill {
   color_grading?: boolean;
 }
 
+export type ProjectType = "short_video" | "long_storyboard" | "motion_graphic";
+
 export interface Project {
   id: string;
   name: string;
   description?: string | null;
-  project_type?: "short_video" | "long_storyboard";
+  project_type?: ProjectType;
   status: string;
   aspect_ratio: string;
   resolution: string;
@@ -24,12 +26,14 @@ export interface Project {
   source_video_count?: number;
   scene_count?: number;
   storyboard_count?: number;
+  motion_scene_count?: number;
   storyboard_items?: StoryboardItem[];
+  motion_scenes?: MotionScene[];
   subtitle_style?: SubtitleStyle | null;
   youtube_metadata?: YouTubeMetadata | null;
   characters?: StoryboardCharacter[] | null;
   locations?: StoryboardLocation[] | null;
-  world_setting?: StoryboardWorldSetting | null;
+  world_setting?: (StoryboardWorldSetting & { motion_theme?: string }) | null;
   language?: string;
   source_videos?: SourceVideo[];
   scenes?: Scene[];
@@ -601,6 +605,45 @@ export interface VideoImportResponse {
   project_name: string;
   video_id: string;
   status: string;
+}
+
+export interface MotionCue {
+  word: string;
+  start_frame: number;
+  end_frame: number;
+  start_ms?: number;
+  end_ms?: number;
+}
+
+export type MotionTransitionType =
+  | "camera_push"
+  | "iris_wipe"
+  | "slide_morph"
+  | "cross_dissolve"
+  | "none";
+
+export interface MotionScene {
+  id: string;
+  project_id: string;
+  narration_id?: string | null;
+  segment_id: string;
+  order_index: number;
+  title?: string | null;
+  archetype: string;
+  script_text: string;
+  visual_concept: string;
+  component_code?: string | null;
+  cues: MotionCue[];
+  key_facts: string[];
+  transition_type: MotionTransitionType;
+  start_time: number;
+  end_time: number;
+  duration: number;
+  duration_frames: number;
+  status: "pending" | "generating" | "ready" | "failed";
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type JassubInstance = JASSUB;

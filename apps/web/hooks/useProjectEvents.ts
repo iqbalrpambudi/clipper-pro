@@ -70,6 +70,10 @@ export function useProjectEvents(projectId: string) {
         if (task.task_type === "render") {
           queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
         }
+        if (task.task_type === "motion_generate") {
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["motion-scenes", projectId] });
+        }
 
         if (task.status === "success") {
           if (watchdogTimerRef.current) {

@@ -13,6 +13,8 @@ interface PageProps {
 export default async function ProjectRedirectPage({ params }: PageProps) {
   const { id } = await params;
 
+  let targetMode: "short" | "storyboard" | "motion" = "short";
+
   try {
     const res = await fetch(`${API_URL}/api/v1/projects/${id}`, {
       cache: "no-store",
@@ -20,15 +22,18 @@ export default async function ProjectRedirectPage({ params }: PageProps) {
 
     if (res.ok) {
       const project = await res.json();
-      const mode =
-        project.project_type === "long_storyboard" ? "storyboard" : "short";
-      redirect(`/project/${mode}/${id}`);
+      if (project.project_type === "motion_graphic") {
+        targetMode = "motion";
+      } else if (project.project_type === "long_storyboard") {
+        targetMode = "storyboard";
+      } else {
+        targetMode = "short";
+      }
     }
   } catch (err) {
     console.error("ProjectRedirectPage: Server fetch error, falling back to client route:", err);
   }
 
-  // Safe fallback to short project page where the client-side useProject hook handles loading
-  redirect(`/project/short/${id}`);
+  redirect(`/project/${targetMode}/${id}`);
 }
 

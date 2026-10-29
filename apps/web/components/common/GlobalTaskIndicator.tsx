@@ -127,6 +127,12 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
           icon: Download,
           badgeColor: "text-[#456A4E] border-[#C9DDCF] bg-[#ECF3EB]",
         };
+      case "motion_generate":
+        return {
+          label: "Sintesis Kode Motion AI",
+          icon: Sparkles,
+          badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
+        };
       default:
         return {
           label: "Worker Task",

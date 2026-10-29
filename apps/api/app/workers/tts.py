@@ -231,6 +231,15 @@ async def generate_tts_and_align_job(
             except Exception as sb_err:
                 log.warning("Auto sync storyboard timing after TTS failed (non-fatal): %s", sb_err)
 
+            # Auto-sync motion graphic scene frame timings & word-level cues
+            try:
+                from app.services.motion_director import sync_motion_scenes_from_alignment
+                await sync_motion_scenes_from_alignment(
+                    db, project_id, aligned_segments, total_audio_duration=duration
+                )
+            except Exception as mg_err:
+                log.warning("Auto sync motion scenes timing after TTS failed (non-fatal): %s", mg_err)
+
             await publish_project_event(
                 project_id,
                 task_type="tts_align",

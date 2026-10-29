@@ -4,6 +4,7 @@ from app.api.v1.discovery import router as discovery_router
 from app.api.v1.events import router as events_router
 from app.api.v1.image_studio import router as image_studio_router
 from app.api.v1.media import router as media_router
+from app.api.v1.motion import router as motion_router
 from app.api.v1.narration import router as narration_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.render import router as render_router
@@ -33,3 +34,4 @@ api_router.include_router(events_router)
 api_router.include_router(tasks_router)
 api_router.include_router(storyboard_router)
 api_router.include_router(image_studio_router)
+api_router.include_router(motion_router)

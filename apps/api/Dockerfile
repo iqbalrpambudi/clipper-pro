@@ -15,6 +15,7 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
     && apt-get update -o Acquire::Retries=3 -o Acquire::http::No-Cache=True \
     && apt-get install -y --no-install-recommends \
         ffmpeg \
+        chromium \
         curl \
         fontconfig \
         fonts-dejavu-core \
