@@ -316,7 +316,7 @@ export function SourceVideoPlayer({
           <div className="flex items-center gap-2">
             <button
               onClick={cycleSpeed}
-              className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted hover:bg-accent text-foreground transition-colors"
+              className="px-1.5 py-0.5 text-xs font-mono font-bold rounded bg-muted hover:bg-accent text-foreground transition-colors"
               title="Kecepatan putar"
             >
               {playbackRate}x
@@ -334,7 +334,7 @@ export function SourceVideoPlayer({
         {/* Heatmap legend */}
         {heatmap && heatmap.length > 0 && (
           <div className="px-4 pb-2">
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               🔥 Heatmap &quot;Most Replayed&quot; dari YouTube — bar tinggi = bagian paling banyak ditonton ulang
             </p>
           </div>

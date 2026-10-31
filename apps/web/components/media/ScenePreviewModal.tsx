@@ -248,7 +248,7 @@ export function ScenePreviewModal({
                   (sceneIndex !== undefined ? `Preview Scene #${sceneIndex + 1}` : "Preview Scene")}
                 <Badge
                   variant="outline"
-                  className="border-border py-0 font-mono text-[10px] text-muted-foreground"
+                  className="border-border py-0 font-mono text-xs text-muted-foreground"
                 >
                   {duration.toFixed(1)}s Snippet
                 </Badge>
@@ -256,14 +256,14 @@ export function ScenePreviewModal({
                   shotInfo.montage ? (
                     <Badge
                       variant="outline"
-                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-[10px] gap-1 font-mono py-0"
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-xs gap-1 font-mono py-0"
                     >
                       <Zap className="w-3 h-3 fill-amber-400 text-amber-400" /> Fast Cuts Montage
                     </Badge>
                   ) : shotInfo.internal_cuts && shotInfo.internal_cuts.length > 0 ? (
                     <Badge
                       variant="outline"
-                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-[10px] gap-1 font-mono py-0"
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-xs gap-1 font-mono py-0"
                       title={`${shotInfo.internal_cuts.length} cut internal. AI hanya mengambil irisan dari shot utuh (usable: ${shotInfo.usable_duration || 0}s).`}
                     >
                       <Scissors className="w-3 h-3 text-amber-400" /> {shotInfo.internal_cuts.length} Internal Cut ({shotInfo.shot_count || shotInfo.internal_cuts.length + 1} Shots)
@@ -271,7 +271,7 @@ export function ScenePreviewModal({
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] gap-1 font-mono py-0"
+                      className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-xs gap-1 font-mono py-0"
                       title="Scene ini adalah 1 shot visual tunggal tanpa pergantian cut di dalamnya."
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 1 Clean Shot (Utuh)
@@ -279,7 +279,7 @@ export function ScenePreviewModal({
                   )
                 ) : null}
               </h3>
-              <p className="text-[11px] text-muted-foreground font-mono">
+              <p className="text-xs text-muted-foreground font-mono">
                 Rentang: {formatSec(startTime)} → {formatSec(endTime)}
               </p>
             </div>
@@ -336,7 +336,7 @@ export function ScenePreviewModal({
           )}
 
           {/* Snippet Badge */}
-          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-md border border-white/20 bg-black/80 px-2.5 py-1 font-mono text-[10px] text-white backdrop-blur-xs">
+          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-md border border-white/20 bg-black/80 px-2.5 py-1 font-mono text-xs text-white backdrop-blur-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             <span>
               CLIP [{currentOffset.toFixed(1)}s / {duration.toFixed(1)}s]
@@ -345,7 +345,7 @@ export function ScenePreviewModal({
 
           {/* Speed Indicator */}
           {playbackRate !== 1 && (
-            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-[10px] font-bold text-primary-foreground font-mono">
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-xs font-bold text-primary-foreground font-mono">
               {playbackRate}x
             </div>
           )}
@@ -355,10 +355,10 @@ export function ScenePreviewModal({
         <div className="space-y-3 border-t border-border bg-card p-4">
           {/* Progress Bar with Internal Cut Markers */}
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+            <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
               <span className="text-primary font-semibold">+{currentOffset.toFixed(1)}s</span>
               {shotInfo?.internal_cuts && shotInfo.internal_cuts.length > 0 && (
-                <span className="text-amber-500 font-sans text-[10px] flex items-center gap-1">
+                <span className="text-amber-500 font-sans text-xs flex items-center gap-1">
                   <Scissors className="w-3 h-3" /> {shotInfo.internal_cuts.length} cut terdeteksi
                 </span>
               )}
@@ -377,7 +377,7 @@ export function ScenePreviewModal({
                     style={{ left: `${pct}%` }}
                     className="absolute top-0 bottom-0 w-0.5 bg-amber-400 z-10 pointer-events-none shadow-xs flex flex-col items-center"
                   >
-                    <span className="absolute -top-3 text-[9px] font-mono text-amber-400 font-bold leading-none select-none">
+                    <span className="absolute -top-3 text-xs font-mono text-amber-400 font-bold leading-none select-none">
                       ✂
                     </span>
                   </div>
@@ -435,14 +435,14 @@ export function ScenePreviewModal({
                 title="Looping Klip"
               >
                 <Repeat className="w-3.5 h-3.5" />
-                <span className="text-[11px] hidden sm:inline">Loop</span>
+                <span className="text-xs hidden sm:inline">Loop</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="xs"
                 onClick={cycleSpeed}
-                className="h-8 text-[11px] font-mono font-semibold"
+                className="h-8 text-xs font-mono font-semibold"
                 title="Ubah Kecepatan Putar"
               >
                 {playbackRate}x
@@ -471,7 +471,7 @@ export function ScenePreviewModal({
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-foreground flex items-start gap-2.5">
               <MessageSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-primary block text-[11px] mb-0.5">
+                <span className="font-semibold text-primary block text-xs mb-0.5">
                   Dialog Percakapan (Whisper):
                 </span>
                 <p className="italic text-foreground/90 leading-relaxed">"{transcript}"</p>
@@ -494,7 +494,7 @@ export function ScenePreviewModal({
                     <Badge
                       key={i}
                       variant="outline"
-                      className="border-border py-0 text-[10px] text-muted-foreground"
+                      className="border-border py-0 text-xs text-muted-foreground"
                     >
                       #{tag}
                     </Badge>

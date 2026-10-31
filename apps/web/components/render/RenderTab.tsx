@@ -245,7 +245,7 @@ export function RenderTab({ project }: RenderTabProps) {
               </div>
               <Badge
                 variant="outline"
-                className="border-border font-mono text-[10px] text-muted-foreground"
+                className="border-border font-mono text-xs text-muted-foreground"
               >
                 Compositor Live
               </Badge>
@@ -332,11 +332,11 @@ export function RenderTab({ project }: RenderTabProps) {
                         Proteksi Hak Cipta & Transformative Editing
                       </span>
                     </div>
-                    <Badge variant="outline" className="border-primary/30 text-primary text-[10px]">
+                    <Badge variant="outline" className="border-primary/30 text-primary text-xs">
                       Aman Upload Platform
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Menerapkan modifikasi visual dinamis saat render FFmpeg agar tayangan tidak
                     terdeteksi duplikat oleh algoritma Content ID platform.
                   </p>
@@ -355,7 +355,7 @@ export function RenderTab({ project }: RenderTabProps) {
                         <div className="text-xs font-semibold text-foreground">
                           Dynamic Ken Burns Zoom
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           Zoom halus bergantian (1.05x) mematahkan spatial hash pencocokan video.
                         </div>
                       </div>
@@ -374,7 +374,7 @@ export function RenderTab({ project }: RenderTabProps) {
                         <div className="text-xs font-semibold text-foreground">
                           Micro Color Grading
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           Penyesuaian kontras & saturasi mikro (+3%) mengubah signature digital
                           piksel.
                         </div>
@@ -395,20 +395,20 @@ export function RenderTab({ project }: RenderTabProps) {
                     {liveWatermark?.enabled ? (
                       <Badge
                         variant="default"
-                        className="text-[10px] bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF]"
+                        className="text-xs bg-[#ECF3EB] text-[#456A4E] border border-[#C9DDCF]"
                       >
                         Aktif: {liveWatermark.text || "@watermark"}
                       </Badge>
                     ) : (
                       <Badge
                         variant="outline"
-                        className="border-border text-[10px] text-muted-foreground"
+                        className="border-border text-xs text-muted-foreground"
                       >
                         Nonaktif
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Menyematkan teks overlay transparan dengan font dan posisi kustom langsung ke
                     hasil render video.
                   </p>
@@ -514,7 +514,7 @@ export function RenderTab({ project }: RenderTabProps) {
                 totalStorageBytes > 0 ? (
                   <Badge
                     variant="outline"
-                    className="gap-1 border-border font-mono text-[10px] text-muted-foreground"
+                    className="gap-1 border-border font-mono text-xs text-muted-foreground"
                   >
                     <HardDrive className="w-2.5 h-2.5 text-primary" />
                     {formatBytes(totalStorageBytes)}
@@ -526,7 +526,7 @@ export function RenderTab({ project }: RenderTabProps) {
                   {renderJobs.length > 0 &&
                     (confirmClearAll ? (
                       <div className="flex items-center gap-1.5 bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded-lg">
-                        <span className="text-[11px] text-destructive font-medium">
+                        <span className="text-xs text-destructive font-medium">
                           Hapus semua ({renderJobs.length})?
                         </span>
                         <Button
@@ -534,7 +534,7 @@ export function RenderTab({ project }: RenderTabProps) {
                           size="xs"
                           onClick={() => clearAllJobsMutation.mutate()}
                           disabled={clearAllJobsMutation.isPending}
-                          className="h-5 px-1.5 text-[10px]"
+                          className="h-5 px-1.5 text-xs"
                         >
                           {clearAllJobsMutation.isPending ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -546,7 +546,7 @@ export function RenderTab({ project }: RenderTabProps) {
                           variant="ghost"
                           size="xs"
                           onClick={() => setConfirmClearAll(false)}
-                          className="h-5 px-1.5 text-[10px]"
+                          className="h-5 px-1.5 text-xs"
                         >
                           Batal
                         </Button>
@@ -560,7 +560,7 @@ export function RenderTab({ project }: RenderTabProps) {
                         title="Hapus semua riwayat render dan file video"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span className="text-[11px]">Bersihkan Riwayat</span>
+                        <span className="text-xs">Bersihkan Riwayat</span>
                       </Button>
                     ))}
 
@@ -591,16 +591,16 @@ export function RenderTab({ project }: RenderTabProps) {
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className="font-semibold uppercase tracking-wider text-[10px]"
+                            className="font-semibold uppercase tracking-wider text-xs"
                           >
                             {job.render_type}
                           </Badge>
-                          <span className="text-muted-foreground font-mono text-[10px]">
+                          <span className="text-muted-foreground font-mono text-xs">
                             ID: {job.id.slice(0, 8)}
                           </span>
                           {job.file_size_bytes ? (
                             <span
-                              className="flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                              className="flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
                               title="Ukuran file video hasil render di disk"
                             >
                               <HardDrive className="w-2.5 h-2.5 text-primary" />
@@ -613,7 +613,7 @@ export function RenderTab({ project }: RenderTabProps) {
                           {job.status === "completed" && (
                             <Badge
                               variant="workspace-success"
-                              className="text-[10px] gap-1 font-semibold"
+                              className="text-xs gap-1 font-semibold"
                             >
                               <CheckCircle2 className="w-3 h-3" /> Selesai
                             </Badge>
@@ -621,7 +621,7 @@ export function RenderTab({ project }: RenderTabProps) {
                           {job.status === "rendering" && (
                             <Badge
                               variant="outline"
-                              className="text-[#8A6A2F] border-[#E8D9BC] text-[10px] gap-1 font-semibold"
+                              className="text-[#8A6A2F] border-[#E8D9BC] text-xs gap-1 font-semibold"
                             >
                               <Loader2 className="w-3 h-3 animate-spin" />{" "}
                               {activeTask?.task_type === "render" &&
@@ -631,14 +631,14 @@ export function RenderTab({ project }: RenderTabProps) {
                             </Badge>
                           )}
                           {job.status === "queued" && (
-                            <Badge variant="secondary" className="text-[10px]">
+                            <Badge variant="secondary" className="text-xs">
                               Dalam Antrean
                             </Badge>
                           )}
                           {job.status === "failed" && (
                             <Badge
                               variant="destructive"
-                              className="text-[10px] gap-1 font-semibold"
+                              className="text-xs gap-1 font-semibold"
                             >
                               <AlertCircle className="w-3 h-3" /> Gagal
                             </Badge>
@@ -654,7 +654,7 @@ export function RenderTab({ project }: RenderTabProps) {
                                 cancelJobMutation.isPending &&
                                 cancelJobMutation.variables === job.id
                               }
-                              className="h-7 gap-1 px-2 text-[10px] font-semibold"
+                              className="h-7 gap-1 px-2 text-xs font-semibold"
                               title="Batalkan proses render video ini"
                             >
                               {cancelJobMutation.isPending &&
@@ -670,11 +670,11 @@ export function RenderTab({ project }: RenderTabProps) {
                           {/* Delete Single Job Action */}
                           {confirmDeleteJobId === job.id ? (
                             <div className="flex items-center gap-1 bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 rounded ml-1">
-                              <span className="text-[10px] text-destructive">Hapus?</span>
+                              <span className="text-xs text-destructive">Hapus?</span>
                               <button
                                 onClick={() => deleteJobMutation.mutate(job.id)}
                                 disabled={deleteJobMutation.isPending}
-                                className="flex items-center gap-1 rounded bg-destructive px-1.5 py-0.5 text-[9px] font-bold text-destructive-foreground transition disabled:opacity-50"
+                                className="flex items-center gap-1 rounded bg-destructive px-1.5 py-0.5 text-xs font-bold text-destructive-foreground transition disabled:opacity-50"
                               >
                                 {deleteJobMutation.isPending &&
                                 deleteJobMutation.variables === job.id ? (
@@ -685,7 +685,7 @@ export function RenderTab({ project }: RenderTabProps) {
                               </button>
                               <button
                                 onClick={() => setConfirmDeleteJobId(null)}
-                                className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded text-[9px] transition"
+                                className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded text-xs transition"
                               >
                                 Batal
                               </button>
@@ -729,7 +729,7 @@ export function RenderTab({ project }: RenderTabProps) {
                             )}
 
                             {currentLog && (
-                              <p className="text-[11px] text-muted-foreground italic font-mono truncate">
+                              <p className="text-xs text-muted-foreground italic font-mono truncate">
                                 {currentLog}
                               </p>
                             )}
@@ -761,7 +761,7 @@ export function RenderTab({ project }: RenderTabProps) {
                             ) : (
                               <div className="flex h-full w-full flex-col items-center justify-center bg-background p-1 text-center text-muted-foreground">
                                 <Film className="w-5 h-5 text-muted-foreground/60 mb-1" />
-                                <span className="text-[9px] leading-tight font-medium">
+                                <span className="text-xs leading-tight font-medium">
                                   Video Siap
                                 </span>
                               </div>
@@ -771,7 +771,7 @@ export function RenderTab({ project }: RenderTabProps) {
                                 <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                               </div>
                             </div>
-                            <div className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[8px] font-mono text-white/90">
+                            <div className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-xs font-mono text-white/90">
                               MP4
                             </div>
                           </button>
@@ -779,10 +779,10 @@ export function RenderTab({ project }: RenderTabProps) {
                           {/* Details & Actions */}
                           <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
                             <div className="space-y-1">
-                              <div className="text-[11px] font-medium text-foreground truncate">
+                              <div className="text-xs font-medium text-foreground truncate">
                                 File video MP4 berhasil dirender & siap dipakai
                               </div>
-                              <div className="text-[10px] text-muted-foreground font-mono truncate">
+                              <div className="text-xs text-muted-foreground font-mono truncate">
                                 {job.output_url.split("/").pop()}
                               </div>
                             </div>
@@ -798,7 +798,7 @@ export function RenderTab({ project }: RenderTabProps) {
                                     poster: job.thumbnail_url,
                                   })
                                 }
-                                className="h-7 gap-1 border-border text-[11px] text-foreground hover:border-primary/50"
+                                className="h-7 gap-1 border-border text-xs text-foreground hover:border-primary/50"
                               >
                                 <Play className="w-3 h-3 text-primary fill-primary" />
                                 <span>Putar Video</span>
@@ -807,7 +807,7 @@ export function RenderTab({ project }: RenderTabProps) {
                                 variant="workspace-primary"
                                 size="xs"
                                 asChild
-                                className="gap-1.5 font-semibold text-[11px] h-7"
+                                className="gap-1.5 font-semibold text-xs h-7"
                               >
                                 <a
                                   href={`/api/v1/projects/${project.id}/render/download/${job.id}`}

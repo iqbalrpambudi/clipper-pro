@@ -55,7 +55,7 @@ export function WorkspaceShell({
 
           <div className="workspace-sidebar-footer">
             <div className="flex items-center justify-between mb-2">
-              <strong className="!mb-0">Tema Tampilan</strong>
+              <strong className="!mb-0">Mode Tampilan</strong>
               <ThemeToggle align="start" />
             </div>
             Kelola project, gaya visual, dan pengaturan produksi Anda.

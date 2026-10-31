@@ -22,7 +22,7 @@ export function MotionInspectorPanel({
       <div className="flex items-center justify-between border-b border-[#E5E1D7] pb-2">
         <span className="text-xs font-semibold text-[#26251F]">Adegan Saat Ini</span>
         {activeItem && (
-          <span className="font-mono text-[11px] text-[#77766D]">
+          <span className="font-mono text-xs text-[#77766D]">
             Detik {activeItem.start_time}s – {activeItem.end_time}s
           </span>
         )}
@@ -31,7 +31,7 @@ export function MotionInspectorPanel({
       {activeItem ? (
         <div className="space-y-4">
           <div>
-            <span className="mb-1 block font-mono text-[10px] uppercase text-[#77766D]">
+            <span className="mb-1 block font-mono text-xs uppercase text-[#77766D]">
               Naskah Narasi Suara:
             </span>
             <p className="rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 text-xs leading-relaxed text-[#4D4A42]">
@@ -40,7 +40,7 @@ export function MotionInspectorPanel({
           </div>
 
           <div>
-            <span className="mb-1 block font-mono text-[10px] uppercase text-[#77766D]">
+            <span className="mb-1 block font-mono text-xs uppercase text-[#77766D]">
               Prompt Gambar Ilustrasi:
             </span>
             <p className="rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 font-mono text-xs leading-relaxed text-[#4D4A42]">

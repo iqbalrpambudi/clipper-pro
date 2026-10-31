@@ -27,6 +27,7 @@ import {
 } from "@/types";
 import { PreviewPlayer } from "@/components/render/PreviewPlayer";
 import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
@@ -163,7 +164,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
   return (
     <div className="space-y-5">
       <header className="border-b border-surface-border pb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
           Gaya visual
         </p>
         <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-foreground">
@@ -188,7 +189,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 </h3>
                 <Link
                   href="/settings"
-                  className="flex items-center gap-1 text-[10px] font-medium text-primary underline transition hover:text-primary/80"
+                  className="flex items-center gap-1 text-xs font-medium text-primary underline transition hover:text-primary/80"
                   title="Buka Pengaturan Preset Subtitle"
                 >
                   <SettingsIcon className="w-2.5 h-2.5" />
@@ -201,7 +202,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <button
                   type="button"
                   onClick={handlePreviewASS}
-                  className="flex items-center gap-1 rounded-lg border border-surface-border bg-surface px-2.5 py-1 text-[11px] text-foreground transition hover:bg-surface-hover"
+                  className="flex items-center gap-1 rounded-lg border border-surface-border bg-surface px-2.5 py-1 text-xs text-foreground transition hover:bg-surface-hover"
                   title="Lihat Script File ASS"
                 >
                   <FileCode className="w-3 h-3 text-primary" />
@@ -211,7 +212,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <a
                   href={api.getSubtitleExportUrl(project.id, "ass")}
                   download
-                  className="flex items-center gap-1 rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary transition hover:bg-primary/15"
+                  className="flex items-center gap-1 rounded-lg border border-primary/25 bg-primary/10 px-2 py-1 font-mono text-xs text-primary transition hover:bg-primary/15"
                   title="Download ASS"
                 >
                   <Download className="w-2.5 h-2.5" />
@@ -220,7 +221,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <a
                   href={api.getSubtitleExportUrl(project.id, "srt")}
                   download
-                  className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 font-mono text-[10px] text-foreground transition hover:bg-surface-hover"
+                  className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 font-mono text-xs text-foreground transition hover:bg-surface-hover"
                   title="Download SRT"
                 >
                   <Download className="w-2.5 h-2.5" />
@@ -229,7 +230,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <a
                   href={api.getSubtitleExportUrl(project.id, "vtt")}
                   download
-                  className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 font-mono text-[10px] text-foreground transition hover:bg-surface-hover"
+                  className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 font-mono text-xs text-foreground transition hover:bg-surface-hover"
                   title="Download VTT"
                 >
                   <Download className="w-2.5 h-2.5" />
@@ -277,18 +278,18 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                             padding: p.box_opacity > 0.05 ? "1px 4px" : "0",
                             borderRadius: "3px",
                           }}
-                          className="text-[10px] uppercase font-bold tracking-wider truncate"
+                          className="text-xs uppercase font-bold tracking-wider truncate"
                         >
                           SUBTITLE <span style={{ color: p.highlight_color }}>VIRAL</span>
                         </span>
                       </div>
 
-                      <p className="line-clamp-1 text-[10px] text-muted-foreground">
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
                         {p.description}
                       </p>
                     </div>
 
-                    <div className="mt-1.5 flex justify-between border-t border-surface-border/50 pt-1.5 text-[9px] text-muted-foreground">
+                    <div className="mt-1.5 flex justify-between border-t border-surface-border/50 pt-1.5 text-xs text-muted-foreground">
                       <span className="capitalize">{p.display_mode.replace("_", " ")}</span>
                       <span className="capitalize">{p.position}</span>
                     </div>
@@ -310,17 +311,17 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <button
                   type="button"
                   onClick={() => setIsSavePresetOpen(true)}
-                  className="rounded-lg border border-surface-border bg-surface px-2.5 py-1 text-[11px] text-foreground transition hover:bg-surface-hover"
+                  className="rounded-lg border border-surface-border bg-surface px-2.5 py-1 text-xs text-foreground transition hover:bg-surface-hover"
                 >
                   Simpan Preset
                 </button>
                 {updateStyleMutation.isPending ? (
-                  <span className="flex items-center gap-1 text-[11px] font-mono text-primary px-2 py-0.5 rounded border border-primary/30 bg-primary/10">
+                  <span className="flex items-center gap-1 text-xs font-mono text-primary px-2 py-0.5 rounded border border-primary/30 bg-primary/10">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     <span>Menyimpan...</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground px-2 py-0.5 rounded border border-surface-border bg-surface">
+                  <span className="flex items-center gap-1 text-xs font-mono text-muted-foreground px-2 py-0.5 rounded border border-surface-border bg-surface">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                     <span>Autosave aktif</span>
                   </span>
@@ -446,7 +447,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     }
                     className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {style.primary_color}
                   </span>
                 </div>
@@ -470,7 +471,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     }
                     className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {style.highlight_color}
                   </span>
                 </div>
@@ -491,7 +492,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     }
                     className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {style.outline_color}
                   </span>
                 </div>
@@ -559,7 +560,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                     }
                     className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
                   />
-                  <span className="font-mono text-[#4D4A42] text-[11px]">
+                  <span className="font-mono text-[#4D4A42] text-xs">
                     {style.box_color || "#000000"}
                   </span>
                 </div>
@@ -648,7 +649,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                       key={item.val}
                       type="button"
                       onClick={() => commitStyle({ ...style, scale_factor: item.val })}
-                      className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold transition ${
+                      className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition ${
                         Math.abs((style.scale_factor || 1.15) - item.val) < 0.03
                           ? "scale-105 bg-primary font-bold text-primary-foreground shadow-sm"
                           : "border border-surface-border bg-surface text-foreground hover:bg-surface-hover"
@@ -684,14 +685,14 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   <Sliders className="w-3.5 h-3.5 text-primary" />
                   Koreksi Koordinat Pixel
                 </span>
-                <span className="font-mono text-[11px] text-primary">
+                <span className="font-mono text-xs text-primary">
                   X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <div className="flex justify-between items-center mb-1 text-xs">
                     <span className="text-muted-foreground">Offset Y:</span>
                     <span className="font-mono text-primary">{style.offset_y || 0}px</span>
                   </div>
@@ -713,7 +714,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <div className="flex justify-between items-center mb-1 text-xs">
                     <span className="text-muted-foreground">Offset X:</span>
                     <span className="font-mono text-primary">{style.offset_x || 0}px</span>
                   </div>
@@ -749,7 +750,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
                 Live Subtitle Preview
               </h4>
-              <span className="rounded-full border border-surface-border bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+              <span className="rounded-full border border-surface-border bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
                 X: {style.offset_x || 0}px • Y: {style.offset_y || 0}px
               </span>
             </div>
@@ -769,7 +770,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               />
             </div>
 
-            <p className="mt-2 text-center text-[10px] leading-snug text-muted-foreground">
+            <p className="mt-2 text-center text-xs leading-snug text-muted-foreground">
               💡 <em>Tips:</em> Klik & drag teks subtitle pada layar untuk menggeser posisi.
             </p>
           </div>
@@ -782,14 +783,14 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                   <FileCode className="h-3.5 w-3.5 text-primary" />
                   <span>Ekspor File Subtitle</span>
                 </h4>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Unduh file subtitle sesuai standar format video
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handlePreviewASS}
-                className="flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-surface-border bg-surface px-2.5 text-[11px] text-foreground shadow-sm transition hover:bg-surface-hover"
+                className="flex h-7 cursor-pointer items-center gap-1 rounded-lg border border-surface-border bg-surface px-2.5 text-xs text-foreground shadow-sm transition hover:bg-surface-hover"
                 title="Lihat kode script .ASS mentah"
               >
                 <FileCode className="h-3 w-3 text-primary" />
@@ -805,8 +806,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 className="group flex flex-col items-center justify-center rounded-xl border border-surface-border bg-surface/70 p-2.5 text-center transition hover:border-primary/50 hover:bg-primary/10"
               >
                 <Download className="mb-1 h-4 w-4 text-primary transition-transform group-hover:scale-110" />
-                <span className="text-[11px] font-bold text-foreground">.ASS</span>
-                <span className="text-[9px] text-muted-foreground">Full Styling</span>
+                <span className="text-xs font-bold text-foreground">.ASS</span>
+                <span className="text-xs text-muted-foreground">Full Styling</span>
               </a>
               <a
                 href={api.getSubtitleExportUrl(project.id, "srt")}
@@ -814,8 +815,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 className="group flex flex-col items-center justify-center rounded-xl border border-surface-border bg-surface/70 p-2.5 text-center transition hover:border-primary/50 hover:bg-primary/10"
               >
                 <Download className="mb-1 h-4 w-4 text-primary transition-transform group-hover:scale-110" />
-                <span className="text-[11px] font-bold text-foreground">.SRT</span>
-                <span className="text-[9px] text-muted-foreground">Standard Text</span>
+                <span className="text-xs font-bold text-foreground">.SRT</span>
+                <span className="text-xs text-muted-foreground">Standard Text</span>
               </a>
               <a
                 href={api.getSubtitleExportUrl(project.id, "vtt")}
@@ -823,8 +824,8 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-surface/70 border border-surface-border hover:border-[#CFDDE9] hover:bg-[#DCE7F0] transition text-center group"
               >
                 <Download className="w-4 h-4 text-[#41627F] group-hover:scale-110 transition-transform mb-1" />
-                <span className="text-[11px] font-bold text-foreground">.VTT</span>
-                <span className="text-[9px] text-muted-foreground">WebVTT Web</span>
+                <span className="text-xs font-bold text-foreground">.VTT</span>
+                <span className="text-xs text-muted-foreground">WebVTT Web</span>
               </a>
             </div>
 
@@ -833,7 +834,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
               <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
                 🎙️
               </div>
-              <div className="flex-1 text-[11px] leading-relaxed text-muted-foreground">
+              <div className="flex-1 text-xs leading-relaxed text-muted-foreground">
                 <span className="font-semibold text-foreground">
                   Koreksi kata & sinkronisasi suara:
                 </span>{" "}
@@ -851,7 +852,7 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
 
             {/* Navigation to Render */}
             <div className="pt-2 border-t border-surface-border flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Gaya subtitle tersimpan otomatis
               </span>
               <button
@@ -878,12 +879,12 @@ export function SubtitleStudioTab({ project }: SubtitleStudioTabProps) {
                 {assContent || "Belum ada subtitle yang digenerate."}
               </div>
               <div className="flex justify-end pt-4">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setIsAssModalOpen(false)}
-                  className="rounded-xl bg-surface px-4 py-2 text-sm text-foreground hover:bg-surface-hover"
                 >
                   Tutup
-                </button>
+                </Button>
               </div>
             </div>
           </div>

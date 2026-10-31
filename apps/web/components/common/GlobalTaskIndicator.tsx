@@ -51,7 +51,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         <div className="fixed bottom-5 left-3 right-3 z-50 animate-scale-pop pointer-events-auto sm:left-auto sm:right-5">
           <div className="flex items-center gap-2 rounded-full border border-[#E5E1D7] dark:border-border bg-[#FBFAF7]/95 dark:bg-card/95 px-3 py-1.5 font-mono text-xs text-[#77766D] dark:text-muted-foreground shadow-lg backdrop-blur-md">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#76816B]" />
-            <span className="font-sans text-[11px] font-medium text-[#26251F] dark:text-foreground">
+            <span className="font-sans text-xs font-medium text-[#26251F] dark:text-foreground">
               {otherProjectsCount} worker aktif di project lain
             </span>
           </div>
@@ -163,7 +163,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#A9472C] dark:text-primary" />
           )}
           <span className="font-medium tracking-tight text-[#26251F] dark:text-foreground">{meta.label}</span>
-          <span className="font-mono text-[11px] font-bold text-[#A9472C] dark:text-primary">
+          <span className="font-mono text-xs font-bold text-[#A9472C] dark:text-primary">
             {currentTask.progress}%
           </span>
         </button>
@@ -223,24 +223,24 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${meta.badgeColor}`}
+                  className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-wider ${meta.badgeColor}`}
                 >
                   {meta.label}
                 </span>
 
                 {isActive && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[#A9472C] dark:text-primary">
+                  <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-[#A9472C] dark:text-primary">
                     <Loader2 className="h-3 w-3 animate-spin text-[#A9472C] dark:text-primary" />
                     <span>{currentTask.progress}%</span>
                   </span>
                 )}
                 {isSuccess && (
-                  <Badge variant="workspace-success" className="px-1.5 py-0 text-[9px]">
+                  <Badge variant="workspace-success" className="px-1.5 py-0 text-xs">
                     Selesai
                   </Badge>
                 )}
                 {isError && (
-                  <Badge variant="destructive" className="text-[9px] py-0 px-1.5">
+                  <Badge variant="destructive" className="text-xs py-0 px-1.5">
                     Gagal
                   </Badge>
                 )}
@@ -262,7 +262,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                 type="button"
                 onClick={handleCancel}
                 disabled={isCancelling}
-                className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/20 px-2 text-[10px] font-medium text-[#A9472C] dark:text-rose-400 transition-colors hover:bg-[#F3E1D9] dark:hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                className="flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/20 px-2 text-xs font-medium text-[#A9472C] dark:text-rose-400 transition-colors hover:bg-[#F3E1D9] dark:hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 title="Batalkan proses worker ini"
                 aria-label="Batalkan proses worker ini"
               >
@@ -279,7 +279,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
               <button
                 type="button"
                 onClick={() => setShowDetails(!showDetails)}
-                className="flex h-8 items-center gap-1 rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/20 px-2 text-[10px] font-medium text-[#A9472C] dark:text-rose-400 transition-colors hover:bg-[#F3E1D9] dark:hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-8 items-center gap-1 rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/20 px-2 text-xs font-medium text-[#A9472C] dark:text-rose-400 transition-colors hover:bg-[#F3E1D9] dark:hover:bg-destructive/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={showDetails ? "Sembunyikan detail error" : "Lihat detail error"}
               >
                 <span>Detail</span>
@@ -321,7 +321,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
         {!isError && (
           <div className="mt-2.5">
-            <div className="mb-1 flex items-center justify-between font-mono text-[10px] text-[#77766D] dark:text-muted-foreground">
+            <div className="mb-1 flex items-center justify-between font-mono text-xs text-[#77766D] dark:text-muted-foreground">
               <span className="truncate max-w-[240px]">
                 Tahap:{" "}
                 <span className="font-sans font-medium text-[#26251F] dark:text-foreground">
@@ -344,11 +344,11 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         {/* Expandable Error Details Box */}
         {showDetails && currentTask.error && (
           <div className="mt-2.5 max-h-36 space-y-1 overflow-x-auto rounded-lg border border-[#E9C9BD] dark:border-rose-900/40 bg-white/70 dark:bg-card/80 p-2.5 font-mono text-xs text-[#A9472C] dark:text-rose-400">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#A9472C] dark:text-rose-400">
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#A9472C] dark:text-rose-400">
               <AlertCircle className="w-3 h-3 shrink-0" />
               <span>Detail Kesalahan dari Worker:</span>
             </div>
-            <p className="whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+            <p className="whitespace-pre-wrap break-all text-xs leading-relaxed">
               {currentTask.error}
             </p>
           </div>
@@ -356,7 +356,7 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
 
         {/* Other Projects Running Indicator */}
         {otherProjectsCount > 0 && (
-          <div className="mt-2.5 flex items-center justify-between border-t border-[#E5E1D7] dark:border-border pt-2 font-mono text-[10px] text-[#77766D] dark:text-muted-foreground">
+          <div className="mt-2.5 flex items-center justify-between border-t border-[#E5E1D7] dark:border-border pt-2 font-mono text-xs text-[#77766D] dark:text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Layers className="h-3 w-3 text-[#76816B] dark:text-emerald-400" />
               <span>Project lain di background:</span>

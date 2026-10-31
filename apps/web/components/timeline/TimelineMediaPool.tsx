@@ -130,12 +130,12 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
       <div className="flex items-center justify-between border-b border-surface-border bg-muted px-3.5 py-2.5">
-        <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <Film className="w-3.5 h-3.5 text-primary" /> Media Pool
         </span>
         <Badge
           variant="outline"
-          className="border-border font-mono text-[10px] text-muted-foreground"
+          className="border-border font-mono text-xs text-muted-foreground"
         >
           {list.length} scene
         </Badge>
@@ -181,7 +181,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
             {isFilterOpen && (
               <div className="absolute right-0 top-full z-50 mt-1.5 w-64 space-y-3 rounded-xl border border-surface-border bg-card p-3 shadow-xl">
                 <div>
-                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     Status Scene
                   </div>
                   <div className="workspace-filter-pills flex items-center gap-1">
@@ -190,7 +190,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                         key={p.id}
                         type="button"
                         onClick={() => setFilter(p.id)}
-                        className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
+                        className={`rounded-lg text-xs font-medium transition whitespace-nowrap ${
                           filter === p.id
                             ? "workspace-filter-active"
                             : "text-muted-foreground hover:text-foreground"
@@ -204,7 +204,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
                 {sourceVideos.length > 1 && (
                   <div>
-                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                       Video Sumber
                     </div>
                     <Select value={videoId} onValueChange={setVideoId}>
@@ -224,7 +224,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                 )}
 
                 <div>
-                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                     Urutan
                   </div>
                   <Select value={sort} onValueChange={(val) => setSort(val as Sort)}>
@@ -247,7 +247,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                       setSort("order");
                       setVideoId("all");
                     }}
-                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                    className="text-xs text-muted-foreground hover:text-foreground"
                   >
                     Reset Filter
                   </button>
@@ -260,7 +260,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
 
       <div className="flex-1 overflow-y-auto p-2.5">
         {list.length === 0 ? (
-          <p className="text-center text-[11px] text-muted-foreground py-10">
+          <p className="text-center text-xs text-muted-foreground py-10">
             Tidak ada scene yang cocok.
           </p>
         ) : (
@@ -300,14 +300,14 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                         <Film className="w-5 h-5 text-muted-foreground opacity-50" />
                       </div>
                     )}
-                    <span className="absolute top-1 left-1 px-1 rounded bg-background/90 text-[9px] font-bold text-foreground shadow-sm">
+                    <span className="absolute top-1 left-1 px-1 rounded bg-background/90 text-xs font-bold text-foreground shadow-sm">
                       #{sc.scene_index + 1}
                     </span>
-                    <span className="absolute bottom-1 right-1 px-1 rounded bg-background/90 text-[9px] font-mono text-foreground shadow-sm">
+                    <span className="absolute bottom-1 right-1 px-1 rounded bg-background/90 text-xs font-mono text-foreground shadow-sm">
                       {sc.duration.toFixed(1)}s
                     </span>
                     {used && (
-                      <span className="absolute top-1 right-1 px-1 rounded bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary flex items-center gap-0.5">
+                      <span className="absolute top-1 right-1 px-1 rounded bg-primary/20 border border-primary/40 text-xs font-bold text-primary flex items-center gap-0.5">
                         <Check className="w-2.5 h-2.5" />
                         {used.length > 1 ? `${used.length}×` : `#${used[0]}`}
                       </span>
@@ -323,7 +323,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                     </button>
                   </div>
                   <div className="p-1.5 space-y-1">
-                    <p className="text-[10px] text-foreground/90 line-clamp-2 leading-tight min-h-[2.2em]">
+                    <p className="text-xs text-foreground/90 line-clamp-2 leading-tight min-h-[2.2em]">
                       {sc.description || "Scene"}
                     </p>
                     <div className="grid grid-cols-3 gap-1">
@@ -358,7 +358,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-surface-border bg-background px-3 py-1.5 text-[9px] text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-surface-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
         <span>
           <Replace className="inline w-2.5 h-2.5" /> Ganti •{" "}
           <PlusSquare className="inline w-2.5 h-2.5" /> Sisip •{" "}

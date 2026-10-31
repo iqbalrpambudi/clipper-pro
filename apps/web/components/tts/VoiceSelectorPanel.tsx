@@ -133,7 +133,7 @@ export function VoiceSelectorPanel({
               type="button"
               onClick={() => handleDeleteVoicePreset(selectedPreset.id, selectedPreset.name)}
               title="Hapus Preset Kustom Ini"
-              className="flex items-center gap-1 text-[11px] text-destructive hover:underline"
+              className="flex items-center gap-1 text-xs text-destructive hover:underline"
             >
               <Trash2 className="h-3 w-3" />
               <span>Hapus Preset</span>
@@ -204,7 +204,7 @@ export function VoiceSelectorPanel({
             </div>
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+              className="text-xs py-0 px-2 text-primary border-primary/30 shrink-0"
             >
               {selectedModelObj?.badge || "Gemini"}
             </Badge>
@@ -223,7 +223,7 @@ export function VoiceSelectorPanel({
             </SelectContent>
           </Select>
 
-          <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
             <p>
               {selectedModelObj?.desc}{" "}
@@ -245,7 +245,7 @@ export function VoiceSelectorPanel({
             </div>
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+              className="text-xs py-0 px-2 text-primary border-primary/30 shrink-0"
             >
               {selectedModelObj?.badge || "ElevenLabs"}
             </Badge>
@@ -264,7 +264,7 @@ export function VoiceSelectorPanel({
             </SelectContent>
           </Select>
 
-          <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
             <p>
               {selectedModelObj?.desc}{" "}
@@ -277,7 +277,7 @@ export function VoiceSelectorPanel({
           {/* ElevenLabs Voice Sync & Custom Voice ID Box */}
           <div className="space-y-2.5 border-t border-border pt-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-foreground">
+              <span className="text-xs font-medium text-foreground">
                 Suara Akun / Web Library:
               </span>
               <Button
@@ -286,7 +286,7 @@ export function VoiceSelectorPanel({
                 size="xs"
                 disabled={isSyncingElevenLabs}
                 onClick={handleSyncElevenLabsVoices}
-                className="h-6 text-[10px] gap-1 px-2 border-[#E9C9BD] text-[#A9472C] hover:bg-[#F8EEEA]"
+                className="h-6 text-xs gap-1 px-2 border-[#E9C9BD] text-[#A9472C] hover:bg-[#F8EEEA]"
               >
                 {isSyncingElevenLabs ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -298,14 +298,14 @@ export function VoiceSelectorPanel({
             </div>
 
             {syncError && (
-              <div className="p-2 rounded-lg bg-[#F7EFE0] border border-[#E8D9BC] text-[10px] text-[#8A6A2F] leading-normal">
+              <div className="p-2 rounded-lg bg-[#F7EFE0] border border-[#E8D9BC] text-xs text-[#8A6A2F] leading-normal">
                 {syncError}
               </div>
             )}
 
             {/* Custom Voice ID Direct Input */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Atau gunakan Voice ID dari web ElevenLabs:</span>
                 <a
                   href="https://elevenlabs.io/voice-library"
@@ -334,7 +334,7 @@ export function VoiceSelectorPanel({
                     setSelectedVoice(clean);
                     showToast(`Voice ID '${clean}' dipilih untuk narasi!`, "success");
                   }}
-                  className="h-7 text-[10px] px-2.5"
+                  className="h-7 text-xs px-2.5"
                 >
                   Pilih ID Ini
                 </Button>
@@ -344,7 +344,7 @@ export function VoiceSelectorPanel({
                   size="xs"
                   disabled={!customVoiceInput.trim()}
                   onClick={() => playVoiceSample(customVoiceInput.trim())}
-                  className="h-7 text-[10px] px-2"
+                  className="h-7 text-xs px-2"
                   title="Tes sampel audio Voice ID"
                 >
                   {sampleAudioPlaying === customVoiceInput.trim() ? (
@@ -362,13 +362,13 @@ export function VoiceSelectorPanel({
                 <div className="p-2 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
-                    <span className="text-[11px] font-medium text-[#4D4A42] truncate">
+                    <span className="text-xs font-medium text-[#4D4A42] truncate">
                       Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
                     </span>
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
+                    className="text-xs py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
                   >
                     Custom ID
                   </Badge>
@@ -388,7 +388,7 @@ export function VoiceSelectorPanel({
             </div>
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-2 text-primary border-primary/30 shrink-0"
+              className="text-xs py-0 px-2 text-primary border-primary/30 shrink-0"
             >
               {selectedModelObj?.badge || "Runware"}
             </Badge>
@@ -407,7 +407,7 @@ export function VoiceSelectorPanel({
             </SelectContent>
           </Select>
 
-          <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-normal">
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground leading-normal">
             <Info className="w-3 h-3 text-primary/70 shrink-0 mt-0.5" />
             <p>
               {selectedModelObj?.desc}{" "}
@@ -419,9 +419,9 @@ export function VoiceSelectorPanel({
 
           {/* Runware Custom Voice / Speaker ID Input */}
           <div className="space-y-1.5 border-t border-border pt-2.5">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Custom Voice ID / Speaker Name:</span>
-              <span className="text-[#C45B3A] text-[10px]">Opsional / Voice Library</span>
+              <span className="text-[#C45B3A] text-xs">Opsional / Voice Library</span>
             </div>
             <div className="flex items-center gap-1.5">
               <input
@@ -441,7 +441,7 @@ export function VoiceSelectorPanel({
                   setSelectedVoice(clean);
                   showToast(`Voice '${clean}' dipilih untuk Runware!`, "success");
                 }}
-                className="h-7 text-[10px] px-2.5"
+                className="h-7 text-xs px-2.5"
               >
                 Pilih ID
               </Button>
@@ -451,7 +451,7 @@ export function VoiceSelectorPanel({
                 size="xs"
                 disabled={!runwareCustomVoiceInput.trim()}
                 onClick={() => playVoiceSample(runwareCustomVoiceInput.trim())}
-                className="h-7 text-[10px] px-2"
+                className="h-7 text-xs px-2"
                 title="Tes sampel audio Runware Voice"
               >
                 {sampleAudioPlaying === runwareCustomVoiceInput.trim() ? (
@@ -466,13 +466,13 @@ export function VoiceSelectorPanel({
                 <div className="p-2 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
-                    <span className="text-[11px] font-medium text-[#4D4A42] truncate">
+                    <span className="text-xs font-medium text-[#4D4A42] truncate">
                       Voice Aktif: <span className="font-mono">{selectedVoice}</span>
                     </span>
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
+                    className="text-xs py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
                   >
                     Custom Speaker
                   </Badge>
@@ -510,13 +510,13 @@ export function VoiceSelectorPanel({
                   </span>
                   <Badge
                     variant="outline"
-                    className="text-[10px] py-0 px-1.5 text-muted-foreground"
+                    className="text-xs py-0 px-1.5 text-muted-foreground"
                   >
                     {v.gender}
                   </Badge>
                   <Badge
                     variant="secondary"
-                    className={`text-[9px] py-0 px-1 font-mono ${
+                    className={`text-xs py-0 px-1 font-mono ${
                       isEn
                         ? "bg-[#EAF0F5] text-[#41627F] border-[#CFDDE9]"
                         : isId
@@ -532,7 +532,7 @@ export function VoiceSelectorPanel({
                 {isSelected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
               </div>
 
-              <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5 line-clamp-2">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-2.5 line-clamp-2">
                 {v.description}
               </p>
 
@@ -545,7 +545,7 @@ export function VoiceSelectorPanel({
                     e.stopPropagation();
                     playVoiceSample(v.id);
                   }}
-                  className="gap-1.5 h-6 text-[10px]"
+                  className="gap-1.5 h-6 text-xs"
                 >
                   {loadingSampleVoiceId === v.id ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -562,7 +562,7 @@ export function VoiceSelectorPanel({
                         : "Dengar Sampel"}
                   </span>
                 </Button>
-                <span className="text-[10px] text-muted-foreground font-mono">ID: {v.id}</span>
+                <span className="text-xs text-muted-foreground font-mono">ID: {v.id}</span>
               </div>
             </div>
           );

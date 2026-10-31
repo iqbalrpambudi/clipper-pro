@@ -321,11 +321,11 @@ export function VideoPreviewScreen({
 
       {/* Top Left Badge: Timestamp & Scene */}
       <div className="absolute top-3 left-3 flex items-center gap-2 z-10 pointer-events-none">
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white font-bold border border-white/10">
+        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white font-bold border border-white/10">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
         {activeItem && (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#C45B3A]/80 backdrop-blur-md text-[#FFFAF6] font-semibold border border-[#C45B3A]/30">
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-[#C45B3A]/80 backdrop-blur-md text-[#FFFAF6] font-semibold border border-[#C45B3A]/30">
             Motion: {activeItem.motion_effect}
           </span>
         )}
@@ -336,13 +336,13 @@ export function VideoPreviewScreen({
         <div className="absolute inset-0 pointer-events-none z-30">
           {/* Action safe 5% */}
           <div className="absolute inset-[5%] border border-dashed border-[#E8D9BC] rounded-lg flex items-start justify-end p-2">
-            <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
+            <span className="text-xs font-mono text-white/90 bg-black/60 px-1 rounded">
               Action Safe 90%
             </span>
           </div>
           {/* Title safe 10% */}
           <div className="absolute inset-[10%] border border-dotted border-[#E9C9BD] rounded-lg flex items-end justify-start p-2">
-            <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
+            <span className="text-xs font-mono text-white/90 bg-black/60 px-1 rounded">
               Title Safe 80% (Batas Subtitle)
             </span>
           </div>

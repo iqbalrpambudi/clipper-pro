@@ -58,7 +58,7 @@ export function SubtitleColorsPositionColumn({
                     style={{ backgroundColor: th.highlight }}
                   />
                 </div>
-                <span className="text-[10px] truncate max-w-full font-medium">{th.name}</span>
+                <span className="text-xs truncate max-w-full font-medium">{th.name}</span>
               </button>
             );
           })}
@@ -68,7 +68,7 @@ export function SubtitleColorsPositionColumn({
         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
           {/* Normal Text Color */}
           <div className="p-2 rounded-lg bg-card border border-border">
-            <label className="text-muted-foreground block mb-1 text-[10px] font-medium">
+            <label className="text-muted-foreground block mb-1 text-xs font-medium">
               Teks Normal
             </label>
             <div className="flex items-center gap-1.5">
@@ -84,7 +84,7 @@ export function SubtitleColorsPositionColumn({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-foreground text-[11px] font-semibold truncate">
+              <span className="font-mono text-foreground text-xs font-semibold truncate">
                 {style.primary_color}
               </span>
             </div>
@@ -92,7 +92,7 @@ export function SubtitleColorsPositionColumn({
 
           {/* Highlight Active Word Color */}
           <div className="p-2 rounded-lg bg-card border border-border">
-            <label className="text-muted-foreground block mb-1 text-[10px] font-medium">
+            <label className="text-muted-foreground block mb-1 text-xs font-medium">
               Highlight Kata
             </label>
             <div className="flex items-center gap-1.5">
@@ -110,7 +110,7 @@ export function SubtitleColorsPositionColumn({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-primary text-[11px] font-semibold truncate">
+              <span className="font-mono text-primary text-xs font-semibold truncate">
                 {style.highlight_color}
               </span>
             </div>
@@ -118,7 +118,7 @@ export function SubtitleColorsPositionColumn({
 
           {/* Outline Border Color */}
           <div className="p-2 rounded-lg bg-card border border-border">
-            <label className="text-muted-foreground block mb-1 text-[10px] font-medium">
+            <label className="text-muted-foreground block mb-1 text-xs font-medium">
               Garis Luar (Outline)
             </label>
             <div className="flex items-center gap-1.5">
@@ -134,7 +134,7 @@ export function SubtitleColorsPositionColumn({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-foreground text-[11px] font-semibold truncate">
+              <span className="font-mono text-foreground text-xs font-semibold truncate">
                 {style.outline_color}
               </span>
             </div>
@@ -142,7 +142,7 @@ export function SubtitleColorsPositionColumn({
 
           {/* Box Background Color */}
           <div className="p-2 rounded-lg bg-card border border-border">
-            <label className="text-muted-foreground block mb-1 text-[10px] font-medium">
+            <label className="text-muted-foreground block mb-1 text-xs font-medium">
               Kotak Latar (Box)
             </label>
             <div className="flex items-center gap-1.5">
@@ -155,7 +155,7 @@ export function SubtitleColorsPositionColumn({
                 }
                 className="w-6 h-6 rounded bg-transparent border-0 cursor-pointer"
               />
-              <span className="font-mono text-foreground text-[11px] font-semibold truncate">
+              <span className="font-mono text-foreground text-xs font-semibold truncate">
                 {style.box_color || "#000000"}
               </span>
             </div>
@@ -165,7 +165,7 @@ export function SubtitleColorsPositionColumn({
         {/* Sliders: Outline Width & Box Opacity */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div>
-            <div className="flex justify-between items-center mb-1 text-[11px]">
+            <div className="flex justify-between items-center mb-1 text-xs">
               <span className="text-muted-foreground">Tebal Outline</span>
               <span className="font-mono text-primary font-bold">{style.outline_width}px</span>
             </div>
@@ -188,7 +188,7 @@ export function SubtitleColorsPositionColumn({
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1 text-[11px]">
+            <div className="flex justify-between items-center mb-1 text-xs">
               <span className="text-muted-foreground">Opasitas Kotak</span>
               <span className="font-mono text-primary font-bold">
                 {Math.round((style.box_opacity || 0) * 100)}%
@@ -237,7 +237,7 @@ export function SubtitleColorsPositionColumn({
           >
             <AlignVerticalJustifyEnd className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold">Bawah</span>
-            <span className="text-[9px] text-muted-foreground font-mono">-120px</span>
+            <span className="text-xs text-muted-foreground font-mono">-120px</span>
           </button>
 
           <button
@@ -253,7 +253,7 @@ export function SubtitleColorsPositionColumn({
           >
             <AlignVerticalJustifyCenter className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold">Tengah</span>
-            <span className="text-[9px] text-muted-foreground font-mono">0px</span>
+            <span className="text-xs text-muted-foreground font-mono">0px</span>
           </button>
 
           <button
@@ -267,7 +267,7 @@ export function SubtitleColorsPositionColumn({
           >
             <AlignVerticalJustifyStart className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold">Atas</span>
-            <span className="text-[9px] text-muted-foreground font-mono">+120px</span>
+            <span className="text-xs text-muted-foreground font-mono">+120px</span>
           </button>
         </div>
 
@@ -279,12 +279,12 @@ export function SubtitleColorsPositionColumn({
               const defaultOffsetY =
                 style.position === "top" ? 120 : style.position === "center" ? 0 : -120;
               return (
-                <div className="flex items-center gap-1 font-mono text-[11px]">
+                <div className="flex items-center gap-1 font-mono text-xs">
                   <span className="text-primary font-bold">{style.offset_y || 0}px</span>
                   <button
                     type="button"
                     onClick={() => onCommitStyle({ ...style, offset_y: defaultOffsetY })}
-                    className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                    className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                     title={`Reset ke ${defaultOffsetY}px`}
                   >
                     Reset
@@ -315,7 +315,7 @@ export function SubtitleColorsPositionColumn({
                   key={n}
                   type="button"
                   onClick={() => onCommitStyle({ ...style, offset_y: (style.offset_y || 0) + n })}
-                  className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                  className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 >
                   {n}px
                 </button>
@@ -327,7 +327,7 @@ export function SubtitleColorsPositionColumn({
                   key={n}
                   type="button"
                   onClick={() => onCommitStyle({ ...style, offset_y: (style.offset_y || 0) + n })}
-                  className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                  className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 >
                   +{n}px
                 </button>
@@ -340,12 +340,12 @@ export function SubtitleColorsPositionColumn({
         <div className="space-y-1.5 p-2.5 rounded-lg bg-card border border-border">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground font-medium">Offset Horizontal (X)</span>
-            <div className="flex items-center gap-1 font-mono text-[11px]">
+            <div className="flex items-center gap-1 font-mono text-xs">
               <span className="text-primary font-bold">{style.offset_x || 0}px</span>
               <button
                 type="button"
                 onClick={() => onCommitStyle({ ...style, offset_x: 0 })}
-                className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="Center X: 0px"
               >
                 Center

@@ -312,7 +312,7 @@ export function WatermarkCustomizePanel({
               <span className="block text-xs font-semibold text-[#26251F]">
                 Gunakan Watermark pada Video
               </span>
-              <span className="text-[10px] text-muted-foreground block">
+              <span className="text-xs text-muted-foreground block">
                 {watermark.enabled
                   ? "Watermark tampil di preview dan akan dibakar ke render video"
                   : "Video bersih tanpa watermark (hanya visual adegan & audio narasi)"}
@@ -322,14 +322,14 @@ export function WatermarkCustomizePanel({
 
           <div className="flex items-center gap-2 shrink-0">
             {saveMutation.isPending && (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground animate-pulse">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
                 <Loader2 className="w-3 h-3 animate-spin text-[#C45B3A]" />
                 <span className="hidden sm:inline">Menyimpan...</span>
               </span>
             )}
             <Badge
               variant={watermark.enabled ? "default" : "secondary"}
-              className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+              className={`text-xs font-mono px-2 py-0.5 shrink-0 ${
                 watermark.enabled
                   ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
                   : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
@@ -342,7 +342,7 @@ export function WatermarkCustomizePanel({
 
         {/* Quick Presets Grid */}
         <div className="pt-1">
-          <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">
+          <label className="text-xs font-medium text-muted-foreground block mb-1.5">
             Preset Cepat Watermark
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -356,7 +356,7 @@ export function WatermarkCustomizePanel({
                 <div className="font-semibold text-xs text-foreground group-hover:text-primary transition truncate">
                   {p.name}
                 </div>
-                <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
+                <div className="text-xs text-muted-foreground truncate">{p.desc}</div>
               </button>
             ))}
           </div>
@@ -374,7 +374,7 @@ export function WatermarkCustomizePanel({
               <button
                 type="button"
                 onClick={() => addPrefix("@")}
-                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-[10px] text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
                 title="Tambah prefix @"
               >
                 @
@@ -382,7 +382,7 @@ export function WatermarkCustomizePanel({
               <button
                 type="button"
                 onClick={() => addPrefix("© ")}
-                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-[10px] text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
                 title="Tambah simbol ©"
               >
                 ©
@@ -446,7 +446,7 @@ export function WatermarkCustomizePanel({
                     >
                       {f.label}
                     </span>
-                    <span className="text-[10px] text-muted-foreground truncate">{f.style}</span>
+                    <span className="text-xs text-muted-foreground truncate">{f.style}</span>
                   </button>
                 );
               })}
@@ -456,7 +456,7 @@ export function WatermarkCustomizePanel({
           {/* Font Size & Opacity Controls */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <div className="flex justify-between text-[11px] mb-1">
+              <div className="flex justify-between text-xs mb-1">
                 <span className="text-muted-foreground">Ukuran Font</span>
                 <span className="font-mono text-foreground font-semibold">
                   {watermark.font_size}px
@@ -476,7 +476,7 @@ export function WatermarkCustomizePanel({
             </div>
 
             <div>
-              <div className="flex justify-between text-[11px] mb-1">
+              <div className="flex justify-between text-xs mb-1">
                 <span className="text-muted-foreground">Transparansi / Opacity</span>
                 <span className="font-mono text-foreground font-semibold">
                   {Math.round(watermark.opacity * 100)}%
@@ -499,7 +499,7 @@ export function WatermarkCustomizePanel({
           {/* Font Color & Quick Swatches */}
           <div className="pt-2 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">Warna Teks</span>
+              <span className="text-xs text-muted-foreground">Warna Teks</span>
               <div className="flex items-center gap-1.5">
                 <input
                   type="color"
@@ -507,7 +507,7 @@ export function WatermarkCustomizePanel({
                   onChange={(e) => commitWatermark({ ...watermark, font_color: e.target.value })}
                   className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
                 />
-                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                <span className="font-mono text-xs text-muted-foreground uppercase">
                   {watermark.font_color}
                 </span>
               </div>
@@ -547,7 +547,7 @@ export function WatermarkCustomizePanel({
           <Move className="w-3.5 h-3.5 text-primary" />
           Posisi Layar Video
         </label>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Pilih lokasi penempatan watermark pada kanvas video
         </p>
 
@@ -570,7 +570,7 @@ export function WatermarkCustomizePanel({
                   <div className={`w-3 h-3 rounded-sm border border-current flex ${pos.iconCoord}`}>
                     <div className="w-1 h-1 bg-current rounded-full" />
                   </div>
-                  <span className="text-[10px] leading-none">{pos.label}</span>
+                  <span className="text-xs leading-none">{pos.label}</span>
                 </button>
               );
             })}
@@ -599,7 +599,7 @@ export function WatermarkCustomizePanel({
             </div>
             <div>
               <span className="font-semibold text-xs block">Posisi Kustom Bebas (Drag & Drop)</span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Tarik watermark sesuka hati langsung di area preview layar
               </span>
             </div>
@@ -607,12 +607,12 @@ export function WatermarkCustomizePanel({
           {watermark.position === "custom" ? (
             <Badge
               variant="outline"
-              className="border-primary text-primary bg-primary/10 text-[10px] font-mono shrink-0"
+              className="border-primary text-primary bg-primary/10 text-xs font-mono shrink-0"
             >
               X: {Math.round(watermark.custom_x ?? 50)}% Y: {Math.round(watermark.custom_y ?? 50)}%
             </Badge>
           ) : (
-            <span className="text-[10px] text-muted-foreground/70 group-hover:text-muted-foreground">
+            <span className="text-xs text-muted-foreground/70 group-hover:text-muted-foreground">
               Pilih
             </span>
           )}
@@ -632,7 +632,7 @@ export function WatermarkCustomizePanel({
             <div className="font-semibold text-xs text-foreground">
               Bayangan Kontras (Drop Shadow)
             </div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Meningkatkan keterbacaan di atas video berwarna terang atau ramai
             </div>
           </div>
@@ -651,7 +651,7 @@ export function WatermarkCustomizePanel({
                 <div className="font-semibold text-xs text-foreground">
                   Badge Latar Belakang (Box)
                 </div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Menambahkan kotak transparan di belakang teks watermark
                 </div>
               </div>
@@ -668,7 +668,7 @@ export function WatermarkCustomizePanel({
             {watermark.has_background && (
               <div className="pt-2 border-t border-[#E5E1D7] grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block mb-1">Warna Badge</span>
+                  <span className="text-xs text-muted-foreground block mb-1">Warna Badge</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -678,14 +678,14 @@ export function WatermarkCustomizePanel({
                       }
                       className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
                     />
-                    <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                    <span className="font-mono text-xs text-muted-foreground uppercase">
                       {watermark.background_color || "#000000"}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-[10px] mb-1">
+                  <div className="flex justify-between text-xs mb-1">
                     <span className="text-muted-foreground">Opacity Badge</span>
                     <span className="font-mono text-foreground font-semibold">
                       {Math.round((watermark.background_opacity ?? 0.5) * 100)}%

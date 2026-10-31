@@ -84,7 +84,7 @@ function OptionGrid<T extends string>({
           }`}
         >
           <span className="text-xs font-bold">{o.label}</span>
-          {o.desc && <span className="text-[9px] text-muted-foreground">{o.desc}</span>}
+          {o.desc && <span className="text-xs text-muted-foreground">{o.desc}</span>}
         </button>
       ))}
     </div>
@@ -102,7 +102,7 @@ function ColorField({
 }) {
   return (
     <div className="p-2.5 rounded-xl bg-[#FBFAF7] border border-[#E5E1D7]">
-      <label className="text-[#77766D] block mb-1 text-[10px] font-medium uppercase font-mono">
+      <label className="text-[#77766D] block mb-1 text-xs font-medium uppercase font-mono">
         {label}
       </label>
       <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ function SliderField({
   const display = format ? format(value) : `${value}`;
   return (
     <div>
-      <div className="flex justify-between items-center mb-1 text-[11px] font-semibold text-[#4D4A42]">
+      <div className="flex justify-between items-center mb-1 text-xs font-semibold text-[#4D4A42]">
         <span>{label}</span>
         <span className="font-mono text-[#C45B3A] font-bold bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]">
           {display}
@@ -156,7 +156,7 @@ function SliderField({
         className="mt-1 h-2 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
       />
       {ticks && (
-        <div className="flex justify-between text-[10px] text-[#858176]">
+        <div className="flex justify-between text-xs text-[#858176]">
           <span>{ticks[0]}</span>
           <span>{ticks[1]}</span>
           <span>{ticks[2]}</span>
@@ -231,7 +231,7 @@ export function SubtitleStudioPanel({
               <span className="block text-xs font-semibold text-[#26251F]">
                 Gunakan Subtitle pada Video
               </span>
-              <span className="text-[10px] text-muted-foreground block">
+              <span className="text-xs text-muted-foreground block">
                 {subtitleStyle.enabled !== false
                   ? "Subtitle tampil di preview dan akan dibakar ke render video"
                   : "Video bersih tanpa teks (hanya visual adegan & audio narasi)"}
@@ -241,7 +241,7 @@ export function SubtitleStudioPanel({
 
           <Badge
             variant={subtitleStyle.enabled !== false ? "default" : "secondary"}
-            className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+            className={`text-xs font-mono px-2 py-0.5 shrink-0 ${
               subtitleStyle.enabled !== false
                 ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
                 : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
@@ -267,7 +267,7 @@ export function SubtitleStudioPanel({
                 if (cur) handleDeleteSubtitlePreset(cur.id, cur.name);
               }}
               title="Hapus Preset Ini"
-              className="flex items-center gap-1 text-[11px] text-[#A9472C] hover:underline"
+              className="flex items-center gap-1 text-xs text-[#A9472C] hover:underline"
             >
               <Trash2 className="w-3 h-3" />
               <span>Hapus Preset</span>
@@ -299,9 +299,9 @@ export function SubtitleStudioPanel({
 
       {/* Presets 1-Click */}
       <div>
-        <label className="text-[11px] font-semibold text-[#4D4A42] mb-2 flex items-center justify-between">
+        <label className="text-xs font-semibold text-[#4D4A42] mb-2 flex items-center justify-between">
           <span>Pilihan Gaya Preset Cepat:</span>
-          <span className="text-[10px] text-[#C45B3A] font-mono">1-Click Theme</span>
+          <span className="text-xs text-[#C45B3A] font-mono">1-Click Theme</span>
         </label>
         <div className="grid grid-cols-2 gap-2">
           {COLOR_PRESETS.map((p) => {
@@ -412,7 +412,7 @@ export function SubtitleStudioPanel({
         )}
 
         <div className="space-y-1.5 pt-1">
-          <span className="block text-[11px] font-semibold text-[#4D4A42]">Format Huruf:</span>
+          <span className="block text-xs font-semibold text-[#4D4A42]">Format Huruf:</span>
           <OptionGrid
             columns={2}
             options={[
@@ -435,7 +435,7 @@ export function SubtitleStudioPanel({
         icon={Zap}
         title="Animasi & Efek Gerak Highlight"
         badge={
-          <span className="text-[10px] font-mono text-[#A9472C] uppercase px-2 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
+          <span className="text-xs font-mono text-[#A9472C] uppercase px-2 py-0.5 rounded bg-[#F8EEEA] border border-[#E9C9BD]">
             {subtitleStyle.highlight_animation === "scale"
               ? "Scale Pop"
               : subtitleStyle.highlight_animation === "none"
@@ -476,7 +476,7 @@ export function SubtitleStudioPanel({
       <SectionCard icon={Sliders} title="Tipografi & Ukuran Teks">
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="text-[11px] font-semibold text-[#4D4A42] block mb-1">
+            <label className="text-xs font-semibold text-[#4D4A42] block mb-1">
               Jenis Font:
             </label>
             <Select
@@ -515,7 +515,7 @@ export function SubtitleStudioPanel({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-[#4D4A42] block mb-1">
+            <label className="text-xs font-semibold text-[#4D4A42] block mb-1">
               Ketebalan Font:
             </label>
             <Select
@@ -623,7 +623,7 @@ export function SubtitleStudioPanel({
                 offset_y: -30,
               }))
             }
-            className="text-[10px] text-[#C45B3A] hover:underline"
+            className="text-xs text-[#C45B3A] hover:underline"
           >
             Reset Posisi
           </button>

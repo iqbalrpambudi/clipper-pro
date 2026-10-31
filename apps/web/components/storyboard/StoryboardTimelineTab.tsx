@@ -359,7 +359,7 @@ export function StoryboardTimelineTab({ project }: StoryboardTimelineTabProps) {
                   <SkipForward className="w-3.5 h-3.5" />
                 </TBtn>
 
-                <div className="ml-2 font-mono text-[11px] tabular-nums hidden sm:inline">
+                <div className="ml-2 font-mono text-xs tabular-nums hidden sm:inline">
                   <span className="font-bold text-[#C45B3A]">
                     {state.formatTime(state.currentTime)}
                   </span>

@@ -158,7 +158,7 @@ function SelectedInspector({
     <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-surface-border bg-muted px-3.5 py-2.5">
-        <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Klip #{index + 1}
           <span className="text-muted-foreground normal-case font-normal">/ {total}</span>
         </span>
@@ -202,7 +202,7 @@ function SelectedInspector({
               <Play className="w-4 h-4 text-white" />
             </span>
           </button>
-          <div className="min-w-0 text-[10px] space-y-0.5">
+          <div className="min-w-0 text-xs space-y-0.5">
             <p className="text-foreground font-semibold truncate">
               Scene #{scene ? scene.scene_index + 1 : "?"}
             </p>
@@ -216,13 +216,13 @@ function SelectedInspector({
         </div>
 
         {clip.text && (
-          <p className="line-clamp-3 rounded-lg border border-border bg-background px-2.5 py-2 text-[10px] leading-snug text-foreground">
+          <p className="line-clamp-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs leading-snug text-foreground">
             <span className="text-muted-foreground font-medium">Narasi: </span>“{clip.text}”
           </p>
         )}
 
         {warnings.length > 0 && (
-          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[10px] text-amber-300 space-y-0.5">
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-xs text-amber-300 space-y-0.5">
             {warnings.map((w) => (
               <p key={w} className="flex items-start gap-1">
                 <AlertTriangle className="w-3 h-3 mt-px shrink-0" /> {w}
@@ -295,7 +295,7 @@ function SelectedInspector({
               </div>
             )}
           </div>
-          <div className="flex justify-between text-[9px] font-mono text-muted-foreground mt-1">
+          <div className="flex justify-between text-xs font-mono text-muted-foreground mt-1">
             <span>{bounds.start.toFixed(2)}s</span>
             <span className="text-primary font-medium">
               In {clip.clip_start.toFixed(2)} • Out {clip.clip_end.toFixed(2)}
@@ -329,7 +329,7 @@ function SelectedInspector({
                   disabled={!ok}
                   onClick={() => onSetSpeed(s)}
                   title={ok ? `${s}x` : "Scene terlalu pendek untuk kecepatan ini"}
-                  className={`flex-1 h-7 rounded-md text-[10px] font-mono font-semibold transition disabled:opacity-25 disabled:cursor-not-allowed ${
+                  className={`flex-1 h-7 rounded-md text-xs font-mono font-semibold transition disabled:opacity-25 disabled:cursor-not-allowed ${
                     active
                       ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -395,21 +395,21 @@ function EmptyInspector() {
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
       <div className="border-b border-surface-border bg-muted px-3.5 py-2.5">
-        <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
           <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Inspector
         </span>
       </div>
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Klik klip di timeline untuk mengatur durasi, bagian scene, kecepatan, atau memotongnya.
         </p>
         <div className="space-y-2 rounded-xl border border-border bg-background p-3">
-          <p className="text-[10px] font-semibold text-foreground flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <Keyboard className="w-3 h-3 text-primary" /> Shortcut
           </p>
           <div className="space-y-1">
             {rows.map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between text-[10px]">
+              <div key={k} className="flex items-center justify-between text-xs">
                 <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-foreground">
                   {k}
                 </kbd>
@@ -436,7 +436,7 @@ function Section({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-[10px]">
+      <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-foreground flex items-center gap-1.5">
           {icon}
           {title}
@@ -454,7 +454,7 @@ function StepBtn({ children, onClick }: { children: React.ReactNode; onClick: ()
       variant="outline"
       size="xs"
       onClick={onClick}
-      className="h-7 border-border bg-background px-2 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+      className="h-7 border-border bg-background px-2 font-mono text-xs text-muted-foreground hover:text-foreground"
     >
       {children}
     </Button>
@@ -486,7 +486,7 @@ function ActionBtn({
       title={title}
       variant={danger ? "workspace-destructive" : active ? "workspace-primary" : "outline"}
       size="xs"
-      className="h-7 px-2.5 text-[11px] gap-1.5 font-medium"
+      className="h-7 px-2.5 text-xs gap-1.5 font-medium"
     >
       {icon}
       <span>{children}</span>

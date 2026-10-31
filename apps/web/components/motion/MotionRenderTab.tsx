@@ -183,7 +183,7 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
                 <h2 className="text-sm font-semibold text-foreground">
                   Konfigurasi Render Motion Final
                 </h2>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Chromium CDP Parallel Frame Capture • H.264 MP4
                 </p>
               </div>
@@ -229,7 +229,7 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
                 <div className="font-semibold text-foreground">
                   Overlay Subtitle Burn-in Tambahan
                 </div>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Nonaktif secara bawaan agar tidak menumpuk di atas tipografi kinetik.
                 </div>
               </div>
@@ -283,7 +283,7 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
                     }`}
                   >
                     <div className="font-mono text-xs font-bold tabular-nums">{res.label}</div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">{res.desc}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{res.desc}</div>
                   </button>
                 ))}
               </div>
@@ -312,7 +312,7 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
               </Button>
 
               {scenes.length > 0 && readyScenesCount < scenes.length && (
-                <p className="text-center text-[11px] text-muted-foreground">
+                <p className="text-center text-xs text-muted-foreground">
                   Catatan: {scenes.length - readyScenesCount} adegan belum disintesis TSX kustom
                   dan akan dirender menggunakan koreografi dinamis bawaan.
                 </p>
@@ -440,7 +440,7 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
                               Motion Graphic ({aspectRatio})
                             </span>
                             <span
-                              className={`rounded px-2 py-0.5 font-mono text-[10px] ${
+                              className={`rounded px-2 py-0.5 font-mono text-xs ${
                                 job.status === "completed"
                                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                                   : "bg-accent text-accent-foreground"
@@ -449,12 +449,12 @@ export function MotionRenderTab({ project }: MotionRenderTabProps) {
                               {job.status}
                             </span>
                           </div>
-                          <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          <p className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">
                             Ukuran: {formatBytes(job.file_size_bytes)} •{" "}
                             {new Date(job.created_at).toLocaleString("id-ID")}
                           </p>
                           {job.status === "failed" && job.error_message && (
-                            <p className="mt-1 max-w-md text-[11px] text-destructive">
+                            <p className="mt-1 max-w-md text-xs text-destructive">
                               {job.error_message}
                             </p>
                           )}

@@ -54,7 +54,7 @@ function FilterPillsInner<T extends string>(
             {Icon && <Icon className="w-3.5 h-3.5" />}
             <span>{item.label}</span>
             {item.badge != null && (
-              <span className="rounded-full bg-black/8 px-1.5 py-px font-mono text-[10px]">
+              <span className="rounded-full bg-black/8 px-1.5 py-px font-mono text-xs">
                 {item.badge}
               </span>
             )}

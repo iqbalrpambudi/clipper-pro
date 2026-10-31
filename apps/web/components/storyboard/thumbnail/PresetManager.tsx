@@ -88,12 +88,12 @@ export function PresetManager({
               Simpan Gaya Teks Sebagai Preset
             </h4>
           </div>
-          <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-[#77766D]">
+          <Badge variant="outline" className="border-[#E5E1D7] text-xs text-[#77766D]">
             {currentLayers.length} Gaya Layer
           </Badge>
         </div>
 
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Simpan kombinasi font, warna, stroke, dan background box aktif agar bisa dipakai berulang
           kali di video mendatang dalam 1 klik.
         </p>
@@ -146,7 +146,7 @@ export function PresetManager({
             <Sparkles className="w-3.5 h-3.5 text-[#C45B3A]" />
             <span>Preset Bawaan YouTube Viral</span>
           </div>
-          <span className="text-[10px] text-muted-foreground">Terapkan 1-Klik</span>
+          <span className="text-xs text-muted-foreground">Terapkan 1-Klik</span>
         </div>
 
         <div className="grid grid-cols-1 gap-2">
@@ -170,14 +170,14 @@ export function PresetManager({
                   <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#A9472C] truncate">
                     {preset.name}
                   </h5>
-                  <p className="text-[10px] text-muted-foreground truncate">{preset.desc}</p>
+                  <p className="text-xs text-muted-foreground truncate">{preset.desc}</p>
                 </div>
               </div>
 
               <Button
                 size="sm"
                 variant="outline"
-                className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] shrink-0 transition-all font-semibold"
+                className="border-[#E5E1D7] text-xs h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] shrink-0 transition-all font-semibold"
               >
                 <span>Pakai</span>
               </Button>
@@ -194,7 +194,7 @@ export function PresetManager({
               <BookmarkPlus className="w-3.5 h-3.5" />
               <span>Preset Kustom Anda</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {customPresets.length} Tersimpan
             </span>
           </div>
@@ -219,7 +219,7 @@ export function PresetManager({
                     <h5 className="text-xs font-bold text-[#26251F] transition-colors group-hover:text-[#A9472C] truncate">
                       {preset.name}
                     </h5>
-                    <p className="text-[10px] text-muted-foreground truncate">{preset.desc}</p>
+                    <p className="text-xs text-muted-foreground truncate">{preset.desc}</p>
                   </div>
                 </div>
 
@@ -231,7 +231,7 @@ export function PresetManager({
                     size="sm"
                     variant="outline"
                     onClick={() => onApplyPreset(preset)}
-                    className="border-[#E5E1D7] text-[11px] h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] transition-all font-semibold"
+                    className="border-[#E5E1D7] text-xs h-7 px-2.5 group-hover:bg-[#C45B3A] group-hover:text-[#FFFAF6] group-hover:border-[#C45B3A] transition-all font-semibold"
                   >
                     Pakai
                   </Button>

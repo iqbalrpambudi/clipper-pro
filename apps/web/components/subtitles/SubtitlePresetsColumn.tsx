@@ -52,7 +52,7 @@ export function SubtitlePresetsColumn({
             <span className="text-xs font-bold text-foreground block">
               Gunakan Subtitle pada Video
             </span>
-            <span className="text-[10px] text-muted-foreground block">
+            <span className="text-xs text-muted-foreground block">
               {style.enabled !== false
                 ? "Subtitle aktif di player monitor dan render final"
                 : "Subtitle dinonaktifkan (video bersih tanpa teks)"}
@@ -62,7 +62,7 @@ export function SubtitlePresetsColumn({
 
         <Badge
           variant={style.enabled !== false ? "default" : "secondary"}
-          className={`text-[10px] font-mono px-2 py-0.5 shrink-0 ${
+          className={`text-xs font-mono px-2 py-0.5 shrink-0 ${
             style.enabled !== false
               ? "bg-primary/20 text-primary border border-primary/30"
               : "bg-muted text-muted-foreground border border-border"
@@ -79,7 +79,7 @@ export function SubtitlePresetsColumn({
             <Bookmark className="w-3.5 h-3.5 text-primary" />
             Preset Kustom Saya
             {customPresets.length > 0 && (
-              <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-[10px] font-mono flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-xs font-mono flex items-center justify-center">
                 {customPresets.length}
               </span>
             )}
@@ -89,7 +89,7 @@ export function SubtitlePresetsColumn({
             variant="ghost"
             size="sm"
             onClick={onOpenSavePreset}
-            className="h-6 gap-1 px-2 text-[11px] text-primary hover:text-foreground"
+            className="h-6 gap-1 px-2 text-xs text-primary hover:text-foreground"
           >
             <Plus className="w-3 h-3" />
             <span>Buat Baru</span>
@@ -98,7 +98,7 @@ export function SubtitlePresetsColumn({
 
         {customPresets.length === 0 ? (
           <div className="p-3 rounded-lg border border-dashed border-border bg-background text-center space-y-1.5">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Belum ada preset kustom yang dibuat.
             </p>
             <Button
@@ -106,7 +106,7 @@ export function SubtitlePresetsColumn({
               variant="outline"
               size="sm"
               onClick={onOpenSavePreset}
-              className="h-6 border-primary/30 text-[10px] font-medium text-primary hover:text-foreground"
+              className="h-6 border-primary/30 text-xs font-medium text-primary hover:text-foreground"
             >
               + Simpan Gaya Ini Sebagai Preset
             </Button>
@@ -130,7 +130,7 @@ export function SubtitlePresetsColumn({
                       <span className="text-xs font-bold text-foreground truncate">{p.name}</span>
                       {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                       <span className="truncate">{p.font_family}</span>
                       <span>•</span>
                       <span>{p.font_size}px</span>
@@ -181,7 +181,7 @@ export function SubtitlePresetsColumn({
           </span>
           <Link
             href="/settings"
-            className="text-[10px] text-primary hover:underline flex items-center gap-1 font-medium"
+            className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
           >
             <SettingsIcon className="w-3 h-3" />
             <span>Pengaturan</span>
@@ -220,7 +220,7 @@ export function SubtitlePresetsColumn({
                       title="Warna Highlight"
                     />
                   </div>
-                  <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                  <span className="text-xs font-mono text-muted-foreground uppercase">
                     {p.display_mode === "per_word"
                       ? "Word"
                       : p.display_mode === "burst"

@@ -133,19 +133,22 @@ function SceneBlueprintCard({ projectId, scene, index }: SceneBlueprintCardProps
           : "border-border bg-muted text-muted-foreground";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/35">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs transition-colors hover:border-primary/40 space-y-4">
+      {/* Header Row: Standardized 36px (h-9) controls with aligned flex layout */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-border/60">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-accent font-mono text-xs font-bold tabular-nums text-accent-foreground">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-accent font-mono text-xs font-bold tabular-nums text-accent-foreground shadow-2xs">
             {String(index + 1).padStart(2, "0")}
           </span>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={`Judul Adegan ${index + 1}`}
-            className="h-8 max-w-xs text-xs font-semibold"
-          />
-          <Badge variant="outline" className={`font-mono text-[10px] ${statusTone}`}>
+          <div className="min-w-0 flex-1 max-w-sm">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={`Judul Adegan ${index + 1}`}
+              className="h-9 font-semibold text-xs rounded-xl"
+            />
+          </div>
+          <Badge variant="outline" className={`h-7 px-2.5 font-mono text-xs font-medium rounded-lg shrink-0 ${statusTone}`}>
             {scene.status === "ready"
               ? "TSX Siap"
               : scene.status === "generating"
@@ -156,10 +159,10 @@ function SceneBlueprintCard({ projectId, scene, index }: SceneBlueprintCardProps
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="w-48">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="w-48 sm:w-52">
             <Select value={archetype} onValueChange={setArchetype}>
-              <SelectTrigger className="h-8 text-[11px]">
+              <SelectTrigger className="h-9 text-xs rounded-xl font-medium">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent appearance="workspace">
@@ -172,8 +175,8 @@ function SceneBlueprintCard({ projectId, scene, index }: SceneBlueprintCardProps
             </Select>
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/60 px-2 py-1">
-            <Clock3 className="h-3 w-3 text-muted-foreground" />
+          <div className="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-[hsl(var(--control-background))] px-2.5 shadow-xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+            <Clock3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               type="number"
               step="0.5"
@@ -182,19 +185,18 @@ function SceneBlueprintCard({ projectId, scene, index }: SceneBlueprintCardProps
               value={durationSec}
               onChange={(e) => setDurationSec(e.target.value)}
               aria-label={`Durasi adegan ${index + 1} dalam detik`}
-              className="w-11 bg-transparent text-right font-mono text-xs font-semibold tabular-nums text-foreground focus:outline-none"
+              className="w-10 bg-transparent text-right font-mono text-xs font-semibold tabular-nums text-foreground focus:outline-none"
             />
-            <span className="font-mono text-[10px] text-muted-foreground">dtk</span>
+            <span className="font-mono text-xs text-muted-foreground">dtk</span>
           </div>
 
           {isDirty && (
             <Button
               type="button"
-              size="workspace-sm"
               variant="workspace-primary"
               onClick={() => updateMutation.mutate()}
               disabled={updateMutation.isPending}
-              className="h-8 gap-1 text-xs"
+              className="h-9 gap-1.5 px-3 text-xs rounded-xl font-medium shadow-xs"
             >
               {updateMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -205,58 +207,71 @@ function SceneBlueprintCard({ projectId, scene, index }: SceneBlueprintCardProps
             </Button>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => deleteMutation.mutate()}
             disabled={deleteMutation.isPending}
             title="Hapus adegan ini"
             aria-label={`Hapus adegan ${index + 1}`}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0"
           >
             {deleteMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Trash2 className="h-3.5 w-3.5" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-            Narasi Voiceover (Dibaca TTS & Disinkronkan ke Frame Cue)
-          </label>
+      {/* 2-Column Responsive Form: Narasi & Visual Choreography with Standard Textareas */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-foreground">
+              Narasi Voiceover <span className="font-normal text-muted-foreground">(TTS & Cue Sync)</span>
+            </label>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {scriptText.length} karakter
+            </span>
+          </div>
           <Textarea
             value={scriptText}
             onChange={(e) => setScriptText(e.target.value)}
-            rows={3}
+            rows={4}
             placeholder="Tulis kalimat narasi untuk adegan ini..."
-            className="resize-none text-xs leading-relaxed"
+            className="min-h-[96px] text-xs leading-relaxed resize-y"
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-            Arahan Koreografi Visual & Metafora SVG (Instruksi untuk AI TSX Coder)
-          </label>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-foreground">
+              Arahan Koreografi Visual <span className="font-normal text-muted-foreground">(Instruksi AI TSX Coder)</span>
+            </label>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {visualConcept.length} karakter
+            </span>
+          </div>
           <Textarea
             value={visualConcept}
             onChange={(e) => setVisualConcept(e.target.value)}
-            rows={3}
+            rows={4}
             placeholder="Mis. Hub vektor di tengah memancarkan 3 garis sinyal bezier ke kartu metrik yang melayang saat angka naik ke 340%..."
-            className="resize-none text-xs leading-relaxed"
+            className="min-h-[96px] text-xs leading-relaxed resize-y"
           />
         </div>
       </div>
 
       {scene.key_facts && scene.key_facts.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-medium text-muted-foreground">Token Visual:</span>
+        <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-border/50">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Token Visual:</span>
           {scene.key_facts.map((fact, fIdx) => (
             <span
               key={`${fact}-${fIdx}`}
-              className="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono text-[10px] text-foreground"
+              className="inline-flex items-center h-6 rounded-lg border border-border/70 bg-muted/50 px-2.5 font-mono text-xs font-medium text-foreground/90 shadow-2xs"
             >
               {fact}
             </span>
@@ -378,18 +393,16 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
             <>
               <Button
                 variant="workspace-secondary"
-                size="workspace-sm"
                 onClick={() => setActiveTab("motion_studio")}
-                className="gap-1.5 text-xs"
+                className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
               >
                 <Code2 className="h-3.5 w-3.5" />
                 <span>Langsung ke Motion Studio</span>
               </Button>
               <Button
                 variant="workspace-primary"
-                size="workspace-sm"
                 onClick={() => setActiveTab("motion_voice")}
-                className="gap-1.5 text-xs"
+                className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
               >
                 <Volume2 className="h-3.5 w-3.5" />
                 <span>Lanjut ke Suara & Cue Sync</span>
@@ -437,9 +450,9 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
                     key={sec}
                     type="button"
                     onClick={() => setTargetDurationSecs(sec)}
-                    className={`rounded-lg border py-2 font-mono text-xs font-semibold tabular-nums transition ${
+                    className={`h-9 flex items-center justify-center rounded-xl border font-mono text-xs font-semibold tabular-nums transition ${
                       targetDurationSecs === sec
-                        ? "border-primary bg-accent text-accent-foreground"
+                        ? "border-primary bg-accent text-accent-foreground shadow-2xs"
                         : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -457,9 +470,9 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setLanguage("id")}
-                  className={`rounded-lg border py-2 text-xs font-semibold transition ${
+                  className={`h-9 flex items-center justify-center rounded-xl border text-xs font-semibold transition ${
                     language === "id"
-                      ? "border-primary bg-accent text-accent-foreground"
+                      ? "border-primary bg-accent text-accent-foreground shadow-2xs"
                       : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -468,9 +481,9 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
                 <button
                   type="button"
                   onClick={() => setLanguage("en")}
-                  className={`rounded-lg border py-2 text-xs font-semibold transition ${
+                  className={`h-9 flex items-center justify-center rounded-xl border text-xs font-semibold transition ${
                     language === "en"
-                      ? "border-primary bg-accent text-accent-foreground"
+                      ? "border-primary bg-accent text-accent-foreground shadow-2xs"
                       : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -485,7 +498,7 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
               Gaya Penyampaian & Ritme
             </label>
             <Select value={tone} onValueChange={setTone}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="h-9 text-xs rounded-xl font-medium">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent appearance="workspace">
@@ -542,7 +555,7 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
                         </span>
                         {selected && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                       </div>
-                      <p className="line-clamp-1 text-[10px] text-muted-foreground">
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
                         {theme.subtitle}
                       </p>
                     </div>
@@ -560,7 +573,7 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
               value={customInstructions}
               onChange={(e) => setCustomInstructions(e.target.value)}
               placeholder="Mis. Fokus pada angka efisiensi biaya, sertakan perbandingan arsitektur lama vs baru..."
-              className="h-9 text-xs"
+              className="h-9 text-xs rounded-xl"
             />
           </div>
 
@@ -569,7 +582,7 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
             variant="workspace-primary"
             onClick={() => generateScriptMutation.mutate()}
             disabled={generateScriptMutation.isPending || !topic.trim()}
-            className="w-full gap-2 py-2.5 text-xs"
+            className="h-9 w-full gap-2 text-xs rounded-xl font-medium"
           >
             {generateScriptMutation.isPending ? (
               <>
@@ -596,7 +609,7 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
               <h2 className="text-sm font-semibold text-foreground">
                 Urutan Adegan Motion ({scenes.length} Adegan)
               </h2>
-              <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
                 Estimasi total: {Math.round(totalSeconds * 10) / 10} detik ({totalFrames} frame @
                 30fps)
               </p>
@@ -606,10 +619,9 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
               <Button
                 type="button"
                 variant="workspace-secondary"
-                size="workspace-sm"
                 onClick={() => addSceneMutation.mutate()}
                 disabled={addSceneMutation.isPending}
-                className="gap-1.5 text-xs"
+                className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
               >
                 {addSceneMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -623,9 +635,8 @@ export function MotionScriptTab({ project }: MotionScriptTabProps) {
                 <Button
                   type="button"
                   variant="workspace-primary"
-                  size="workspace-sm"
                   onClick={() => setActiveTab("motion_voice")}
-                  className="gap-1.5 text-xs"
+                  className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
                 >
                   <span>Suara & Cue Sync</span>
                   <ArrowRight className="h-3.5 w-3.5" />

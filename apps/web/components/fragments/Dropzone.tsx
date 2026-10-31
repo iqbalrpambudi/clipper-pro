@@ -75,7 +75,7 @@ export function Dropzone({
             {label}{" "}
             <span className="text-[#A9472C] group-hover:underline font-semibold">pilih file</span>
           </p>
-          {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
 

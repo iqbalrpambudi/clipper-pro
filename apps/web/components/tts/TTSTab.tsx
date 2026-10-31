@@ -124,7 +124,7 @@ export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TT
                 state.audio ? (
                   <Badge
                     variant="outline"
-                    className="font-mono text-[10px] text-primary border-primary/30"
+                    className="font-mono text-xs text-primary border-primary/30"
                   >
                     {formatAudioTime(state.audioDuration)} • {state.audio.voice}
                   </Badge>

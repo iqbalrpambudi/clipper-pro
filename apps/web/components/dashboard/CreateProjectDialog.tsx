@@ -87,12 +87,12 @@ export function CreateProjectDialog({
                     <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground">
                       <Film className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
                       9:16
                     </span>
                   </div>
                   <h4 className="text-xs font-bold text-foreground mb-1">Short Video Clipper</h4>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Potong video panjang jadi klip TikTok/Reels dengan Scene AI & subtitle karaoke.
                   </p>
                 </div>
@@ -116,14 +116,14 @@ export function CreateProjectDialog({
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
                       <ImageIcon className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold">
                       16:9
                     </span>
                   </div>
                   <h4 className="text-xs font-bold text-foreground mb-1">
                     Long Storyboard
                   </h4>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Naskah 4–8 menit, suara TTS, dan ilustrasi AI konsisten per segmen cerita.
                   </p>
                 </div>
@@ -147,14 +147,14 @@ export function CreateProjectDialog({
                     <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground">
                       <Code2 className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
                       Remotion TSX
                     </span>
                   </div>
                   <h4 className="text-xs font-bold text-foreground mb-1">
                     Motion Graphic Studio
                   </h4>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Koreografi vektor SVG, tipografi kinetik & diagram React/Remotion gaya Claude
                     Motion.
                   </p>
@@ -189,7 +189,7 @@ export function CreateProjectDialog({
                 Aspect Ratio
               </label>
               <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                <SelectTrigger className="h-9 w-full text-xs">
+                <SelectTrigger className="h-9 w-full text-xs rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent appearance="workspace">
@@ -202,7 +202,7 @@ export function CreateProjectDialog({
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Resolusi</label>
               <Select value={resolution} onValueChange={setResolution}>
-                <SelectTrigger className="h-9 w-full text-xs">
+                <SelectTrigger className="h-9 w-full text-xs rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent appearance="workspace">
@@ -221,9 +221,9 @@ export function CreateProjectDialog({
               <button
                 type="button"
                 onClick={() => setLanguage("id")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-medium transition-all ${
                   language === "id"
-                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-sm font-semibold"
+                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-xs font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -233,9 +233,9 @@ export function CreateProjectDialog({
               <button
                 type="button"
                 onClick={() => setLanguage("en")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-medium transition-all ${
                   language === "en"
-                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-sm font-semibold"
+                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-xs font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -246,10 +246,10 @@ export function CreateProjectDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" className="h-9 px-4 text-xs rounded-xl font-medium" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" variant="workspace-primary" size="sm" disabled={isPending}>
+            <Button type="submit" variant="workspace-primary" className="h-9 px-4 text-xs rounded-xl font-medium" disabled={isPending}>
               {isPending ? "Membuat..." : "Buat Project"}
             </Button>
           </DialogFooter>

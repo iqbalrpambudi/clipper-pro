@@ -1389,7 +1389,7 @@ export function PreviewPlayer({
         )}
 
         {/* Top Watermark Overlay */}
-        <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-[10px] text-white/90 font-mono shadow-lg">
+        <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-xs text-white/90 font-mono shadow-lg">
           <span className="w-2 h-2 rounded-full bg-[#F8EEEA] animate-pulse" />
           <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
           <span className="text-white/30">•</span>
@@ -1463,7 +1463,7 @@ export function PreviewPlayer({
               title={isLooping ? "Loop aktif (Klik untuk matikan)" : "Loop nonaktif (Klik untuk nyalakan)"}
             >
               <Repeat className="w-4 h-4" />
-              <span className="text-[10px] hidden sm:inline">
+              <span className="text-xs hidden sm:inline">
                 {isLooping ? "Loop On" : "Loop"}
               </span>
             </button>

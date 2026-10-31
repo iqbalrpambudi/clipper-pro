@@ -28,7 +28,7 @@ export function CharactersTab({
       <div className="flex flex-col space-y-3 mt-3.5">
         <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
           <p className="text-xs text-[#77766D]">Belum ada profil karakter terkunci.</p>
-          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda
             dapat menambahkannya manual sekarang.
           </p>
@@ -47,7 +47,7 @@ export function CharactersTab({
 
   return (
     <div className="flex flex-col space-y-3 mt-3.5">
-      <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+      <div className="max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
         <div className="space-y-3">
           {charactersList.map((char, cIdx) => (
             <div
@@ -77,7 +77,7 @@ export function CharactersTab({
                         updated[cIdx] = { ...char, id: e.target.value };
                         setCharactersList(updated);
                       }}
-                      className="w-28 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-28 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-xs text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                     />
                     <button
                       type="button"
@@ -98,12 +98,12 @@ export function CharactersTab({
                       updated[cIdx] = { ...char, role: e.target.value };
                       setCharactersList(updated);
                     }}
-                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-[11px] text-[#4D4A42] focus:border-[#C45B3A] focus:outline-none"
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-xs text-[#4D4A42] focus:border-[#C45B3A] focus:outline-none"
                   />
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#A9472C]">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#A9472C]">
                         🎯 Wajah & Kepala (Close-Up Anchor)
                       </label>
                       <textarea
@@ -128,12 +128,12 @@ export function CharactersTab({
                           setCharactersList(updated);
                         }}
                         rows={2}
-                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#41627F]">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#41627F]">
                         👕 Pakaian & Siluet (Wide/Medium Anchor)
                       </label>
                       <textarea
@@ -158,13 +158,13 @@ export function CharactersTab({
                           setCharactersList(updated);
                         }}
                         rows={2}
-                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
                       Full Visual Anchor (Ringkasan / Fallback)
                     </label>
                     <textarea
@@ -176,20 +176,20 @@ export function CharactersTab({
                         setCharactersList(updated);
                       }}
                       rows={2}
-                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                     />
                   </div>
 
                   {/* Variants Sub-list */}
                   <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-[#A9472C] uppercase tracking-wider">
+                      <span className="text-xs font-bold text-[#A9472C] uppercase tracking-wider">
                         Varian Bentuk / Usia:
                       </span>
                       <button
                         type="button"
                         onClick={() => onAddVariant(cIdx)}
-                        className="text-[10px] text-[#C45B3A] hover:text-[#A9472C] font-semibold flex items-center gap-1"
+                        className="text-xs text-[#C45B3A] hover:text-[#A9472C] font-semibold flex items-center gap-1"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Tambah Varian</span>
@@ -215,7 +215,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="flex-1 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 text-[11px] text-[#26251F] focus:outline-none"
+                                className="flex-1 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 text-xs text-[#26251F] focus:outline-none"
                               />
                               <input
                                 type="text"
@@ -228,7 +228,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="w-24 px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#A9472C] font-mono text-[10px] focus:outline-none"
+                                className="w-24 px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#A9472C] font-mono text-xs focus:outline-none"
                               />
                               <button
                                 type="button"
@@ -263,7 +263,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-[10px] text-[#26251F] focus:outline-none"
+                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-xs text-[#26251F] focus:outline-none"
                               />
                               <input
                                 type="text"
@@ -288,7 +288,7 @@ export function CharactersTab({
                                   updated[cIdx] = { ...updated[cIdx], variants };
                                   setCharactersList(updated);
                                 }}
-                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-[10px] text-[#26251F] focus:outline-none"
+                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-xs text-[#26251F] focus:outline-none"
                               />
                             </div>
                             <textarea
@@ -305,13 +305,13 @@ export function CharactersTab({
                                 setCharactersList(updated);
                               }}
                               rows={2}
-                              className="w-full px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#4D4A42] text-[10px] font-mono focus:outline-none"
+                              className="w-full px-2 py-1 rounded-lg border border-[#E5E1D7] bg-[#FBFAF7] text-[#4D4A42] text-xs font-mono focus:outline-none"
                             />
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[10px] text-[#77766D] italic">
+                      <p className="text-xs text-[#77766D] italic">
                         Belum ada varian bentuk/usia. Klik &quot;+ Tambah Varian&quot; untuk
                         menambahkan versi muda, dewasa, atau bentuk perubahan wujud.
                       </p>
@@ -326,33 +326,33 @@ export function CharactersTab({
                         👤 {char.name}
                       </span>
                       {char.role && (
-                        <span className="text-[10px] text-[#77766D] px-2 py-0.5 rounded-full bg-[#F3F0E8] border border-[#E5E1D7] font-mono">
+                        <span className="text-xs text-[#77766D] px-2 py-0.5 rounded-full bg-[#F3F0E8] border border-[#E5E1D7] font-mono">
                           {char.role}
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
                       [char:{char.id || char.name.toLowerCase().replace(/\s+/g, "")}]
                     </span>
                   </div>
 
                   {char.face_head_anchor || char.outfit_body_anchor ? (
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                      <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/70 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
-                        <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#A9472C]">
+                      <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/70 p-2 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                        <span className="mb-0.5 block font-sans text-xs font-bold uppercase tracking-wider text-[#A9472C]">
                           🎯 Close-Up (Wajah & Kepala)
                         </span>
                         {char.face_head_anchor || char.visual_anchor}
                       </div>
-                      <div className="rounded-lg border border-[#CFDDE9] bg-[#EAF0F5]/70 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
-                        <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#41627F]">
+                      <div className="rounded-lg border border-[#CFDDE9] bg-[#EAF0F5]/70 p-2 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                        <span className="mb-0.5 block font-sans text-xs font-bold uppercase tracking-wider text-[#41627F]">
                           👕 Wide / Medium (Pakaian & Siluet)
                         </span>
                         {char.outfit_body_anchor || char.visual_anchor}
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
+                    <p className="text-xs text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
                       {char.visual_anchor || "Belum ada ciri visual khusus."}
                     </p>
                   )}
@@ -360,7 +360,7 @@ export function CharactersTab({
                   {/* Display Variants if any */}
                   {char.variants && char.variants.length > 0 && (
                     <div className="space-y-1.5 pt-1.5 border-t border-[#E5E1D7]">
-                      <span className="text-[10px] font-bold text-[#77766D] uppercase tracking-wider block">
+                      <span className="text-xs font-bold text-[#77766D] uppercase tracking-wider block">
                         Varian Wujud / Usia:
                       </span>
                       <div className="grid grid-cols-1 gap-1.5">
@@ -370,16 +370,16 @@ export function CharactersTab({
                             className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] flex flex-col gap-1"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-semibold text-[#A9472C]">
+                              <span className="text-xs font-semibold text-[#A9472C]">
                                 ✨ {v.label}
                               </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
+                              <span className="text-xs font-mono px-1.5 py-0.2 rounded bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]">
                                 [char:
                                 {char.id || char.name.toLowerCase().replace(/\s+/g, "")}:
                                 {v.variant_id}]
                               </span>
                             </div>
-                            <p className="text-[10px] text-[#4D4A42] font-mono leading-relaxed">
+                            <p className="text-xs text-[#4D4A42] font-mono leading-relaxed">
                               {v.visual_anchor}
                             </p>
                           </div>

@@ -104,12 +104,12 @@ export function SegmentsList({
                 <span>Daftar Babak & Segmen Naskah ({segments.length} Segmen)</span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono border-[#E9C9BD] text-[#A9472C] bg-[#F8EEEA] normal-case"
+                  className="text-xs font-mono border-[#E9C9BD] text-[#A9472C] bg-[#F8EEEA] normal-case"
                 >
                   {language === "en" ? "🇬🇧 English Explainer" : "🇮🇩 Indonesian"}
                 </Badge>
               </h3>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Alur cerita terstruktur dengan narasi voiceover & slot prompt visual AI
               </p>
             </div>
@@ -166,7 +166,7 @@ export function SegmentsList({
               >
                 <div className="flex flex-col justify-between gap-2.5 border-b border-[#E5E1D7] pb-2.5 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] font-bold border border-[#E9C9BD] shrink-0">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#F8EEEA] text-[#A9472C] font-bold border border-[#E9C9BD] shrink-0">
                       Segmen {idx + 1}
                     </span>
                     {isEditing ? (
@@ -186,7 +186,7 @@ export function SegmentsList({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="hidden font-mono text-[11px] text-[#77766D] sm:inline">
+                    <span className="hidden font-mono text-xs text-[#77766D] sm:inline">
                       {segItems.length} Ilustrasi Gambar
                     </span>
                     {!isEditing ? (
@@ -203,7 +203,7 @@ export function SegmentsList({
                           ) : (
                             <Copy className="h-3 w-3 text-[#77766D]" />
                           )}
-                          <span className="text-[11px]">
+                          <span className="text-xs">
                             {copiedSegmentId === segId ? "Tersalin" : "Salin"}
                           </span>
                         </Button>
@@ -254,11 +254,11 @@ export function SegmentsList({
                   {/* Left: Narration voiceover text */}
                   <div className="lg:col-span-5 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
                         Naskah Narasi (Voiceover):
                       </span>
                       {isEditing && (
-                        <span className="font-mono text-[10px] text-[#77766D]">
+                        <span className="font-mono text-xs text-[#77766D]">
                           {editText.length} karakter
                         </span>
                       )}
@@ -272,7 +272,7 @@ export function SegmentsList({
                           placeholder="Tuliskan naskah narasi voiceover untuk segmen ini..."
                           className="w-full resize-y rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 font-sans text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A]"
                         />
-                        <p className="text-[10px] leading-normal text-[#77766D]">
+                        <p className="text-xs leading-normal text-[#77766D]">
                           💡 Teks narasi dibacakan oleh TTS: gunakan koma (,) atau titik (.),
                           hindari tanda titik dua (:) dan titik koma (;), serta tanpa token
                           variabel.
@@ -287,7 +287,7 @@ export function SegmentsList({
 
                   {/* Right: Visual Prompts list */}
                   <div className="lg:col-span-7 space-y-1.5">
-                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                    <span className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
                       Visual Prompts AI Hand-drawn ({segItems.length} Ilustrasi):
                     </span>
                     <div className="space-y-2">
@@ -297,14 +297,14 @@ export function SegmentsList({
                         return (
                         <div
                           key={item.id}
-                          className={`flex flex-col gap-1.5 rounded-lg border p-2.5 font-mono text-[11px] leading-relaxed text-[#4D4A42] ${
+                          className={`flex flex-col gap-1.5 rounded-lg border p-2.5 font-mono text-xs leading-relaxed text-[#4D4A42] ${
                             isEditing
                               ? "border-[#E5E1D7] bg-[#FFFEFA]"
                               : "border-[#E5E1D7] bg-[#F3F0E8]"
                           }`}
                         >
                           <div className="flex flex-wrap items-center gap-1.5 font-sans">
-                            <span className="shrink-0 rounded bg-[#F8EEEA] px-2 py-0.5 text-[10px] font-bold text-[#A9472C]">
+                            <span className="shrink-0 rounded bg-[#F8EEEA] px-2 py-0.5 text-xs font-bold text-[#A9472C]">
                               #{iIdx + 1}
                             </span>
                             {isEditing && setEditItemShotMeta ? (
@@ -317,7 +317,7 @@ export function SegmentsList({
                                       [item.id]: { ...(prev[item.id] || {}), shot_type: e.target.value },
                                     }))
                                   }
-                                  className="h-6 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 text-[10px] text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                                  className="h-6 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                                   title="Shot Angle"
                                 >
                                   <option value="">Shot Angle: Auto</option>
@@ -337,20 +337,20 @@ export function SegmentsList({
                                       [item.id]: { ...(prev[item.id] || {}), scene_group_id: e.target.value },
                                     }))
                                   }
-                                  className="h-6 w-32 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 font-mono text-[10px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                                  className="h-6 w-32 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 font-mono text-xs text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                                   title="Scene Group — adegan dengan grup sama berbagi latar & karakter"
                                 />
                               </>
                             ) : (
                               <>
                                 {meta.shot_type && (
-                                  <span className="rounded border border-[#CFDDE9] bg-[#EAF0F5] px-1.5 py-0.5 text-[10px] font-semibold text-[#41627F]">
+                                  <span className="rounded border border-[#CFDDE9] bg-[#EAF0F5] px-1.5 py-0.5 text-xs font-semibold text-[#41627F]">
                                     🎥 {shotTypeLabel(meta.shot_type)}
                                   </span>
                                 )}
                                 {meta.scene_group_id && (
                                   <span
-                                    className="inline-flex items-center gap-1 rounded border border-[#E9C9BD] bg-[#F8EEEA] px-1.5 py-0.5 font-mono text-[10px] text-[#A9472C]"
+                                    className="inline-flex items-center gap-1 rounded border border-[#E9C9BD] bg-[#F8EEEA] px-1.5 py-0.5 font-mono text-xs text-[#A9472C]"
                                     title={
                                       meta.reference_item_id
                                         ? "Memakai gambar Establishing sebagai referensi latar & karakter"
@@ -364,7 +364,7 @@ export function SegmentsList({
                                 )}
                                 {meta.spatial_blocking && (
                                   <span
-                                    className="max-w-[220px] truncate rounded border border-[#E8D9B5] bg-[#FBF6EA] px-1.5 py-0.5 text-[10px] text-[#8A6A2F]"
+                                    className="max-w-[220px] truncate rounded border border-[#E8D9B5] bg-[#FBF6EA] px-1.5 py-0.5 text-xs text-[#8A6A2F]"
                                     title={meta.spatial_blocking}
                                   >
                                     🧭 {meta.spatial_blocking}
@@ -388,7 +388,7 @@ export function SegmentsList({
                               }
                               rows={2}
                               placeholder="Prompt visual adegan..."
-                              className="flex-1 resize-y rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#26251F] focus:border-[#C45B3A]"
+                              className="flex-1 resize-y rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#26251F] focus:border-[#C45B3A]"
                             />
                           ) : (
                             <span className="flex-1 select-all">{item.image_prompt}</span>
@@ -397,7 +397,7 @@ export function SegmentsList({
                         );
                       })}
                       {segItems.length === 0 && (
-                        <div className="rounded-lg border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-3 text-center text-[11px] italic text-[#77766D]">
+                        <div className="rounded-lg border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-3 text-center text-xs italic text-[#77766D]">
                           Tidak ada item ilustrasi untuk segmen ini.
                         </div>
                       )}

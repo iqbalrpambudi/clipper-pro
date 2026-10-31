@@ -243,7 +243,7 @@ export function SubtitleCustomizePanel({
           <span className="font-bold text-xs text-foreground uppercase tracking-wider">
             Pengaturan Gaya Subtitle
           </span>
-          <Badge variant="workspace-success" className="px-2 py-0 font-mono text-[10px] capitalize">
+          <Badge variant="workspace-success" className="px-2 py-0 font-mono text-xs capitalize">
             {style.preset_name ? style.preset_name.replace(/_/g, " ") : "Custom"}
           </Badge>
         </div>
@@ -255,7 +255,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "ass")}
               download
-              className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary transition hover:bg-primary/20"
+              className="rounded bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary transition hover:bg-primary/20"
               title="Download File .ASS (Full styling & effects)"
             >
               .ASS
@@ -263,7 +263,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "srt")}
               download
-              className="rounded px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="rounded px-2 py-0.5 font-mono text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Download File .SRT"
             >
               .SRT
@@ -271,7 +271,7 @@ export function SubtitleCustomizePanel({
             <a
               href={api.getSubtitleExportUrl(project.id, "vtt")}
               download
-              className="rounded px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="rounded px-2 py-0.5 font-mono text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
               title="Download File .VTT"
             >
               .VTT
@@ -305,7 +305,7 @@ export function SubtitleCustomizePanel({
           {updateStyleMutation.isPending ? (
             <Badge
               variant="outline"
-              className="h-7 border-primary/40 text-primary text-[10px] font-mono flex items-center gap-1.5 px-2"
+              className="h-7 border-primary/40 text-primary text-xs font-mono flex items-center gap-1.5 px-2"
             >
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>Menyimpan...</span>
@@ -313,7 +313,7 @@ export function SubtitleCustomizePanel({
           ) : (
             <Badge
               variant="outline"
-              className="h-7 border-border text-muted-foreground text-[10px] font-mono flex items-center gap-1.5 px-2 bg-surface/50"
+              className="h-7 border-border text-muted-foreground text-xs font-mono flex items-center gap-1.5 px-2 bg-surface/50"
             >
               <Check className="w-3 h-3 text-emerald-500" />
               <span>Autosave aktif</span>

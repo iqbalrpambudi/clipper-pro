@@ -90,7 +90,7 @@ export function MonitorTransportToolbar({
             onClick={onSplit}
             disabled={!canSplit}
             title="Potong klip di playhead (S)"
-            className="h-7 px-2 rounded-lg bg-background hover:bg-accent border border-border hover:border-primary/50 text-foreground text-[11px] font-semibold flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            className="h-7 px-2 rounded-lg bg-background hover:bg-accent border border-border hover:border-primary/50 text-foreground text-xs font-semibold flex items-center gap-1 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Scissors className="w-3.5 h-3.5 text-primary" />
             <span className="hidden sm:inline">Potong (S)</span>
@@ -101,7 +101,7 @@ export function MonitorTransportToolbar({
       {/* Center: Playhead transport controls & Timecode */}
       <div className="flex items-center gap-1.5">
         {activeClip?.speed && Math.abs(activeClip.speed - 1) > 0.02 && (
-          <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 text-[10px] font-mono font-bold hidden sm:inline">
+          <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 text-xs font-mono font-bold hidden sm:inline">
             {activeClip.speed}x
           </span>
         )}
@@ -135,7 +135,7 @@ export function MonitorTransportToolbar({
           <SkipForward className="w-3.5 h-3.5" />
         </TransportBtn>
 
-        <div className="font-mono text-[11px] text-foreground tabular-nums ml-2 hidden sm:inline">
+        <div className="font-mono text-xs text-foreground tabular-nums ml-2 hidden sm:inline">
           <span className="text-primary font-bold">{formatTimecode(time)}</span>
           <span className="text-muted-foreground"> / {formatTimecode(duration)}</span>
         </div>
@@ -167,16 +167,16 @@ export function MonitorTransportToolbar({
         <button
           type="button"
           onClick={onCyclePreviewQuality}
-          className="px-2 py-0.5 rounded-lg bg-background border border-border hover:border-primary/50 text-[10px] font-mono font-semibold transition flex items-center gap-1 text-foreground hover:text-primary cursor-pointer"
+          className="px-2 py-0.5 rounded-lg bg-background border border-border hover:border-primary/50 text-xs font-mono font-semibold transition flex items-center gap-1 text-foreground hover:text-primary cursor-pointer"
           title="Klik untuk mengganti resolusi canvas preview (540p Cepat & Lancar / 720p / 1080p Penuh)"
         >
           <span className="text-primary font-bold">{previewQuality}</span>
-          <span className="text-[8px] text-muted-foreground uppercase font-sans">
+          <span className="text-xs text-muted-foreground uppercase font-sans">
             {previewQuality === "540p" ? "Smooth" : previewQuality === "720p" ? "HD" : "Full"}
           </span>
         </button>
 
-        <span className="px-2 py-0.5 rounded-lg bg-background border border-border text-[10px] font-mono text-muted-foreground font-semibold hidden md:inline">
+        <span className="px-2 py-0.5 rounded-lg bg-background border border-border text-xs font-mono text-muted-foreground font-semibold hidden md:inline">
           {aspectRatio}
         </span>
 

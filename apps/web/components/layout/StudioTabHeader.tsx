@@ -54,7 +54,7 @@ export function StudioTabHeader({
               {badge && (
                 <Badge
                   variant="outline"
-                  className={`shrink-0 text-[10px] font-medium ${badgeColor}`}
+                  className={`shrink-0 text-xs font-medium ${badgeColor}`}
                 >
                   {badge}
                 </Badge>
@@ -62,7 +62,7 @@ export function StudioTabHeader({
               {secondaryBadge && (
                 <Badge
                   variant="outline"
-                  className="hidden shrink-0 border-[#E5E1D7] dark:border-border font-mono text-[10px] text-[#77766D] dark:text-muted-foreground md:inline-flex"
+                  className="hidden shrink-0 border-[#E5E1D7] dark:border-border font-mono text-xs text-[#77766D] dark:text-muted-foreground md:inline-flex"
                 >
                   {secondaryBadge}
                 </Badge>

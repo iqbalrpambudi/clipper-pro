@@ -59,7 +59,7 @@ export function ClearTimelineModal({
               <div className="text-xs font-semibold text-foreground">
                 Kosongkan Semua Track (V1, S1, A1)
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
+              <div className="text-xs text-muted-foreground mt-0.5">
                 Hapus semua klip video serta lepaskan audio narasi dan subtitle dari timeline.
               </div>
             </div>
@@ -87,14 +87,14 @@ export function ClearTimelineModal({
               <div className="text-xs font-semibold text-foreground">
                 Hanya Klip Video Saja (V1)
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
+              <div className="text-xs text-muted-foreground mt-0.5">
                 Hapus klip video tetapi biarkan audio narasi dan subtitle tetap berada di timeline.
               </div>
             </div>
           </button>
         </div>
 
-        <p className="text-[11px] text-muted-foreground leading-relaxed bg-background p-2.5 rounded-lg border border-border">
+        <p className="text-xs text-muted-foreground leading-relaxed bg-background p-2.5 rounded-lg border border-border">
           💡 <strong>Tips:</strong> Jika semua track dikosongkan, Anda dapat menggunakan tombol{" "}
           <span className="text-primary font-semibold">+ Re-add Audio & Subtitle</span> atau{" "}
           <span className="text-primary font-semibold">Auto-Match AI</span> kembali kapan saja.

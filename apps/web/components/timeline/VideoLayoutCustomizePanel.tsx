@@ -212,7 +212,7 @@ export function VideoLayoutCustomizePanel({
             Mode Tampilan & Rasio
           </h3>
         </div>
-        <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
+        <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
           {aspectRatio} •{" "}
           {activePreset === "cover"
             ? "Cover"
@@ -234,7 +234,7 @@ export function VideoLayoutCustomizePanel({
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <span>Rasio Kanvas Proyek</span>
             </label>
-            <span className="text-[10px] text-muted-foreground font-mono">
+            <span className="text-xs text-muted-foreground font-mono">
               {aspectRatio === "9:16"
                 ? "1080 × 1920"
                 : aspectRatio === "16:9"
@@ -259,7 +259,7 @@ export function VideoLayoutCustomizePanel({
               />
               <div className="text-center">
                 <div className="text-xs font-semibold">9:16</div>
-                <div className="text-[9px] text-muted-foreground leading-tight">TikTok/Reels</div>
+                <div className="text-xs text-muted-foreground leading-tight">TikTok/Reels</div>
               </div>
             </button>
 
@@ -278,7 +278,7 @@ export function VideoLayoutCustomizePanel({
               />
               <div className="text-center">
                 <div className="text-xs font-semibold">16:9</div>
-                <div className="text-[9px] text-muted-foreground leading-tight">Landscape</div>
+                <div className="text-xs text-muted-foreground leading-tight">Landscape</div>
               </div>
             </button>
 
@@ -297,7 +297,7 @@ export function VideoLayoutCustomizePanel({
               />
               <div className="text-center">
                 <div className="text-xs font-semibold">1:1</div>
-                <div className="text-[9px] text-muted-foreground leading-tight">Square Feed</div>
+                <div className="text-xs text-muted-foreground leading-tight">Square Feed</div>
               </div>
             </button>
           </div>
@@ -307,7 +307,7 @@ export function VideoLayoutCustomizePanel({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-foreground">Preset Tampilan Video</label>
-            <span className="text-[10px] text-primary font-mono font-semibold uppercase">
+            <span className="text-xs text-primary font-mono font-semibold uppercase">
               {activePreset === "cover"
                 ? "1. COVER"
                 : activePreset === "fit"
@@ -334,7 +334,7 @@ export function VideoLayoutCustomizePanel({
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Cover</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
                   Penuh (Crop)
                 </div>
               </div>
@@ -357,7 +357,7 @@ export function VideoLayoutCustomizePanel({
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Fit</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
                   100% Utuh
                 </div>
               </div>
@@ -380,7 +380,7 @@ export function VideoLayoutCustomizePanel({
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Custom Zoom</div>
-                <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
                   Slider Bebas
                 </div>
               </div>
@@ -402,7 +402,7 @@ export function VideoLayoutCustomizePanel({
                 <span className="text-xs font-semibold text-foreground">Background Blur</span>
                 <Badge
                   variant="outline"
-                  className={`text-[9px] font-mono ${
+                  className={`text-xs font-mono ${
                     isBlur
                       ? "text-primary border-primary/30 bg-primary/10"
                       : "border-border bg-background text-muted-foreground"
@@ -411,7 +411,7 @@ export function VideoLayoutCustomizePanel({
                   {isBlur ? "Blur Aktif" : "Hitam Solid"}
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                 {isBlur
                   ? "Area sisa kanvas diisi dengan efek video blur yang dinamis."
                   : "Latar belakang menjadi hitam solid (tanpa efek blur)."}
@@ -428,7 +428,7 @@ export function VideoLayoutCustomizePanel({
                 <ZoomIn className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-semibold text-foreground">Tingkat Zoom Manual</span>
               </div>
-              <Badge variant="outline" className="text-primary font-mono text-[10px]">
+              <Badge variant="outline" className="text-primary font-mono text-xs">
                 {Math.round(customZoom * 100)}% ({customZoom.toFixed(2)}x)
               </Badge>
             </div>
@@ -443,7 +443,7 @@ export function VideoLayoutCustomizePanel({
                 onChange={(e) => handleZoomSliderChange(parseFloat(e.target.value))}
                 className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
               />
-              <div className="flex items-center justify-between text-[9px] text-muted-foreground font-mono">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
                 <span>100%</span>
                 <span>150%</span>
                 <span>200%</span>
@@ -466,7 +466,7 @@ export function VideoLayoutCustomizePanel({
                   variant={Math.abs(customZoom - p.val) < 0.03 ? "supabase" : "outline"}
                   size="xs"
                   onClick={() => handleZoomSliderChange(p.val)}
-                  className="text-[10px] h-6 px-2"
+                  className="text-xs h-6 px-2"
                 >
                   {p.label}
                 </Button>
@@ -478,7 +478,7 @@ export function VideoLayoutCustomizePanel({
         {/* Tip Informatif */}
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
           <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Perubahan tampilan langsung aktif di Player Monitor dan disimpan otomatis untuk proses
             render final.
           </p>

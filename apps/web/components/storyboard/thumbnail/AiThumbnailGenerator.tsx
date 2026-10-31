@@ -68,7 +68,7 @@ export function AiThumbnailGenerator({
             <Sparkles className="w-4 h-4 text-[#C45B3A]" />
             <h4 className="text-xs font-bold text-[#26251F]">Formula Hook Visual AI</h4>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-[#77766D]">
+          <div className="flex items-center gap-1.5 text-xs text-[#77766D]">
             {mainCharName && (
               <span className="flex items-center gap-1 bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD] text-[#A9472C]">
                 <User className="w-3 h-3 text-[#C45B3A]" />
@@ -84,7 +84,7 @@ export function AiThumbnailGenerator({
           </div>
         </div>
 
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Pilih sudut visual viral. Prompt akan otomatis menyisipkan token karakter tokoh utama (
           {mainCharName || "tokoh"}), lokasi cerita ({mainLocName || "lokasi"}), dan ruang negatif
           untuk teks.
@@ -105,7 +105,7 @@ export function AiThumbnailGenerator({
                 }`}
               >
                 <div className="text-xs font-bold truncate">{f.name}</div>
-                <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">
+                <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                   {f.shortDesc}
                 </div>
               </button>
@@ -127,7 +127,7 @@ export function AiThumbnailGenerator({
               <button
                 type="button"
                 onClick={onResyncWithCurrentStory}
-                className="text-[10px] font-semibold text-[#A9472C] hover:text-[#8A3722] flex items-center gap-1 bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]"
+                className="text-xs font-semibold text-[#A9472C] hover:text-[#8A3722] flex items-center gap-1 bg-[#F8EEEA] px-2 py-0.5 rounded border border-[#E9C9BD]"
                 title="Perbarui prompt dan teks hook mengikuti tokoh dan latar cerita terbaru saat ini"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -139,7 +139,7 @@ export function AiThumbnailGenerator({
               <button
                 type="button"
                 onClick={onInjectPresetStyle}
-                className="text-[10px] font-semibold text-[#A9472C] hover:text-[#8C3A24] flex items-center gap-1"
+                className="text-xs font-semibold text-[#A9472C] hover:text-[#8C3A24] flex items-center gap-1"
                 title="Sisipkan konsistensi master visual preset ke prompt"
               >
                 <Palette className="w-3 h-3" />
@@ -149,7 +149,7 @@ export function AiThumbnailGenerator({
 
             <Link
               href="/image-studio"
-              className="text-[10px] font-medium text-muted-foreground hover:text-primary flex items-center gap-1"
+              className="text-xs font-medium text-muted-foreground hover:text-primary flex items-center gap-1"
               title={activePresetName ? "Edit preset di Art Studio" : "Buat visual preset di Art Studio"}
             >
               <Palette className="w-3 h-3" />
@@ -166,7 +166,7 @@ export function AiThumbnailGenerator({
         />
 
         <div className="flex items-center justify-between pt-1">
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             💡 Gambar dihasilkan bersih 16:9 tanpa teks AI, siap ditambahkan teks di tab{" "}
             <span className="text-[#A9472C] font-semibold">Editor Teks</span>.
           </p>
@@ -195,7 +195,7 @@ export function AiThumbnailGenerator({
               <History className="w-3.5 h-3.5 text-[#858176]" />
               <h5 className="text-xs font-bold text-[#26251F]">Riwayat Variasi Thumbnail</h5>
             </div>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {thumbnailHistory.length} Gambar
             </span>
           </div>
@@ -220,7 +220,7 @@ export function AiThumbnailGenerator({
                     className="w-full h-full object-cover"
                   />
                   {isActive && (
-                    <div className="absolute top-1 right-1 px-1 py-0.5 rounded bg-[#C45B3A] text-[8px] font-bold text-[#FFFAF6]">
+                    <div className="absolute top-1 right-1 px-1 py-0.5 rounded bg-[#C45B3A] text-xs font-bold text-[#FFFAF6]">
                       Aktif
                     </div>
                   )}

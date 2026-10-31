@@ -24,7 +24,7 @@ export function LocationsTab({
       <div className="flex flex-col space-y-3 mt-3.5">
         <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
           <p className="text-xs text-[#77766D]">Belum ada latar tempat terkunci.</p>
-          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Latar tempat (arsitektur, kios pasar, pantai, istana) akan dikunci otomatis agar latar
             belakang dan sudut tempat tetap konsisten antar babak.
           </p>
@@ -46,7 +46,7 @@ export function LocationsTab({
       {/* Tips Kontinuitas Latar */}
       <div className="p-2.5 rounded-xl bg-[#EAF0F5] border border-[#CFDDE9] flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-[#41627F] shrink-0 mt-0.5" />
-        <div className="space-y-0.5 text-[11px] text-[#41627F] leading-relaxed">
+        <div className="space-y-0.5 text-xs text-[#41627F] leading-relaxed">
           <span className="font-semibold text-[#41627F]">Tips Kontinuitas Latar Spasial:</span> Agar
           toko atau latar tidak berpindah tempat (misal toko pedagang tiba-tiba berpindah ke bawah
           pohon), kuncilah <strong>Micro-Set</strong> (bentuk fisik kios/ruangan spesifik),{" "}
@@ -54,7 +54,7 @@ export function LocationsTab({
         </div>
       </div>
 
-      <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-1 space-y-2.5">
+      <div className="max-h-[460px] overflow-y-auto custom-scrollbar pr-1 space-y-2.5">
         {locationsList.map((loc, lIdx) => (
           <div
             key={lIdx}
@@ -83,7 +83,7 @@ export function LocationsTab({
                       updated[lIdx] = { ...loc, id: e.target.value };
                       setLocationsList(updated);
                     }}
-                    className="w-32 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                    className="w-32 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1.5 font-mono text-xs text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -97,7 +97,7 @@ export function LocationsTab({
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                    <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#77766D]">
                       <span>🏞️ Arsitektur Latar Wide Shot (English)</span>
                     </label>
                     <textarea
@@ -109,12 +109,12 @@ export function LocationsTab({
                         setLocationsList(updated);
                       }}
                       rows={2}
-                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#A9472C]">
+                    <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#A9472C]">
                       <Camera className="w-3 h-3" />
                       <span>Latar Close-Up / Bokeh di Belakang Tokoh</span>
                     </label>
@@ -127,14 +127,14 @@ export function LocationsTab({
                         setLocationsList(updated);
                       }}
                       rows={2}
-                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-semibold tracking-wider text-[#41627F] flex items-center gap-1">
+                    <label className="text-xs uppercase font-semibold tracking-wider text-[#41627F] flex items-center gap-1">
                       <Anchor className="w-3 h-3" />
                       <span>Objek Patokan Tetap / Anchor Props</span>
                     </label>
@@ -147,12 +147,12 @@ export function LocationsTab({
                         updated[lIdx] = { ...loc, focal_props: e.target.value };
                         setLocationsList(updated);
                       }}
-                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-semibold tracking-wider text-[#8A6A2F] flex items-center gap-1">
+                    <label className="text-xs uppercase font-semibold tracking-wider text-[#8A6A2F] flex items-center gap-1">
                       <Sun className="w-3 h-3" />
                       <span>Arah Cahaya & Suasana Tetap</span>
                     </label>
@@ -165,7 +165,7 @@ export function LocationsTab({
                         updated[lIdx] = { ...loc, lighting_direction: e.target.value };
                         setLocationsList(updated);
                       }}
-                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#8A6A2F] focus:border-[#C45B3A] focus:outline-none"
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#8A6A2F] focus:border-[#C45B3A] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -176,19 +176,19 @@ export function LocationsTab({
                   <span className="text-xs font-bold text-[#41627F] flex items-center gap-1">
                     🗺️ {loc.name}
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#EAF0F5] text-[#41627F] border border-[#CFDDE9]">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#EAF0F5] text-[#41627F] border border-[#CFDDE9]">
                     [loc:{loc.id || loc.name.toLowerCase().replace(/\s+/g, "")}]
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
-                    <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#41627F]">
+                  <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                    <span className="mb-0.5 block font-sans text-xs font-bold uppercase tracking-wider text-[#41627F]">
                       🏞️ Wide Shot (Micro-Set)
                     </span>
                     {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
                   </div>
-                  <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/60 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
-                    <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#A9472C]">
+                  <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/60 p-2 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                    <span className="mb-0.5 block font-sans text-xs font-bold uppercase tracking-wider text-[#A9472C]">
                       🎯 Close-Up Background / Bokeh
                     </span>
                     {loc.closeup_background_anchor ||
@@ -197,14 +197,14 @@ export function LocationsTab({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {loc.focal_props && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono bg-[#EAF0F5] text-[#41627F] px-2.5 py-1 rounded-lg border border-[#CFDDE9]">
+                    <div className="flex items-center gap-1.5 text-xs font-mono bg-[#EAF0F5] text-[#41627F] px-2.5 py-1 rounded-lg border border-[#CFDDE9]">
                       <Anchor className="w-3 h-3 text-[#41627F] shrink-0" />
                       <span className="uppercase font-bold shrink-0">Props:</span>
                       <span className="truncate max-w-[260px]">{loc.focal_props}</span>
                     </div>
                   )}
                   {loc.lighting_direction && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono bg-[#FBF6EA] text-[#8A6A2F] px-2.5 py-1 rounded-lg border border-[#E8D9B5]">
+                    <div className="flex items-center gap-1.5 text-xs font-mono bg-[#FBF6EA] text-[#8A6A2F] px-2.5 py-1 rounded-lg border border-[#E8D9B5]">
                       <Sun className="w-3 h-3 text-[#8A6A2F] shrink-0" />
                       <span className="uppercase font-bold shrink-0">Cahaya:</span>
                       <span className="truncate max-w-[260px]">{loc.lighting_direction}</span>

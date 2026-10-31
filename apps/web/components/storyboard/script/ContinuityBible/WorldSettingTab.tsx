@@ -15,10 +15,10 @@ export function WorldSettingTab({
   editingBible,
 }: WorldSettingTabProps) {
   return (
-    <div className="flex flex-col space-y-3 mt-3.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+    <div className="flex flex-col space-y-3 mt-3.5 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
       <div className="space-y-3 rounded-xl border border-[#E5E1D7] bg-[#F3F0E8] p-3.5">
         <div className="space-y-1">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
             Era & Masa Sejarah:
           </label>
           {editingBible ? (
@@ -37,7 +37,7 @@ export function WorldSettingTab({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
             Garis Waktu (Time Setting):
           </label>
           {editingBible ? (
@@ -58,7 +58,7 @@ export function WorldSettingTab({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#77766D]">
             Atmosfer Visual & Pencahayaan:
           </label>
           {editingBible ? (
@@ -70,14 +70,14 @@ export function WorldSettingTab({
               className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
             />
           ) : (
-            <p className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
+            <p className="rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] p-2 font-mono text-xs leading-relaxed text-[#4D4A42]">
               {worldSetting.atmosphere ||
                 "Pencahayaan dramatis dan atmosfer visual sesuai tone naskah."}
             </p>
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-2 text-[10px] text-[#77766D]">
+        <div className="flex items-center justify-between border-t border-[#E5E1D7] pt-2 text-xs text-[#77766D]">
           <span>Variabel Prompt:</span>
           <span className="font-mono px-2 py-0.5 rounded bg-[#F7EFE0] text-[#8A6A2F] border border-[#E8D9BC]">
             [era]

@@ -184,7 +184,7 @@ export function VideoDiscoveryDialog({
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               {/* Default Resolution Selector */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/60 text-xs">
-                <span className="text-muted-foreground text-[11px] font-medium">Resolusi:</span>
+                <span className="text-muted-foreground text-xs font-medium">Resolusi:</span>
                 <select
                   value={defaultResolution}
                   onChange={(e) => setDefaultResolution(e.target.value)}
@@ -276,7 +276,7 @@ export function VideoDiscoveryDialog({
           )}
 
           {/* Current Search Status Bar */}
-          <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="mt-2.5 flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <span>
                 Kata kunci:{" "}
@@ -371,20 +371,20 @@ export function VideoDiscoveryDialog({
                       )}
 
                       {/* Views Badge */}
-                      <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 text-[11px] font-medium text-white backdrop-blur-sm">
+                      <span className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 text-xs font-medium text-white backdrop-blur-sm">
                         <Eye className="h-3 w-3" />
                         {candidate.views_str}
                       </span>
 
                       {/* Duration Badge */}
-                      <span className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 text-[11px] font-medium text-white backdrop-blur-sm">
+                      <span className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 text-xs font-medium text-white backdrop-blur-sm">
                         <Clock3 className="h-3 w-3" />
                         {candidate.duration_str}
                       </span>
 
                       {/* Already Imported Overlay */}
                       {candidate.is_already_imported && (
-                        <div className="absolute inset-x-0 top-0 bg-amber-500/90 text-amber-950 font-semibold text-[10px] px-2 py-1 flex items-center justify-center gap-1 backdrop-blur-sm">
+                        <div className="absolute inset-x-0 top-0 bg-amber-500/90 text-amber-950 font-semibold text-xs px-2 py-1 flex items-center justify-center gap-1 backdrop-blur-sm">
                           <Check className="h-3 w-3" />
                           Sudah diimport di project: &quot;{candidate.existing_project_name || "Project"}&quot;
                         </div>
@@ -400,7 +400,7 @@ export function VideoDiscoveryDialog({
                         >
                           {candidate.title}
                         </h4>
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                           <span className="truncate max-w-[180px]">{candidate.channel}</span>
                           <a
                             href={candidate.url}
@@ -452,7 +452,7 @@ export function VideoDiscoveryDialog({
                                   [candidate.id]: e.target.value,
                                 }))
                               }
-                              className="h-8 px-2 text-[11px] font-semibold rounded-md border border-border/80 bg-background text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer shrink-0"
+                              className="h-8 px-2 text-xs font-semibold rounded-md border border-border/80 bg-background text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer shrink-0"
                               title="Pilih Resolusi Download (720p dianjurkan agar cepat)"
                             >
                               <option value="720p">720p (Cepat)</option>

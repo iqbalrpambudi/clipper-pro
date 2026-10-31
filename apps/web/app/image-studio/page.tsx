@@ -420,7 +420,7 @@ export default function ImageStudioPage() {
       <div className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-7 lg:px-10 lg:py-10">
         <header className="mb-8 flex flex-col justify-between gap-5 border-b border-[#DCD6C8] pb-6 md:flex-row md:items-end">
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A7768]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#8A7768]">
               Visual development · Preset workshop
             </p>
             <h1 className="font-serif text-4xl tracking-tight text-[#26251F] sm:text-5xl">
@@ -543,7 +543,7 @@ export default function ImageStudioPage() {
                     onClick={() => index <= currentStepIndex && setStep(option.id)}
                     disabled={index > currentStepIndex}
                     aria-current={isCurrent ? "step" : undefined}
-                    className={`border-b-2 px-2 pb-3 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] sm:text-sm ${
+                    className={`border-b-2 px-2 pb-3 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
                       isCurrent
                         ? "border-[#C45B3A] text-[#A9472C]"
                         : isComplete
@@ -551,7 +551,7 @@ export default function ImageStudioPage() {
                           : "border-[#E5E1D7] text-[#99958A]"
                     }`}
                   >
-                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full border border-current text-[10px]">
+                    <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full border border-current text-xs">
                       {isComplete ? <Check className="h-3 w-3" aria-hidden="true" /> : index + 1}
                     </span>
                     {option.label}
@@ -563,7 +563,7 @@ export default function ImageStudioPage() {
             {step === "design" && (
               <div className="space-y-5">
                 <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
                     Rancang preset
                   </p>
                   <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
@@ -692,7 +692,7 @@ export default function ImageStudioPage() {
                           ) : (
                             <Upload className="mb-3 h-6 w-6 text-[#A9472C]" aria-hidden="true" />
                           )}
-                          <span className="text-sm font-medium text-[#4B4941]">
+                          <span className="text-xs font-semibold text-[#4B4941]">
                             {uploadMutation.isPending
                               ? "Mengunggah gambar…"
                               : "Pilih gambar referensi"}
@@ -740,7 +740,7 @@ export default function ImageStudioPage() {
                 <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
                         Hasil rancangan · {typeLabel(presetType)}
                       </p>
                       <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
@@ -865,7 +865,7 @@ export default function ImageStudioPage() {
 
                 <section className="grid gap-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7 lg:grid-cols-[0.8fr_1.2fr]">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
                       Gambar utama preset · 16:9
                     </p>
                     <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
@@ -985,7 +985,7 @@ export default function ImageStudioPage() {
                 <section className="rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
                         Uji konsistensi · {presetName || typeLabel(presetType)}
                       </p>
                       <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
@@ -1114,7 +1114,7 @@ export default function ImageStudioPage() {
                               alt={`Uji ${index + 1}: ${image.prompt}`}
                               className="aspect-video w-full object-cover"
                             />
-                            <span className="block truncate px-2 py-1.5 text-[10px] text-[#5E5C54]">
+                            <span className="block truncate px-2 py-1.5 text-xs text-[#5E5C54]">
                               {image.prompt}
                             </span>
                           </button>

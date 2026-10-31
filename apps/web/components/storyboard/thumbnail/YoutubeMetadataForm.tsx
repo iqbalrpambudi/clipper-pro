@@ -50,14 +50,14 @@ export function YoutubeMetadataForm({
               Generate Metadata YouTube dengan AI
             </h4>
           </div>
-          <Badge variant="outline" className="border-[#E5E1D7] text-[10px] text-[#77766D]">
+          <Badge variant="outline" className="border-[#E5E1D7] text-xs text-[#77766D]">
             SEO & Algoritma YouTube
           </Badge>
         </div>
 
         <div className="space-y-2">
           <div>
-            <label className="mb-1 block text-[11px] font-semibold text-[#4D4A42]">
+            <label className="mb-1 block text-xs font-semibold text-[#4D4A42]">
               Fokus Sudut Pandang (Angle)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -71,7 +71,7 @@ export function YoutubeMetadataForm({
                   key={angle.id}
                   type="button"
                   onClick={() => setFocusAngle(angle.id)}
-                  className={`p-2 rounded-lg border text-left text-[11px] transition-all font-semibold ${
+                  className={`p-2 rounded-lg border text-left text-xs transition-all font-semibold ${
                     focusAngle === angle.id
                       ? "bg-[#F8EEEA] border-[#E9C9BD] text-[#A9472C]"
                       : "bg-[#F3F0E8] border-[#E5E1D7] text-[#4D4A42] hover:bg-[#EAE6DD]"
@@ -84,7 +84,7 @@ export function YoutubeMetadataForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-semibold text-[#4D4A42]">
+            <label className="mb-1 block text-xs font-semibold text-[#4D4A42]">
               Instruksi Tambahan (Opsional)
             </label>
             <Input
@@ -126,7 +126,7 @@ export function YoutubeMetadataForm({
             size="sm"
             variant="ghost"
             onClick={() => onCopy(title, "title", "Judul")}
-            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
+            className="h-6 text-xs text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "title" ? (
               <Check className="w-3 h-3 text-[#A9472C] mr-1" />
@@ -146,7 +146,7 @@ export function YoutubeMetadataForm({
 
         {titleOptions.length > 0 && (
           <div className="space-y-1.5 pt-1">
-            <span className="text-[10px] text-muted-foreground block">
+            <span className="text-xs text-muted-foreground block">
               Variasi Alternatif (Klik untuk memakai):
             </span>
             <div className="space-y-1">
@@ -172,7 +172,7 @@ export function YoutubeMetadataForm({
             size="sm"
             variant="ghost"
             onClick={() => onCopy(description, "desc", "Deskripsi")}
-            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
+            className="h-6 text-xs text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "desc" ? (
               <Check className="w-3 h-3 text-[#A9472C] mr-1" />
@@ -202,7 +202,7 @@ export function YoutubeMetadataForm({
             size="sm"
             variant="ghost"
             onClick={() => onCopy(tagsInput, "tags", "Tags")}
-            className="h-6 text-[10px] text-[#858176] hover:text-[#26251F]"
+            className="h-6 text-xs text-[#858176] hover:text-[#26251F]"
           >
             {copiedKey === "tags" ? (
               <Check className="w-3 h-3 text-[#A9472C] mr-1" />

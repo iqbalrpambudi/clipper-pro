@@ -152,7 +152,7 @@ export function TimelineStudioPresetControls({
           </SelectTrigger>
           <SelectContent className="max-h-[320px] bg-card border-border">
             <SelectGroup>
-              <SelectLabel className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground px-2 py-1">
+              <SelectLabel className="text-xs font-mono uppercase tracking-wider text-muted-foreground px-2 py-1">
                 Preset Bawaan
               </SelectLabel>
               {builtinPresets.map((p) => (
@@ -161,7 +161,7 @@ export function TimelineStudioPresetControls({
                     <span className="truncate">{p.name}</span>
                     <Badge
                       variant="outline"
-                      className="text-[9px] font-mono px-1 py-0 h-4 border-border text-muted-foreground shrink-0"
+                      className="text-xs font-mono px-1 py-0 h-4 border-border text-muted-foreground shrink-0"
                     >
                       {p.aspectRatio}
                     </Badge>
@@ -172,7 +172,7 @@ export function TimelineStudioPresetControls({
 
             {customPresets.length > 0 && (
               <SelectGroup>
-                <SelectLabel className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground px-2 py-1 mt-1 border-t border-border/40 pt-1.5">
+                <SelectLabel className="text-xs font-mono uppercase tracking-wider text-muted-foreground px-2 py-1 mt-1 border-t border-border/40 pt-1.5">
                   Preset Kustom Anda
                 </SelectLabel>
                 {customPresets.map((p) => (
@@ -181,7 +181,7 @@ export function TimelineStudioPresetControls({
                       <span className="truncate">{p.name}</span>
                       <Badge
                         variant="outline"
-                        className="text-[9px] font-mono px-1 py-0 h-4 border-primary/30 text-primary shrink-0"
+                        className="text-xs font-mono px-1 py-0 h-4 border-primary/30 text-primary shrink-0"
                       >
                         {p.aspectRatio}
                       </Badge>
@@ -259,7 +259,7 @@ export function TimelineStudioPresetControls({
 
             {/* Ringkasan Konfigurasi yang Disimpan */}
             <div className="rounded-xl border border-border bg-surface p-3 space-y-2.5 text-xs">
-              <span className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground block font-mono">
+              <span className="font-semibold text-xs uppercase tracking-wider text-muted-foreground block font-mono">
                 Ringkasan Konfigurasi yang Disimpan:
               </span>
 
@@ -268,7 +268,7 @@ export function TimelineStudioPresetControls({
                 <span className="flex items-center gap-1.5 text-foreground font-medium shrink-0">
                   <Subtitles className="w-3.5 h-3.5 text-primary" /> Subtitle
                 </span>
-                <span className="font-mono text-[11px] truncate text-right">
+                <span className="font-mono text-xs truncate text-right">
                   {currentSubtitleStyle?.enabled !== false ? (
                     <>
                       {currentSubtitleStyle?.font_family || "Poppins"} • {currentSubtitleStyle?.font_size || 56}px •{" "}
@@ -285,7 +285,7 @@ export function TimelineStudioPresetControls({
                 <span className="flex items-center gap-1.5 text-foreground font-medium shrink-0">
                   <Stamp className="w-3.5 h-3.5 text-primary" /> Watermark
                 </span>
-                <span className="font-mono text-[11px] truncate text-right">
+                <span className="font-mono text-xs truncate text-right">
                   {currentWatermark?.enabled ? (
                     <>
                       &quot;{currentWatermark.text || "Watermark"}&quot; •{" "}
@@ -302,7 +302,7 @@ export function TimelineStudioPresetControls({
                 <span className="flex items-center gap-1.5 text-foreground font-medium shrink-0">
                   <Maximize2 className="w-3.5 h-3.5 text-primary" /> Rasio & Mode
                 </span>
-                <span className="font-mono text-[11px] truncate text-right">
+                <span className="font-mono text-xs truncate text-right">
                   Rasio <strong className="text-primary">{currentAspectRatio || "9:16"}</strong> • Mode{" "}
                   <span className="capitalize">{currentBackgroundFill?.mode || "blur"}</span>
                 </span>

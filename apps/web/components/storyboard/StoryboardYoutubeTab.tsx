@@ -582,7 +582,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     <h3 className="text-xs font-semibold text-[#26251F]">
                       Interactive Thumbnail Canvas
                     </h3>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Drag teks langsung di gambar • Putar & ubah ukuran via handle seleksi
                     </p>
                   </div>
@@ -593,7 +593,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                     type="button"
                     size="sm"
                     onClick={handleDownloadHd}
-                    className="flex h-8 items-center gap-1 rounded-lg bg-[#C45B3A] px-2.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#A9472C]"
+                    className="flex h-8 items-center gap-1 rounded-lg bg-[#C45B3A] px-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#A9472C]"
                     title="Unduh Full HD 1920x1080 langsung dari canvas"
                   >
                     <Download className="w-3 h-3" />
@@ -620,22 +620,22 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   />
 
                   {/* Duration Badge */}
-                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-white font-mono text-[10px] font-bold tracking-wider backdrop-blur-sm shadow-md z-10 pointer-events-none">
+                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-white font-mono text-xs font-bold tracking-wider backdrop-blur-sm shadow-md z-10 pointer-events-none">
                     {formatBadgeDuration(durationSec)}
                   </div>
                 </div>
 
                 {/* YouTube Video Info Block Simulation */}
                 <div className="flex items-start gap-2.5 border-t border-[#E5E1D7] bg-[#FBFAF7] p-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#F8EEEA] to-[#F7EFE0] flex items-center justify-center font-bold text-[#A9472C] text-[11px] shrink-0 shadow-md">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#F8EEEA] to-[#F7EFE0] flex items-center justify-center font-bold text-[#A9472C] text-xs shrink-0 shadow-md">
                     C
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="line-clamp-2 text-xs font-semibold leading-snug text-[#26251F]">
                       {title || project.name || "Judul Video YouTube Belum Dibuat"}
                     </h4>
-                    <p className="mt-0.5 text-[11px] text-[#77766D]">Cliper Pro Studio</p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-[#77766D]">Cliper Pro Studio</p>
+                    <p className="text-xs text-muted-foreground">
                       148K x ditonton • 2 jam yang lalu
                     </p>
                   </div>
@@ -643,7 +643,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
               </div>
 
               {/* Canvas Quick Action Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E1D7] pt-1 text-[11px]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E1D7] pt-1 text-xs">
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
@@ -656,7 +656,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       setActiveSettingsTab("layers");
                     }}
                     variant="workspace-secondary"
-                    className="h-8 text-[11px] font-semibold"
+                    className="h-8 text-xs font-semibold"
                   >
                     <Plus className="w-3 h-3 mr-1 text-[#8A6A2F]" />
                     <span>Tambah Teks</span>
@@ -667,7 +667,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDeleteLayer(selectedLayerId)}
-                      className="h-7 text-[11px] text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9]"
+                      className="h-7 text-xs text-[#A9472C] hover:text-[#A9472C] hover:bg-[#F3E1D9]"
                     >
                       <Trash2 className="w-3 h-3 mr-1" />
                       <span>Hapus Layer</span>
@@ -675,7 +675,7 @@ export function StoryboardYoutubeTab({ project }: StoryboardYoutubeTabProps) {
                   )}
                 </div>
 
-                <div className="text-[10px] text-muted-foreground font-mono">
+                <div className="text-xs text-muted-foreground font-mono">
                   {selectedLayerId
                     ? "🎯 Layer Terpilih Aktif"
                     : "💡 Klik teks di kanvas untuk mengedit"}

@@ -82,11 +82,11 @@ export function BgmCustomizePanel({
             <Music2 className="w-3.5 h-3.5" />
           </div>
           <h4 className="text-xs font-semibold text-[#26251F]">Musik Latar (BGM) & Mixer</h4>
-          <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-[9px] px-1.5 py-0">
+          <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-xs px-1.5 py-0">
             Auto-Duck
           </Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Pilih musik latar bebas royalti untuk memperkuat suasana alur cerita narasi AI Anda.
         </p>
       </div>
@@ -98,7 +98,7 @@ export function BgmCustomizePanel({
             <Sparkles className="w-3.5 h-3.5 text-[#C45B3A]" />
             Pustaka Mood Sinematik
           </span>
-          <span className="text-[10px] text-muted-foreground">{BGM_MOODS.length} Mood</span>
+          <span className="text-xs text-muted-foreground">{BGM_MOODS.length} Mood</span>
         </div>
 
         <div className="space-y-2">
@@ -147,13 +147,13 @@ export function BgmCustomizePanel({
                           <CheckCircle2 className="w-3 h-3 text-[#C45B3A] shrink-0" />
                         )}
                       </div>
-                      <span className="text-[9.5px] text-muted-foreground font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {bgm.genre} • {bgm.duration}
                       </span>
                     </div>
                   </div>
                 </div>
-                <p className="text-[10.5px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
                   {bgm.desc}
                 </p>
               </div>
@@ -171,8 +171,8 @@ export function BgmCustomizePanel({
 
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground text-[11px]">Volume Musik Latar</span>
-            <span className="font-mono text-[11px] font-semibold text-[#26251F]">{bgmVolume}%</span>
+            <span className="text-muted-foreground text-xs">Volume Musik Latar</span>
+            <span className="font-mono text-xs font-semibold text-[#26251F]">{bgmVolume}%</span>
           </div>
           <input
             type="range"
@@ -183,7 +183,7 @@ export function BgmCustomizePanel({
             onChange={(e) => setBgmVolume(Number(e.target.value))}
             className="block h-1.5 w-full cursor-pointer rounded-lg bg-[#E5E1D7] accent-[#C45B3A]"
           />
-          <span className="text-[10px] text-muted-foreground mt-1 block">
+          <span className="text-xs text-muted-foreground mt-1 block">
             Disarankan 12% - 18% agar suara narasi utama tetap dominan.
           </span>
         </div>
@@ -191,7 +191,7 @@ export function BgmCustomizePanel({
         <label className="flex cursor-pointer items-center justify-between rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2.5">
           <div>
             <div className="font-semibold text-xs text-foreground">Smart Auto-Ducking</div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Otomatis turunkan volume BGM saat narasi AI berbicara
             </div>
           </div>
@@ -210,7 +210,7 @@ export function BgmCustomizePanel({
           <UploadCloud className="w-4 h-4 text-[#C45B3A]" />
           <span className="text-xs font-semibold text-[#4D4A42]">Unggah Audio BGM Sendiri</span>
         </div>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Format didukung: MP3, WAV, AAC (Maks. 25MB)
         </p>
         <Button
@@ -228,7 +228,7 @@ export function BgmCustomizePanel({
       {/* Info Tip */}
       <div className="p-3 rounded-xl bg-[#F8EEEA] border border-[#E9C9BD] text-xs text-muted-foreground flex items-start gap-2">
         <Info className="w-3.5 h-3.5 text-[#C45B3A] shrink-0 mt-0.5" />
-        <span className="text-[11px] leading-relaxed">
+        <span className="text-xs leading-relaxed">
           Musik latar akan digabungkan secara otomatis pada tahap Render 16:9 sesuai volume mixer di
           atas.
         </span>

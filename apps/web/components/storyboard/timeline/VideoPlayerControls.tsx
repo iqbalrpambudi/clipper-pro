@@ -80,7 +80,7 @@ export function VideoPlayerControls({
             aria-label={subtitleEnabled ? "Matikan Subtitle Video" : "Aktifkan Subtitle Video"}
           >
             <Type className="w-3 h-3" aria-hidden="true" />
-            <span className="text-[10px] font-bold hidden sm:inline">
+            <span className="text-xs font-bold hidden sm:inline">
               {subtitleEnabled ? "SUBTITLE ON" : "SUBTITLE OFF"}
             </span>
           </button>

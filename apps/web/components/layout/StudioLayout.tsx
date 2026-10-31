@@ -159,7 +159,7 @@ export function StudioLayout({
 
                 <Badge
                   variant="workspace"
-                  className="hidden shrink-0 font-mono text-[10px] sm:inline-flex"
+                  className="hidden shrink-0 font-mono text-xs sm:inline-flex"
                 >
                   {aspectRatio} · {resolution}
                 </Badge>
@@ -168,7 +168,7 @@ export function StudioLayout({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <Badge variant="workspace" className="font-mono text-[10px] sm:hidden">
+            <Badge variant="workspace" className="font-mono text-xs sm:hidden">
               {aspectRatio}
             </Badge>
             <ThemeToggle align="end" />
@@ -228,11 +228,11 @@ export function StudioLayout({
                       aria-hidden="true"
                     />
                     <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden text-[10px]">{tab.label.replace(/^\d+\.\s*/, "").split(" ")[0]}</span>
+                    <span className="sm:hidden text-xs">{tab.label.replace(/^\d+\.\s*/, "").split(" ")[0]}</span>
                     {tab.badge && (
                       <Badge
                         variant={isActive ? "workspace-accent" : "workspace"}
-                        className="px-2 py-0 text-[10px]"
+                        className="px-2 py-0 text-xs"
                       >
                         {tab.badge}
                       </Badge>

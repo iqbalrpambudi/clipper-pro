@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Cpu,
@@ -12,18 +11,28 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  RotateCcw,
   Check,
-  ChevronDown,
-  Search,
-  X,
   Plus,
   Minus,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { DEFAULT_IMAGE_STYLE_PROMPT } from "@/lib/constants";
 import { useStudioStore } from "@/lib/store";
-import { Badge, Button, Input, NativeSelect, Textarea } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Autocomplete,
+  AutocompleteInput,
+  AutocompleteContent,
+  AutocompleteList,
+  AutocompleteItem,
+  AutocompleteEmpty,
+} from "@/components/ui";
 
 const DEFAULT_CHAT_MODELS = [
   "gemini-2.5-flash",
@@ -150,15 +159,9 @@ export function ModelsConfigTab() {
   const [visionModel, setVisionModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
 
-  // LLM Chat Model Dropdown State
+  // LLM Chat & Vision Model Dropdown State
   const [isChatDropdownOpen, setIsChatDropdownOpen] = useState(false);
-  const [chatModelSearch, setChatModelSearch] = useState("");
-  const chatDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Vision Model Dropdown State
   const [isVisionDropdownOpen, setIsVisionDropdownOpen] = useState(false);
-  const [visionModelSearch, setVisionModelSearch] = useState("");
-  const visionDropdownRef = useRef<HTMLDivElement>(null);
 
   const [ttsProvider, setTtsProvider] = useState("gemini");
   const [ttsModel, setTtsModel] = useState("gemini-2.5-flash-preview-tts");
@@ -176,8 +179,6 @@ export function ModelsConfigTab() {
   // Runware Image Config
   const [runwareImageModel, setRunwareImageModel] = useState("runware:400@2");
   const [isRunwareDropdownOpen, setIsRunwareDropdownOpen] = useState(false);
-  const [runwareModelSearch, setRunwareModelSearch] = useState("");
-  const runwareDropdownRef = useRef<HTMLDivElement>(null);
 
   // Custom Endpoint Image Config
   const [customImageBaseUrl, setCustomImageBaseUrl] = useState("");
@@ -187,15 +188,12 @@ export function ModelsConfigTab() {
   const [featuredImageModels, setFeaturedImageModels] = useState<string[]>([]);
   const [isFetchingImageModels, setIsFetchingImageModels] = useState(false);
   const [isImageDropdownOpen, setIsImageDropdownOpen] = useState(false);
-  const [imageModelSearch, setImageModelSearch] = useState("");
   const [imageTabFilter, setImageTabFilter] = useState<"image_only" | "all">("image_only");
-  const imageDropdownRef = useRef<HTMLDivElement>(null);
 
   // Shared Image Generator Config
   const [imageConcurrency, setImageConcurrency] = useState<number>(2);
   const [imageSteps, setImageSteps] = useState<number>(5);
   const [imageCfgScale, setImageCfgScale] = useState<number>(3.5);
-  const [imageSystemPrompt, setImageSystemPrompt] = useState(DEFAULT_IMAGE_STYLE_PROMPT);
   const [testImageResult, setTestImageResult] = useState<TestImageResult | null>(null);
   const [isTestingImage, setIsTestingImage] = useState(false);
 
@@ -203,28 +201,6 @@ export function ModelsConfigTab() {
   const [isTesting, setIsTesting] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      if (runwareDropdownRef.current && !runwareDropdownRef.current.contains(target)) {
-        setIsRunwareDropdownOpen(false);
-      }
-      if (imageDropdownRef.current && !imageDropdownRef.current.contains(target)) {
-        setIsImageDropdownOpen(false);
-      }
-      if (chatDropdownRef.current && !chatDropdownRef.current.contains(target)) {
-        setIsChatDropdownOpen(false);
-      }
-      if (visionDropdownRef.current && !visionDropdownRef.current.contains(target)) {
-        setIsVisionDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   const { data: config } = useQuery({
     queryKey: ["model-config"],
@@ -282,9 +258,6 @@ export function ModelsConfigTab() {
       setImageConcurrency(config.image_concurrency || 2);
       setImageSteps(config.image_steps ?? 5);
       setImageCfgScale(config.image_cfg_scale ?? 3.5);
-      if (config.image_system_prompt) {
-        setImageSystemPrompt(config.image_system_prompt);
-      }
     }
   }, [config]);
 
@@ -501,7 +474,6 @@ export function ModelsConfigTab() {
       image_steps: imageSteps,
       image_cfg_scale: imageCfgScale,
       image_api_key: customImageApiKey.trim() || undefined,
-      image_system_prompt: imageSystemPrompt.trim() || undefined,
     });
   };
 
@@ -514,7 +486,7 @@ export function ModelsConfigTab() {
             <Cpu className="w-4 h-4 text-brand-400" />
             <h3 className="text-sm font-bold text-foreground">1. Konfigurasi LLM & Vision Model</h3>
           </div>
-          <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-[10px]">
+          <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-xs">
             OpenAI & Gemini Compatible
           </Badge>
         </div>
@@ -528,13 +500,13 @@ export function ModelsConfigTab() {
               placeholder="http://localhost:20128/v1 atau https://api.openai.com/v1"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              className="text-xs font-mono"
+              className="font-mono"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Chat Model (LLM) */}
-            <div className="relative" ref={chatDropdownRef}>
+            <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-muted-foreground">
                   Chat Model (Naskah Narasi)
@@ -545,7 +517,7 @@ export function ModelsConfigTab() {
                   disabled={isFetchingModels}
                   variant="workspace-quiet"
                   size="workspace-sm"
-                  className="h-7 px-2 gap-1 font-mono text-[10px]"
+                  className="h-7 px-2 gap-1 font-mono text-xs"
                   title="Ambil model dari endpoint Base URL"
                 >
                   {isFetchingModels ? (
@@ -558,114 +530,48 @@ export function ModelsConfigTab() {
                   </span>
                 </Button>
               </div>
-              <div className="relative">
-                <Input
-                  type="text"
+
+              <Autocomplete
+                value={chatModel}
+                onValueChange={setChatModel}
+                open={isChatDropdownOpen}
+                onOpenChange={setIsChatDropdownOpen}
+                items={availableModels.length > 0 ? availableModels : DEFAULT_CHAT_MODELS}
+              >
+                <AutocompleteInput
                   required
-                  autoComplete="off"
                   placeholder="Ketik atau cari model, misal: gemini-2.5-flash"
-                  value={chatModel}
-                  onChange={(e) => {
-                    setChatModel(e.target.value);
-                    setChatModelSearch(e.target.value);
-                    setIsChatDropdownOpen(true);
-                  }}
-                  onFocus={() => {
-                    setIsChatDropdownOpen(true);
-                  }}
-                  className="pr-9 text-xs font-mono"
+                  className="font-mono"
+                  isLoading={isFetchingModels}
                 />
-                <button
-                  type="button"
-                  onClick={() => setIsChatDropdownOpen((prev) => !prev)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
-                  title="Tampilkan daftar model"
-                >
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isChatDropdownOpen ? "rotate-180 text-primary" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Chat Model Popup */}
-              {isChatDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-border bg-card p-2.5 shadow-xl animate-scale-pop">
-                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted/60 px-2.5 py-1.5">
-                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <Input
-                      type="text"
-                      autoComplete="off"
-                      placeholder="Cari model LLM..."
-                      value={chatModelSearch}
-                      onChange={(e) => setChatModelSearch(e.target.value)}
-                      className="h-8 border-0 bg-transparent text-xs font-mono shadow-none focus-visible:ring-0"
-                    />
-                    {chatModelSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setChatModelSearch("")}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                    {isFetchingModels ? (
-                      <div className="py-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        <span className="text-[11px] font-mono">Mengambil model dari endpoint...</span>
-                      </div>
-                    ) : (
-                      (() => {
-                        const pool = availableModels.length > 0 ? availableModels : DEFAULT_CHAT_MODELS;
-                        const filtered = pool.filter((m) =>
-                          chatModelSearch.trim() === ""
-                            ? true
-                            : m.toLowerCase().includes(chatModelSearch.toLowerCase())
-                        );
-
-                        if (filtered.length === 0) {
-                          return (
-                            <div className="py-5 text-center text-muted-foreground text-xs px-2">
-                              Tidak ada model yang cocok. Anda tetap dapat mengetik nama model sendiri.
-                            </div>
-                          );
-                        }
-
-                        return filtered.map((m) => {
-                          const isSelected = chatModel === m;
-                          return (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => {
-                                setChatModel(m);
-                                setIsChatDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
-                                isSelected
-                                  ? "bg-accent border-primary text-accent-foreground font-semibold"
-                                  : "border-transparent text-secondary-foreground hover:bg-muted hover:text-foreground"
-                              }`}
+                <AutocompleteContent>
+                  <AutocompleteEmpty>
+                    Tidak ada model yang cocok. Anda tetap dapat mengetik nama model sendiri.
+                  </AutocompleteEmpty>
+                  <AutocompleteList>
+                    {(m: string) => {
+                      const isFromEndpoint = availableModels.includes(m);
+                      return (
+                        <AutocompleteItem key={m} value={m}>
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="truncate">{m}</span>
+                            <Badge
+                              variant="workspace"
+                              className="px-1.5 py-0.5 font-sans text-xs shrink-0"
                             >
-                              <span className="truncate">{m}</span>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                            </button>
-                          );
-                        });
-                      })()
-                    )}
-                  </div>
-                </div>
-              )}
+                              {isFromEndpoint ? "Endpoint" : "Default"}
+                            </Badge>
+                          </div>
+                        </AutocompleteItem>
+                      );
+                    }}
+                  </AutocompleteList>
+                </AutocompleteContent>
+              </Autocomplete>
             </div>
 
             {/* Vision Model */}
-            <div className="relative" ref={visionDropdownRef}>
+            <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-muted-foreground">
                   Vision Model (Tagging Scene Video)
@@ -676,7 +582,7 @@ export function ModelsConfigTab() {
                   disabled={isFetchingModels}
                   variant="workspace-quiet"
                   size="workspace-sm"
-                  className="h-7 px-2 gap-1 font-mono text-[10px]"
+                  className="h-7 px-2 gap-1 font-mono text-xs"
                   title="Ambil model dari endpoint Base URL"
                 >
                   {isFetchingModels ? (
@@ -689,121 +595,55 @@ export function ModelsConfigTab() {
                   </span>
                 </Button>
               </div>
-              <div className="relative">
-                <Input
-                  type="text"
+
+              <Autocomplete
+                value={visionModel}
+                onValueChange={setVisionModel}
+                open={isVisionDropdownOpen}
+                onOpenChange={setIsVisionDropdownOpen}
+                items={availableModels.length > 0 ? availableModels : DEFAULT_VISION_MODELS}
+              >
+                <AutocompleteInput
                   required
-                  autoComplete="off"
                   placeholder="Ketik atau cari model, misal: gemini-2.5-flash"
-                  value={visionModel}
-                  onChange={(e) => {
-                    setVisionModel(e.target.value);
-                    setVisionModelSearch(e.target.value);
-                    setIsVisionDropdownOpen(true);
-                  }}
-                  onFocus={() => {
-                    setIsVisionDropdownOpen(true);
-                  }}
-                  className="pr-9 text-xs font-mono"
+                  className="font-mono"
+                  isLoading={isFetchingModels}
                 />
-                <button
-                  type="button"
-                  onClick={() => setIsVisionDropdownOpen((prev) => !prev)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
-                  title="Tampilkan daftar model"
-                >
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isVisionDropdownOpen ? "rotate-180 text-primary" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Vision Model Popup */}
-              {isVisionDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-border bg-card p-2.5 shadow-xl animate-scale-pop">
-                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted/60 px-2.5 py-1.5">
-                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <Input
-                      type="text"
-                      autoComplete="off"
-                      placeholder="Cari model vision..."
-                      value={visionModelSearch}
-                      onChange={(e) => setVisionModelSearch(e.target.value)}
-                      className="h-8 border-0 bg-transparent text-xs font-mono shadow-none focus-visible:ring-0"
-                    />
-                    {visionModelSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setVisionModelSearch("")}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                    {isFetchingModels ? (
-                      <div className="py-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        <span className="text-[11px] font-mono">Mengambil model dari endpoint...</span>
-                      </div>
-                    ) : (
-                      (() => {
-                        const pool = availableModels.length > 0 ? availableModels : DEFAULT_VISION_MODELS;
-                        const filtered = pool.filter((m) =>
-                          visionModelSearch.trim() === ""
-                            ? true
-                            : m.toLowerCase().includes(visionModelSearch.toLowerCase())
-                        );
-
-                        if (filtered.length === 0) {
-                          return (
-                            <div className="py-5 text-center text-muted-foreground text-xs px-2">
-                              Tidak ada model yang cocok. Anda tetap dapat mengetik nama model sendiri.
+                <AutocompleteContent>
+                  <AutocompleteEmpty>
+                    Tidak ada model yang cocok. Anda tetap dapat mengetik nama model sendiri.
+                  </AutocompleteEmpty>
+                  <AutocompleteList>
+                    {(m: string) => {
+                      const isFromEndpoint = availableModels.includes(m);
+                      const isVision = isVisionModelName(m);
+                      return (
+                        <AutocompleteItem key={m} value={m}>
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="truncate">{m}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isVision && (
+                                <Badge
+                                  variant="workspace"
+                                  className="px-1.5 py-0.5 font-sans text-xs"
+                                >
+                                  Vision
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="workspace"
+                                className="px-1.5 py-0.5 font-sans text-xs"
+                              >
+                                {isFromEndpoint ? "Endpoint" : "Default"}
+                              </Badge>
                             </div>
-                          );
-                        }
-
-                        return filtered.map((m) => {
-                          const isSelected = visionModel === m;
-                          const isVision = isVisionModelName(m);
-                          return (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => {
-                                setVisionModel(m);
-                                setIsVisionDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
-                                isSelected
-                                  ? "bg-accent border-primary text-accent-foreground font-semibold"
-                                  : "border-transparent text-secondary-foreground hover:bg-muted hover:text-foreground"
-                              }`}
-                            >
-                              <span className="truncate">{m}</span>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {isVision && (
-                                  <Badge
-                                    variant="workspace"
-                                    className="px-1.5 py-0.5 font-sans text-[9px]"
-                                  >
-                                    Vision
-                                  </Badge>
-                                )}
-                                {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-                              </div>
-                            </button>
-                          );
-                        });
-                      })()
-                    )}
-                  </div>
-                </div>
-              )}
+                          </div>
+                        </AutocompleteItem>
+                      );
+                    }}
+                  </AutocompleteList>
+                </AutocompleteContent>
+              </Autocomplete>
             </div>
           </div>
 
@@ -811,7 +651,7 @@ export function ModelsConfigTab() {
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-muted-foreground">API Key</label>
               {config?.has_api_key && (
-                <span className="text-[10px] text-emerald-600 font-mono">
+                <span className="text-xs text-emerald-600 font-mono">
                   Tersimpan: {config.api_key_masked}
                 </span>
               )}
@@ -825,7 +665,7 @@ export function ModelsConfigTab() {
               }
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="text-xs font-mono"
+              className="font-mono"
             />
           </div>
         </div>
@@ -872,7 +712,7 @@ export function ModelsConfigTab() {
             <h3 className="text-sm font-bold text-foreground">2. Konfigurasi Text-to-Speech (TTS)</h3>
           </div>
           <div className="flex items-center gap-1.5">
-            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-[10px]">
+            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-xs">
               Gemini / ElevenLabs / Runware
             </Badge>
           </div>
@@ -883,16 +723,21 @@ export function ModelsConfigTab() {
             <label className="block text-xs font-semibold text-muted-foreground mb-1">
               Default TTS Provider
             </label>
-            <NativeSelect value={ttsProvider} onChange={(e) => setTtsProvider(e.target.value)}>
-              <option value="gemini">Gemini TTS (Google AI High-Fidelity)</option>
-              <option value="elevenlabs">
-                ElevenLabs TTS (Gold Standard — Zero Intonation Drift)
-              </option>
-              <option value="runware">
-                Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)
-              </option>
-              <option value="edge">Edge-TTS (Natural Indonesian Neural, Gratis)</option>
-            </NativeSelect>
+            <Select value={ttsProvider} onValueChange={setTtsProvider}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih TTS Provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini">Gemini TTS (Google AI High-Fidelity)</SelectItem>
+                <SelectItem value="elevenlabs">
+                  ElevenLabs TTS (Gold Standard — Zero Intonation Drift)
+                </SelectItem>
+                <SelectItem value="runware">
+                  Runware TTS (Fish Audio / Qwen3 / Inworld — Hemat & Cepat)
+                </SelectItem>
+                <SelectItem value="edge">Edge-TTS (Natural Indonesian Neural, Gratis)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Gemini Model & Key */}
@@ -902,25 +747,32 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Gemini TTS Model
                 </label>
-                <NativeSelect value={ttsModel} onChange={(e) => setTtsModel(e.target.value)}>
-                  <option value="gemini-2.5-flash-preview-tts">
-                    Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)
-                  </option>
-                  <option value="gemini-3.8-flash-lite-tts">
-                    Gemini 3.8 Flash-Lite TTS (cepat & hemat)
-                  </option>
-                  <option value="gemini-3.8-flash-tts">
-                    Gemini 3.8 Flash TTS (kualitas studio)
-                  </option>
-                  <option value="gemini-3.1-flash-tts-preview">Gemini 3.1 Flash TTS Preview</option>
-                  <option value="gemini-flash-latest">
-                    Gemini Flash Latest (auto versi terbaru)
-                  </option>
-                  <option value="gemini-2.5-pro-preview-tts">
-                    Gemini 2.5 Pro TTS Preview (high-res)
-                  </option>
-                </NativeSelect>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <Select value={ttsModel} onValueChange={setTtsModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Gemini TTS Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-2.5-flash-preview-tts">
+                      Gemini 2.5 Flash TTS (direkomendasikan, paling stabil & konsisten)
+                    </SelectItem>
+                    <SelectItem value="gemini-3.8-flash-lite-tts">
+                      Gemini 3.8 Flash-Lite TTS (cepat & hemat)
+                    </SelectItem>
+                    <SelectItem value="gemini-3.8-flash-tts">
+                      Gemini 3.8 Flash TTS (kualitas studio)
+                    </SelectItem>
+                    <SelectItem value="gemini-3.1-flash-tts-preview">
+                      Gemini 3.1 Flash TTS Preview
+                    </SelectItem>
+                    <SelectItem value="gemini-flash-latest">
+                      Gemini Flash Latest (auto versi terbaru)
+                    </SelectItem>
+                    <SelectItem value="gemini-2.5-pro-preview-tts">
+                      Gemini 2.5 Pro TTS Preview (high-res)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
                   Gemini 2.5 Flash TTS kini mendukung single-pass hingga 2.200 karakter (~2.5 menit)
                   untuk intonasi vokal seragam.
                 </p>
@@ -932,7 +784,7 @@ export function ModelsConfigTab() {
                     Gemini TTS API Key (Tersimpan Terenkripsi)
                   </label>
                   {config?.has_tts_api_key && (
-                    <span className="text-[10px] text-emerald-600 font-mono">
+                    <span className="text-xs text-emerald-600 font-mono">
                       Tersimpan: {config.tts_api_key_masked}
                     </span>
                   )}
@@ -946,7 +798,7 @@ export function ModelsConfigTab() {
                   }
                   value={ttsApiKey}
                   onChange={(e) => setTtsApiKey(e.target.value)}
-                  className="text-xs font-mono"
+                  className="font-mono"
                 />
               </div>
             </>
@@ -959,25 +811,29 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   ElevenLabs Model
                 </label>
-                <NativeSelect
-                  value={elevenlabsModel}
-                  onChange={(e) => setElevenlabsModel(e.target.value)}
-                >
-                  <option value="eleven_v4_turbo">
-                    Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)
-                  </option>
-                  <option value="eleven_v4">
-                    Eleven v4 (Flagship — Kualitas Sinematik Tertinggi)
-                  </option>
-                  <option value="eleven_multilingual_v2">
-                    Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)
-                  </option>
-                  <option value="eleven_flash_v2_5">
-                    Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)
-                  </option>
-                  <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Generasi Sebelumnya)</option>
-                </NativeSelect>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <Select value={elevenlabsModel} onValueChange={setElevenlabsModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih ElevenLabs Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="eleven_v4_turbo">
+                      Eleven v4 Turbo (Generasi Terbaru — Latensi Cepat & Emosional)
+                    </SelectItem>
+                    <SelectItem value="eleven_v4">
+                      Eleven v4 (Flagship — Kualitas Sinematik Tertinggi)
+                    </SelectItem>
+                    <SelectItem value="eleven_multilingual_v2">
+                      Eleven Multilingual v2 (Direkomendasikan — Kualitas vokal paling stabil)
+                    </SelectItem>
+                    <SelectItem value="eleven_flash_v2_5">
+                      Eleven Flash v2.5 (Hemat Kuota 50% & Super Cepat)
+                    </SelectItem>
+                    <SelectItem value="eleven_turbo_v2_5">
+                      Eleven Turbo v2.5 (Generasi Sebelumnya)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
                   Mendukung hingga 4.500 karakter per request tanpa pemisahan audio, intonasi vokal
                   100% konsisten dari awal hingga akhir.
                 </p>
@@ -989,7 +845,7 @@ export function ModelsConfigTab() {
                     ElevenLabs API Key (Tersimpan Terenkripsi)
                   </label>
                   {config?.has_elevenlabs_api_key && (
-                    <span className="text-[10px] text-emerald-600 font-mono">
+                    <span className="text-xs text-emerald-600 font-mono">
                       Tersimpan: {config.elevenlabs_api_key_masked}
                     </span>
                   )}
@@ -1003,7 +859,7 @@ export function ModelsConfigTab() {
                   }
                   value={elevenlabsApiKey}
                   onChange={(e) => setElevenlabsApiKey(e.target.value)}
-                  className="text-xs font-mono"
+                  className="font-mono"
                 />
               </div>
             </>
@@ -1016,25 +872,27 @@ export function ModelsConfigTab() {
                 <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Runware TTS Model
                 </label>
-                <NativeSelect
-                  value={runwareTtsModel}
-                  onChange={(e) => setRunwareTtsModel(e.target.value)}
-                >
-                  <option value="fishaudio:s2.1@pro">
-                    Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)
-                  </option>
-                  <option value="alibaba:qwen3-tts-1.7b-customvoice">
-                    Alibaba Qwen3-TTS 1.7B (Aksen Asia & Indonesia natural)
-                  </option>
-                  <option value="inworld:tts@2">
-                    Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)
-                  </option>
-                  <option value="xai:tts@0">xAI TTS Grok (Vokal ekspresif & speech tags)</option>
-                  <option value="minimax:speech@2.8">
-                    MiniMax Speech 2.8 (High-realism prosody & emosional)
-                  </option>
-                </NativeSelect>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <Select value={runwareTtsModel} onValueChange={setRunwareTtsModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Runware TTS Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fishaudio:s2.1@pro">
+                      Fish Audio S2.1 Pro (Ultra-natural TTS & intonasi stabil)
+                    </SelectItem>
+                    <SelectItem value="alibaba:qwen3-tts-1.7b-customvoice">
+                      Alibaba Qwen3-TTS 1.7B (Aksen Asia & Indonesia natural)
+                    </SelectItem>
+                    <SelectItem value="inworld:tts@2">
+                      Inworld Realtime TTS-2 (Vokal dinamis untuk storytelling)
+                    </SelectItem>
+                    <SelectItem value="xai:tts@0">xAI TTS Grok (Vokal ekspresif & speech tags)</SelectItem>
+                    <SelectItem value="minimax:speech@2.8">
+                      MiniMax Speech 2.8 (High-realism prosody & emosional)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
                   Model audioInference Runware.ai dengan biaya sangat hemat ($0.0005/detik) dan
                   latensi tinggi.
                 </p>
@@ -1046,7 +904,7 @@ export function ModelsConfigTab() {
                     Runware API Key (Tersimpan Terenkripsi)
                   </label>
                   {(config?.has_runware_api_key || config?.has_image_api_key) && (
-                    <span className="text-[10px] text-emerald-600 font-mono">
+                    <span className="text-xs text-emerald-600 font-mono">
                       Tersimpan: {config.runware_api_key_masked || config.image_api_key_masked}
                     </span>
                   )}
@@ -1060,9 +918,9 @@ export function ModelsConfigTab() {
                   }
                   value={runwareApiKey}
                   onChange={(e) => setRunwareApiKey(e.target.value)}
-                  className="text-xs font-mono"
+                  className="font-mono"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Otomatis menggunakan Image API Key jika Anda sudah mengonfigurasi Runware pada
                   Section 3 di bawah.
                 </p>
@@ -1116,10 +974,10 @@ export function ModelsConfigTab() {
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-[10px]">
+            <Badge variant="workspace-success" className="px-2 py-0.5 font-mono text-xs">
               Paralel {imageConcurrency}x Request
             </Badge>
-            <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-[10px]">
+            <Badge variant="workspace-accent" className="px-2 py-0.5 font-mono text-xs">
               {imageProvider === "runware" ? "Runware.ai" : "Custom Endpoint"}
             </Badge>
           </div>
@@ -1131,17 +989,22 @@ export function ModelsConfigTab() {
             <label className="block text-xs font-semibold text-muted-foreground mb-1">
               Pilih AI Image Provider
             </label>
-            <NativeSelect
+            <Select
               value={imageProvider}
-              onChange={(e) => setImageProvider(e.target.value as "runware" | "custom")}
+              onValueChange={(val) => setImageProvider(val as "runware" | "custom")}
             >
-              <option value="runware">
-                1. Runware (Cloud Fast & Cheap — FLUX.1 Schnell, FLUX.1 Dev, CivitAI)
-              </option>
-              <option value="custom">
-                2. Custom Endpoint (Base URL + API Key + List Model dari Endpoint)
-              </option>
-            </NativeSelect>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih AI Image Provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="runware">
+                  1. Runware (Cloud Fast & Cheap — FLUX.1 Schnell, FLUX.1 Dev, CivitAI)
+                </SelectItem>
+                <SelectItem value="custom">
+                  2. Custom Endpoint (Base URL + API Key + List Model dari Endpoint)
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Mode 1: Runware */}
@@ -1152,7 +1015,7 @@ export function ModelsConfigTab() {
                   <Sparkles className="w-3.5 h-3.5 text-violet-400" />
                   Konfigurasi Runware.ai (Native 16:9 Widescreen)
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
+                <span className="text-xs text-muted-foreground font-mono">
                   Biaya ~$0.001/gambar • Latensi 1-2 detik
                 </span>
               </div>
@@ -1165,7 +1028,7 @@ export function ModelsConfigTab() {
                       Runware API Key (Tersimpan Terenkripsi)
                     </label>
                     {config?.has_runware_api_key && (
-                      <span className="text-[10px] text-emerald-600 font-mono">
+                      <span className="text-xs text-emerald-600 font-mono">
                         Tersimpan: {config.runware_api_key_masked}
                       </span>
                     )}
@@ -1180,144 +1043,52 @@ export function ModelsConfigTab() {
                     }
                     value={runwareApiKey}
                     onChange={(e) => setRunwareApiKey(e.target.value)}
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
-                    <span>Tersimpan terpisah & tidak menimpa custom endpoint.</span>
-                    <a
-                      href="https://runware.ai"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Dapatkan API Key di Runware ↗
-                    </a>
-                  </div>
                 </div>
 
-                {/* Runware Model Selection with Searchable Popup */}
-                <div className="relative" ref={runwareDropdownRef}>
+                {/* Runware Model Selection with Autocomplete */}
+                <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-muted-foreground">
                       Model Image Runware
                     </label>
-                    <Button
-                      type="button"
-                      onClick={() => setIsRunwareDropdownOpen((prev) => !prev)}
-                      variant="workspace-quiet"
-                      size="workspace-sm"
-                      className="h-7 px-2 gap-1 font-mono text-[10px]"
-                      title="Pilih dari daftar model Runware"
-                    >
-                      <ChevronDown
-                        className={`w-3 h-3 transition-transform duration-200 ${
-                          isRunwareDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                      <span>{RUNWARE_IMAGE_MODELS.length} Model Pilihan</span>
-                    </Button>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {RUNWARE_IMAGE_MODELS.length} Model Pilihan
+                    </span>
                   </div>
 
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      autoComplete="off"
+                  <Autocomplete
+                    value={runwareImageModel}
+                    onValueChange={setRunwareImageModel}
+                    open={isRunwareDropdownOpen}
+                    onOpenChange={setIsRunwareDropdownOpen}
+                    items={RUNWARE_IMAGE_MODELS}
+                    getItemValue={(m) => m.id}
+                    getItemLabel={(m) => `${m.name} ${m.id}`}
+                  >
+                    <AutocompleteInput
                       placeholder="Pilih atau ketik model id, misal: runware:400@2"
-                      value={runwareImageModel}
-                      onChange={(e) => {
-                        setRunwareImageModel(e.target.value);
-                        setRunwareModelSearch(e.target.value);
-                        setIsRunwareDropdownOpen(true);
-                      }}
-                      onFocus={() => setIsRunwareDropdownOpen(true)}
-                      className="pr-9 text-xs font-mono"
+                      className="font-mono"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setIsRunwareDropdownOpen((prev) => !prev)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
-                      title="Tampilkan daftar model Runware"
-                    >
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isRunwareDropdownOpen ? "rotate-180 text-violet-400" : ""
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Runware Model Clean Autocomplete Select Dropdown */}
-                  {isRunwareDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-border bg-card p-1.5 shadow-xl animate-scale-pop">
-                      <div className="mb-1.5 flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-2 py-1">
-                        <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <Input
-                          type="text"
-                          autoComplete="off"
-                          placeholder="Cari model name / id..."
-                          value={runwareModelSearch}
-                          onChange={(e) => setRunwareModelSearch(e.target.value)}
-                          className="h-7 border-0 bg-transparent text-xs font-mono shadow-none focus-visible:ring-0 px-0"
-                        />
-                        {runwareModelSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setRunwareModelSearch("")}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                    <AutocompleteContent>
+                      <AutocompleteEmpty>
+                        Tidak ada model yang cocok. Tekan Enter untuk menggunakan ID yang diketik.
+                      </AutocompleteEmpty>
+                      <AutocompleteList>
+                        {(m) => (
+                          <AutocompleteItem key={m.id} value={m.id} className="py-1.5">
+                            <div className="flex items-center justify-between gap-2 w-full">
+                              <span className="truncate">{m.name}</span>
+                              <span className="font-mono text-xs text-muted-foreground shrink-0">
+                                {m.id}
+                              </span>
+                            </div>
+                          </AutocompleteItem>
                         )}
-                      </div>
-
-                      <div className="max-h-60 overflow-y-auto space-y-0.5 pr-1 custom-scrollbar">
-                        {(() => {
-                          const filtered = RUNWARE_IMAGE_MODELS.filter(
-                            (m) =>
-                              runwareModelSearch.trim() === "" ||
-                              m.name.toLowerCase().includes(runwareModelSearch.toLowerCase()) ||
-                              m.id.toLowerCase().includes(runwareModelSearch.toLowerCase())
-                          );
-
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="py-2.5 text-center text-muted-foreground text-xs px-2">
-                                Tidak ada model yang cocok. Tekan Enter untuk menggunakan ID yang diketik.
-                              </div>
-                            );
-                          }
-
-                          return filtered.map((m) => {
-                            const isSelected = runwareImageModel === m.id;
-                            return (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => {
-                                  setRunwareImageModel(m.id);
-                                  setIsRunwareDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between gap-2 ${
-                                  isSelected
-                                    ? "bg-primary text-primary-foreground font-medium"
-                                    : "text-foreground hover:bg-muted"
-                                }`}
-                              >
-                                <span className="truncate">{m.name}</span>
-                                <span
-                                  className={`font-mono text-[11px] shrink-0 ${
-                                    isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {m.id}
-                                </span>
-                              </button>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  )}
+                      </AutocompleteList>
+                    </AutocompleteContent>
+                  </Autocomplete>
                 </div>
               </div>
 
@@ -1328,7 +1099,7 @@ export function ModelsConfigTab() {
                     <label className="block text-xs font-semibold text-muted-foreground">
                       Sampling Steps (Min 1, Max 50)
                     </label>
-                    <span className="text-[10px] text-violet-400 font-mono font-bold">
+                    <span className="text-xs text-violet-400 font-mono font-bold">
                       {imageSteps} Steps
                     </span>
                   </div>
@@ -1352,7 +1123,7 @@ export function ModelsConfigTab() {
                         const val = parseInt(e.target.value);
                         if (!isNaN(val)) setImageSteps(Math.min(50, Math.max(1, val)));
                       }}
-                      className="h-8 text-center text-xs font-mono"
+                      className="h-8 text-center font-mono"
                     />
                     <Button
                       type="button"
@@ -1372,7 +1143,7 @@ export function ModelsConfigTab() {
                     <label className="block text-xs font-semibold text-muted-foreground">
                       Guidance Scale / CFG Scale
                     </label>
-                    <span className="text-[10px] text-violet-400 font-mono font-bold">
+                    <span className="text-xs text-violet-400 font-mono font-bold">
                       {imageCfgScale.toFixed(1)}
                     </span>
                   </div>
@@ -1397,7 +1168,7 @@ export function ModelsConfigTab() {
                         const val = parseFloat(e.target.value);
                         if (!isNaN(val)) setImageCfgScale(Math.min(50.0, Math.max(1.0, val)));
                       }}
-                      className="h-8 text-center text-xs font-mono"
+                      className="h-8 text-center font-mono"
                     />
                     <Button
                       type="button"
@@ -1423,7 +1194,7 @@ export function ModelsConfigTab() {
                   <Sparkles className="w-3.5 h-3.5 text-brand-400" />
                   Konfigurasi Custom Endpoint (OpenAI / InferHub / CodeBuddy / Local SD)
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
+                <span className="text-xs text-muted-foreground font-mono">
                   Base URL + API Key + List Model
                 </span>
               </div>
@@ -1438,7 +1209,7 @@ export function ModelsConfigTab() {
                   placeholder="https://api.openai.com/v1 atau http://localhost:20128/v1..."
                   value={customImageBaseUrl}
                   onChange={(e) => setCustomImageBaseUrl(e.target.value)}
-                  className="text-xs font-mono"
+                  className="font-mono"
                 />
               </div>
 
@@ -1450,7 +1221,7 @@ export function ModelsConfigTab() {
                       Custom Image API Key (Tersimpan Terenkripsi)
                     </label>
                     {config?.has_image_api_key && (
-                      <span className="text-[10px] text-emerald-600 font-mono">
+                      <span className="text-xs text-emerald-600 font-mono">
                         Tersimpan: {config.image_api_key_masked}
                       </span>
                     )}
@@ -1465,15 +1236,15 @@ export function ModelsConfigTab() {
                     }
                     value={customImageApiKey}
                     onChange={(e) => setCustomImageApiKey(e.target.value)}
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Tersimpan terpisah & tidak menimpa Runware API Key.
                   </p>
                 </div>
 
-                {/* Custom Image Model with Endpoint Pull & Searchable Popup */}
-                <div className="relative" ref={imageDropdownRef}>
+                {/* Custom Image Model with Endpoint Pull & Autocomplete */}
+                <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-muted-foreground">
                       Image Model Name
@@ -1484,7 +1255,7 @@ export function ModelsConfigTab() {
                       disabled={isFetchingImageModels}
                       variant="workspace-quiet"
                       size="workspace-sm"
-                      className="h-7 px-2 gap-1 font-mono text-[10px]"
+                      className="h-7 px-2 gap-1 font-mono text-xs"
                       title="Ambil model dari endpoint Image Base URL"
                     >
                       {isFetchingImageModels ? (
@@ -1500,71 +1271,42 @@ export function ModelsConfigTab() {
                     </Button>
                   </div>
 
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      autoComplete="off"
-                      placeholder="Ketik atau cari model, misal: dall-e-3"
-                      value={customImageModel}
-                      onChange={(e) => {
-                        setCustomImageModel(e.target.value);
-                        setImageModelSearch(e.target.value);
-                        setIsImageDropdownOpen(true);
-                      }}
+                  <Autocomplete
+                    value={customImageModel}
+                    onValueChange={setCustomImageModel}
+                    open={isImageDropdownOpen}
+                    onOpenChange={setIsImageDropdownOpen}
+                    items={
+                      imageTabFilter === "image_only" && featuredImageModels.length > 0
+                        ? featuredImageModels
+                        : availableImageModels.length > 0
+                          ? availableImageModels
+                          : [
+                            "dall-e-3",
+                            "dall-e-2",
+                            "flux-schnell",
+                            "flux-dev",
+                          ]
+                    }
+                  >
+                    <AutocompleteInput
+                      placeholder="Ketik atau pilih model, misal: dall-e-3"
+                      className="font-mono"
+                      isLoading={isFetchingImageModels}
                       onFocus={() => {
                         if (availableImageModels.length === 0) {
                           handleFetchImageModels();
-                        } else {
-                          setIsImageDropdownOpen(true);
                         }
                       }}
-                      className="pr-9 text-xs font-mono"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setIsImageDropdownOpen((prev) => !prev)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
-                      title="Tampilkan daftar model"
-                    >
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isImageDropdownOpen ? "rotate-180 text-violet-400" : ""
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Custom Searchable Autocomplete Dropdown */}
-                  {isImageDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl border border-border bg-card p-2.5 shadow-xl animate-scale-pop">
-                      <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted/60 px-2.5 py-1.5">
-                        <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <Input
-                          type="text"
-                          autoComplete="off"
-                          placeholder="Cari model dari endpoint..."
-                          value={imageModelSearch}
-                          onChange={(e) => setImageModelSearch(e.target.value)}
-                          className="h-8 border-0 bg-transparent text-xs font-mono shadow-none focus-visible:ring-0"
-                        />
-                        {imageModelSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setImageModelSearch("")}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-
+                    <AutocompleteContent>
                       {/* Filter tabs */}
                       {featuredImageModels.length > 0 && (
-                        <div className="workspace-filter-pills flex items-center gap-1 mb-2">
+                        <div className="workspace-filter-pills flex items-center gap-1 mb-2 px-1">
                           <button
                             type="button"
                             onClick={() => setImageTabFilter("image_only")}
-                            className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
+                            className={`rounded-lg px-2 py-1 text-xs font-medium transition whitespace-nowrap ${
                               imageTabFilter === "image_only"
                                 ? "workspace-filter-active"
                                 : "text-muted-foreground hover:text-foreground"
@@ -1575,7 +1317,7 @@ export function ModelsConfigTab() {
                           <button
                             type="button"
                             onClick={() => setImageTabFilter("all")}
-                            className={`rounded-lg text-[10px] font-medium transition whitespace-nowrap ${
+                            className={`rounded-lg px-2 py-1 text-xs font-medium transition whitespace-nowrap ${
                               imageTabFilter === "all"
                                 ? "workspace-filter-active"
                                 : "text-muted-foreground hover:text-foreground"
@@ -1586,80 +1328,31 @@ export function ModelsConfigTab() {
                         </div>
                       )}
 
-                      {/* Models list */}
-                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                        {isFetchingImageModels ? (
-                          <div className="py-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                            <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
-                            <span className="text-[11px] font-mono">
-                              Mengambil model dari endpoint...
-                            </span>
-                          </div>
-                        ) : (
-                          (() => {
-                            const pool =
-                              imageTabFilter === "image_only" && featuredImageModels.length > 0
-                                ? featuredImageModels
-                                : availableImageModels.length > 0
-                                  ? availableImageModels
-                                  : [
-                                      "dall-e-3",
-                                      "dall-e-2",
-                                      "flux-schnell",
-                                      "flux-dev",
-                                    ];
-                            const filtered = pool.filter((m) =>
-                              imageModelSearch.trim() === ""
-                                ? true
-                                : m.toLowerCase().includes(imageModelSearch.toLowerCase())
-                            );
-
-                            if (filtered.length === 0) {
-                              return (
-                                <div className="py-5 text-center text-muted-foreground text-xs px-2">
-                                  Tidak ada model yang cocok dengan pencarian. Anda tetap dapat
-                                  mengetik nama model sendiri.
-                                </div>
-                              );
-                            }
-
-                            return filtered.map((m) => {
-                              const isSelected = customImageModel === m;
-                              const isImage = isImageModelName(m);
-                              return (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  onClick={() => {
-                                    setCustomImageModel(m);
-                                    setIsImageDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 border ${
-                                    isSelected
-                                      ? "bg-accent border-primary text-accent-foreground font-semibold"
-                                      : "border-transparent text-secondary-foreground hover:bg-muted hover:text-foreground"
-                                  }`}
-                                >
-                                  <span className="truncate">{m}</span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {isImage && (
-                                      <Badge
-                                        variant="workspace"
-                                        className="px-1.5 py-0.5 font-sans text-[9px]"
-                                      >
-                                        Gambar
-                                      </Badge>
-                                    )}
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
-                                  </div>
-                                </button>
-                              );
-                            });
-                          })()
-                        )}
-                      </div>
-                    </div>
-                  )}
+                      <AutocompleteEmpty>
+                        Tidak ada model yang cocok dengan pencarian. Anda tetap dapat mengetik nama model sendiri.
+                      </AutocompleteEmpty>
+                      <AutocompleteList>
+                        {(m: string) => {
+                          const isImage = isImageModelName(m);
+                          return (
+                            <AutocompleteItem key={m} value={m}>
+                              <div className="flex items-center justify-between gap-2 w-full">
+                                <span className="truncate">{m}</span>
+                                {isImage && (
+                                  <Badge
+                                    variant="workspace"
+                                    className="px-1.5 py-0.5 font-sans text-xs shrink-0"
+                                  >
+                                    Gambar
+                                  </Badge>
+                                )}
+                              </div>
+                            </AutocompleteItem>
+                          );
+                        }}
+                      </AutocompleteList>
+                    </AutocompleteContent>
+                  </Autocomplete>
                 </div>
               </div>
             </div>
@@ -1671,7 +1364,7 @@ export function ModelsConfigTab() {
               <label className="block text-xs font-semibold text-muted-foreground">
                 Jumlah Paralel Request Generator (1 - 4 Concurrent)
               </label>
-              <span className="text-[10px] text-emerald-600 font-mono">
+              <span className="text-xs text-emerald-600 font-mono">
                 Aktif: {imageConcurrency} request serentak
               </span>
             </div>
@@ -1699,11 +1392,10 @@ export function ModelsConfigTab() {
                   type="button"
                   aria-pressed={imageConcurrency === opt.val}
                   onClick={() => setImageConcurrency(opt.val)}
-                  className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
-                    imageConcurrency === opt.val
-                      ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] ring-1 ring-[#C45B3A]/30"
-                      : "bg-[#FBFAF7] border-[#E5E1D7] text-[#5E5C54] hover:text-[#26251F] hover:bg-[#F1EEE6]"
-                  }`}
+                  className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${imageConcurrency === opt.val
+                    ? "bg-[#F8EEEA] border-[#C45B3A] text-[#A9472C] ring-1 ring-[#C45B3A]/30"
+                    : "bg-[#FBFAF7] border-[#E5E1D7] text-[#5E5C54] hover:text-[#26251F] hover:bg-[#F1EEE6]"
+                    }`}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
                     <span
@@ -1715,52 +1407,13 @@ export function ModelsConfigTab() {
                       <span className="w-2 h-2 rounded-full bg-[#C45B3A]"></span>
                     )}
                   </div>
-                  <span className="text-[10px] text-[#77766D] leading-tight">{opt.desc}</span>
+                  <span className="text-xs text-[#77766D] leading-tight">{opt.desc}</span>
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">
+            <p className="text-xs text-muted-foreground mt-1.5">
               Mengontrol jumlah gambar yang di-generate secara paralel saat proses batch. Default
               adalah <strong>2</strong>.
-            </p>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-muted-foreground">
-                Master Style Prompt Preset (Doodle Explainer / Parchment Stickman)
-              </label>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/image-studio"
-                  className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 font-semibold hover:underline"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Buka Art Studio ➔</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setImageSystemPrompt(DEFAULT_IMAGE_STYLE_PROMPT)}
-                  className="text-[10px] text-muted-foreground hover:text-muted-foreground flex items-center gap-1 font-mono"
-                >
-                  <RotateCcw className="w-2.5 h-2.5" />
-                  <span>Reset ke Default</span>
-                </button>
-              </div>
-            </div>
-            <Textarea
-              rows={4}
-              value={imageSystemPrompt}
-              onChange={(e) => setImageSystemPrompt(e.target.value)}
-              placeholder="Instruksi gaya visual yang akan digabungkan ke setiap adegan..."
-              className="text-xs font-mono leading-relaxed"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Prompt ini otomatis disematkan pada setiap scene adegan naskah untuk memastikan gaya
-              visual ilustrasi tetap seragam (doodle stickman kepala bulat botak, tinta hitam,
-              parchment tea-stained watercolor) dari awal sampai akhir. Gunakan{" "}
-              <strong>Art Studio</strong> untuk membuat preset gaya ilustrasi dan karakter dari teks
-              maupun gambar referensi.
             </p>
           </div>
         </div>

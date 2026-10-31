@@ -46,7 +46,7 @@ export function AudioParametersPanel({
       headerClassName="!border-surface-border !bg-card"
       actions={
         costEstimate ? (
-          <Badge variant="outline" className="text-primary border-primary/30 font-mono text-[10px]">
+          <Badge variant="outline" className="text-primary border-primary/30 font-mono text-xs">
             Est: ${costEstimate.estimated_cost_usd} USD
           </Badge>
         ) : undefined
@@ -95,18 +95,18 @@ export function AudioParametersPanel({
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 <span className="truncate">{generationStepText || "Memproses audio TTS..."}</span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground shrink-0">
+              <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground shrink-0">
                 <span>
                   {Math.floor(generationElapsed / 60)}:
                   {String(generationElapsed % 60).padStart(2, "0")}
                 </span>
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-bold">
+                <Badge variant="outline" className="text-xs py-0 px-1.5 font-bold">
                   {Math.round(generationProgress)}%
                 </Badge>
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                  className="cursor-pointer rounded bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground transition hover:bg-destructive/90"
                   title="Batalkan proses TTS"
                 >
                   Batal

@@ -86,9 +86,9 @@ export function EditProjectDialog({
               <button
                 type="button"
                 onClick={() => setLanguage("id")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
                   language === "id"
-                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-sm font-semibold"
+                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-xs font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -98,9 +98,9 @@ export function EditProjectDialog({
               <button
                 type="button"
                 onClick={() => setLanguage("en")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
                   language === "en"
-                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-sm font-semibold"
+                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-xs font-semibold"
                     : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
                 }`}
               >
@@ -111,14 +111,13 @@ export function EditProjectDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" className="h-9 px-4 text-xs rounded-xl font-semibold" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
             <Button
               type="submit"
-              size="sm"
               disabled={isPending}
-              className="workspace-primary-button"
+              className="workspace-primary-button h-9 px-4 text-xs rounded-xl font-semibold"
             >
               {isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>

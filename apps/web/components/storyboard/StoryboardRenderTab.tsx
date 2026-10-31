@@ -163,7 +163,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-[#26251F]">Pengaturan Render Final</h3>
-                <p className="text-[11px] text-muted-foreground">Format 16:9 Landscape Full HD</p>
+                <p className="text-xs text-muted-foreground">Format 16:9 Landscape Full HD</p>
               </div>
             </div>
 
@@ -233,7 +233,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               </label>
               <Badge
                 variant={project.subtitle_style?.enabled !== false ? "default" : "secondary"}
-                className={`text-[10px] font-mono ${
+                className={`text-xs font-mono ${
                   project.subtitle_style?.enabled !== false
                     ? "bg-[#F8EEEA] text-[#A9472C] border border-[#E9C9BD]"
                     : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
@@ -271,7 +271,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                     }`}
                   >
                     <div className="text-xs font-bold">{res.label}</div>
-                    <div className="text-[10px] text-muted-foreground">{res.desc}</div>
+                    <div className="text-xs text-muted-foreground">{res.desc}</div>
                   </button>
                 ))}
               </div>
@@ -299,7 +299,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
               </Button>
 
               {!audio && (
-                <p className="text-[11px] text-[#8A6A2F] text-center">
+                <p className="text-xs text-[#8A6A2F] text-center">
                   ⚠ Harap generate suara narasi (TTS) terlebih dahulu pada Langkah 2 sebelum
                   me-render.
                 </p>
@@ -432,7 +432,7 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                               Video Storyboard 16:9
                             </span>
                             <span
-                              className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                              className={`text-xs font-mono px-2 py-0.5 rounded ${
                                 job.status === "completed"
                                   ? "bg-[#ECF3EB] text-[#456A4E]"
                                   : job.status === "rendering"
@@ -443,12 +443,12 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                               {job.status}
                             </span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                          <p className="text-xs text-muted-foreground font-mono mt-0.5">
                             Ukuran: {formatBytes(job.file_size_bytes)} •{" "}
                             {new Date(job.created_at).toLocaleString("id-ID")}
                           </p>
                           {job.status === "failed" && job.error_message && (
-                            <p className="text-[11px] text-[#A9472C] mt-1 max-w-md">
+                            <p className="text-xs text-[#A9472C] mt-1 max-w-md">
                               {job.error_message}
                             </p>
                           )}

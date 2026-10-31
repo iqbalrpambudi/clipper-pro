@@ -1019,14 +1019,14 @@ export function TimelineMonitor({
 
           {activeClip && (
             <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none z-30">
-              <span className="px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white font-mono shadow backdrop-blur-xs border border-white/10">
+              <span className="px-1.5 py-0.5 rounded bg-black/80 text-xs font-bold text-white font-mono shadow backdrop-blur-xs border border-white/10">
                 #{activeClipIdx + 1}
                 {activeClip.speed && Math.abs(activeClip.speed - 1) > 0.02
                   ? ` • ${activeClip.speed}x`
                   : ""}
               </span>
               {!isPlaying && (
-                <span className="px-1.5 py-0.5 rounded bg-black/80 text-primary border border-primary/30 text-[10px] font-mono font-bold shadow backdrop-blur-xs">
+                <span className="px-1.5 py-0.5 rounded bg-black/80 text-primary border border-primary/30 text-xs font-mono font-bold shadow backdrop-blur-xs">
                   F{Math.round(Math.max(0, time - activeClip.timeline_start) * 30)}/
                   {Math.round((activeClip.timeline_end - activeClip.timeline_start) * 30)}
                 </span>

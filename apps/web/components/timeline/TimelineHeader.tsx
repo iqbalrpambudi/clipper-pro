@@ -59,33 +59,33 @@ export function TimelineHeader({
           </span>
           <Badge
             variant="outline"
-            className="font-mono text-[10px] text-muted-foreground border-border shrink-0"
+            className="font-mono text-xs text-muted-foreground border-border shrink-0"
           >
             {clipsCount} klip
           </Badge>
           {isSaving ? (
             <Badge
               variant="outline"
-              className="border-primary/40 text-primary text-[10px] flex items-center gap-1 shrink-0"
+              className="border-primary/40 text-primary text-xs flex items-center gap-1 shrink-0"
             >
               <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
             </Badge>
           ) : isDirty ? (
             <Badge
               variant="outline"
-              className="border-amber-500/40 text-amber-400 text-[10px] flex items-center gap-1 shrink-0"
+              className="border-amber-500/40 text-amber-400 text-xs flex items-center gap-1 shrink-0"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Autosave...
             </Badge>
           ) : clipsCount > 0 ? (
             <Badge
               variant="outline"
-              className="border-primary/40 text-primary text-[10px] flex items-center gap-1 shrink-0"
+              className="border-primary/40 text-primary text-xs flex items-center gap-1 shrink-0"
             >
               <CheckCircle2 className="w-3 h-3" /> Tersimpan
             </Badge>
           ) : null}
-          <span className="text-[11px] text-muted-foreground hidden sm:inline shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:inline shrink-0">
             Durasi:{" "}
             <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
           </span>

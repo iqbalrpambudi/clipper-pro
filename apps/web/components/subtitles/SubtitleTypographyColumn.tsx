@@ -28,7 +28,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
 
         {/* Font Family */}
         <div>
-          <label className="text-muted-foreground block mb-1 text-[11px] font-medium">
+          <label className="text-muted-foreground block mb-1 text-xs font-medium">
             Jenis Font (Font Family)
           </label>
           <Select
@@ -60,7 +60,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
                 onClick={() =>
                   onCommitStyle({ ...style, font_size: Math.max(28, style.font_size - 4) })
                 }
-                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="-4px"
               >
                 -4px
@@ -73,7 +73,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
                 onClick={() =>
                   onCommitStyle({ ...style, font_size: Math.min(96, style.font_size + 4) })
                 }
-                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 title="+4px"
               >
                 +4px
@@ -101,7 +101,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
 
         {/* Font Weight */}
         <div>
-          <label className="text-muted-foreground block mb-1 text-[11px] font-medium">
+          <label className="text-muted-foreground block mb-1 text-xs font-medium">
             Ketebalan Huruf (Weight)
           </label>
           <Select
@@ -121,7 +121,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
 
         {/* Display Mode */}
         <div>
-          <label className="text-muted-foreground block mb-1.5 text-[11px] font-medium">
+          <label className="text-muted-foreground block mb-1.5 text-xs font-medium">
             Mode Penayangan Kata
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -135,7 +135,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
               }`}
             >
               <span className="text-xs font-bold text-foreground">Per-Kata</span>
-              <span className="text-[9px] text-muted-foreground leading-tight">
+              <span className="text-xs text-muted-foreground leading-tight">
                 1 kata bergantian
               </span>
             </button>
@@ -150,7 +150,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
               }`}
             >
               <span className="text-xs font-bold text-foreground">Burst</span>
-              <span className="text-[9px] text-muted-foreground leading-tight">2-3 kata cepat</span>
+              <span className="text-xs text-muted-foreground leading-tight">2-3 kata cepat</span>
             </button>
 
             <button
@@ -163,7 +163,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
               }`}
             >
               <span className="text-xs font-bold text-foreground">Kalimat</span>
-              <span className="text-[9px] text-muted-foreground leading-tight">
+              <span className="text-xs text-muted-foreground leading-tight">
                 Satu baris penuh
               </span>
             </button>
@@ -212,7 +212,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
             }`}
           >
             <span className="text-xs font-bold text-foreground block">Scale Pop</span>
-            <span className="text-[9px] text-muted-foreground">Membesar & loncat</span>
+            <span className="text-xs text-muted-foreground">Membesar & loncat</span>
           </button>
 
           <button
@@ -225,7 +225,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
             }`}
           >
             <span className="text-xs font-bold text-foreground block">Warna Glow</span>
-            <span className="text-[9px] text-muted-foreground">Transisi halus</span>
+            <span className="text-xs text-muted-foreground">Transisi halus</span>
           </button>
 
           <button
@@ -238,7 +238,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
             }`}
           >
             <span className="text-xs font-bold text-foreground block">Statis</span>
-            <span className="text-[9px] text-muted-foreground">Tanpa animasi</span>
+            <span className="text-xs text-muted-foreground">Tanpa animasi</span>
           </button>
         </div>
 
@@ -271,7 +271,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
               }
               className="w-full accent-primary cursor-pointer h-1.5 bg-muted rounded-lg"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>Halus (1.05x)</span>
               <span>Standar (1.20x)</span>
               <span>Ekstrem (1.60x)</span>

@@ -55,7 +55,7 @@ function MotionCueSyncCard({ project }: { project: Project }) {
           size="workspace-sm"
           onClick={() => syncTiming.mutate()}
           disabled={syncTiming.isPending || !hasAudio}
-          className="gap-1.5 text-[11px]"
+          className="gap-1.5 text-xs"
         >
           {syncTiming.isPending ? (
             <Loader2 className="h-3 w-3 animate-spin" />

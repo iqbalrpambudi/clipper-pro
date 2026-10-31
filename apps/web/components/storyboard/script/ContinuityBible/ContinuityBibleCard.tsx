@@ -85,7 +85,7 @@ export function ContinuityBibleCard({
               <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#26251F]">
                 Story Continuity Bible
               </h4>
-              <p className="mt-0.5 text-[10px] text-[#77766D]">
+              <p className="mt-0.5 text-xs text-[#77766D]">
                 Penguncian konsistensi karakter & varian wujud, latar tempat, dan era waktu
               </p>
             </div>
@@ -93,7 +93,7 @@ export function ContinuityBibleCard({
 
           <div className="flex items-center gap-2">
             {editingBible && (
-              <span className="text-[10px] text-[#8A6A2F] bg-[#F7EFE0] border border-[#E8D9BC] px-2 py-0.5 rounded-full font-medium">
+              <span className="text-xs text-[#8A6A2F] bg-[#F7EFE0] border border-[#E8D9BC] px-2 py-0.5 rounded-full font-medium">
                 Mode Edit Aktif
               </span>
             )}
@@ -125,7 +125,7 @@ export function ContinuityBibleCard({
                   )}
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Ekstrak dari Naskah</span>
-                    <span className="text-[10px] text-[#77766D]">
+                    <span className="text-xs text-[#77766D]">
                       Analisis naskah untuk sinkron profil
                     </span>
                   </div>
@@ -143,7 +143,7 @@ export function ContinuityBibleCard({
                   <Users className="w-4 h-4 text-[#C45B3A] shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Tambah Karakter</span>
-                    <span className="text-[10px] text-[#77766D]">
+                    <span className="text-xs text-[#77766D]">
                       Tambah profil tokoh & varian wujud
                     </span>
                   </div>
@@ -159,7 +159,7 @@ export function ContinuityBibleCard({
                   <MapPin className="w-4 h-4 text-[#41627F] shrink-0" />
                   <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-[#26251F]">Tambah Tempat</span>
-                    <span className="text-[10px] text-[#77766D]">
+                    <span className="text-xs text-[#77766D]">
                       Kunci konsistensi latar arsitektur
                     </span>
                   </div>
@@ -180,7 +180,7 @@ export function ContinuityBibleCard({
                     <span className="font-semibold text-[#26251F]">
                       {editingBible ? "Selesai Edit Bible" : "Edit Bible Manual"}
                     </span>
-                    <span className="text-[10px] text-[#77766D]">
+                    <span className="text-xs text-[#77766D]">
                       {editingBible ? "Tutup formulir edit" : "Edit teks deskripsi & slug ID"}
                     </span>
                   </div>

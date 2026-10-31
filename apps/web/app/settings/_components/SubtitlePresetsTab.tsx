@@ -20,7 +20,17 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { SubtitlePreset } from "@/types";
-import { Badge, Button, Input, NativeSelect, Slider } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Slider,
+} from "@/components/ui";
 
 const FONT_OPTIONS = ["Montserrat", "Bebas Neue", "Inter", "Poppins", "Anton", "Oswald", "Roboto"];
 
@@ -227,7 +237,7 @@ export function SubtitlePresetsTab() {
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-accent-yellow" />
             <h3 className="text-sm font-bold text-foreground">Preset Gaya Subtitle Video</h3>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               ({subtitlePresets.length} preset tersedia)
             </span>
           </div>
@@ -272,14 +282,14 @@ export function SubtitlePresetsTab() {
                     </div>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">
                     {preset.description || "Gaya subtitle kustom"}
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-surface-border/50">
                   {/* Style badges */}
-                  <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center justify-between text-xs">
                     <Badge variant="workspace" className="rounded px-1.5 py-0.5 font-mono">
                       {preset.font_family} ({preset.font_size}px)
                     </Badge>
@@ -289,19 +299,19 @@ export function SubtitlePresetsTab() {
                         style={{ backgroundColor: preset.highlight_color }}
                         title={`Highlight: ${preset.highlight_color}`}
                       />
-                      <span className="text-muted-foreground font-mono text-[9px] uppercase">
+                      <span className="text-muted-foreground font-mono text-xs uppercase">
                         {preset.display_mode}
                       </span>
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
                     <span className="font-mono text-muted-foreground truncate max-w-[120px]">
                       {preset.id}
                     </span>
                     <Badge
                       variant={preset.is_builtin ? "workspace" : "workspace-success"}
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] uppercase"
+                      className="shrink-0 rounded px-1.5 py-0.5 text-xs uppercase"
                     >
                       {preset.is_builtin ? "Bawaan" : "Kustom"}
                     </Badge>
@@ -333,11 +343,11 @@ export function SubtitlePresetsTab() {
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                 <span>ID Preset:</span>
-                <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
+                <code className="text-brand-300 font-mono text-xs bg-brand-500/10 px-1.5 py-0.5 rounded">
                   {currentSelectedSubtitlePreset.id}
                 </code>
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
+                  className={`px-1.5 py-0.2 rounded text-xs font-semibold uppercase ${
                     currentSelectedSubtitlePreset.is_builtin
                       ? "bg-brand-500/20 text-brand-300"
                       : "bg-emerald-500/20 text-emerald-300"
@@ -410,7 +420,7 @@ export function SubtitlePresetsTab() {
                 <Sparkles className="w-3.5 h-3.5 text-accent-yellow" />
                 <span>Live Visual Preview Animasi Subtitle</span>
               </label>
-              <span className="text-[10px] text-muted-foreground font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 Animasi Otomatis (Demo Karaoke)
               </span>
             </div>
@@ -545,31 +555,35 @@ export function SubtitlePresetsTab() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Font Family
                 </label>
-                <NativeSelect
+                <Select
                   value={subtitlePresetForm.font_family}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      font_family: e.target.value,
+                      font_family: val,
                     })
                   }
-                  className="font-sans"
                 >
-                  {FONT_OPTIONS.map((font) => (
-                    <option key={font} value={font}>
-                      {font}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  <SelectTrigger className="font-sans">
+                    <SelectValue placeholder="Pilih Font" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_OPTIONS.map((font) => (
+                      <SelectItem key={font} value={font}>
+                        {font}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">Ukuran Font</label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <label className="text-xs font-semibold text-muted-foreground">Ukuran Font</label>
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.font_size}px
                   </span>
                 </div>
@@ -591,22 +605,27 @@ export function SubtitlePresetsTab() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Ketebalan Font (Weight)
                 </label>
-                <NativeSelect
+                <Select
                   value={subtitlePresetForm.font_weight}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      font_weight: e.target.value,
+                      font_weight: val,
                     })
                   }
                 >
-                  <option value="Normal">Normal</option>
-                  <option value="Bold">Bold (Tebal)</option>
-                  <option value="ExtraBold">Extra Bold (Sangat Tebal)</option>
-                </NativeSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Ketebalan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                    <SelectItem value="Bold">Bold (Tebal)</SelectItem>
+                    <SelectItem value="ExtraBold">Extra Bold (Sangat Tebal)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -621,7 +640,7 @@ export function SubtitlePresetsTab() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Primary Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Warna Utama Teks
                 </label>
                 <div className="flex items-center gap-2">
@@ -645,14 +664,14 @@ export function SubtitlePresetsTab() {
                         primary_color: e.target.value,
                       })
                     }
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
               </div>
 
               {/* Highlight Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Warna Highlight (Kata Aktif)
                 </label>
                 <div className="flex items-center gap-2">
@@ -676,7 +695,7 @@ export function SubtitlePresetsTab() {
                         highlight_color: e.target.value,
                       })
                     }
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
                 {/* Color pills quick select */}
@@ -704,10 +723,10 @@ export function SubtitlePresetsTab() {
               {/* Outline Color & Width */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     Warna & Lebar Outline
                   </label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.outline_width}px
                   </span>
                 </div>
@@ -754,52 +773,62 @@ export function SubtitlePresetsTab() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Display Mode */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Mode Penampilan Kata
                 </label>
-                <NativeSelect
+                <Select
                   value={subtitlePresetForm.display_mode}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      display_mode: e.target.value as SubtitlePreset["display_mode"],
+                      display_mode: val as SubtitlePreset["display_mode"],
                     })
                   }
                 >
-                  <option value="per_word">Per Kata (Karaoke)</option>
-                  <option value="burst">Burst (2-3 Kata Hormozi)</option>
-                  <option value="full_sentence">Kalimat Penuh</option>
-                </NativeSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="per_word">Per Kata (Karaoke)</SelectItem>
+                    <SelectItem value="burst">Burst (2-3 Kata Hormozi)</SelectItem>
+                    <SelectItem value="full_sentence">Kalimat Penuh</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Highlight Animation */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Animasi Highlight
                 </label>
-                <NativeSelect
+                <Select
                   value={subtitlePresetForm.highlight_animation}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      highlight_animation: e.target.value as SubtitlePreset["highlight_animation"],
+                      highlight_animation: val as SubtitlePreset["highlight_animation"],
                     })
                   }
                 >
-                  <option value="color">Warna Glow (Halus)</option>
-                  <option value="scale">Scale Up (Efek Punch Pop)</option>
-                  <option value="box">Kotak Highlight Latar</option>
-                  <option value="none">Tanpa Animasi</option>
-                </NativeSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Animasi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="color">Warna Glow (Halus)</SelectItem>
+                    <SelectItem value="scale">Scale Up (Efek Punch Pop)</SelectItem>
+                    <SelectItem value="box">Kotak Highlight Latar</SelectItem>
+                    <SelectItem value="none">Tanpa Animasi</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Scale Factor */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     Skala Pembesaran Kata
                   </label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {(subtitlePresetForm.scale_factor || 1.15).toFixed(2)}x
                   </span>
                 </div>
@@ -824,7 +853,7 @@ export function SubtitlePresetsTab() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-surface-border/50">
               {/* Box Color */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Warna Kotak Background
                 </label>
                 <div className="flex items-center gap-2">
@@ -848,7 +877,7 @@ export function SubtitlePresetsTab() {
                         box_color: e.target.value,
                       })
                     }
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
               </div>
@@ -856,10 +885,10 @@ export function SubtitlePresetsTab() {
               {/* Box Opacity */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     Opasitas Kotak Background
                   </label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {Math.round(subtitlePresetForm.box_opacity * 100)}%
                   </span>
                 </div>
@@ -891,36 +920,41 @@ export function SubtitlePresetsTab() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
                   Posisi Vertikal Dasar
                 </label>
-                <NativeSelect
+                <Select
                   value={subtitlePresetForm.position}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     setSubtitlePresetForm({
                       ...subtitlePresetForm,
-                      position: e.target.value as SubtitlePreset["position"],
+                      position: val as SubtitlePreset["position"],
                       offset_y:
-                        e.target.value === "center"
+                        val === "center"
                           ? 0
-                          : e.target.value === "top"
+                          : val === "top"
                             ? 120
                             : -120,
                     })
                   }
                 >
-                  <option value="bottom">Bawah Layar (Bottom)</option>
-                  <option value="center">Tengah Layar (Center)</option>
-                  <option value="top">Atas Layar (Top)</option>
-                </NativeSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Posisi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bottom">Bawah Layar (Bottom)</SelectItem>
+                    <SelectItem value="center">Tengah Layar (Center)</SelectItem>
+                    <SelectItem value="top">Atas Layar (Top)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     Offset Y (Vertikal)
                   </label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.offset_y}px
                   </span>
                 </div>
@@ -943,10 +977,10 @@ export function SubtitlePresetsTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-muted-foreground">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     Offset X (Horizontal)
                   </label>
-                  <span className="text-[10px] font-mono text-brand-400 font-bold">
+                  <span className="text-xs font-mono text-brand-400 font-bold">
                     {subtitlePresetForm.offset_x}px
                   </span>
                 </div>
@@ -1003,7 +1037,7 @@ export function SubtitlePresetsTab() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-foreground">Buat Preset Gaya Subtitle Baru</h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Rancang kombinasi font, warna, animasi, dan layout subtitle kustom
                   </p>
                 </div>
@@ -1064,7 +1098,7 @@ export function SubtitlePresetsTab() {
                         id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"),
                       })
                     }
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
               </div>
@@ -1083,7 +1117,6 @@ export function SubtitlePresetsTab() {
                       description: e.target.value,
                     })
                   }
-                  className="text-xs"
                 />
               </div>
 
@@ -1092,21 +1125,26 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Font Family
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newSubtitlePresetForm.font_family}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        font_family: e.target.value,
+                        font_family: val,
                       })
                     }
                   >
-                    {FONT_OPTIONS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                    <SelectTrigger className="font-sans">
+                      <SelectValue placeholder="Pilih Font" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_OPTIONS.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -1134,19 +1172,24 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Ketebalan (Weight)
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newSubtitlePresetForm.font_weight}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        font_weight: e.target.value,
+                        font_weight: val,
                       })
                     }
                   >
-                    <option value="Normal">Normal</option>
-                    <option value="Bold">Bold</option>
-                    <option value="ExtraBold">Extra Bold</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Ketebalan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Normal">Normal</SelectItem>
+                      <SelectItem value="Bold">Bold</SelectItem>
+                      <SelectItem value="ExtraBold">Extra Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1167,7 +1210,7 @@ export function SubtitlePresetsTab() {
                       }
                       className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                     />
-                    <input
+                    <Input
                       type="text"
                       value={newSubtitlePresetForm.primary_color}
                       onChange={(e) =>
@@ -1176,7 +1219,7 @@ export function SubtitlePresetsTab() {
                           primary_color: e.target.value,
                         })
                       }
-                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-foreground font-mono text-xs focus:outline-none"
+                      className="font-mono"
                     />
                   </div>
                 </div>
@@ -1197,7 +1240,7 @@ export function SubtitlePresetsTab() {
                       }
                       className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                     />
-                    <input
+                    <Input
                       type="text"
                       value={newSubtitlePresetForm.highlight_color}
                       onChange={(e) =>
@@ -1206,7 +1249,7 @@ export function SubtitlePresetsTab() {
                           highlight_color: e.target.value,
                         })
                       }
-                      className="w-full px-2.5 py-1.5 bg-surface rounded-lg border border-surface-border text-foreground font-mono text-xs focus:outline-none"
+                      className="font-mono"
                     />
                   </div>
                 </div>
@@ -1215,19 +1258,24 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Mode Penampilan
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newSubtitlePresetForm.display_mode}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        display_mode: e.target.value as "per_word" | "burst" | "full_sentence",
+                        display_mode: val as "per_word" | "burst" | "full_sentence",
                       })
                     }
                   >
-                    <option value="per_word">Per Kata (Karaoke)</option>
-                    <option value="burst">Burst (2-3 Kata)</option>
-                    <option value="full_sentence">Kalimat Penuh</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="per_word">Per Kata (Karaoke)</SelectItem>
+                      <SelectItem value="burst">Burst (2-3 Kata)</SelectItem>
+                      <SelectItem value="full_sentence">Kalimat Penuh</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1236,45 +1284,55 @@ export function SubtitlePresetsTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Animasi Highlight
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newSubtitlePresetForm.highlight_animation}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        highlight_animation: e.target.value as "scale" | "color" | "box" | "none",
+                        highlight_animation: val as "scale" | "color" | "box" | "none",
                       })
                     }
                   >
-                    <option value="color">Warna Glow (Halus)</option>
-                    <option value="scale">Scale Up (Efek Punch Pop)</option>
-                    <option value="box">Kotak Highlight Latar</option>
-                    <option value="none">Tanpa Animasi</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Animasi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="color">Warna Glow (Halus)</SelectItem>
+                      <SelectItem value="scale">Scale Up (Efek Punch Pop)</SelectItem>
+                      <SelectItem value="box">Kotak Highlight Latar</SelectItem>
+                      <SelectItem value="none">Tanpa Animasi</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Posisi Layar
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newSubtitlePresetForm.position}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setNewSubtitlePresetForm({
                         ...newSubtitlePresetForm,
-                        position: e.target.value as "bottom" | "center" | "top",
+                        position: val as "bottom" | "center" | "top",
                         offset_y:
-                          e.target.value === "center"
+                          val === "center"
                             ? 0
-                            : e.target.value === "top"
+                            : val === "top"
                               ? 120
                               : -120,
                       })
                     }
                   >
-                    <option value="bottom">Bawah Layar (Bottom)</option>
-                    <option value="center">Tengah Layar (Center)</option>
-                    <option value="top">Atas Layar (Top)</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Posisi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bottom">Bawah Layar (Bottom)</SelectItem>
+                      <SelectItem value="center">Tengah Layar (Center)</SelectItem>
+                      <SelectItem value="top">Atas Layar (Top)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

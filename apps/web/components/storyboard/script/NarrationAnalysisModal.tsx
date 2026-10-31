@@ -115,7 +115,7 @@ export function NarrationAnalysisModal({
                 <h3 className="font-serif text-base font-semibold tracking-wide text-[#26251F]">
                   Analisis Skor Narasi YouTube
                 </h3>
-                <span className="rounded-full border border-[#E9C9BD] bg-[#F8EEEA] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#A9472C]">
+                <span className="rounded-full border border-[#E9C9BD] bg-[#F8EEEA] px-2 py-0.5 font-mono text-xs font-semibold text-[#A9472C]">
                   High Retention & AVD
                 </span>
               </div>
@@ -205,7 +205,7 @@ export function NarrationAnalysisModal({
 
           {showCustomInput && (
             <div className="animate-in space-y-1.5 rounded-xl border border-[#E5E1D7] bg-[#FBFAF7] p-3 fade-in">
-              <label className="text-[11px] font-semibold text-[#4D4A42]">
+              <label className="text-xs font-semibold text-[#4D4A42]">
                 Instruksi Khusus Analisis (Opsional):
               </label>
               <textarea
@@ -272,7 +272,7 @@ export function NarrationAnalysisModal({
                     <span className="text-2xl font-black font-mono leading-none">
                       {analysisData.overall_score}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-80">
+                    <span className="text-xs font-bold uppercase tracking-wider mt-1 opacity-80">
                       / 100
                     </span>
                   </div>
@@ -305,7 +305,7 @@ export function NarrationAnalysisModal({
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Lihat {analysisData.improved_segments.length} Naskah Perbaikan</span>
                     </button>
-                    <span className="font-mono text-[10px] text-[#456A4E]">
+                    <span className="font-mono text-xs text-[#456A4E]">
                       ✨ AI telah menyiapkan versi optimal
                     </span>
                   </div>
@@ -362,7 +362,7 @@ export function NarrationAnalysisModal({
                           style={{ width: `${analysisData.hook_score.score}%` }}
                         />
                       </div>
-                      <p className="text-[11px] leading-relaxed text-[#77766D]">
+                      <p className="text-xs leading-relaxed text-[#77766D]">
                         {analysisData.hook_score.feedback}
                       </p>
                     </div>
@@ -386,7 +386,7 @@ export function NarrationAnalysisModal({
                           style={{ width: `${analysisData.retention_pacing_score.score}%` }}
                         />
                       </div>
-                      <p className="text-[11px] leading-relaxed text-[#77766D]">
+                      <p className="text-xs leading-relaxed text-[#77766D]">
                         {analysisData.retention_pacing_score.feedback}
                       </p>
                     </div>
@@ -410,7 +410,7 @@ export function NarrationAnalysisModal({
                           style={{ width: `${analysisData.emotional_storytelling_score.score}%` }}
                         />
                       </div>
-                      <p className="text-[11px] leading-relaxed text-[#77766D]">
+                      <p className="text-xs leading-relaxed text-[#77766D]">
                         {analysisData.emotional_storytelling_score.feedback}
                       </p>
                     </div>
@@ -434,7 +434,7 @@ export function NarrationAnalysisModal({
                           style={{ width: `${analysisData.clarity_delivery_score.score}%` }}
                         />
                       </div>
-                      <p className="text-[11px] leading-relaxed text-[#77766D]">
+                      <p className="text-xs leading-relaxed text-[#77766D]">
                         {analysisData.clarity_delivery_score.feedback}
                       </p>
                     </div>
@@ -458,7 +458,7 @@ export function NarrationAnalysisModal({
                           style={{ width: `${analysisData.call_to_action_score.score}%` }}
                         />
                       </div>
-                      <p className="text-[11px] leading-relaxed text-[#77766D]">
+                      <p className="text-xs leading-relaxed text-[#77766D]">
                         {analysisData.call_to_action_score.feedback}
                       </p>
                     </div>
@@ -540,11 +540,11 @@ export function NarrationAnalysisModal({
                             <ImageIcon className="h-3.5 w-3.5 text-[#A9472C]" />
                             Sinkronkan Visual Prompt AI Otomatis
                           </span>
-                          <span className="text-[10px] font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded-full border border-[#C9DDCF]">
+                          <span className="text-xs font-semibold text-[#456A4E] bg-[#ECF3EB] px-2 py-0.5 rounded-full border border-[#C9DDCF]">
                             Direkomendasikan
                           </span>
                         </div>
-                        <p className="mt-0.5 text-[11px] text-[#5E5C54]">
+                        <p className="mt-0.5 text-xs text-[#5E5C54]">
                           Memperbarui prompt gambar adegan agar selaras dengan narasi baru dan tetap
                           mengunci Story Continuity Bible ([char:...], [loc:...]).
                         </p>
@@ -566,14 +566,14 @@ export function NarrationAnalysisModal({
                       <button
                         type="button"
                         onClick={selectAllSegments}
-                        className="rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-0.5 text-[11px] text-[#77766D] hover:bg-[#F1EEE6] hover:text-[#26251F]"
+                        className="rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-0.5 text-xs text-[#77766D] hover:bg-[#F1EEE6] hover:text-[#26251F]"
                       >
                         Pilih Semua
                       </button>
                       <button
                         type="button"
                         onClick={deselectAllSegments}
-                        className="rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-0.5 text-[11px] text-[#77766D] hover:bg-[#F1EEE6] hover:text-[#26251F]"
+                        className="rounded border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-0.5 text-xs text-[#77766D] hover:bg-[#F1EEE6] hover:text-[#26251F]"
                       >
                         Batal Semua
                       </button>
@@ -604,12 +604,12 @@ export function NarrationAnalysisModal({
                               <span className="text-xs font-semibold text-[#26251F]">
                                 {seg.chapter_title || `Segmen ${seg.segment_index + 1}`}
                               </span>
-                              <span className="rounded border border-[#E5E1D7] bg-[#F3F0E8] px-1.5 py-0.5 font-mono text-[10px] text-[#77766D]">
+                              <span className="rounded border border-[#E5E1D7] bg-[#F3F0E8] px-1.5 py-0.5 font-mono text-xs text-[#77766D]">
                                 {seg.segment_id}
                               </span>
                             </label>
                             {seg.change_summary && (
-                              <span className="text-[11px] font-mono text-[#456A4E] bg-[#ECF3EB] px-2.5 py-0.5 rounded-full border border-[#C9DDCF]">
+                              <span className="text-xs font-mono text-[#456A4E] bg-[#ECF3EB] px-2.5 py-0.5 rounded-full border border-[#C9DDCF]">
                                 ✨ {seg.change_summary}
                               </span>
                             )}
@@ -617,7 +617,7 @@ export function NarrationAnalysisModal({
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div className="space-y-1 rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-3">
-                              <span className="text-[10px] uppercase font-bold text-[#A9472C] block tracking-wider">
+                              <span className="text-xs uppercase font-bold text-[#A9472C] block tracking-wider">
                                 ❌ Teks Narasi Asli
                               </span>
                               <p className="font-sans leading-relaxed text-[#4D4A42]">
@@ -626,7 +626,7 @@ export function NarrationAnalysisModal({
                             </div>
 
                             <div className="space-y-1 rounded-lg border border-[#C9DDCF] bg-[#ECF3EB] p-3">
-                              <span className="text-[10px] uppercase font-bold text-[#456A4E] block tracking-wider flex items-center gap-1">
+                              <span className="text-xs uppercase font-bold text-[#456A4E] block tracking-wider flex items-center gap-1">
                                 <Check className="w-3 h-3" />
                                 <span>Versi Optimal (High Retention)</span>
                               </span>
@@ -640,7 +640,7 @@ export function NarrationAnalysisModal({
                           {seg.improved_visual_prompt && (
                             <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold text-[#A9472C] flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-[#A9472C] flex items-center gap-1.5">
                                   <ImageIcon className="w-3.5 h-3.5 text-[#C45B3A]" />
                                   <span>
                                     Visual Prompt AI Adegan (
@@ -656,7 +656,7 @@ export function NarrationAnalysisModal({
                                         [seg.segment_id]: !prev[seg.segment_id],
                                       }))
                                     }
-                                    className="flex items-center gap-1 text-[10px] text-[#77766D] transition hover:text-[#26251F]"
+                                    className="flex items-center gap-1 text-xs text-[#77766D] transition hover:text-[#26251F]"
                                   >
                                     <span>
                                       {isDetailOpen
@@ -673,16 +673,16 @@ export function NarrationAnalysisModal({
                               </div>
 
                               {isDetailOpen && seg.original_visual_prompt && (
-                                <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2.5 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
-                                  <span className="mb-0.5 block text-[9px] font-bold uppercase text-[#77766D]">
+                                <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2.5 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                                  <span className="mb-0.5 block text-xs font-bold uppercase text-[#77766D]">
                                     Prompt Visual Asli:
                                   </span>
                                   {seg.original_visual_prompt}
                                 </div>
                               )}
 
-                              <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] p-2.5 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
-                                <span className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase text-[#A9472C]">
+                              <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] p-2.5 font-mono text-xs leading-relaxed text-[#4D4A42]">
+                                <span className="mb-0.5 flex items-center gap-1 text-xs font-bold uppercase text-[#A9472C]">
                                   ✨ Prompt Visual Selaras Naskah (Continuity Anchored):
                                 </span>
                                 {seg.improved_visual_prompt}

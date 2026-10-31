@@ -437,7 +437,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
               <h1 className="text-xs font-semibold text-foreground">
                 Generative React/Remotion Studio
               </h1>
-              <p className="font-mono text-[10px] tabular-nums text-muted-foreground">
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
                 {readyScenesCount}/{scenes.length} komponen TSX siap • {compWidth}×{compHeight} @
                 30fps
               </p>
@@ -445,28 +445,38 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
           </div>
 
           {/* Live Theme World Hot-Swapper */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-muted/50 px-2.5 py-1">
-            <Palette className="h-3.5 w-3.5 text-muted-foreground" />
-            <span
-              className="h-2.5 w-2.5 rounded-full border border-black/15"
-              style={{ backgroundColor: activeThemeObj.accent }}
-            />
-            <select
+          <div className="flex items-center gap-1.5">
+            <Select
               value={activeThemeId}
-              onChange={(e) => {
-                const nextId = e.target.value;
+              onValueChange={(nextId) => {
                 setActiveThemeId(nextId);
                 updateThemeMutation.mutate(nextId);
               }}
-              aria-label="Pilih tema visual Motion Studio"
-              className="min-h-0 bg-transparent pr-1 text-xs font-semibold text-foreground focus:outline-none"
             >
-              {MOTION_THEME_LIST.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 gap-2 text-xs rounded-xl font-medium">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span
+                    className="h-2.5 w-2.5 rounded-full border border-black/15 shrink-0"
+                    style={{ backgroundColor: activeThemeObj.accent }}
+                  />
+                  <span>{activeThemeObj.name}</span>
+                </div>
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                {MOTION_THEME_LIST.map((t) => (
+                  <SelectItem key={t.id} value={t.id} className="text-xs">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full border border-black/15 shrink-0"
+                        style={{ backgroundColor: t.accent }}
+                      />
+                      <span>{t.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -484,9 +494,8 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                 <Button
                   type="button"
                   variant="workspace-primary"
-                  size="workspace-sm"
                   onClick={() => batchGenerateMutation.mutate(true)}
-                  className="gap-1.5 text-xs"
+                  className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Generate {pendingScenesCount} Animasi TSX</span>
@@ -495,9 +504,8 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
               <Button
                 type="button"
                 variant={pendingScenesCount === 0 ? "workspace-primary" : "workspace-secondary"}
-                size="workspace-sm"
                 onClick={() => batchGenerateMutation.mutate(false)}
-                className="gap-1.5 text-xs"
+                className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
               >
                 <Wand2 className="h-3.5 w-3.5" />
                 <span>
@@ -512,9 +520,8 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
           <Button
             type="button"
             variant="workspace-secondary"
-            size="workspace-sm"
             onClick={() => setActiveTab("motion_render")}
-            className="gap-1.5 text-xs"
+            className="h-9 gap-1.5 px-3.5 text-xs rounded-xl font-medium"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Render MP4</span>
@@ -555,7 +562,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
 
             {/* Active Playhead Scene Pill */}
             {playheadSceneRange && (
-              <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-border/80 bg-card/90 px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-sm">
+              <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-border/80 bg-card/90 px-2.5 py-1 text-xs shadow-sm backdrop-blur-sm">
                 <span className="font-mono font-bold tabular-nums text-primary">
                   #{String(playheadSceneRange.index + 1).padStart(2, "0")}
                 </span>
@@ -698,10 +705,10 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                     }`}
                   >
                     <div className="mb-1.5 flex w-full items-center justify-between gap-1.5">
-                      <span className="font-mono text-[10px] font-bold tabular-nums text-primary">
+                      <span className="font-mono text-xs font-bold tabular-nums text-primary">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <span className="truncate font-mono text-[10px] text-muted-foreground">
+                      <span className="truncate font-mono text-xs text-muted-foreground">
                         {scene.archetype.replace("_", " ")}
                       </span>
                       <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
@@ -711,7 +718,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                       {scene.title || `Adegan ${index + 1}`}
                     </div>
 
-                    <div className="mt-1 flex w-full items-center justify-between font-mono text-[10px] tabular-nums text-muted-foreground">
+                    <div className="mt-1 flex w-full items-center justify-between font-mono text-xs tabular-nums text-muted-foreground">
                       <span>{Math.round((durationFrames / 30) * 10) / 10}s</span>
                       <span>{durationFrames}f</span>
                     </div>
@@ -782,7 +789,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                     <span className="font-mono text-xs font-bold tabular-nums text-primary">
                       Adegan {String(selectedRange.index + 1).padStart(2, "0")}
                     </span>
-                    <Badge variant="outline" className="font-mono text-[10px]">
+                    <Badge variant="outline" className="font-mono text-xs">
                       {selectedScene.archetype}
                     </Badge>
                   </div>
@@ -790,7 +797,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                     {selectedScene.title || `Adegan ${selectedRange.index + 1}`}
                   </h2>
                 </div>
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                   f{selectedRange.startFrame}–f{selectedRange.endFrame}
                 </span>
               </div>
@@ -803,7 +810,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                       <label className="text-xs font-semibold text-foreground">
                         Word-Cue Triggers (Klik kata untuk lompat ke frame)
                       </label>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
                         {selectedScene.cues?.length || 0} cue
                       </span>
                     </div>
@@ -819,14 +826,14 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                               key={`${cue.word}-${cIdx}`}
                               type="button"
                               onClick={() => seekToFrame(absCueFrame)}
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] transition ${
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition ${
                                 isCueActive
                                   ? "border-primary bg-accent font-semibold text-accent-foreground"
                                   : "border-border bg-card text-foreground hover:border-primary/40"
                               }`}
                             >
                               <span>{cue.word}</span>
-                              <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+                              <span className="font-mono text-xs tabular-nums text-muted-foreground">
                                 f{cue.start_frame}
                               </span>
                             </button>
@@ -851,7 +858,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                         updateTransitionMutation.mutate(val as MotionTransitionType)
                       }
                     >
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger className="h-9 text-xs rounded-xl font-medium">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent appearance="workspace">
@@ -895,7 +902,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                       variant="workspace-primary"
                       onClick={() => remixSceneMutation.mutate()}
                       disabled={remixSceneMutation.isPending}
-                      className="w-full gap-2 text-xs"
+                      className="h-9 w-full gap-2 text-xs rounded-xl font-medium"
                     >
                       {remixSceneMutation.isPending ? (
                         <>
@@ -922,12 +929,12 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     {draftCompileStatus ? (
                       draftCompileStatus.Component ? (
-                        <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] tabular-nums text-emerald-700 dark:text-emerald-300">
+                        <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-xs tabular-nums text-emerald-700 dark:text-emerald-300">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           <span>Compiled OK ({draftCompileStatus.compileTimeMs} ms)</span>
                         </div>
                       ) : (
-                        <div className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 font-mono text-[11px] text-destructive">
+                        <div className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 font-mono text-xs text-destructive">
                           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                           <span className="line-clamp-1">{draftCompileStatus.error}</span>
                         </div>
@@ -948,7 +955,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                             setDraftCode(selectedScene.component_code || "");
                             setIsCodeDirty(false);
                           }}
-                          className="h-7 gap-1 px-2 text-[11px]"
+                          className="h-7 gap-1 px-2 text-xs"
                         >
                           <RotateCcw className="h-3 w-3" />
                           <span>Reset</span>
@@ -964,7 +971,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                           !isCodeDirty ||
                           Boolean(draftCompileStatus?.error)
                         }
-                        className="h-7 gap-1 px-2.5 text-[11px]"
+                        className="h-7 gap-1 px-2.5 text-xs"
                       >
                         {saveCodeMutation.isPending ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -977,7 +984,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                   </div>
 
                   {draftCompileStatus?.error && (
-                    <pre className="max-h-24 overflow-auto rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 font-mono text-[11px] text-destructive">
+                    <pre className="max-h-24 overflow-auto rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 font-mono text-xs text-destructive">
                       {draftCompileStatus.error}
                     </pre>
                   )}
@@ -991,10 +998,10 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                     spellCheck={false}
                     rows={18}
                     placeholder="// Kode React + Remotion TSX adegan ini akan muncul di sini dan langsung hot-reload ke canvas..."
-                    className="w-full flex-1 rounded-xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full flex-1 rounded-xl border border-border bg-muted/40 p-3 font-mono text-xs leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
 
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Setiap perubahan valid otomatis di-hot-reload ke Remotion Player di sebelah
                     kiri menggunakan compiler Sucrase sandbox.
                   </p>
@@ -1028,7 +1035,7 @@ export function MotionStudioTab({ project }: MotionStudioTabProps) {
                       <h3 className="text-xs font-semibold text-foreground">
                         Burn-in Subtitle Tambahan saat Render MP4
                       </h3>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
                         Secara bawaan dinonaktifkan pada Motion Studio agar tipografi kinetik di
                         dalam kanvas tampil bersih tanpa tumpang tindih teks.
                       </p>

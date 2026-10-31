@@ -347,10 +347,10 @@ export function TimelineTracks({
       {/* Timeline Controls Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border bg-muted px-3.5 py-2 text-xs">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-foreground text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+          <span className="font-semibold text-foreground text-xs uppercase tracking-wider flex items-center gap-1.5">
             <Film className="w-3.5 h-3.5 text-primary" /> Tracks
           </span>
-          <span className="text-[10px] text-muted-foreground hidden lg:inline">
+          <span className="text-xs text-muted-foreground hidden lg:inline">
             Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret
             scene untuk ganti
           </span>
@@ -360,7 +360,7 @@ export function TimelineTracks({
           <button
             type="button"
             onClick={() => setSnapEnabled((s) => !s)}
-            className={`h-6 px-2 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition border ${
+            className={`h-6 px-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition border ${
               snapEnabled
                 ? "bg-primary/20 text-primary border-primary/40"
                 : "border-border text-muted-foreground hover:text-foreground"
@@ -405,7 +405,7 @@ export function TimelineTracks({
               setPps(null);
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
+            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
             title="Fit seluruh timeline di layar"
           >
             <Maximize className="w-3 h-3" /> Fit
@@ -424,7 +424,7 @@ export function TimelineTracks({
             style={{ height: RULER_H }}
             className="flex items-center border-b border-border px-2"
           >
-            <span className="text-[9px] font-mono text-muted-foreground font-semibold">TIME</span>
+            <span className="text-xs font-mono text-muted-foreground font-semibold">TIME</span>
           </div>
 
           {/* S1: Subtitle track header */}
@@ -434,13 +434,13 @@ export function TimelineTracks({
           >
             <div className="flex items-center gap-1.5">
               <Subtitles className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[11px] font-semibold text-foreground">S1</span>
+              <span className="text-xs font-semibold text-foreground">S1</span>
             </div>
             {segments.length > 0 && hasSubtitles ? (
               <button
                 type="button"
                 onClick={onEditSubtitles}
-                className="text-[9px] text-primary hover:underline flex items-center gap-0.5"
+                className="text-xs text-primary hover:underline flex items-center gap-0.5"
                 title="Edit di Subtitle Studio"
               >
                 <span>Edit</span>
@@ -450,13 +450,13 @@ export function TimelineTracks({
               <button
                 type="button"
                 onClick={onReaddSubtitles}
-                className="text-[9px] text-primary hover:underline font-semibold"
+                className="text-xs text-primary hover:underline font-semibold"
                 title="Tambahkan subtitle kembali ke timeline"
               >
                 + Re-add
               </button>
             ) : (
-              <span className="text-[9px] text-muted-foreground">Kosong</span>
+              <span className="text-xs text-muted-foreground">Kosong</span>
             )}
           </div>
 
@@ -474,21 +474,21 @@ export function TimelineTracks({
             className="flex flex-col justify-center gap-0.5 border-b border-border px-2"
           >
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <Volume2 className="w-3.5 h-3.5 text-primary" /> A1
               </span>
               {(audioDuration <= 0 || !hasAudio) && onReaddAudio ? (
                 <button
                   type="button"
                   onClick={onReaddAudio}
-                  className="text-[9px] text-primary hover:underline font-semibold"
+                  className="text-xs text-primary hover:underline font-semibold"
                   title="Tambahkan audio kembali ke timeline"
                 >
                   + Re-add
                 </button>
               ) : null}
             </div>
-            <span className="text-[9px] text-muted-foreground truncate">
+            <span className="text-xs text-muted-foreground truncate">
               {hasAudio && audioDuration > 0 ? voice || "Narasi" : "Kosong"}
             </span>
           </div>
@@ -513,7 +513,7 @@ export function TimelineTracks({
                 >
                   <div className={`w-px ${major ? "h-2.5 bg-slate-500" : "h-1.5 bg-slate-700"}`} />
                   {major && (
-                    <span className="absolute bottom-2.5 -translate-x-1/2 text-[9px] font-mono text-muted-foreground font-semibold whitespace-nowrap">
+                    <span className="absolute bottom-2.5 -translate-x-1/2 text-xs font-mono text-muted-foreground font-semibold whitespace-nowrap">
                       {formatRuler(t)}
                     </span>
                   )}
@@ -551,16 +551,16 @@ export function TimelineTracks({
                       style={{ left: x(st), width: Math.max(28, x(en - st) - 2) }}
                       title={seg.text}
                     >
-                      <span className="text-[9px] font-bold text-primary mr-1.5 shrink-0 font-mono">
+                      <span className="text-xs font-bold text-primary mr-1.5 shrink-0 font-mono">
                         T
                       </span>
-                      <span className="text-[10px] font-medium truncate">{seg.text}</span>
+                      <span className="text-xs font-medium truncate">{seg.text}</span>
                     </div>
                   );
                 })
               ) : (
                 <div
-                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-[10px] text-muted-foreground"
+                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-xs text-muted-foreground"
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Subtitle dinonaktifkan atau kosong</span>
@@ -608,7 +608,7 @@ export function TimelineTracks({
                         e.stopPropagation();
                         onReaddAll();
                       }}
-                      className="px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold text-[11px] cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold text-xs cursor-pointer"
                     >
                       + Re-add Audio & Subtitle
                     </button>
@@ -677,7 +677,7 @@ export function TimelineTracks({
                     {width > 24 && (
                       <div className="absolute top-1 left-1 right-1 flex items-center gap-1">
                         <span
-                          className={`px-1 rounded text-[9px] font-bold ${
+                          className={`px-1 rounded text-xs font-bold ${
                             isSel ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground shadow-sm"
                           }`}
                         >
@@ -690,7 +690,7 @@ export function TimelineTracks({
                           />
                         )}
                         {sped && width > 54 && (
-                          <span className="px-1 rounded bg-indigo-500/85 text-[8px] font-mono text-white flex items-center gap-0.5">
+                          <span className="px-1 rounded bg-indigo-500/85 text-xs font-mono text-white flex items-center gap-0.5">
                             <Gauge className="w-2.5 h-2.5" />
                             {clip.speed}x
                           </span>
@@ -700,10 +700,10 @@ export function TimelineTracks({
 
                     {width > 44 && (
                       <div className="absolute bottom-1 left-1.5 right-2 flex items-end justify-between gap-1">
-                        <span className="text-[9px] text-foreground/80 truncate leading-tight">
+                        <span className="text-xs text-foreground/80 truncate leading-tight">
                           {width > 100 ? clip.text || "" : ""}
                         </span>
-                        <span className="text-[9px] font-mono text-foreground/70 shrink-0">
+                        <span className="text-xs font-mono text-foreground/70 shrink-0">
                           {dur.toFixed(1)}s
                         </span>
                       </div>
@@ -711,7 +711,7 @@ export function TimelineTracks({
 
                     {isDropTarget && (
                       <div className="absolute inset-0 bg-emerald-500/30 backdrop-blur-[1px] flex items-center justify-center">
-                        <span className="px-1.5 py-0.5 rounded bg-background/90 text-[9px] font-bold text-emerald-700 whitespace-nowrap shadow-sm">
+                        <span className="px-1.5 py-0.5 rounded bg-background/90 text-xs font-bold text-emerald-700 whitespace-nowrap shadow-sm">
                           {dropHover?.insert ? "Sisip di sini" : "Ganti scene"}
                         </span>
                       </div>
@@ -751,7 +751,7 @@ export function TimelineTracks({
               {/* Append drop zone */}
               {clips.length > 0 && dropHover?.index === "end" && (
                 <div
-                  className="absolute top-1 bottom-1 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-500/15 flex items-center justify-center text-[10px] font-bold text-emerald-300 pointer-events-none"
+                  className="absolute top-1 bottom-1 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-500/15 flex items-center justify-center text-xs font-bold text-emerald-300 pointer-events-none"
                   style={{ left: x(clips[clips.length - 1].timeline_end) + 4, width: 110 }}
                 >
                   + Tambah di akhir
@@ -777,14 +777,14 @@ export function TimelineTracks({
                       style={{ width: waveW }}
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center px-3 text-[10px] text-amber-600">
+                    <div className="absolute inset-0 flex items-center px-3 text-xs text-amber-600">
                       Memuat waveform audio…
                     </div>
                   )}
                 </div>
               ) : (
                 <div
-                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-[10px] text-muted-foreground"
+                  className="absolute inset-y-1 left-2 right-2 flex items-center justify-between rounded-lg border border-dashed border-border px-3 text-xs text-muted-foreground"
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Audio narasi dinonaktifkan atau belum ada</span>
@@ -828,7 +828,7 @@ export function TimelineTracks({
             {/* Drag tooltip */}
             {draggingClip && (
               <div
-                className="pointer-events-none absolute z-40 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 font-mono text-[10px] text-foreground shadow-xl"
+                className="pointer-events-none absolute z-40 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 font-mono text-xs text-foreground shadow-xl"
                 style={{ left: x(draggingClip.timeline_end), top: RULER_H + 2 }}
               >
                 #{(dragEdge ?? 0) + 1} {tlDur(draggingClip).toFixed(2)}s
@@ -873,10 +873,10 @@ function TrackHeader({
       style={{ height }}
       className="flex flex-col justify-center gap-0.5 border-b border-border px-2"
     >
-      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
         {icon} {label}
       </span>
-      <span className="text-[9px] text-muted-foreground truncate">{sub}</span>
+      <span className="text-xs text-muted-foreground truncate">{sub}</span>
     </div>
   );
 }

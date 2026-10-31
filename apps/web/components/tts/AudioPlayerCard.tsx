@@ -71,7 +71,7 @@ export function AudioPlayerCard({
             </div>
             <div>
               <h4 className="text-xs font-semibold text-foreground">Narasi: {projectName}</h4>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Voice: <strong className="text-foreground">{voiceName}</strong> (
                 {provider.toUpperCase()}) • Kecepatan: {rate || "+0%"}
               </p>
@@ -115,7 +115,7 @@ export function AudioPlayerCard({
             />
           </div>
 
-          <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+          <div className="flex justify-between text-xs font-mono text-muted-foreground">
             <span>{formatAudioTime(currentTime)}</span>
             <span>{formatAudioTime(audioDuration)}</span>
           </div>

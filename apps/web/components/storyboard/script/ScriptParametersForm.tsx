@@ -118,7 +118,7 @@ export function ScriptParametersForm({
                   if (cur) onDeleteScriptPreset(cur.id, cur.name);
                 }}
                 title="Hapus Preset Kustom Ini"
-                className="flex items-center gap-1 text-[11px] text-[#A9472C] hover:underline"
+                className="flex items-center gap-1 text-xs text-[#A9472C] hover:underline"
               >
                 <Trash2 className="w-3 h-3" />
                 <span>Hapus Preset</span>
@@ -129,7 +129,7 @@ export function ScriptParametersForm({
           value={selectedScriptPresetId || undefined}
           onValueChange={(val) => onLoadScriptPreset(val)}
         >
-          <SelectTrigger className="h-9 w-full text-xs font-medium">
+          <SelectTrigger className="h-9 w-full rounded-xl text-xs font-medium">
             <SelectValue placeholder="-- Muat Preset Tersimpan --" />
           </SelectTrigger>
           <SelectContent appearance="workspace">
@@ -163,7 +163,7 @@ export function ScriptParametersForm({
             <label className="block text-xs font-semibold text-foreground">
               Bahasa Utama Video (Kunci Seluruh Pipeline)
             </label>
-            <span className="text-[10px] text-primary/80 font-mono">
+            <span className="text-xs text-primary/80 font-mono">
               Mengunci Naskah, Voice TTS & YouTube
             </span>
           </div>
@@ -189,7 +189,7 @@ export function ScriptParametersForm({
                     <span>{opt.flag}</span>
                     <span>{opt.label}</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                  <div className="text-xs text-muted-foreground mt-0.5 pl-5">
                     {opt.sub}
                   </div>
                 </button>
@@ -218,7 +218,7 @@ export function ScriptParametersForm({
             onChange={(e) => setDurationMins(Number(e.target.value))}
             className="w-full accent-[#C45B3A] cursor-pointer h-1.5 bg-[#E5E1D7] rounded-lg"
           />
-          <div className="mt-1 flex justify-between font-mono text-[10px] text-[#77766D]">
+          <div className="mt-1 flex justify-between font-mono text-xs text-[#77766D]">
             <span>3 Menit (Singkat)</span>
             <span>5 Menit (Standar)</span>
             <span>8 Menit (Mendalam)</span>
@@ -262,7 +262,7 @@ export function ScriptParametersForm({
             </label>
             <Link
               href="/image-studio"
-              className="text-[11px] text-[#C45B3A] hover:text-[#A9472C] hover:underline flex items-center gap-1"
+              className="text-xs text-[#C45B3A] hover:text-[#A9472C] hover:underline flex items-center gap-1"
             >
               <span>Buka Studio</span>
               <ExternalLink className="w-3 h-3" />
@@ -272,7 +272,7 @@ export function ScriptParametersForm({
             value={selectedPresetId || activePreset?.id || ""}
             onValueChange={(val) => setSelectedPresetId(val)}
           >
-            <SelectTrigger className="h-9 w-full text-xs font-medium">
+            <SelectTrigger className="h-9 w-full rounded-xl text-xs font-medium">
               <SelectValue placeholder="Pilih preset..." />
             </SelectTrigger>
             <SelectContent appearance="workspace">
@@ -284,7 +284,7 @@ export function ScriptParametersForm({
             </SelectContent>
           </Select>
           {presets.find((p) => p.id === (selectedPresetId || activePreset?.id)) && (
-            <div className="text-[10px] text-[#858176] mt-1 flex items-center justify-between">
+            <div className="text-xs text-[#858176] mt-1 flex items-center justify-between">
               <span className="truncate max-w-[260px]">
                 {presets.find((p) => p.id === (selectedPresetId || activePreset?.id))?.category} •
                 16:9 Landscape
@@ -315,7 +315,7 @@ export function ScriptParametersForm({
                 }`}
               >
                 <div className="text-xs font-bold">{opt.label}</div>
-                <div className="text-[10px] text-muted-foreground">{opt.sub}</div>
+                <div className="text-xs text-muted-foreground">{opt.sub}</div>
               </button>
             ))}
           </div>

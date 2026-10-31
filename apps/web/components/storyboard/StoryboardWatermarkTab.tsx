@@ -175,12 +175,12 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 </h1>
                 <Badge
                   variant="outline"
-                  className="text-[10px] bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
+                  className="text-xs bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD]"
                 >
                   16:9 Storyboard
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Atur watermark branding dan musik latar sebelum melanjutkan ke tahap Render Final
               </p>
             </div>
@@ -282,7 +282,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
 
                 <Badge
                   variant="outline"
-                  className="text-[10px] text-muted-foreground border-[#E5E1D7] hidden sm:inline-flex"
+                  className="text-xs text-muted-foreground border-[#E5E1D7] hidden sm:inline-flex"
                 >
                   Drag Watermark Bebas
                 </Badge>
@@ -311,7 +311,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                     <div className="font-semibold text-xs text-foreground">
                       {currentScene?.chapter_title || "Ilustrasi Adegan AI"}
                     </div>
-                    <p className="text-[11px] text-muted-foreground max-w-md mt-1 line-clamp-2">
+                    <p className="text-xs text-muted-foreground max-w-md mt-1 line-clamp-2">
                       {currentScene?.script_text ||
                         "Slot adegan ini belum memiliki render ilustrasi. Watermark tetap dapat disimulasikan di atas canvas 16:9 ini."}
                     </p>
@@ -335,13 +335,13 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div className="absolute inset-0 pointer-events-none z-30">
                     {/* Action safe 5% */}
                     <div className="absolute inset-[5%] border border-dashed border-[#C45B3A]/50 rounded-lg flex items-start justify-end p-2">
-                      <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
+                      <span className="text-xs font-mono text-white/90 bg-black/60 px-1 rounded">
                         Action Safe 90%
                       </span>
                     </div>
                     {/* Title safe 10% */}
                     <div className="absolute inset-[10%] border border-dotted border-[#E9C9BD]/50 rounded-lg flex items-end justify-start p-2">
-                      <span className="text-[9px] font-mono text-white/90 bg-black/60 px-1 rounded">
+                      <span className="text-xs font-mono text-white/90 bg-black/60 px-1 rounded">
                         Title Safe 80% (Disarankan untuk Logo)
                       </span>
                     </div>
@@ -353,7 +353,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
                     <Badge
                       variant="outline"
-                      className="bg-black/80 text-muted-foreground border-[#E5E1D7] text-[10px] backdrop-blur-sm"
+                      className="bg-black/80 text-muted-foreground border-[#E5E1D7] text-xs backdrop-blur-sm"
                     >
                       Watermark Dinonaktifkan
                     </Badge>
@@ -370,11 +370,11 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                     <span className="text-xs font-semibold text-foreground">
                       Uji Kontras pada Adegan AI
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       (Klik adegan untuk memeriksa keterbacaan watermark)
                     </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {scenes.length} Slot Adegan
                   </span>
                 </div>
@@ -400,11 +400,11 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-[#F1EEE6] flex items-center justify-center text-[10px] text-muted-foreground">
+                          <div className="w-full h-full bg-[#F1EEE6] flex items-center justify-center text-xs text-muted-foreground">
                             Slot #{idx + 1}
                           </div>
                         )}
-                        <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 text-[8.5px] text-white truncate font-medium">
+                        <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 text-xs text-white truncate font-medium">
                           #{idx + 1} {sc.chapter_title || "Scene"}
                         </div>
                       </button>
@@ -427,10 +427,10 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
               <div className="mt-4 p-3.5 rounded-xl bg-[#F8EEEA] border border-[#E9C9BD] text-xs text-muted-foreground flex items-start gap-2.5">
                 <Info className="w-4 h-4 text-[#C45B3A] shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <span className="font-semibold text-foreground text-[11px] block">
+                  <span className="font-semibold text-foreground text-xs block">
                     Tips Branding Watermark
                   </span>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-xs leading-relaxed">
                     Gunakan format PNG transparan dengan resolusi minimal 300px untuk logo. Posisi
                     kanan bawah atau kiri atas adalah standar industri yang tidak mengganggu teks
                     subtitle narasi.
@@ -453,7 +453,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <h2 className="font-serif text-lg font-semibold text-[#26251F]">
                     Musik Latar / Background Music (BGM)
                   </h2>
-                  <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-[10px]">
+                  <Badge className="bg-[#F8EEEA] text-[#A9472C] border-[#E9C9BD] text-xs">
                     Preview Integrasi
                   </Badge>
                 </div>
@@ -527,7 +527,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                             {bgm.name}
                             {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A]" />}
                           </div>
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                          <span className="text-xs text-muted-foreground uppercase font-semibold">
                             {bgm.genre} • Durasi {bgm.duration}
                           </span>
                         </div>
@@ -564,7 +564,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   onChange={(e) => setBgmVolume(Number(e.target.value))}
                   className="w-full accent-[#C45B3A] h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
                 />
-                <span className="text-[10px] text-muted-foreground mt-1 block">
+                <span className="text-xs text-muted-foreground mt-1 block">
                   Disarankan 12% - 18% agar narasi tetap dominan dan jelas
                 </span>
               </div>
@@ -574,7 +574,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                   <div className="font-semibold text-xs text-foreground">
                     Auto-Ducking Narasi Cerdas
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     Otomatis turunkan volume musik saat narator berbicara
                   </div>
                 </div>
@@ -605,7 +605,7 @@ export function StoryboardWatermarkTab({ project }: StoryboardWatermarkTabProps)
                 <div className="text-xs font-semibold text-[#26251F]">
                   Pilih File Audio (MP3 / WAV)
                 </div>
-                <span className="text-[10px] text-muted-foreground">Maksimal durasi 10 menit</span>
+                <span className="text-xs text-muted-foreground">Maksimal durasi 10 menit</span>
               </div>
             </div>
           </div>

@@ -328,7 +328,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               icon={<BookOpen className="w-4 h-4 text-primary" />}
               description="Pilih gaya penceritaan yang sesuai, lalu isi detail cerita."
               badge={
-                <Badge variant="secondary" className="font-mono text-[10px]">
+                <Badge variant="secondary" className="font-mono text-xs">
                   {templates.length} Preset
                 </Badge>
               }
@@ -387,14 +387,14 @@ export function NarrationTab({ project }: NarrationTabProps) {
                             <div className="flex items-center gap-1.5 shrink-0">
                               <Badge
                                 variant={isSelected ? "workspace-accent" : "secondary"}
-                                className="text-[9px] py-0"
+                                className="text-xs py-0"
                               >
                                 {badgeLabel}
                               </Badge>
                               {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
                             </div>
                           </div>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                             {tpl.description}
                           </p>
                         </div>
@@ -413,7 +413,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
               headerClassName="!border-surface-border !bg-card"
               icon={<Sliders className="w-4 h-4 text-[#8A6A2F]" />}
               badge={
-                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Layers className="w-3 h-3 text-[#8A6A2F]" />
                   <span>{project.scenes.length} scene</span>
                   {hasDialogTranscript && (
@@ -429,7 +429,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                     <label className="block text-xs font-semibold text-foreground">
                       Bahasa Utama Video
                     </label>
-                    <span className="text-[10px] text-muted-foreground/80 font-mono">
+                    <span className="text-xs text-muted-foreground/80">
                       Naskah, Voice TTS & Subtitle
                     </span>
                   </div>
@@ -455,7 +455,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                             <span>{opt.flag}</span>
                             <span>{opt.label}</span>
                           </div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">
+                          <div className="text-xs text-muted-foreground mt-0.5 pl-5">
                             {opt.sub}
                           </div>
                         </button>
@@ -487,65 +487,64 @@ export function NarrationTab({ project }: NarrationTabProps) {
                     <div className="flex items-center gap-1.5">
                       <Sliders className="w-3.5 h-3.5 text-primary" />
                       <span>Pengaturan Lanjut</span>
-                      <span className="text-[10px] opacity-75 font-mono">
+                      <span className="text-xs opacity-75 font-mono">
                         {tone} · {targetDuration >= 60 ? `${Math.floor(targetDuration / 60)}m` : `${targetDuration}s`}
                       </span>
                     </div>
-                    <span className="text-[10px] text-primary">
+                    <span className="text-xs text-primary">
                       {showAdvanced ? "Tutup ▲" : "Buka ▼"}
                     </span>
                   </button>
 
                   {showAdvanced && (
-                <div className="grid grid-cols-2 gap-3 mt-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Tone Pembawaan
-                    </label>
-                    <Select value={tone} onValueChange={setTone}>
-                      <SelectTrigger className="h-9 w-full text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent appearance="workspace">
-                        <SelectItem value="santai" className="text-xs">Santai & Akrab</SelectItem>
-                        <SelectItem value="tegang" className="text-xs">Tegang & Mepet</SelectItem>
-                        <SelectItem value="dramatis" className="text-xs">Dramatis & Tegang</SelectItem>
-                        <SelectItem value="formal" className="text-xs">Edukatif / Formal</SelectItem>
-                        <SelectItem value="kocak" className="text-xs">Kocak / Lempeng</SelectItem>
-                        <SelectItem value="berwibawa" className="text-xs">Berwibawa</SelectItem>
-                        <SelectItem value="mencekam" className="text-xs">Mencekam</SelectItem>
-                        <SelectItem value="hangat" className="text-xs">Hangat & Menyentuh</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-foreground mb-1.5">
+                          Tone Pembawaan
+                        </label>
+                        <Select value={tone} onValueChange={setTone}>
+                          <SelectTrigger className="h-9 w-full text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent appearance="workspace">
+                            <SelectItem value="santai" className="text-xs">Santai & Akrab</SelectItem>
+                            <SelectItem value="tegang" className="text-xs">Tegang & Mepet</SelectItem>
+                            <SelectItem value="dramatis" className="text-xs">Dramatis & Tegang</SelectItem>
+                            <SelectItem value="formal" className="text-xs">Edukatif / Formal</SelectItem>
+                            <SelectItem value="kocak" className="text-xs">Kocak / Lempeng</SelectItem>
+                            <SelectItem value="berwibawa" className="text-xs">Berwibawa</SelectItem>
+                            <SelectItem value="mencekam" className="text-xs">Mencekam</SelectItem>
+                            <SelectItem value="hangat" className="text-xs">Hangat & Menyentuh</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold text-foreground">Target Durasi</label>
-                      <span className="text-[11px] font-mono font-bold text-primary">
-                        {targetDuration >= 60
-                          ? `${Math.floor(targetDuration / 60)}m${
-                              targetDuration % 60 ? ` ${targetDuration % 60}s` : ""
-                            }`
-                          : `${targetDuration}s`}
-                      </span>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-semibold text-foreground">Target Durasi</label>
+                          <span className="text-xs font-mono font-bold text-primary">
+                            {targetDuration >= 60
+                              ? `${Math.floor(targetDuration / 60)}m${targetDuration % 60 ? ` ${targetDuration % 60}s` : ""
+                              }`
+                              : `${targetDuration}s`}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={20}
+                          max={300}
+                          step={5}
+                          value={targetDuration}
+                          onChange={(e) => setTargetDuration(parseInt(e.target.value))}
+                          className="w-full mt-2"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>20s</span>
+                          <span>± {Math.round(targetDuration * 2.3)} kata</span>
+                          <span>5m</span>
+                        </div>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min={20}
-                      max={300}
-                      step={5}
-                      value={targetDuration}
-                      onChange={(e) => setTargetDuration(parseInt(e.target.value))}
-                      className="w-full mt-2"
-                    />
-                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                      <span>20s</span>
-                      <span>± {Math.round(targetDuration * 2.3)} kata</span>
-                      <span>5m</span>
-                    </div>
-                  </div>
-                </div>
                   )}
                 </div>
 
@@ -557,7 +556,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                         <span>Menyusun naskah narasi AI...</span>
                       </div>
-                      <div className="font-mono text-[11px] text-muted-foreground">
+                      <div className="font-mono text-xs text-muted-foreground">
                         <span>
                           {Math.floor(narrationElapsed / 60)}:
                           {String(narrationElapsed % 60).padStart(2, "0")}
@@ -581,7 +580,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       <Sparkles className="w-3.5 h-3.5 text-primary" />
                       <span>Kustomisasi Prompt AI</span>
                     </div>
-                    <span className="text-[10px] text-primary">
+                    <span className="text-xs text-primary">
                       {showPromptDetails ? "Tutup ▲" : "Buka ▼"}
                     </span>
                   </button>
@@ -589,7 +588,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   {showPromptDetails && (
                     <div className="mt-2 space-y-2 rounded-lg border border-border bg-background p-3">
                       <div>
-                        <label className="block text-[11px] font-semibold text-foreground mb-1">
+                        <label className="block text-xs font-semibold text-foreground mb-1">
                           Instruksi Tambahan (Custom Prompt)
                         </label>
                         <Textarea
@@ -603,20 +602,20 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       {selectedTemplate && (
                         <div className="border-t border-border pt-2">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
                               <Code className="h-3 w-3 text-primary" />
                               <span>Prompt Aktif ({selectedTemplate.name})</span>
                             </span>
                             <Link
                               href="/settings"
-                              className="flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+                              className="flex items-center gap-0.5 text-xs text-primary hover:underline"
                               target="_blank"
                             >
                               <span>Edit Template</span>
                               <ExternalLink className="w-2.5 h-2.5" />
                             </Link>
                           </div>
-                          <div className="max-h-28 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-muted p-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                          <div className="max-h-28 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-muted p-2 font-mono text-xs leading-relaxed text-muted-foreground">
                             {selectedTemplate.system_prompt}
                           </div>
                         </div>
@@ -663,7 +662,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 rawText ? (
                   <Badge
                     variant="outline"
-                    className="border-primary/30 bg-primary/10 font-mono text-[10px] text-primary"
+                    className="border-primary/30 bg-primary/10 font-mono text-xs text-primary"
                   >
                     {(project.narration?.language || language) === "en"
                       ? "🇬🇧 English"
@@ -730,7 +729,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                         className="text-sm leading-relaxed"
                         placeholder="Tulis atau edit naskah narasi di sini..."
                       />
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         * Klik Simpan untuk memperbarui pembagian segmen kalimat otomatis.
                       </p>
                     </div>
@@ -750,7 +749,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
                             Segmentasi Kalimat ({project.narration.segments.length} Segmen)
                           </span>
                         </h4>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           Sinkron otomatis dengan audio & visual
                         </span>
                       </div>
@@ -761,12 +760,12 @@ export function NarrationTab({ project }: NarrationTabProps) {
                             key={seg.id || idx}
                             className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background p-2.5 text-xs transition hover:border-primary/40"
                           >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary/30 bg-primary/10 font-mono text-[10px] font-bold text-primary">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary/30 bg-primary/10 font-mono text-xs font-bold text-primary">
                               {idx + 1}
                             </span>
                             <p className="flex-1 text-foreground/90 leading-relaxed">{seg.text}</p>
                             {seg.end_ms > 0 && (
-                              <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                              <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                                 {Math.round(seg.start_ms / 1000)}s - {Math.round(seg.end_ms / 1000)}
                                 s
                               </span>

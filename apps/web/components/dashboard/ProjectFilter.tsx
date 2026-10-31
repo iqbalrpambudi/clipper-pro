@@ -152,7 +152,7 @@ export function ProjectFilter({
             dari <strong className="font-medium text-foreground">{totalCount}</strong> project
           </span>
           {searchQuery && (
-            <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px] text-secondary-foreground">
+            <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-xs text-secondary-foreground">
               kata kunci: &quot;{searchQuery}&quot;
             </span>
           )}

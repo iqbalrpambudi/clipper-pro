@@ -21,7 +21,18 @@ import {
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { NarrationTemplate } from "@/types";
-import { Badge, Button, Input, NativeSelect, Textarea, WorkspaceChip } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+  WorkspaceChip,
+} from "@/components/ui";
 
 export function PromptTemplatesTab() {
   const queryClient = useQueryClient();
@@ -168,7 +179,7 @@ export function PromptTemplatesTab() {
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-brand-400" />
             <h3 className="text-sm font-bold text-foreground">Preset Template Naskah</h3>
-            <span className="text-[11px] text-muted-foreground">({templates.length} preset tersedia)</span>
+            <span className="text-xs text-muted-foreground">({templates.length} preset tersedia)</span>
           </div>
           <Button
             type="button"
@@ -191,11 +202,10 @@ export function PromptTemplatesTab() {
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setSelectedTemplateId(tpl.id)}
-                className={`w-full rounded-xl p-4 border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] transition-all flex flex-col justify-between ${
-                  isSelected
+                className={`w-full rounded-xl p-4 border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] transition-all flex flex-col justify-between ${isSelected
                     ? "border-[#C45B3A] bg-[#F8EEEA] shadow-xs ring-1 ring-[#C45B3A]/30"
                     : "border-[#E5E1D7] hover:border-[#D8CFC2] bg-[#FBFAF7]"
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
@@ -227,12 +237,12 @@ export function PromptTemplatesTab() {
                     </div>
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">
                     {tpl.description || "Tidak ada deskripsi"}
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-surface-border/50 text-[10px] text-muted-foreground flex justify-between items-center gap-1.5">
+                <div className="pt-2 border-t border-surface-border/50 text-xs text-muted-foreground flex justify-between items-center gap-1.5">
                   <span className="font-mono text-muted-foreground truncate max-w-[100px]">{tpl.id}</span>
                   {tpl.sub_category && (
                     <Badge
@@ -245,7 +255,7 @@ export function PromptTemplatesTab() {
                   )}
                   <Badge
                     variant={tpl.is_builtin ? "workspace" : "workspace-success"}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[9px] uppercase"
+                    className="shrink-0 rounded px-1.5 py-0.5 text-xs uppercase"
                   >
                     {tpl.is_builtin ? "Bawaan" : "Kustom"}
                   </Badge>
@@ -273,15 +283,14 @@ export function PromptTemplatesTab() {
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
                 <span>ID Preset:</span>
-                <code className="text-brand-300 font-mono text-[11px] bg-brand-500/10 px-1.5 py-0.5 rounded">
+                <code className="text-brand-300 font-mono text-xs bg-brand-500/10 px-1.5 py-0.5 rounded">
                   {currentSelectedTemplate.id}
                 </code>
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase ${
-                    currentSelectedTemplate.is_builtin
+                  className={`px-1.5 py-0.2 rounded text-xs font-semibold uppercase ${currentSelectedTemplate.is_builtin
                       ? "bg-brand-500/20 text-brand-300"
                       : "bg-emerald-500/20 text-emerald-300"
-                  }`}
+                    }`}
                 >
                   {currentSelectedTemplate.is_builtin ? "Preset Bawaan" : "Preset Kustom"}
                 </span>
@@ -359,36 +368,46 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Tone Bawaan (Gaya Bahasa)
               </label>
-              <NativeSelect
+              <Select
                 value={templateForm.default_tone}
-                onChange={(e) => setTemplateForm({ ...templateForm, default_tone: e.target.value })}
+                onValueChange={(val) => setTemplateForm({ ...templateForm, default_tone: val })}
               >
-                <option value="santai">Santai (Casual & Friendly)</option>
-                <option value="tegang">Tegang (Tense & Gripping)</option>
-                <option value="formal">Formal (Professional & Clear)</option>
-                <option value="dramatis">Dramatis (Tense & Emotional)</option>
-                <option value="kocak">Kocak (Funny & Lempeng)</option>
-                <option value="berwibawa">Berwibawa (Authoritative)</option>
-                <option value="mencekam">Mencekam (Creepy & Dark)</option>
-                <option value="hangat">Hangat (Warm & Touching)</option>
-              </NativeSelect>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="santai">Santai (Casual & Friendly)</SelectItem>
+                  <SelectItem value="tegang">Tegang (Tense & Gripping)</SelectItem>
+                  <SelectItem value="formal">Formal (Professional & Clear)</SelectItem>
+                  <SelectItem value="dramatis">Dramatis (Tense & Emotional)</SelectItem>
+                  <SelectItem value="kocak">Kocak (Funny & Lempeng)</SelectItem>
+                  <SelectItem value="berwibawa">Berwibawa (Authoritative)</SelectItem>
+                  <SelectItem value="mencekam">Mencekam (Creepy & Dark)</SelectItem>
+                  <SelectItem value="hangat">Hangat (Warm & Touching)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="sm:col-span-1">
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Preset / Kategori
               </label>
-              <NativeSelect
+              <Select
                 value={templateForm.category}
-                onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
+                onValueChange={(val) => setTemplateForm({ ...templateForm, category: val })}
               >
-                <option value="recap">Alur Cerita & Story</option>
-                <option value="fakta">Fakta & Trivia</option>
-                <option value="edukasi">Edukasi & Tips</option>
-                <option value="showcase">Showcase & Review</option>
-                <option value="opini">Opini & POV</option>
-                <option value="custom">Kustom</option>
-              </NativeSelect>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recap">Alur Cerita & Story</SelectItem>
+                  <SelectItem value="fakta">Fakta & Trivia</SelectItem>
+                  <SelectItem value="edukasi">Edukasi & Tips</SelectItem>
+                  <SelectItem value="showcase">Showcase & Review</SelectItem>
+                  <SelectItem value="opini">Opini & POV</SelectItem>
+                  <SelectItem value="custom">Kustom</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="sm:col-span-1">
@@ -424,7 +443,7 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-bold text-foreground flex items-center gap-1.5">
                 <span>1. System Prompt (Aturan Persona, Gaya Bahasa & Struktur AI)</span>
               </label>
-              <span className="text-[10px] text-muted-foreground font-mono">Instruksi Primer LLM</span>
+              <span className="text-xs text-muted-foreground font-mono">Instruksi Primer LLM</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               System prompt mendikte peran AI, pembatasan bahasa, hook awal (maksimal 10 kata),
@@ -435,7 +454,7 @@ export function PromptTemplatesTab() {
               rows={9}
               value={templateForm.system_prompt}
               onChange={(e) => setTemplateForm({ ...templateForm, system_prompt: e.target.value })}
-              className="text-xs font-mono leading-relaxed"
+              className="font-mono leading-relaxed"
               placeholder="Instruksi system prompt untuk AI..."
               required
             />
@@ -447,7 +466,7 @@ export function PromptTemplatesTab() {
               <label className="block text-xs font-bold text-foreground">
                 2. User Prompt Template (Format Input & Variabel)
               </label>
-              <span className="text-[10px] text-muted-foreground font-mono">Template Format Dinamis</span>
+              <span className="text-xs text-muted-foreground font-mono">Template Format Dinamis</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Klik tag variabel di bawah untuk menyisipkan placeholder otomatis ke dalam prompt:
@@ -478,7 +497,7 @@ export function PromptTemplatesTab() {
               onChange={(e) =>
                 setTemplateForm({ ...templateForm, user_prompt_template: e.target.value })
               }
-              className="text-xs font-mono leading-relaxed"
+              className="font-mono leading-relaxed"
               placeholder="Template prompt user..."
               required
             />
@@ -516,7 +535,7 @@ export function PromptTemplatesTab() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-foreground">Buat Preset Naskah Baru</h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Tambahkan struktur dan formula prompt khusus untuk video Anda
                   </p>
                 </div>
@@ -577,7 +596,7 @@ export function PromptTemplatesTab() {
                         id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "_"),
                       })
                     }
-                    className="text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
               </div>
@@ -587,21 +606,26 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Tone Bawaan
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newTemplateForm.default_tone}
-                    onChange={(e) =>
-                      setNewTemplateForm({ ...newTemplateForm, default_tone: e.target.value })
+                    onValueChange={(val) =>
+                      setNewTemplateForm({ ...newTemplateForm, default_tone: val })
                     }
                   >
-                    <option value="santai">Santai (Casual & Friendly)</option>
-                    <option value="tegang">Tegang (Tense & Gripping)</option>
-                    <option value="formal">Formal (Professional & Clear)</option>
-                    <option value="dramatis">Dramatis (Tense & Emotional)</option>
-                    <option value="kocak">Kocak (Funny & Lempeng)</option>
-                    <option value="berwibawa">Berwibawa (Authoritative)</option>
-                    <option value="mencekam">Mencekam (Creepy & Dark)</option>
-                    <option value="hangat">Hangat (Warm & Touching)</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Tone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="santai">Santai (Casual & Friendly)</SelectItem>
+                      <SelectItem value="tegang">Tegang (Tense & Gripping)</SelectItem>
+                      <SelectItem value="formal">Formal (Professional & Clear)</SelectItem>
+                      <SelectItem value="dramatis">Dramatis (Tense & Emotional)</SelectItem>
+                      <SelectItem value="kocak">Kocak (Funny & Lempeng)</SelectItem>
+                      <SelectItem value="berwibawa">Berwibawa (Authoritative)</SelectItem>
+                      <SelectItem value="mencekam">Mencekam (Creepy & Dark)</SelectItem>
+                      <SelectItem value="hangat">Hangat (Warm & Touching)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -615,7 +639,6 @@ export function PromptTemplatesTab() {
                     onChange={(e) =>
                       setNewTemplateForm({ ...newTemplateForm, description: e.target.value })
                     }
-                    className="text-xs"
                   />
                 </div>
               </div>
@@ -625,19 +648,24 @@ export function PromptTemplatesTab() {
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Preset / Kategori
                   </label>
-                  <NativeSelect
+                  <Select
                     value={newTemplateForm.category}
-                    onChange={(e) =>
-                      setNewTemplateForm({ ...newTemplateForm, category: e.target.value })
+                    onValueChange={(val) =>
+                      setNewTemplateForm({ ...newTemplateForm, category: val })
                     }
                   >
-                    <option value="custom">Kustom</option>
-                    <option value="recap">Alur Cerita & Story</option>
-                    <option value="fakta">Fakta & Trivia</option>
-                    <option value="edukasi">Edukasi & Tips</option>
-                    <option value="showcase">Showcase & Review</option>
-                    <option value="opini">Opini & POV</option>
-                  </NativeSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Kustom</SelectItem>
+                      <SelectItem value="recap">Alur Cerita & Story</SelectItem>
+                      <SelectItem value="fakta">Fakta & Trivia</SelectItem>
+                      <SelectItem value="edukasi">Edukasi & Tips</SelectItem>
+                      <SelectItem value="showcase">Showcase & Review</SelectItem>
+                      <SelectItem value="opini">Opini & POV</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -669,7 +697,7 @@ export function PromptTemplatesTab() {
                     setNewTemplateForm({ ...newTemplateForm, system_prompt: e.target.value })
                   }
                   placeholder="Instruksi sistem persona dan format naskah..."
-                  className="text-xs font-mono leading-relaxed"
+                  className="font-mono leading-relaxed"
                 />
               </div>
 
@@ -696,7 +724,7 @@ export function PromptTemplatesTab() {
                           }));
                         }}
                         size="sm"
-                        className="min-h-7 px-2 font-mono text-[10px]"
+                        className="min-h-7 px-2 font-mono text-xs"
                       >
                         + {token}
                       </WorkspaceChip>
@@ -711,7 +739,7 @@ export function PromptTemplatesTab() {
                     setNewTemplateForm({ ...newTemplateForm, user_prompt_template: e.target.value })
                   }
                   placeholder="Template format variabel..."
-                  className="text-xs font-mono leading-relaxed"
+                  className="font-mono leading-relaxed"
                 />
               </div>
 
