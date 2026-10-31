@@ -163,6 +163,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
           setEditText={state.setEditText}
           editItemPrompts={state.editItemPrompts}
           setEditItemPrompts={state.setEditItemPrompts}
+          editItemShotMeta={state.editItemShotMeta}
+          setEditItemShotMeta={state.setEditItemShotMeta}
           onStartEditSegment={state.handleStartEditSegment}
           onCancelEditSegment={state.handleCancelEditSegment}
           onSaveEditSegment={state.handleSaveEditSegment}

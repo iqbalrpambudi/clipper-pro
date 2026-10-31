@@ -119,6 +119,7 @@ export function useStoryboardTimelineState(project: Project) {
       highlight_animation:
         project.subtitle_style?.highlight_animation || DEFAULT_SUBTITLE_STYLE.highlight_animation,
       scale_factor: project.subtitle_style?.scale_factor ?? DEFAULT_SUBTITLE_STYLE.scale_factor,
+      text_case: project.subtitle_style?.text_case || DEFAULT_SUBTITLE_STYLE.text_case,
       emoji_enabled: false,
     };
     if (draft?.style) return { ...base, ...draft.style };
@@ -468,19 +469,18 @@ export function useStoryboardTimelineState(project: Project) {
     });
   };
 
-  // Compute CSS animation class for active motion effect
+  // Compute CSS animation class for active motion effect (keyframes live in globals.css)
   const getMotionAnimationClass = (effect?: string) => {
     switch (effect) {
       case "zoom_in":
-        return "scale-110 transition-transform duration-[6000ms] ease-out";
       case "zoom_out":
-        return "scale-100 scale-x-105 transition-transform duration-[6000ms] ease-out";
       case "pan_left":
-        return "translate-x-3 scale-105 transition-transform duration-[6000ms] ease-out";
       case "pan_right":
-        return "-translate-x-3 scale-105 transition-transform duration-[6000ms] ease-out";
+      case "pan_up":
+      case "pan_down":
+        return `sb-motion sb-motion-${effect}`;
       default:
-        return "scale-100 transition-none";
+        return "";
     }
   };
 

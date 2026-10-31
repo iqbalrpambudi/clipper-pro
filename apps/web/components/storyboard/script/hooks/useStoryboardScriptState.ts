@@ -9,6 +9,7 @@ import {
   Project,
   ProjectDetail,
   StoryboardItem,
+  StoryboardShotMetadata,
   StoryboardCharacter,
   StoryboardLocation,
   StoryboardWorldSetting,
@@ -190,6 +191,8 @@ export function useStoryboardScriptState(project: Project) {
         name: `Tokoh ${idx}`,
         role: "Tokoh Utama",
         visual_anchor: "",
+        face_head_anchor: "",
+        outfit_body_anchor: "",
         variants: [],
       },
     ]);
@@ -210,6 +213,8 @@ export function useStoryboardScriptState(project: Project) {
         variant_id: `varian_${variants.length + 1}`,
         label: `Varian ${variants.length + 1}`,
         visual_anchor: "",
+        face_head_anchor: "",
+        outfit_body_anchor: "",
       });
       char.variants = variants;
       updated[charIdx] = char;
@@ -238,7 +243,9 @@ export function useStoryboardScriptState(project: Project) {
         id: `lokasi_${idx}`,
         name: `Lokasi ${idx}`,
         environment_anchor: "",
+        closeup_background_anchor: "",
         focal_props: "",
+        lighting_direction: "",
       },
     ]);
     setBibleTab("locations");
@@ -363,6 +370,7 @@ export function useStoryboardScriptState(project: Project) {
   const [editChapter, setEditChapter] = useState<string>("");
   const [editText, setEditText] = useState<string>("");
   const [editItemPrompts, setEditItemPrompts] = useState<Record<string, string>>({});
+  const [editItemShotMeta, setEditItemShotMeta] = useState<Record<string, StoryboardShotMetadata>>({});
 
   const handleStartEditSegment = (
     seg: SentenceSegment & { chapter?: string; segment_id?: string },
@@ -375,10 +383,13 @@ export function useStoryboardScriptState(project: Project) {
     setEditChapter(seg.chapter || `Babak ${idx + 1}`);
     setEditText(seg.text || "");
     const promptsMap: Record<string, string> = {};
+    const metaMap: Record<string, StoryboardShotMetadata> = {};
     segItems.forEach((it) => {
       promptsMap[it.id] = it.image_prompt || "";
+      metaMap[it.id] = { ...(it.shot_metadata || {}) };
     });
     setEditItemPrompts(promptsMap);
+    setEditItemShotMeta(metaMap);
   };
 
   const handleCancelEditSegment = () => {
@@ -387,6 +398,7 @@ export function useStoryboardScriptState(project: Project) {
     setEditChapter("");
     setEditText("");
     setEditItemPrompts({});
+    setEditItemShotMeta({});
   };
 
   const updateSegmentMutation = useMutation({
@@ -401,7 +413,7 @@ export function useStoryboardScriptState(project: Project) {
       segmentIndex?: number;
       chapter: string;
       text: string;
-      items: { id: string; image_prompt: string }[];
+      items: { id: string; image_prompt: string; shot_metadata?: StoryboardShotMetadata | null }[];
     }) =>
       api.updateStoryboardSegment(project.id, segmentId, {
         chapter,
@@ -439,6 +451,8 @@ export function useStoryboardScriptState(project: Project) {
       id: it.id,
       image_prompt:
         editItemPrompts[it.id] !== undefined ? editItemPrompts[it.id] : it.image_prompt || "",
+      shot_metadata:
+        editItemShotMeta[it.id] !== undefined ? editItemShotMeta[it.id] : it.shot_metadata || undefined,
     }));
 
     updateSegmentMutation.mutate({
@@ -679,6 +693,8 @@ export function useStoryboardScriptState(project: Project) {
     setEditText,
     editItemPrompts,
     setEditItemPrompts,
+    editItemShotMeta,
+    setEditItemShotMeta,
     handleStartEditSegment,
     handleCancelEditSegment,
     handleSaveEditSegment,

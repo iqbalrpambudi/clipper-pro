@@ -35,10 +35,13 @@ class Settings(BaseSettings):
     ELEVENLABS_MODEL: str = "eleven_multilingual_v2"
     RUNWARE_TTS_MODEL: str = "fishaudio:s2.1@pro"
 
+    IMAGE_PROVIDER: str = "runware"
     IMAGE_BASE_URL: str = "https://api.openai.com/v1"
     IMAGE_API_KEY: str = ""
-    IMAGE_MODEL: str = "dall-e-3"
+    IMAGE_MODEL: str = "runware:400@2"
     IMAGE_CONCURRENCY: int = 2
+    IMAGE_STEPS: int = 5
+    IMAGE_CFG_SCALE: float = 3.5
     IMAGE_SYSTEM_PROMPT: str = DEFAULT_IMAGE_SYSTEM_PROMPT
 
     @property

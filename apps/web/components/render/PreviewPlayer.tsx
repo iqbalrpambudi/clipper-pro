@@ -1440,7 +1440,7 @@ export function PreviewPlayer({
             <button
               type="button"
               onClick={togglePlay}
-              className="px-3.5 py-1.5 rounded-lg bg-primary text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shadow-xs"
+              className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shadow-xs"
             >
               {isPlaying ? (
                 <Pause className="w-3.5 h-3.5 fill-current" />

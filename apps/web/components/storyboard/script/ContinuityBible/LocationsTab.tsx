@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Plus, Trash2, Sparkles, Anchor } from "lucide-react";
+import { Plus, Trash2, Sparkles, Anchor, Sun, Camera } from "lucide-react";
 import { StoryboardLocation } from "@/types";
 
 interface LocationsTabProps {
@@ -95,39 +95,79 @@ export function LocationsTab({
                   </button>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
-                    <span>Arsitektur & Micro-Setting (English)</span>
-                  </label>
-                  <textarea
-                    value={loc.environment_anchor}
-                    placeholder="Contoh: a rustic bamboo spice stall in a traditional market, weathered dark teak counter, cobblestone ground, gentle morning sunlight from left..."
-                    onChange={(e) => {
-                      const updated = [...locationsList];
-                      updated[lIdx] = { ...loc, environment_anchor: e.target.value };
-                      setLocationsList(updated);
-                    }}
-                    rows={2}
-                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                      <span>🏞️ Arsitektur Latar Wide Shot (English)</span>
+                    </label>
+                    <textarea
+                      value={loc.environment_anchor}
+                      placeholder="Contoh: rustic bamboo spice stall in a bustling Javanese market, weathered dark teak counter, cobblestone aisle..."
+                      onChange={(e) => {
+                        const updated = [...locationsList];
+                        updated[lIdx] = { ...loc, environment_anchor: e.target.value };
+                        setLocationsList(updated);
+                      }}
+                      rows={2}
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#A9472C]">
+                      <Camera className="w-3 h-3" />
+                      <span>Latar Close-Up / Bokeh di Belakang Tokoh</span>
+                    </label>
+                    <textarea
+                      value={loc.closeup_background_anchor || ""}
+                      placeholder="Contoh: softly blurred bamboo spice shelves, hanging garlic braids, and olive canvas awning bokeh directly behind the subject..."
+                      onChange={(e) => {
+                        const updated = [...locationsList];
+                        updated[lIdx] = { ...loc, closeup_background_anchor: e.target.value };
+                        setLocationsList(updated);
+                      }}
+                      rows={2}
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-semibold tracking-wider text-[#41627F] flex items-center gap-1">
-                    <Anchor className="w-3 h-3" />
-                    <span>Objek Patokan Tetap / Anchor Props (English)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={loc.focal_props || ""}
-                    placeholder="Contoh: olive canvas awning, hanging garlic braids, brass balance scales, stacked spice crates"
-                    onChange={(e) => {
-                      const updated = [...locationsList];
-                      updated[lIdx] = { ...loc, focal_props: e.target.value };
-                      setLocationsList(updated);
-                    }}
-                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-semibold tracking-wider text-[#41627F] flex items-center gap-1">
+                      <Anchor className="w-3 h-3" />
+                      <span>Objek Patokan Tetap / Anchor Props</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loc.focal_props || ""}
+                      placeholder="olive canvas awning, hanging garlic braids, brass balance scales"
+                      onChange={(e) => {
+                        const updated = [...locationsList];
+                        updated[lIdx] = { ...loc, focal_props: e.target.value };
+                        setLocationsList(updated);
+                      }}
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-semibold tracking-wider text-[#8A6A2F] flex items-center gap-1">
+                      <Sun className="w-3 h-3" />
+                      <span>Arah Cahaya & Suasana Tetap</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={loc.lighting_direction || ""}
+                      placeholder="warm morning sunlight 45° from left, dappled awning shadow"
+                      onChange={(e) => {
+                        const updated = [...locationsList];
+                        updated[lIdx] = { ...loc, lighting_direction: e.target.value };
+                        setLocationsList(updated);
+                      }}
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] text-[#8A6A2F] focus:border-[#C45B3A] focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -140,18 +180,37 @@ export function LocationsTab({
                     [loc:{loc.id || loc.name.toLowerCase().replace(/\s+/g, "")}]
                   </span>
                 </div>
-                <p className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-[11px] leading-relaxed text-[#4D4A42]">
-                  {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
-                </p>
-                {loc.focal_props && (
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono bg-[#EAF0F5] text-[#41627F] px-2.5 py-1.5 rounded-lg border border-[#CFDDE9]">
-                    <Anchor className="w-3 h-3 text-[#41627F] shrink-0" />
-                    <span className="text-[10px] uppercase text-[#41627F] font-bold shrink-0">
-                      Anchor Props:
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  <div className="rounded-lg border border-[#E5E1D7] bg-[#F3F0E8] p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
+                    <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#41627F]">
+                      🏞️ Wide Shot (Micro-Set)
                     </span>
-                    <span className="truncate">{loc.focal_props}</span>
+                    {loc.environment_anchor || "Belum ada deskripsi lingkungan."}
                   </div>
-                )}
+                  <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/60 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
+                    <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#A9472C]">
+                      🎯 Close-Up Background / Bokeh
+                    </span>
+                    {loc.closeup_background_anchor ||
+                      "Otomatis menggunakan bokeh dari latar Wide Shot."}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {loc.focal_props && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono bg-[#EAF0F5] text-[#41627F] px-2.5 py-1 rounded-lg border border-[#CFDDE9]">
+                      <Anchor className="w-3 h-3 text-[#41627F] shrink-0" />
+                      <span className="uppercase font-bold shrink-0">Props:</span>
+                      <span className="truncate max-w-[260px]">{loc.focal_props}</span>
+                    </div>
+                  )}
+                  {loc.lighting_direction && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono bg-[#FBF6EA] text-[#8A6A2F] px-2.5 py-1 rounded-lg border border-[#E8D9B5]">
+                      <Sun className="w-3 h-3 text-[#8A6A2F] shrink-0" />
+                      <span className="uppercase font-bold shrink-0">Cahaya:</span>
+                      <span className="truncate max-w-[260px]">{loc.lighting_direction}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

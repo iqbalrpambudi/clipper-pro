@@ -27,6 +27,7 @@ import {
   StoryboardCharacter,
   StoryboardCharacterVariant,
   StoryboardLocation,
+  StoryboardShotMetadata,
 } from "@/types";
 import {
   Button,
@@ -39,6 +40,7 @@ import {
   FilterPills,
 } from "@/components/ui";
 import { StoryboardTabHeader } from "./StoryboardTabHeader";
+import { SHOT_TYPE_OPTIONS, shotTypeLabel } from "./script/SegmentsList";
 
 function renderTokenizedPrompt(promptText: string) {
   if (!promptText) return null;
@@ -225,15 +227,31 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
     });
   };
 
-  const handleUpdateMotion = (
-    itemId: string,
-    motion: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static"
-  ) => {
+  const handleUpdateMotion = (itemId: string, motion: StoryboardItem["motion_effect"]) => {
     updateItemMutation.mutate({
       id: itemId,
       data: { motion_effect: motion },
     });
   };
+
+  const handleUpdateShotMeta = (item: StoryboardItem, patch: Partial<StoryboardShotMetadata>) => {
+    updateItemMutation.mutate({
+      id: item.id,
+      data: { shot_metadata: { ...(item.shot_metadata || {}), ...patch } },
+    });
+  };
+
+  // Map of scene_group_id -> first item (anchor / establishing shot) for reference-link indicator
+  const groupAnchorMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    [...items]
+      .sort((a, b) => a.order_index - b.order_index)
+      .forEach((it) => {
+        const gid = it.shot_metadata?.scene_group_id;
+        if (gid && !map[gid]) map[gid] = it.id;
+      });
+    return map;
+  }, [items]);
 
   // Stats calculation
   const readyCount = items.filter((it) => it.status === "ready" && it.image_url).length;
@@ -578,6 +596,11 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               <span className="rounded bg-[#C45B3A]/80 px-1.5 py-0.5 text-[10px] text-white backdrop-blur-xs">
                                 {item.motion_effect}
                               </span>
+                              {item.shot_metadata?.shot_type && (
+                                <span className="rounded bg-[#41627F]/85 px-1.5 py-0.5 text-[10px] text-white backdrop-blur-xs">
+                                  {shotTypeLabel(item.shot_metadata.shot_type)}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -754,6 +777,55 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                               </div>
                             )}
 
+                            {/* Shot Angle & Scene Group controls */}
+                            <div className="space-y-1.5 border-t border-[#E5E1D7] pt-2">
+                              <div className="flex items-center justify-between gap-2 text-[11px]">
+                                <span className="shrink-0 font-medium text-[#77766D]">Shot Angle:</span>
+                                <Select
+                                  value={item.shot_metadata?.shot_type || "auto"}
+                                  onValueChange={(val) =>
+                                    handleUpdateShotMeta(item, {
+                                      shot_type: val === "auto" ? "" : val,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="h-6 w-[150px] px-2 py-0 text-[11px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent appearance="workspace">
+                                    <SelectItem value="auto" className="text-[11px]">
+                                      Auto
+                                    </SelectItem>
+                                    {SHOT_TYPE_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value} className="text-[11px]">
+                                        {o.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {item.shot_metadata?.scene_group_id && (
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                  <span className="inline-flex items-center gap-1 rounded border border-[#E9C9BD] bg-[#F8EEEA] px-1.5 py-0.5 font-mono text-[#A9472C]">
+                                    🔗 {item.shot_metadata.scene_group_id}
+                                  </span>
+                                  {groupAnchorMap[item.shot_metadata.scene_group_id] &&
+                                  groupAnchorMap[item.shot_metadata.scene_group_id] !== item.id ? (
+                                    <span
+                                      className="rounded border border-[#CFE3D2] bg-[#EDF5EE] px-1.5 py-0.5 text-[#456A4E]"
+                                      title="Gambar establishing dalam grup yang sama dipakai sebagai referensi latar & karakter"
+                                    >
+                                      🔗 Referensi Latar Aktif
+                                    </span>
+                                  ) : (
+                                    <span className="rounded border border-[#E8D9B5] bg-[#FBF6EA] px-1.5 py-0.5 text-[#8A6A2F]">
+                                      ⚓ Anchor Grup
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
                             {/* Motion Effect Selector & Action Button */}
                             <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
                               <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -777,6 +849,8 @@ export function StoryboardImagesTab({ project }: StoryboardImagesTabProps) {
                                     <SelectItem value="zoom_out" className="text-[11px]">Slow Zoom Out</SelectItem>
                                     <SelectItem value="pan_left" className="text-[11px]">Pan Left</SelectItem>
                                     <SelectItem value="pan_right" className="text-[11px]">Pan Right</SelectItem>
+                                    <SelectItem value="pan_up" className="text-[11px]">Pan Up</SelectItem>
+                                    <SelectItem value="pan_down" className="text-[11px]">Pan Down</SelectItem>
                                     <SelectItem value="static" className="text-[11px]">Statis</SelectItem>
                                   </SelectContent>
                                 </Select>

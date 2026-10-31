@@ -118,6 +118,8 @@ export function VideoPreviewScreen({
       : scaledOutlineWidth;
   const effectiveOffsetX = Math.round((subtitleStyle.offset_x || 0) * liveScale);
   const effectiveOffsetY = Math.round((subtitleStyle.offset_y || 0) * liveScaleY);
+  // Default to sentence case (YouTube documentary); uppercase only when explicitly chosen
+  const caseClass = (subtitleStyle.text_case ?? "sentence") === "uppercase" ? "uppercase" : "";
 
   const getSubtitleTranslateY = (
     pos: string | undefined,
@@ -145,12 +147,16 @@ export function VideoPreviewScreen({
       {activeItem && activeItem.image_url ? (
         <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
           <img
-            key={activeItem.id}
+            key={`${activeItem.id}-${activeItem.motion_effect}`}
             src={activeItem.image_url}
             alt={activeItem.image_prompt}
-            className={`w-full h-full object-cover origin-center ${
-              isPlaying ? getMotionAnimationClass(activeItem.motion_effect) : "scale-100"
-            }`}
+            className={`w-full h-full object-cover origin-center ${getMotionAnimationClass(activeItem.motion_effect)}`}
+            style={
+              {
+                "--sb-motion-duration": `${Math.max(1, activeItem.duration || 6)}s`,
+                animationPlayState: isPlaying ? "running" : "paused",
+              } as React.CSSProperties
+            }
           />
         </div>
       ) : (
@@ -197,7 +203,7 @@ export function VideoPreviewScreen({
                   padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
                   borderRadius: "8px",
                 }}
-                className="flex items-center justify-center gap-2 uppercase tracking-wide"
+                className={`flex items-center justify-center gap-2 tracking-wide ${caseClass}`}
               >
                 {activeBurstGroup.map((w, idx) => (
                   <span
@@ -239,7 +245,7 @@ export function VideoPreviewScreen({
                   borderRadius: "8px",
                   display: "inline-block",
                 }}
-                className="uppercase tracking-wide"
+                className={`tracking-wide ${caseClass}`}
               >
                 {segWords[activeWordIndex].word}
               </div>
@@ -262,7 +268,7 @@ export function VideoPreviewScreen({
                 padding: (subtitleStyle.box_opacity ?? 0) > 0.05 ? "6px 14px" : "0",
                 borderRadius: "8px",
               }}
-              className="inline-block uppercase tracking-wide leading-snug max-w-[85%]"
+              className={`inline-block tracking-wide leading-snug max-w-[85%] ${caseClass}`}
             >
               {segWords.length > 0
                 ? segWords.map((w: WordTimestamp, i: number) => {

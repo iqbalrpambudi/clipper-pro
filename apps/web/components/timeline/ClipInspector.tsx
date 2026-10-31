@@ -331,7 +331,7 @@ function SelectedInspector({
                   title={ok ? `${s}x` : "Scene terlalu pendek untuk kecepatan ini"}
                   className={`flex-1 h-7 rounded-md text-[10px] font-mono font-semibold transition disabled:opacity-25 disabled:cursor-not-allowed ${
                     active
-                      ? "bg-primary text-black shadow-xs"
+                      ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >

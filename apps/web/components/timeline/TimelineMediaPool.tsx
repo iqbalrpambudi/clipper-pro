@@ -394,7 +394,7 @@ function PoolAction({
       }}
       className={`h-6 rounded-md flex items-center justify-center border transition disabled:opacity-25 disabled:cursor-not-allowed ${
         tone === "brand"
-          ? "bg-primary/20 border-primary/40 text-primary hover:bg-primary hover:text-black"
+          ? "bg-primary/20 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
           : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
       }`}
     >

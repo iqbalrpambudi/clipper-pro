@@ -123,7 +123,7 @@ export function AppearanceTab() {
                       className="h-4 w-12 rounded flex items-center justify-center text-[7px] font-bold"
                       style={{
                         backgroundColor: t.accentPreview,
-                        color: t.id === "dark" || (t.id === "system" && resolvedTheme === "dark") ? "#1B1A17" : "#FFFFFF",
+                        color: "#FFFFFF",
                       }}
                     >
                       Tombol

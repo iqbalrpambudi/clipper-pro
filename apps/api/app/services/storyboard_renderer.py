@@ -82,6 +82,7 @@ async def render_slide_subpixel_motion(
     w: int,
     h: int,
     fps: int = 30,
+    focal_point: str = "center",
     proc_key: Optional[str] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
@@ -128,8 +129,8 @@ async def render_slide_subpixel_motion(
         "-i", "-",
         "-vf", f"eq=contrast=1.03:saturation=1.05:brightness=0.01,fps={fps}",
         "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "22",
+        "-preset", "superfast",
+        "-crf", "18",
         "-g", str(fps),
         "-keyint_min", str(fps),
         "-sc_threshold", "0",
@@ -149,6 +150,16 @@ async def render_slide_subpixel_motion(
         register_process(proc_key, proc)
 
     cx, cy = w / 2.0, h / 2.0
+    fp_clean = (focal_point or "center").strip().lower()
+    if fp_clean == "left":
+        zoom_cx, zoom_cy = w * 0.36, h * 0.48
+    elif fp_clean == "right":
+        zoom_cx, zoom_cy = w * 0.64, h * 0.48
+    elif fp_clean == "upper_center":
+        zoom_cx, zoom_cy = w * 0.50, h * 0.38
+    else:
+        zoom_cx, zoom_cy = cx, cy
+
     motion = (motion_effect or "zoom_in").lower().strip()
     tf_denom = max(1, total_frames - 1)
 
@@ -173,10 +184,10 @@ async def render_slide_subpixel_motion(
 
                 if motion == "zoom_in":
                     zoom = 1.00 + 0.12 * p
-                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M = cv2.getRotationMatrix2D((zoom_cx, zoom_cy), 0.0, zoom)
                 elif motion == "zoom_out":
                     zoom = 1.15 - 0.15 * p
-                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M = cv2.getRotationMatrix2D((zoom_cx, zoom_cy), 0.0, zoom)
                 elif motion == "pan_left":
                     zoom = 1.10
                     shift_x = (1.0 - 2.0 * p) * (0.04 * w)
@@ -199,7 +210,7 @@ async def render_slide_subpixel_motion(
                     M[1, 2] += shift_y
                 else:  # static or gentle breathing zoom
                     zoom = 1.00 + 0.03 * p
-                    M = cv2.getRotationMatrix2D((cx, cy), 0.0, zoom)
+                    M = cv2.getRotationMatrix2D((zoom_cx, zoom_cy), 0.0, zoom)
 
                 frame = cv2.warpAffine(
                     base_img,
@@ -388,6 +399,7 @@ async def render_storyboard_video(
                     raise TaskCancelledException("Rendering storyboard dibatalkan oleh pengguna.")
 
                 slide_proc_key = f"{proc_key}:slide_{spec['idx']}" if proc_key else None
+                item_meta = spec["item"].get("shot_metadata") if isinstance(spec["item"].get("shot_metadata"), dict) else {}
                 await render_slide_subpixel_motion(
                     img_path=spec["img_path"],
                     output_path=spec["chunk_out"],
@@ -396,6 +408,7 @@ async def render_storyboard_video(
                     w=w,
                     h=h,
                     fps=COMPOSITION_FPS,
+                    focal_point=str((item_meta or {}).get("focal_point") or "center"),
                     proc_key=slide_proc_key,
                     project_id=project_id,
                     job_id=job_id,

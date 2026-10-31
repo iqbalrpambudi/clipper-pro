@@ -1824,49 +1824,230 @@ input[type="range"] {
 .dark [class*="bg-[#FBFAF7]/72"] {
   background-color: hsl(var(--card) / 0.85) !important;
 }
-.dark [class*="bg-[#F1EEE6]"] {
+
+/* Elevated card surfaces (storyboard cards, modal surfaces) */
+.dark [class*="bg-[#FFFEFA]"] {
+  background-color: hsl(32 8% 16.5%) !important;
+}
+.dark [class*="bg-[#FFFEFA]/95"] {
+  background-color: hsl(32 8% 16.5% / 0.95) !important;
+}
+.dark [class*="bg-[#FFFEFA]/90"],
+.dark [class*="bg-[#FFFEFA]/80"] {
+  background-color: hsl(32 8% 16.5% / 0.85) !important;
+}
+
+/* Recessed inputs/textareas inside cards */
+.dark :is(input, textarea, select)[class*="bg-[#FFFEFA]"],
+.dark :is(input, textarea, select)[class*="bg-[#FBFAF7]"] {
+  background-color: hsl(var(--control-background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark select,
+.dark option {
+  background-color: hsl(var(--control-background));
+  color: hsl(var(--foreground));
+}
+
+/* Secondary muted surfaces */
+.dark [class*="bg-[#F1EEE6]"],
+.dark [class*="bg-[#EAE6DD]"],
+.dark [class*="bg-[#EEEBE2]"],
+.dark [class*="bg-[#F2E8DC]"],
+.dark [class*="bg-[#F8F1E2]"] {
   background-color: hsl(var(--muted)) !important;
 }
+
+/* Tracks, dividers & subtle gray backgrounds */
+.dark [class*="bg-[#E5E1D7]"],
+.dark [class*="bg-[#D2CDBF]"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Terracotta / Coral soft backgrounds */
 .dark [class*="bg-[#F8EEEA]"] {
   background-color: rgba(217, 119, 87, 0.16) !important;
 }
+.dark [class*="bg-[#F3E1D9]"],
+.dark [class*="bg-[#FEF2EE]"],
+.dark [class*="bg-[#FCE0D6]"] {
+  background-color: rgba(217, 119, 87, 0.22) !important;
+}
+
+/* Sky Blue Pills & Badges (Locations, 16:9 badges) */
+.dark [class*="bg-[#EAF0F5]"],
+.dark [class*="bg-[#DCE7F0]"] {
+  background-color: rgba(56, 189, 248, 0.16) !important;
+}
+.dark [class*="border-[#CFDDE9]"] {
+  border-color: rgba(56, 189, 248, 0.32) !important;
+}
+.dark [class*="text-[#41627F]"],
+.dark [class*="text-[#5A7E9C]"] {
+  color: #7dd3fc !important;
+}
+
+/* Amber / Yellow Pills & Badges (Presets, Style tokens) */
+.dark [class*="bg-[#F7EFE0]"],
+.dark [class*="bg-[#F0E4CE]"],
+.dark [class*="bg-[#FBF6EA]"] {
+  background-color: rgba(234, 179, 8, 0.16) !important;
+}
+.dark [class*="border-[#E8D9BC]"],
+.dark [class*="border-[#E8D9B5]"],
+.dark [class*="border-[#EAD8B5]"] {
+  border-color: rgba(234, 179, 8, 0.32) !important;
+}
+.dark [class*="text-[#8A6A2F]"],
+.dark [class*="text-[#8A6B3E]"],
+.dark [class*="text-[#87632C]"] {
+  color: #fde047 !important;
+}
+
+/* Green Pills & Badges (Success, Ready, Sync) */
+.dark [class*="bg-[#ECF3EB]"],
+.dark [class*="bg-[#EDF5EE]"] {
+  background-color: rgba(34, 197, 94, 0.16) !important;
+}
+.dark [class*="border-[#C9DDCF]"],
+.dark [class*="border-[#CFE3D2]"],
+.dark [class*="border-[#A7B09A]"] {
+  border-color: rgba(34, 197, 94, 0.32) !important;
+}
+.dark [class*="text-[#456A4E]"],
+.dark [class*="text-[#76816B]"],
+.dark [class*="text-[#385440]"],
+.dark [class*="text-[#5D6C54]"] {
+  color: #4ade80 !important;
+}
+
+/* Borders */
 .dark [class*="border-[#E5E1D7]"],
 .dark [class*="border-[#DCD6C8]"],
 .dark [class*="border-[#D2CDBF]"],
-.dark [class*="border-[#D8CFC2]"] {
+.dark [class*="border-[#D8CFC2]"],
+.dark [class*="border-[#CFC5B3]"],
+.dark [class*="border-[#BEB6A5]"],
+.dark [class*="border-[#C9BCAF]"],
+.dark [class*="border-[#CEC6B6]"],
+.dark [class*="border-[#A8A398]"],
+.dark [class*="border-[#FBFAF7]"] {
   border-color: hsl(var(--border)) !important;
 }
 .dark [class*="border-[#E9C9BD]"] {
   border-color: rgba(217, 119, 87, 0.3) !important;
 }
+
+/* Texts */
 .dark [class*="text-[#26251F]"] {
   color: hsl(var(--foreground)) !important;
 }
 .dark [class*="text-[#4D4A42]"],
-.dark [class*="text-[#5E5C54]"] {
+.dark [class*="text-[#5E5C54]"],
+.dark [class*="text-[#4B4941]"] {
   color: hsl(var(--secondary-foreground)) !important;
 }
 .dark [class*="text-[#77766D]"],
 .dark [class*="text-[#858278]"],
+.dark [class*="text-[#858176]"],
+.dark [class*="text-[#8A7768]"],
+.dark [class*="text-[#99958A]"],
 .dark [class*="text-[#918f85]"] {
   color: hsl(var(--muted-foreground)) !important;
 }
-.dark [class*="text-[#A9472C]"] {
+.dark [class*="text-[#A9472C]"],
+.dark [class*="text-[#8A3722]"],
+.dark [class*="text-[#863A26]"],
+.dark [class*="text-[#8C3A24]"],
+.dark [class*="text-[#D78162]"] {
   color: #f29579 !important;
 }
 .dark [class*="text-[#C45B3A]"] {
   color: #e07a5f !important;
 }
-.dark [class*="hover:bg-[#F1EEE6]"]:hover {
+
+/* Hover utilities */
+.dark [class*="hover:bg-[#F1EEE6]"]:hover,
+.dark [class*="hover:bg-[#EAE6DD]"]:hover {
   background-color: hsl(var(--muted)) !important;
-}
-.dark [class*="hover:text-[#26251F]"]:hover {
-  color: hsl(var(--foreground)) !important;
 }
 .dark [class*="hover:bg-[#F8EEEA]"]:hover {
   background-color: rgba(217, 119, 87, 0.22) !important;
 }
-.dark [class*="hover:text-[#A9472C]"]:hover {
+.dark [class*="hover:bg-[#F3E1D9]"]:hover,
+.dark [class*="hover:bg-[#FCE0D6]"]:hover {
+  background-color: rgba(217, 119, 87, 0.26) !important;
+}
+.dark [class*="hover:bg-[#DCE7F0]"]:hover {
+  background-color: rgba(56, 189, 248, 0.24) !important;
+}
+.dark [class*="hover:bg-[#F0E4CE]"]:hover {
+  background-color: rgba(234, 179, 8, 0.24) !important;
+}
+.dark [class*="hover:bg-[#E5E1D7]"]:hover,
+.dark [class*="hover:bg-[#D2CDBF]"]:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+.dark [class*="hover:text-[#26251F]"]:hover {
+  color: hsl(var(--foreground)) !important;
+}
+.dark [class*="hover:text-[#4D4A42]"]:hover {
+  color: hsl(var(--foreground)) !important;
+}
+.dark [class*="hover:text-[#A9472C]"]:hover,
+.dark [class*="hover:text-[#8C3A24]"]:hover,
+.dark [class*="hover:text-[#8A3722]"]:hover,
+.dark [class*="hover:text-[#863A26]"]:hover {
   color: #f29579 !important;
 }
+.dark [class*="hover:text-[#41627F]"]:hover {
+  color: #7dd3fc !important;
+}
+.dark [class*="hover:border-[#D2CDBF]"]:hover,
+.dark [class*="hover:border-[#C9BCAF]"]:hover,
+.dark [class*="hover:border-[#D8CFC2]"]:hover,
+.dark [class*="hover:border-[#BEB6A5]"]:hover,
+.dark [class*="hover:border-[#DCD6C8]"]:hover,
+.dark [class*="hover:border-[#CFC5B3]"]:hover {
+  border-color: hsl(var(--surface-border)) !important;
+}
 
+
+/* Storyboard Ken Burns preview (matches ffmpeg zoompan in storyboard_renderer) */
+@keyframes sb-zoom-in {
+  from { transform: scale(1) translate(0, 0); }
+  to { transform: scale(1.12) translate(0, 0); }
+}
+@keyframes sb-zoom-out {
+  from { transform: scale(1.12) translate(0, 0); }
+  to { transform: scale(1) translate(0, 0); }
+}
+@keyframes sb-pan-left {
+  from { transform: scale(1.1) translate(2.5%, 0); }
+  to { transform: scale(1.1) translate(-2.5%, 0); }
+}
+@keyframes sb-pan-right {
+  from { transform: scale(1.1) translate(-2.5%, 0); }
+  to { transform: scale(1.1) translate(2.5%, 0); }
+}
+@keyframes sb-pan-up {
+  from { transform: scale(1.1) translate(0, 2.5%); }
+  to { transform: scale(1.1) translate(0, -2.5%); }
+}
+@keyframes sb-pan-down {
+  from { transform: scale(1.1) translate(0, -2.5%); }
+  to { transform: scale(1.1) translate(0, 2.5%); }
+}
+.sb-motion {
+  animation-duration: var(--sb-motion-duration, 6s);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+  will-change: transform;
+}
+.sb-motion-zoom_in { animation-name: sb-zoom-in; }
+.sb-motion-zoom_out { animation-name: sb-zoom-out; }
+.sb-motion-pan_left { animation-name: sb-pan-left; }
+.sb-motion-pan_right { animation-name: sb-pan-right; }
+.sb-motion-pan_up { animation-name: sb-pan-up; }
+.sb-motion-pan_down { animation-name: sb-pan-down; }

@@ -3,7 +3,12 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.services.tts.audio_utils import _concat_mp3s, _split_text_for_tts
+from app.services.tts.audio_utils import (
+    _concat_mp3s,
+    _generate_silence_mp3,
+    _group_segments_by_chapter,
+    _split_text_for_tts,
+)
 from app.services.tts.exceptions import ElevenLabsCharacterLimitError
 from app.services.tts.providers.edge import generate_edge_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
@@ -45,243 +50,294 @@ async def generate_speech_audio(
     prov = provider.lower().strip()
     target_lang = (language or "id").strip().lower()
 
-    # 1. ELEVENLABS TTS
-    if prov == "elevenlabs":
-        try:
-            m_id = (model or "eleven_multilingual_v2").lower().strip()
-            if ("flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id) and "v4" not in m_id:
-                eleven_max_chars = 40000
-                chunk_size = 38000
-            else:
-                eleven_max_chars = 10000
-                chunk_size = 9500
-
-            if len(clean_text) <= eleven_max_chars:
-                return await generate_elevenlabs_tts(
-                    clean_text,
-                    output_path,
-                    api_key=api_key,
-                    voice=voice,
-                    model=model or "eleven_multilingual_v2",
-                    rate=rate,
-                    pitch=pitch,
-                    language=target_lang,
-                )
-
-            # For extraordinarily long texts exceeding model capacity (>10,000 or >40,000 chars)
-            chunks = _split_text_for_tts(clean_text, max_chars=chunk_size)
-            if len(chunks) == 1:
-                return await generate_elevenlabs_tts(
-                    chunks[0],
-                    output_path,
-                    api_key=api_key,
-                    voice=voice,
-                    model=model or "eleven_multilingual_v2",
-                    rate=rate,
-                    pitch=pitch,
-                    language=target_lang,
-                )
-
-            out_p = Path(output_path)
-            parts: List[str] = []
+    async def _synthesize_block(block_text: str, block_output_path: str) -> float:
+        # 1. ELEVENLABS TTS
+        if prov == "elevenlabs":
             try:
-                for i, chunk in enumerate(chunks):
-                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
-                    try:
-                        await generate_elevenlabs_tts(
-                            chunk,
-                            part_path,
-                            api_key=api_key,
-                            voice=voice,
-                            model=model or "eleven_multilingual_v2",
-                            rate=rate,
-                            pitch=pitch,
-                            language=target_lang,
-                        )
-                        parts.append(part_path)
-                    except Exception as chunk_err:
-                        if parts:
-                            try:
-                                await _concat_mp3s(parts, output_path)
-                            except Exception:
-                                pass
-                        raise RuntimeError(
-                            f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                        ) from chunk_err
-                    if i < len(chunks) - 1:
-                        await asyncio.sleep(0.3)
+                m_id = (model or "eleven_multilingual_v2").lower().strip()
+                if ("flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id) and "v4" not in m_id:
+                    eleven_max_chars = 40000
+                    chunk_size = 38000
+                else:
+                    eleven_max_chars = 10000
+                    chunk_size = 9500
 
-                return await _concat_mp3s(parts, output_path)
-            finally:
-                for p in parts:
-                    Path(p).unlink(missing_ok=True)
-        except Exception as e:
-            err_str = str(e).lower()
-            is_char_limit = (
-                isinstance(e, ElevenLabsCharacterLimitError)
-                or any(k in err_str for k in [
-                    "character limit", "too_large", "request_too_large",
-                    "max_characters", "maximum text length", "quota_exceeded",
-                    "exceeds the maximum", "characters allowed"
-                ])
+                if len(block_text) <= eleven_max_chars:
+                    return await generate_elevenlabs_tts(
+                        block_text,
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        model=model or "eleven_multilingual_v2",
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                chunks = _split_text_for_tts(block_text, max_chars=chunk_size)
+                if len(chunks) == 1:
+                    return await generate_elevenlabs_tts(
+                        chunks[0],
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        model=model or "eleven_multilingual_v2",
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                out_p = Path(block_output_path)
+                parts: List[str] = []
+                try:
+                    for i, chunk in enumerate(chunks):
+                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                        try:
+                            await generate_elevenlabs_tts(
+                                chunk,
+                                part_path,
+                                api_key=api_key,
+                                voice=voice,
+                                model=model or "eleven_multilingual_v2",
+                                rate=rate,
+                                pitch=pitch,
+                                language=target_lang,
+                            )
+                            parts.append(part_path)
+                        except Exception as chunk_err:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, block_output_path)
+                                except Exception:
+                                    pass
+                            raise RuntimeError(
+                                f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+                        if i < len(chunks) - 1:
+                            await asyncio.sleep(0.3)
+
+                    return await _concat_mp3s(parts, block_output_path)
+                finally:
+                    for p in parts:
+                        Path(p).unlink(missing_ok=True)
+            except Exception as e:
+                err_str = str(e).lower()
+                is_char_limit = (
+                    isinstance(e, ElevenLabsCharacterLimitError)
+                    or any(k in err_str for k in [
+                        "character limit", "too_large", "request_too_large",
+                        "max_characters", "maximum text length", "quota_exceeded",
+                        "exceeds the maximum", "characters allowed"
+                    ])
+                )
+                if is_char_limit:
+                    log.error("ElevenLabs TTS melebihi batas karakter: %s", e)
+                    raise RuntimeError(
+                        f"ElevenLabs Character Limit Exceeded: {e}"
+                    ) from e
+
+                log.error("ElevenLabs TTS failed: %s", e)
+                raise
+
+        # 2. RUNWARE TTS
+        elif prov == "runware":
+            try:
+                if len(block_text) <= 1200:
+                    return await generate_runware_tts(
+                        block_text,
+                        block_output_path,
+                        api_key=api_key,
+                        model=model or "fishaudio:s2.1@pro",
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                chunks = _split_text_for_tts(block_text, max_chars=900)
+                if len(chunks) == 1:
+                    return await generate_runware_tts(
+                        chunks[0],
+                        block_output_path,
+                        api_key=api_key,
+                        model=model or "fishaudio:s2.1@pro",
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                out_p = Path(block_output_path)
+                parts = []
+                try:
+                    for i, chunk in enumerate(chunks):
+                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                        try:
+                            await generate_runware_tts(
+                                chunk,
+                                part_path,
+                                api_key=api_key,
+                                model=model or "fishaudio:s2.1@pro",
+                                voice=voice,
+                                rate=rate,
+                                pitch=pitch,
+                                language=target_lang,
+                            )
+                            parts.append(part_path)
+                        except Exception as chunk_err:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, block_output_path)
+                                except Exception:
+                                    pass
+                            raise RuntimeError(
+                                f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+                        if i < len(chunks) - 1:
+                            await asyncio.sleep(0.3)
+
+                    return await _concat_mp3s(parts, block_output_path)
+                finally:
+                    for p in parts:
+                        Path(p).unlink(missing_ok=True)
+            except Exception as e:
+                log.error("Runware TTS failed: %s", e)
+                raise
+
+        # 3. GEMINI TTS
+        elif prov == "gemini":
+            try:
+                if len(block_text) <= 2200:
+                    return await generate_gemini_tts(
+                        block_text,
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        model=model,
+                        language=target_lang,
+                    )
+
+                chunks = _split_text_for_tts(block_text, max_chars=750)
+                if len(chunks) == 1:
+                    return await generate_gemini_tts(
+                        chunks[0],
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        model=model,
+                        language=target_lang,
+                    )
+
+                out_p = Path(block_output_path)
+                parts = []
+                try:
+                    for i, chunk in enumerate(chunks):
+                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                        try:
+                            await generate_gemini_tts(
+                                chunk,
+                                part_path,
+                                api_key=api_key,
+                                voice=voice,
+                                rate=rate,
+                                pitch=pitch,
+                                model=model,
+                                language=target_lang,
+                            )
+                            parts.append(part_path)
+                        except Exception as chunk_err:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, block_output_path)
+                                except Exception as concat_err:
+                                    log.warning("Failed to concat partial audio chunks: %s", concat_err)
+                            raise RuntimeError(
+                                f"Sintesis suara {provider.upper()} terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+
+                        if i < len(chunks) - 1:
+                            await asyncio.sleep(0.5)
+
+                    return await _concat_mp3s(parts, block_output_path)
+                finally:
+                    for p in parts:
+                        Path(p).unlink(missing_ok=True)
+            except Exception as e:
+                log.error("Gemini TTS failed: %s", e)
+                raise
+
+        # 4. EDGE-TTS
+        else:
+            try:
+                edge_v = voice
+                if target_lang == "en" and (edge_v in ("id-ID-GadisNeural", "id-ID-ArdiNeural", "default") or not edge_v.startswith("en-")):
+                    edge_v = "en-US-JennyNeural"
+                elif target_lang != "en" and edge_v.startswith("en-") and edge_v in ("en-US-JennyNeural", "default"):
+                    edge_v = "id-ID-GadisNeural"
+                return await generate_edge_tts(
+                    block_text,
+                    block_output_path,
+                    voice=edge_v,
+                    rate=rate,
+                    pitch=pitch,
+                )
+            except Exception as e:
+                log.error("Edge-TTS synthesis failed: %s", e)
+                raise
+
+    # Multi-chapter YouTube breathing pause (~1.2s silence between distinct chapters)
+    raw_chapter_blocks = _group_segments_by_chapter(segments)
+    cleaned_chapter_blocks = [
+        clean_narration_for_tts(blk).strip()
+        for blk in raw_chapter_blocks
+        if clean_narration_for_tts(blk).strip()
+    ]
+    joined_len = sum(len(b) for b in cleaned_chapter_blocks)
+    if (
+        len(cleaned_chapter_blocks) >= 2
+        and len(clean_text) > 0
+        and abs(joined_len - len(clean_text)) <= max(120, int(len(clean_text) * 0.2))
+    ):
+        out_p = Path(output_path)
+        chapter_files: List[str] = []
+        silence_file = str(out_p.with_name(f"{out_p.stem}.chap_silence.mp3"))
+        try:
+            for c_idx, c_block in enumerate(cleaned_chapter_blocks):
+                c_path = str(out_p.with_name(f"{out_p.stem}.chap{c_idx:03d}.mp3"))
+                try:
+                    await _synthesize_block(c_block, c_path)
+                    chapter_files.append(c_path)
+                except Exception as chap_err:
+                    if chapter_files:
+                        try:
+                            await _concat_mp3s(chapter_files, output_path)
+                        except Exception:
+                            pass
+                    raise RuntimeError(
+                        f"Sintesis TTS terhenti pada Babak {c_idx + 1}/{len(cleaned_chapter_blocks)}: {chap_err}"
+                    ) from chap_err
+                if c_idx < len(cleaned_chapter_blocks) - 1:
+                    await asyncio.sleep(0.3)
+
+            await _generate_silence_mp3(
+                silence_file,
+                duration_sec=1.2,
+                reference_mp3_path=chapter_files[0] if chapter_files else None,
             )
-            if is_char_limit:
-                log.error("ElevenLabs TTS melebihi batas karakter: %s", e)
-                raise RuntimeError(
-                    f"ElevenLabs Character Limit Exceeded: {e}"
-                ) from e
+            interleaved_parts: List[str] = []
+            for idx, cf in enumerate(chapter_files):
+                interleaved_parts.append(cf)
+                if idx < len(chapter_files) - 1:
+                    interleaved_parts.append(silence_file)
 
-            log.error("ElevenLabs TTS failed: %s", e)
-            raise
+            return await _concat_mp3s(interleaved_parts, output_path)
+        finally:
+            for cf in chapter_files:
+                Path(cf).unlink(missing_ok=True)
+            Path(silence_file).unlink(missing_ok=True)
 
-    # 2. RUNWARE TTS
-    elif prov == "runware":
-        try:
-            if len(clean_text) <= 1200:
-                return await generate_runware_tts(
-                    clean_text,
-                    output_path,
-                    api_key=api_key,
-                    model=model or "fishaudio:s2.1@pro",
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                    language=target_lang,
-                )
-
-            # For scripts > 1200 chars, split into ~900-char blocks
-            chunks = _split_text_for_tts(clean_text, max_chars=900)
-            if len(chunks) == 1:
-                return await generate_runware_tts(
-                    chunks[0],
-                    output_path,
-                    api_key=api_key,
-                    model=model or "fishaudio:s2.1@pro",
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                    language=target_lang,
-                )
-
-            out_p = Path(output_path)
-            parts: List[str] = []
-            try:
-                for i, chunk in enumerate(chunks):
-                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
-                    try:
-                        await generate_runware_tts(
-                            chunk,
-                            part_path,
-                            api_key=api_key,
-                            model=model or "fishaudio:s2.1@pro",
-                            voice=voice,
-                            rate=rate,
-                            pitch=pitch,
-                            language=target_lang,
-                        )
-                        parts.append(part_path)
-                    except Exception as chunk_err:
-                        if parts:
-                            try:
-                                await _concat_mp3s(parts, output_path)
-                            except Exception:
-                                pass
-                        raise RuntimeError(
-                            f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                        ) from chunk_err
-                    if i < len(chunks) - 1:
-                        await asyncio.sleep(0.3)
-
-                return await _concat_mp3s(parts, output_path)
-            finally:
-                for p in parts:
-                    Path(p).unlink(missing_ok=True)
-        except Exception as e:
-            log.error("Runware TTS failed: %s", e)
-            raise
-
-    # 3. GEMINI TTS
-    elif prov == "gemini":
-        try:
-            if len(clean_text) <= 2200:
-                return await generate_gemini_tts(
-                    clean_text,
-                    output_path,
-                    api_key=api_key,
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                    model=model,
-                    language=target_lang,
-                )
-
-            # Long-form narrations (> 2200 chars): split into balanced ~750-char blocks
-            chunks = _split_text_for_tts(clean_text, max_chars=750)
-            if len(chunks) == 1:
-                return await generate_gemini_tts(
-                    chunks[0],
-                    output_path,
-                    api_key=api_key,
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                    model=model,
-                    language=target_lang,
-                )
-
-            out_p = Path(output_path)
-            parts: List[str] = []
-            try:
-                for i, chunk in enumerate(chunks):
-                    part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
-                    try:
-                        await generate_gemini_tts(
-                            chunk,
-                            part_path,
-                            api_key=api_key,
-                            voice=voice,
-                            rate=rate,
-                            pitch=pitch,
-                            model=model,
-                            language=target_lang,
-                        )
-                        parts.append(part_path)
-                    except Exception as chunk_err:
-                        if parts:
-                            try:
-                                await _concat_mp3s(parts, output_path)
-                            except Exception as concat_err:
-                                log.warning("Failed to concat partial audio chunks: %s", concat_err)
-                        raise RuntimeError(
-                            f"Sintesis suara {provider.upper()} terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                        ) from chunk_err
-
-                    if i < len(chunks) - 1:
-                        await asyncio.sleep(0.5)
-
-                return await _concat_mp3s(parts, output_path)
-            finally:
-                for p in parts:
-                    Path(p).unlink(missing_ok=True)
-        except Exception as e:
-            log.error("Gemini TTS failed: %s", e)
-            raise
-
-    # 4. EDGE-TTS
-    else:
-        try:
-            edge_v = voice
-            if target_lang == "en" and (edge_v in ("id-ID-GadisNeural", "id-ID-ArdiNeural", "default") or not edge_v.startswith("en-")):
-                edge_v = "en-US-JennyNeural"
-            elif target_lang != "en" and edge_v.startswith("en-") and edge_v in ("en-US-JennyNeural", "default"):
-                edge_v = "id-ID-GadisNeural"
-            return await generate_edge_tts(
-                clean_text,
-                output_path,
-                voice=edge_v,
-                rate=rate,
-                pitch=pitch,
-            )
-        except Exception as e:
-            log.error("Edge-TTS synthesis failed: %s", e)
-            raise
+    return await _synthesize_block(clean_text, output_path)

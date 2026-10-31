@@ -58,6 +58,8 @@ export interface StoryboardCharacterVariant {
   variant_id: string;
   label: string;
   visual_anchor: string;
+  face_head_anchor?: string;
+  outfit_body_anchor?: string;
 }
 
 export interface StoryboardCharacter {
@@ -65,6 +67,8 @@ export interface StoryboardCharacter {
   name: string;
   role?: string;
   visual_anchor: string;
+  face_head_anchor?: string;
+  outfit_body_anchor?: string;
   variants?: StoryboardCharacterVariant[];
 }
 
@@ -72,7 +76,9 @@ export interface StoryboardLocation {
   id: string;
   name: string;
   environment_anchor: string;
+  closeup_background_anchor?: string;
   focal_props?: string;
+  lighting_direction?: string;
 }
 
 export interface StoryboardWorldSetting {
@@ -289,6 +295,7 @@ export interface SubtitleStyle {
   highlight_animation: "scale" | "color" | "box" | "none";
   scale_factor?: number;
   emoji_enabled: boolean;
+  text_case?: "sentence" | "uppercase";
 }
 
 export interface SubtitleStyleUpdateRequest extends Partial<SubtitleStyle> {
@@ -360,13 +367,36 @@ export interface ModelConfig {
   runware_api_key_masked?: string | null;
   has_runware_api_key?: boolean;
   runware_tts_model?: string;
+  image_provider?: string;
   image_base_url?: string | null;
   image_model?: string;
   image_concurrency?: number;
+  image_steps?: number;
+  image_cfg_scale?: number;
   image_api_key_masked?: string | null;
   has_image_api_key?: boolean;
   image_system_prompt?: string | null;
   is_active: boolean;
+}
+
+export type StoryboardMotionEffect =
+  | "zoom_in"
+  | "zoom_out"
+  | "pan_left"
+  | "pan_right"
+  | "pan_up"
+  | "pan_down"
+  | "static";
+
+export interface StoryboardShotMetadata {
+  scene_group_id?: string;
+  shot_type?: string;
+  camera_angle?: string;
+  spatial_blocking?: string;
+  focal_point?: string;
+  location_id?: string;
+  reference_item_id?: string;
+  [key: string]: unknown;
 }
 
 export interface StoryboardItem {
@@ -379,8 +409,9 @@ export interface StoryboardItem {
   script_text: string;
   image_prompt: string;
   resolved_prompt?: string | null;
+  shot_metadata?: StoryboardShotMetadata | null;
   image_url?: string | null;
-  motion_effect: "zoom_in" | "zoom_out" | "pan_left" | "pan_right" | "static";
+  motion_effect: StoryboardMotionEffect;
   start_time: number;
   end_time: number;
   duration: number;

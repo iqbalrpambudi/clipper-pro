@@ -16,6 +16,7 @@ import {
   VoiceInfo,
   ModelConfig,
   StoryboardItem,
+  StoryboardShotMetadata,
   StoryboardCharacter,
   StoryboardLocation,
   StoryboardWorldSetting,
@@ -433,9 +434,12 @@ export const api = {
     elevenlabs_model?: string;
     runware_api_key?: string;
     runware_tts_model?: string;
+    image_provider?: string;
     image_base_url?: string | null;
     image_model?: string;
     image_concurrency?: number;
+    image_steps?: number;
+    image_cfg_scale?: number;
     image_api_key?: string;
     image_system_prompt?: string | null;
   }) =>
@@ -456,7 +460,14 @@ export const api = {
         body: JSON.stringify(data),
       }
     ),
-  testImageConnection: (data: { base_url?: string; image_model?: string; api_key?: string }) =>
+  testImageConnection: (data: {
+    provider?: string;
+    base_url?: string;
+    image_model?: string;
+    api_key?: string;
+    steps?: number;
+    cfg_scale?: number;
+  }) =>
     request<{
       success: boolean;
       message: string;
@@ -568,7 +579,11 @@ export const api = {
       chapter?: string;
       text?: string;
       segment_index?: number;
-      items?: { id: string; image_prompt: string }[];
+      items?: {
+        id: string;
+        image_prompt: string;
+        shot_metadata?: StoryboardShotMetadata | null;
+      }[];
     }
   ) =>
     request<{
@@ -620,6 +635,7 @@ export const api = {
         | "chapter_title"
         | "script_text"
         | "image_prompt"
+        | "shot_metadata"
         | "motion_effect"
         | "start_time"
         | "end_time"

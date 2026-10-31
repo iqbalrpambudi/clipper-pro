@@ -13,7 +13,7 @@ from app.core.storage import storage
 from app.models.config import ModelConfig
 from app.models.image_preset import ImagePreset
 from app.services.ai_adapters.factory import get_active_llm_adapter, get_active_vision_adapter
-from app.services.image_gen import generate_image_to_path
+from app.services.image_gen import generate_image_to_path, resolve_image_credentials
 
 log = logging.getLogger(__name__)
 
@@ -323,16 +323,17 @@ async def generate_preset_test_image(
     """
     base_url = None
     api_key = None
-    model = None
+    model = "runware:400@2"
+    steps = None
+    guidance_scale = None
 
     if db:
         res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
         cfg = res.scalar_one_or_none()
+        base_url, api_key, model = resolve_image_credentials(cfg)
         if cfg:
-            base_url = cfg.image_base_url
-            model = cfg.image_model
-            if cfg.image_api_key_encrypted:
-                api_key = decrypt_secret(cfg.image_api_key_encrypted)
+            steps = getattr(cfg, "image_steps", None)
+            guidance_scale = getattr(cfg, "image_cfg_scale", None)
 
     test_scene = (
         (scene_prompt or "").strip()
@@ -349,6 +350,8 @@ async def generate_preset_test_image(
         style_prompt=master_prompt,
         negative_prompt=negative_prompt,
         size=size,
+        steps=steps,
+        guidance_scale=guidance_scale,
     )
 
     return abs_path, rel_url

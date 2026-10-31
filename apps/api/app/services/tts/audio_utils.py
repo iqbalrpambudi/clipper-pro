@@ -1,7 +1,7 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 async def get_audio_duration(file_path: str) -> float:
@@ -178,3 +178,88 @@ async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
     finally:
         list_file.unlink(missing_ok=True)
     return await get_audio_duration(output_path)
+
+
+def _group_segments_by_chapter(segments: Optional[List[Dict[str, Any]]]) -> List[str]:
+    """Group consecutive narration segments by non-empty `chapter` title into chapter text blocks.
+
+    Returns non-empty chapter text blocks ONLY when there are >= 2 distinct chapter blocks
+    so multi-chapter YouTube storyboards receive natural ~1.2s chapter breathing pauses.
+    """
+    if not segments or not isinstance(segments, list):
+        return []
+
+    blocks: List[str] = []
+    cur_chapter: Optional[str] = None
+    cur_lines: List[str] = []
+
+    for seg in segments:
+        if not isinstance(seg, dict):
+            continue
+        chap = str(seg.get("chapter") or "").strip()
+        txt = str(seg.get("text") or "").strip()
+        if not chap or not txt or txt == "...":
+            continue
+        if cur_chapter is None:
+            cur_chapter = chap
+            cur_lines = [txt]
+        elif chap == cur_chapter:
+            cur_lines.append(txt)
+        else:
+            joined = "\n\n".join(cur_lines).strip()
+            if joined:
+                blocks.append(joined)
+            cur_chapter = chap
+            cur_lines = [txt]
+
+    if cur_lines:
+        joined = "\n\n".join(cur_lines).strip()
+        if joined:
+            blocks.append(joined)
+
+    return blocks if len(blocks) >= 2 else []
+
+
+async def _generate_silence_mp3(
+    output_path: str,
+    duration_sec: float = 1.2,
+    reference_mp3_path: Optional[str] = None,
+) -> str:
+    """Generate a clean silent MP3 matching the sample rate & channel layout of `reference_mp3_path`."""
+    sample_rate = 24000
+    ch_layout = "mono"
+
+    if reference_mp3_path and Path(reference_mp3_path).exists():
+        probe_proc = await asyncio.create_subprocess_exec(
+            "ffprobe",
+            "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=sample_rate,channels",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            reference_mp3_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await probe_proc.communicate()
+        lines = [ln.strip() for ln in stdout.decode(errors="ignore").splitlines() if ln.strip()]
+        if len(lines) >= 1 and lines[0].isdigit():
+            sample_rate = int(lines[0])
+        if len(lines) >= 2 and lines[1].isdigit():
+            ch_layout = "stereo" if int(lines[1]) >= 2 else "mono"
+
+    proc = await asyncio.create_subprocess_exec(
+        "ffmpeg",
+        "-y",
+        "-f", "lavfi",
+        "-i", f"anullsrc=r={sample_rate}:cl={ch_layout}",
+        "-t", f"{duration_sec:.2f}",
+        "-c:a", "libmp3lame",
+        "-b:a", "192k",
+        output_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise RuntimeError(f"Failed generating chapter silence MP3: {stderr.decode(errors='ignore')[:200]}")
+    return output_path

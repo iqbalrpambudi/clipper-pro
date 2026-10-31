@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -23,9 +23,12 @@ class ModelConfig(Base):
     elevenlabs_model: Mapped[str] = mapped_column(String(100), default="eleven_multilingual_v2")
     runware_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     runware_tts_model: Mapped[str] = mapped_column(String(100), default="fishaudio:s2.1@pro")
+    image_provider: Mapped[str] = mapped_column(String(50), default="runware")
     image_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    image_model: Mapped[str] = mapped_column(String(100), default="dall-e-3")
+    image_model: Mapped[str] = mapped_column(String(100), default="runware:400@2")
     image_concurrency: Mapped[int] = mapped_column(Integer, default=2)
+    image_steps: Mapped[int] = mapped_column(Integer, default=5)
+    image_cfg_scale: Mapped[float] = mapped_column(Float, default=3.5)
     image_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_system_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

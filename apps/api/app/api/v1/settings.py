@@ -61,9 +61,10 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
     raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
     raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
-    if not raw_runware_key and cfg.image_api_key_encrypted:
-        raw_runware_key = decrypt_secret(cfg.image_api_key_encrypted)
     raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
+
+    img_prov = getattr(cfg, "image_provider", "runware") or "runware"
+    default_img_model = "runware:400@2" if img_prov == "runware" else "dall-e-3"
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -82,9 +83,12 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         runware_api_key_masked=mask_secret(raw_runware_key),
         has_runware_api_key=bool(raw_runware_key),
         runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
+        image_provider=img_prov,
         image_base_url=cfg.image_base_url,
-        image_model=cfg.image_model or "dall-e-3",
+        image_model=cfg.image_model or default_img_model,
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
+        image_steps=getattr(cfg, "image_steps", 5) or 5,
+        image_cfg_scale=getattr(cfg, "image_cfg_scale", 3.5) if getattr(cfg, "image_cfg_scale", None) is not None else 3.5,
         image_api_key_masked=mask_secret(raw_image_key),
         has_image_api_key=bool(raw_image_key),
         image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
@@ -124,12 +128,18 @@ async def save_model_configuration(
         cfg.runware_api_key_encrypted = encrypt_secret(payload.runware_api_key.strip())
     if payload.runware_tts_model is not None:
         cfg.runware_tts_model = payload.runware_tts_model
+    if payload.image_provider is not None:
+        cfg.image_provider = payload.image_provider
     if payload.image_base_url is not None:
         cfg.image_base_url = payload.image_base_url
     if payload.image_model is not None:
         cfg.image_model = payload.image_model
     if payload.image_concurrency is not None:
         cfg.image_concurrency = max(1, min(4, payload.image_concurrency))
+    if payload.image_steps is not None:
+        cfg.image_steps = max(1, min(50, payload.image_steps))
+    if payload.image_cfg_scale is not None:
+        cfg.image_cfg_scale = max(1.0, min(20.0, payload.image_cfg_scale))
     if payload.image_api_key is not None and payload.image_api_key.strip():
         cfg.image_api_key_encrypted = encrypt_secret(payload.image_api_key.strip())
     if payload.image_system_prompt is not None:
@@ -142,9 +152,10 @@ async def save_model_configuration(
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
     raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
     raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
-    if not raw_runware_key and cfg.image_api_key_encrypted:
-        raw_runware_key = decrypt_secret(cfg.image_api_key_encrypted)
     raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
+
+    img_prov = getattr(cfg, "image_provider", "runware") or "runware"
+    default_img_model = "runware:400@2" if img_prov == "runware" else "dall-e-3"
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -163,9 +174,12 @@ async def save_model_configuration(
         runware_api_key_masked=mask_secret(raw_runware_key),
         has_runware_api_key=bool(raw_runware_key),
         runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
+        image_provider=img_prov,
         image_base_url=cfg.image_base_url,
-        image_model=cfg.image_model or "dall-e-3",
+        image_model=cfg.image_model or default_img_model,
         image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
+        image_steps=getattr(cfg, "image_steps", 5) or 5,
+        image_cfg_scale=getattr(cfg, "image_cfg_scale", 3.5) if getattr(cfg, "image_cfg_scale", None) is not None else 3.5,
         image_api_key_masked=mask_secret(raw_image_key),
         has_image_api_key=bool(raw_image_key),
         image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
@@ -242,21 +256,44 @@ async def test_image_model_connection(
     payload: TestImageConnectionRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    provider = payload.provider
     api_key = payload.api_key
     base_url = payload.base_url
     image_model = payload.image_model
 
-    if not api_key:
-        res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
-        cfg = res.scalar_one_or_none()
-        if cfg and cfg.image_api_key_encrypted:
-            api_key = decrypt_secret(cfg.image_api_key_encrypted)
+    res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+    cfg = res.scalar_one_or_none()
+
+    if not provider and cfg:
+        provider = getattr(cfg, "image_provider", "runware") or "runware"
+    elif not provider:
+        provider = "runware" if (image_model and image_model.startswith("runware:")) else "custom"
+
+    if provider == "runware":
+        base_url = "https://api.runware.ai/v1"
+        if not api_key and cfg:
+            api_key = decrypt_secret(cfg.runware_api_key_encrypted) if cfg.runware_api_key_encrypted else None
+        if not image_model:
+            image_model = "runware:400@2"
+    else:
         if not base_url and cfg:
             base_url = cfg.image_base_url
+        if not api_key and cfg and cfg.image_api_key_encrypted:
+            api_key = decrypt_secret(cfg.image_api_key_encrypted)
         if not image_model and cfg:
-            image_model = cfg.image_model
+            image_model = cfg.image_model or "dall-e-3"
 
-    result = await test_image_connection(base_url=base_url, api_key=api_key, model=image_model)
+    steps = payload.steps or (getattr(cfg, "image_steps", None) if cfg else None)
+    cfg_scale = payload.cfg_scale or (getattr(cfg, "image_cfg_scale", None) if cfg else None)
+
+    result = await test_image_connection(
+        base_url=base_url,
+        api_key=api_key,
+        model=image_model,
+        provider=provider,
+        steps=steps,
+        cfg_scale=cfg_scale,
+    )
     return TestImageConnectionResponse(
         success=result["success"],
         image_model_status=result["image_model_status"],
@@ -358,6 +395,7 @@ async def list_available_models(
                     "inferhub/cb/gemini-2.5-flash-image",
                     "inferhub/cb/gemini-3.0-pro-image",
                     "inferhub/gemini-2.5-flash-image",
+                    "runware:400@2",
                     "runware:100@1",
                     "dall-e-3",
                     "flux-schnell",
@@ -366,6 +404,7 @@ async def list_available_models(
                     "inferhub/cb/gemini-2.5-flash-image",
                     "inferhub/cb/gemini-3.0-pro-image",
                     "inferhub/gemini-2.5-flash-image",
+                    "runware:400@2",
                     "runware:100@1",
                     "dall-e-3",
                     "flux-schnell",

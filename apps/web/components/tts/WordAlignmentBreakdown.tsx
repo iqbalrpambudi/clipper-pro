@@ -246,7 +246,7 @@ export function WordAlignmentBreakdown({
                         onClick={() => onSeek(w.start_ms / 1000)}
                         className={`px-2 py-0.5 rounded-md text-xs transition cursor-pointer ${
                           isWordActive
-                            ? "bg-primary text-black font-semibold shadow-xs"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                             : "border border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
                         }`}
                         title={`${w.word} • ${w.start_ms}ms - ${w.end_ms}ms`}

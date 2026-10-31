@@ -1,7 +1,8 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -32,9 +33,10 @@ from app.schemas.storyboard import (
     YouTubeMetadataUpdateRequest,
     YouTubeThumbnailGenerateRequest,
 )
-from app.services.image_gen import generate_single_image
+from app.services.image_gen import generate_single_image, resolve_image_credentials
 from app.services.image_studio import get_active_image_preset
 from app.services.storyboard import (
+    _normalize_continuity_bible,
     clean_narration_for_tts,
     extract_storyboard_continuity_bible_from_script,
     generate_storyboard_script,
@@ -49,6 +51,7 @@ from app.services.youtube import (
     generate_youtube_metadata,
     generate_youtube_thumbnail,
 )
+from app.workers.storyboard import compute_scene_group_seed
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +68,7 @@ def _item_to_response(
         v = int(item.updated_at.timestamp())
         url = f"{url}?v={v}"
 
+    shot_meta = item.shot_metadata if isinstance(item.shot_metadata, dict) else {}
     resolved = None
     if project:
         resolved = resolve_prompt_variables(
@@ -73,6 +77,7 @@ def _item_to_response(
             locations=getattr(project, "locations", None),
             world_setting=getattr(project, "world_setting", None),
             preset_master_prompt=preset_style,
+            shot_metadata=shot_meta,
         )
 
     return StoryboardItemResponse(
@@ -85,6 +90,7 @@ def _item_to_response(
         script_text=item.script_text,
         image_prompt=item.image_prompt,
         resolved_prompt=resolved,
+        shot_metadata=shot_meta,
         image_url=url,
         motion_effect=item.motion_effect or "zoom_in",
         start_time=float(item.start_time) if item.start_time is not None else 0.0,
@@ -176,10 +182,13 @@ async def update_storyboard_continuity_bible(
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+    next_chars = payload.characters if payload.characters is not None else (getattr(proj, "characters", []) or [])
+    next_locs = payload.locations if payload.locations is not None else (getattr(proj, "locations", []) or [])
+    norm_chars, norm_locs = _normalize_continuity_bible(next_chars, next_locs)
     if payload.characters is not None:
-        proj.characters = payload.characters
+        proj.characters = norm_chars
     if payload.locations is not None:
-        proj.locations = payload.locations
+        proj.locations = norm_locs
     if payload.world_setting is not None:
         proj.world_setting = payload.world_setting
     await db.commit()
@@ -323,13 +332,18 @@ async def update_storyboard_segment(
     )
     items = res_items.scalars().all()
 
-    # If payload.items is provided, update image_prompt of each item
+    # If payload.items is provided, update image_prompt and optional shot_metadata of each item
     if payload.items:
         items_map = {it.id: it for it in items}
         for upd_item in payload.items:
             if upd_item.id in items_map:
                 target_it = items_map[upd_item.id]
                 target_it.image_prompt = upd_item.image_prompt
+                if upd_item.shot_metadata is not None:
+                    merged_meta = dict(target_it.shot_metadata or {})
+                    merged_meta.update(upd_item.shot_metadata)
+                    target_it.shot_metadata = merged_meta
+                    flag_modified(target_it, "shot_metadata")
                 if payload.chapter:
                     target_it.chapter_title = payload.chapter
                 if clean_text is not None:
@@ -448,7 +462,7 @@ async def update_storyboard_item(
     payload: StoryboardItemUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Edit visual prompt, motion effect, or timing for a specific storyboard image."""
+    """Edit visual prompt, shot metadata, motion effect, or timing for a specific storyboard image."""
     item = await db.get(StoryboardItem, item_id)
     if not item or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="Storyboard item tidak ditemukan")
@@ -466,6 +480,11 @@ async def update_storyboard_item(
         )
     if payload.image_prompt is not None:
         item.image_prompt = payload.image_prompt
+    if payload.shot_metadata is not None:
+        merged_meta = dict(item.shot_metadata or {})
+        merged_meta.update(payload.shot_metadata)
+        item.shot_metadata = merged_meta
+        flag_modified(item, "shot_metadata")
     if payload.motion_effect is not None:
         item.motion_effect = payload.motion_effect
     if payload.start_time is not None:
@@ -489,7 +508,7 @@ async def generate_single_storyboard_image(
     payload: Optional[StoryboardSingleGenerateRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate or regenerate a single storyboard illustration via AI image provider."""
+    """Generate or regenerate a single storyboard illustration via AI image provider with scene-group continuity."""
     item = await db.get(StoryboardItem, item_id)
     if not item or item.project_id != project_id:
         raise HTTPException(status_code=404, detail="Storyboard item tidak ditemukan")
@@ -502,9 +521,7 @@ async def generate_single_storyboard_image(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
 
-    base_url = cfg.image_base_url if cfg else None
-    model = cfg.image_model if cfg else "dall-e-3"
-    api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
+    base_url, api_key, model = resolve_image_credentials(cfg)
 
     # Fetch style prompt from specified preset or active preset
     from app.models.image_preset import ImagePreset
@@ -515,6 +532,35 @@ async def generate_single_storyboard_image(
         preset = await get_active_image_preset(db)
 
     style_prompt = preset.master_prompt if preset else (cfg.image_system_prompt if cfg else None)
+    negative_prompt = getattr(preset, "negative_prompt", None) if preset else None
+
+    # Look up scene-group anchor reference image if this shot belongs to a multi-shot scene group
+    shot_meta = item.shot_metadata if isinstance(item.shot_metadata, dict) else {}
+    group_id = (shot_meta.get("scene_group_id") or "").strip()
+    ref_item_id = (shot_meta.get("reference_item_id") or "").strip()
+    ref_path: Optional[str] = None
+    if group_id or ref_item_id:
+        siblings_res = await db.execute(
+            select(StoryboardItem)
+            .where(StoryboardItem.project_id == project_id)
+            .order_by(StoryboardItem.order_index.asc())
+        )
+        siblings = list(siblings_res.scalars().all())
+        if ref_item_id and ref_item_id != item.id:
+            for sib in siblings:
+                if sib.id == ref_item_id and sib.status == "ready" and sib.file_path and Path(sib.file_path).is_file():
+                    ref_path = sib.file_path
+                    break
+        if not ref_path and group_id:
+            for sib in siblings:
+                if sib.id == item.id:
+                    continue
+                sib_grp = ((sib.shot_metadata or {}).get("scene_group_id") or "").strip() if isinstance(sib.shot_metadata, dict) else ""
+                if sib_grp == group_id and sib.status == "ready" and sib.file_path and Path(sib.file_path).is_file():
+                    ref_path = sib.file_path
+                    break
+
+    group_seed = compute_scene_group_seed(project_id, group_id)
 
     item.status = "generating"
     item.error_message = None
@@ -528,7 +574,12 @@ async def generate_single_storyboard_image(
         locations=getattr(proj, "locations", None) if proj else None,
         world_setting=getattr(proj, "world_setting", None) if proj else None,
         preset_master_prompt=style_prompt,
+        shot_metadata=shot_meta,
     )
+
+    cfg_steps = getattr(cfg, "image_steps", None)
+    cfg_scale = getattr(cfg, "image_cfg_scale", None)
+    target_size = "1366x768" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
 
     try:
         file_path, _ = await generate_single_image(
@@ -539,7 +590,12 @@ async def generate_single_storyboard_image(
             api_key=api_key,
             model=model,
             style_prompt=style_prompt,
-            size="1792x1024",
+            negative_prompt=negative_prompt,
+            size=target_size,
+            reference_image_path=ref_path,
+            seed=group_seed,
+            steps=cfg_steps,
+            guidance_scale=cfg_scale,
         )
         item.file_path = file_path
         item.status = "ready"
@@ -564,7 +620,7 @@ async def generate_all_storyboard_images(
     payload: Optional[StoryboardBatchGenerateRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Batch generate all pending/requested storyboard illustrations."""
+    """Batch generate all pending/requested storyboard illustrations with scene-group reference chaining."""
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
@@ -573,23 +629,41 @@ async def generate_all_storyboard_images(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
 
-    base_url = cfg.image_base_url if cfg else None
-    model = cfg.image_model if cfg else "dall-e-3"
-    api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
+    base_url, api_key, model = resolve_image_credentials(cfg)
+    cfg_steps = getattr(cfg, "image_steps", None)
+    cfg_scale = getattr(cfg, "image_cfg_scale", None)
+    target_size = "1366x768" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
     active_preset = await get_active_image_preset(db)
     style_prompt = active_preset.master_prompt if active_preset else (cfg.image_system_prompt if cfg else None)
+    negative_prompt = getattr(active_preset, "negative_prompt", None) if active_preset else None
 
-    # Determine items to process
-    stmt = select(StoryboardItem).where(StoryboardItem.project_id == project_id)
+    # Fetch all items in order so ready anchors in any scene_group_id are available immediately
+    all_stmt = (
+        select(StoryboardItem)
+        .where(StoryboardItem.project_id == project_id)
+        .order_by(StoryboardItem.order_index.asc())
+    )
+    all_res = await db.execute(all_stmt)
+    all_project_items = list(all_res.scalars().all())
+
+    ready_by_item_id: Dict[str, str] = {}
+    group_anchor_map: Dict[str, tuple[str, str]] = {}
+    for existing in all_project_items:
+        if existing.status == "ready" and existing.file_path and Path(existing.file_path).is_file():
+            ready_by_item_id[existing.id] = existing.file_path
+            grp = ((existing.shot_metadata or {}).get("scene_group_id") or "").strip() if isinstance(existing.shot_metadata, dict) else ""
+            if grp and grp not in group_anchor_map:
+                group_anchor_map[grp] = (existing.id, existing.file_path)
+
     if payload and payload.item_ids:
-        stmt = stmt.where(StoryboardItem.id.in_(payload.item_ids))
+        target_ids = set(payload.item_ids)
+        items = [it for it in all_project_items if it.id in target_ids]
     else:
-        # Default: process pending or failed or missing file
-        stmt = stmt.where((StoryboardItem.status != "ready") | (StoryboardItem.file_path.is_(None)))
-
-    stmt = stmt.order_by(StoryboardItem.order_index.asc())
-    items_res = await db.execute(stmt)
-    items = items_res.scalars().all()
+        items = [
+            it
+            for it in all_project_items
+            if it.status != "ready" or not it.file_path or not Path(it.file_path).is_file()
+        ]
 
     success_count = 0
     fail_count = 0
@@ -612,12 +686,27 @@ async def generate_all_storyboard_images(
             await db.commit()
 
         try:
+            shot_meta = it.shot_metadata if isinstance(it.shot_metadata, dict) else {}
+            group_id = (shot_meta.get("scene_group_id") or "").strip()
+            ref_item_id = (shot_meta.get("reference_item_id") or "").strip()
+
+            ref_path: Optional[str] = None
+            if ref_item_id and ref_item_id != it.id and ref_item_id in ready_by_item_id:
+                ref_path = ready_by_item_id[ref_item_id]
+            elif group_id and group_id in group_anchor_map:
+                anc_id, anc_path = group_anchor_map[group_id]
+                if anc_id != it.id:
+                    ref_path = anc_path
+
+            group_seed = compute_scene_group_seed(project_id, group_id)
+
             resolved_prompt = resolve_prompt_variables(
                 it.image_prompt,
                 characters=getattr(proj, "characters", None) if proj else None,
                 locations=getattr(proj, "locations", None) if proj else None,
                 world_setting=getattr(proj, "world_setting", None) if proj else None,
                 preset_master_prompt=style_prompt,
+                shot_metadata=shot_meta,
             )
             async with sem:
                 f_path, _ = await generate_single_image(
@@ -628,12 +717,20 @@ async def generate_all_storyboard_images(
                     api_key=api_key,
                     model=model,
                     style_prompt=style_prompt,
-                    size="1792x1024",
+                    negative_prompt=negative_prompt,
+                    size=target_size,
+                    reference_image_path=ref_path,
+                    seed=group_seed,
+                    steps=cfg_steps,
+                    guidance_scale=cfg_scale,
                 )
             async with db_lock:
                 it.file_path = f_path
                 it.status = "ready"
                 it.error_message = None
+                ready_by_item_id[it.id] = f_path
+                if group_id and group_id not in group_anchor_map:
+                    group_anchor_map[group_id] = (it.id, f_path)
                 success_count += 1
                 await db.commit()
         except Exception as e:
@@ -645,7 +742,24 @@ async def generate_all_storyboard_images(
                 await db.commit()
 
     if items:
-        await asyncio.gather(*[_process_item(it) for it in items], return_exceptions=True)
+        grouped_chains: List[List[StoryboardItem]] = []
+        chain_index_by_group: Dict[str, int] = {}
+        for it in items:
+            grp = ((it.shot_metadata or {}).get("scene_group_id") or "").strip() if isinstance(it.shot_metadata, dict) else ""
+            if grp:
+                if grp not in chain_index_by_group:
+                    chain_index_by_group[grp] = len(grouped_chains)
+                    grouped_chains.append([it])
+                else:
+                    grouped_chains[chain_index_by_group[grp]].append(it)
+            else:
+                grouped_chains.append([it])
+
+        async def _process_chain(chain: List[StoryboardItem]) -> None:
+            for chain_item in chain:
+                await _process_item(chain_item)
+
+        await asyncio.gather(*[_process_chain(ch) for ch in grouped_chains], return_exceptions=True)
 
     return {
         "success": True,

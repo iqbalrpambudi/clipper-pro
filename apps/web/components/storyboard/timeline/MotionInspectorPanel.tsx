@@ -58,6 +58,8 @@ export function MotionInspectorPanel({
                 { id: "zoom_out", label: "Slow Zoom Out" },
                 { id: "pan_left", label: "Pan Left" },
                 { id: "pan_right", label: "Pan Right" },
+                { id: "pan_up", label: "Pan Up" },
+                { id: "pan_down", label: "Pan Down" },
                 { id: "static", label: "Statis (Diam)" },
               ].map((m) => (
                 <button

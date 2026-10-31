@@ -92,7 +92,7 @@ export function CharactersTab({
                   <input
                     type="text"
                     value={char.role || ""}
-                    placeholder="Peran (mis. Tokoh Utama, Ibu, Antagonis)"
+                    placeholder="Peran (mis. Tokoh Utama, Pedagang Pasar, Antagonis)"
                     onChange={(e) => {
                       const updated = [...charactersList];
                       updated[cIdx] = { ...char, role: e.target.value };
@@ -101,17 +101,84 @@ export function CharactersTab({
                     className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1 text-[11px] text-[#4D4A42] focus:border-[#C45B3A] focus:outline-none"
                   />
 
-                  <textarea
-                    value={char.visual_anchor}
-                    placeholder="Ciri visual permanen (Bahasa Inggris): a lean Indonesian man, sun-tanned skin, expressive eyes..."
-                    onChange={(e) => {
-                      const updated = [...charactersList];
-                      updated[cIdx] = { ...char, visual_anchor: e.target.value };
-                      setCharactersList(updated);
-                    }}
-                    rows={2}
-                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
-                  />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#A9472C]">
+                        🎯 Wajah & Kepala (Close-Up Anchor)
+                      </label>
+                      <textarea
+                        value={char.face_head_anchor || ""}
+                        placeholder="English: sun-tanned Indonesian man in 40s, sharp cheekbones, thick mustache, woven brown peci..."
+                        onChange={(e) => {
+                          const nextFace = e.target.value;
+                          const prevJoined = [char.face_head_anchor, char.outfit_body_anchor]
+                            .filter(Boolean)
+                            .join(", ");
+                          const shouldSyncVisual =
+                            !char.visual_anchor || char.visual_anchor === prevJoined;
+                          const nextJoined = [nextFace, char.outfit_body_anchor]
+                            .filter(Boolean)
+                            .join(", ");
+                          const updated = [...charactersList];
+                          updated[cIdx] = {
+                            ...char,
+                            face_head_anchor: nextFace,
+                            visual_anchor: shouldSyncVisual ? nextJoined : char.visual_anchor,
+                          };
+                          setCharactersList(updated);
+                        }}
+                        rows={2}
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#41627F]">
+                        👕 Pakaian & Siluet (Wide/Medium Anchor)
+                      </label>
+                      <textarea
+                        value={char.outfit_body_anchor || ""}
+                        placeholder="English: lean build, faded indigo lurik shirt with rolled sleeves, brown sarong over shoulder..."
+                        onChange={(e) => {
+                          const nextOutfit = e.target.value;
+                          const prevJoined = [char.face_head_anchor, char.outfit_body_anchor]
+                            .filter(Boolean)
+                            .join(", ");
+                          const shouldSyncVisual =
+                            !char.visual_anchor || char.visual_anchor === prevJoined;
+                          const nextJoined = [char.face_head_anchor, nextOutfit]
+                            .filter(Boolean)
+                            .join(", ");
+                          const updated = [...charactersList];
+                          updated[cIdx] = {
+                            ...char,
+                            outfit_body_anchor: nextOutfit,
+                            visual_anchor: shouldSyncVisual ? nextJoined : char.visual_anchor,
+                          };
+                          setCharactersList(updated);
+                        }}
+                        rows={2}
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#77766D]">
+                      Full Visual Anchor (Ringkasan / Fallback)
+                    </label>
+                    <textarea
+                      value={char.visual_anchor}
+                      placeholder="Ciri visual lengkap (otomatis terisi dari Wajah + Pakaian atau edit manual)..."
+                      onChange={(e) => {
+                        const updated = [...charactersList];
+                        updated[cIdx] = { ...char, visual_anchor: e.target.value };
+                        setCharactersList(updated);
+                      }}
+                      rows={2}
+                      className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                    />
+                  </div>
 
                   {/* Variants Sub-list */}
                   <div className="space-y-2 border-t border-[#E5E1D7] pt-2">
@@ -172,9 +239,61 @@ export function CharactersTab({
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
+                            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              <input
+                                type="text"
+                                value={v.face_head_anchor || ""}
+                                placeholder="Wajah/Kepala varian (Close-Up)..."
+                                onChange={(e) => {
+                                  const nextFace = e.target.value;
+                                  const prevJoined = [v.face_head_anchor, v.outfit_body_anchor]
+                                    .filter(Boolean)
+                                    .join(", ");
+                                  const shouldSync = !v.visual_anchor || v.visual_anchor === prevJoined;
+                                  const nextJoined = [nextFace, v.outfit_body_anchor]
+                                    .filter(Boolean)
+                                    .join(", ");
+                                  const updated = [...charactersList];
+                                  const variants = [...(updated[cIdx].variants || [])];
+                                  variants[vIdx] = {
+                                    ...v,
+                                    face_head_anchor: nextFace,
+                                    visual_anchor: shouldSync ? nextJoined : v.visual_anchor,
+                                  };
+                                  updated[cIdx] = { ...updated[cIdx], variants };
+                                  setCharactersList(updated);
+                                }}
+                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-[10px] text-[#26251F] focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={v.outfit_body_anchor || ""}
+                                placeholder="Pakaian/Siluet varian (Wide)..."
+                                onChange={(e) => {
+                                  const nextOutfit = e.target.value;
+                                  const prevJoined = [v.face_head_anchor, v.outfit_body_anchor]
+                                    .filter(Boolean)
+                                    .join(", ");
+                                  const shouldSync = !v.visual_anchor || v.visual_anchor === prevJoined;
+                                  const nextJoined = [v.face_head_anchor, nextOutfit]
+                                    .filter(Boolean)
+                                    .join(", ");
+                                  const updated = [...charactersList];
+                                  const variants = [...(updated[cIdx].variants || [])];
+                                  variants[vIdx] = {
+                                    ...v,
+                                    outfit_body_anchor: nextOutfit,
+                                    visual_anchor: shouldSync ? nextJoined : v.visual_anchor,
+                                  };
+                                  updated[cIdx] = { ...updated[cIdx], variants };
+                                  setCharactersList(updated);
+                                }}
+                                className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2 py-1 font-mono text-[10px] text-[#26251F] focus:outline-none"
+                              />
+                            </div>
                             <textarea
                               value={v.visual_anchor}
-                              placeholder="Visual Anchor varian (Bahasa Inggris): weathered grey stone statue in prostrating kneeling pose..."
+                              placeholder="Full Visual Anchor varian (Bahasa Inggris): weathered grey stone statue in prostrating kneeling pose..."
                               onChange={(e) => {
                                 const updated = [...charactersList];
                                 const variants = [...(updated[cIdx].variants || [])];
@@ -217,9 +336,26 @@ export function CharactersTab({
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
-                    {char.visual_anchor || "Belum ada ciri visual khusus."}
-                  </p>
+                  {char.face_head_anchor || char.outfit_body_anchor ? (
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      <div className="rounded-lg border border-[#E9C9BD] bg-[#F8EEEA]/70 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
+                        <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#A9472C]">
+                          🎯 Close-Up (Wajah & Kepala)
+                        </span>
+                        {char.face_head_anchor || char.visual_anchor}
+                      </div>
+                      <div className="rounded-lg border border-[#CFDDE9] bg-[#EAF0F5]/70 p-2 font-mono text-[10px] leading-relaxed text-[#4D4A42]">
+                        <span className="mb-0.5 block font-sans text-[9px] font-bold uppercase tracking-wider text-[#41627F]">
+                          👕 Wide / Medium (Pakaian & Siluet)
+                        </span>
+                        {char.outfit_body_anchor || char.visual_anchor}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
+                      {char.visual_anchor || "Belum ada ciri visual khusus."}
+                    </p>
+                  )}
 
                   {/* Display Variants if any */}
                   {char.variants && char.variants.length > 0 && (

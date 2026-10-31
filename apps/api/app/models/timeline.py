@@ -69,6 +69,7 @@ class SubtitleStyle(Base):
     burst_word_count: Mapped[int] = mapped_column(Integer, default=2)  # 2 or 3
     highlight_animation: Mapped[str] = mapped_column(String(20), default="color")  # scale | color | box | none
     scale_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    text_case: Mapped[str] = mapped_column(String(20), default="uppercase", server_default="uppercase")  # sentence | uppercase
     emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

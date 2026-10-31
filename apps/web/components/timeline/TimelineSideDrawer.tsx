@@ -267,7 +267,7 @@ export function TimelineSideDrawer({
             onClick={() => handleTabClick("pool")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
               activeSideTab === "pool" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Media Pool (Koleksi Scene)"
@@ -280,7 +280,7 @@ export function TimelineSideDrawer({
             onClick={() => handleTabClick("inspector")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
               activeSideTab === "inspector" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Clip Inspector (Pengaturan Klip)"
@@ -296,7 +296,7 @@ export function TimelineSideDrawer({
             onClick={() => handleTabClick("subtitles")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
               activeSideTab === "subtitles" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Subtitle Style & Presets"
@@ -309,7 +309,7 @@ export function TimelineSideDrawer({
             onClick={() => handleTabClick("layout")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
               activeSideTab === "layout" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Mode Tampilan & Rasio Video"
@@ -322,7 +322,7 @@ export function TimelineSideDrawer({
             onClick={() => handleTabClick("watermark")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
               activeSideTab === "watermark" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-black font-semibold shadow-xs"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             title="Watermark Video (Teks & Posisi)"

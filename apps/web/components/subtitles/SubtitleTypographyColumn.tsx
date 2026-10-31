@@ -182,7 +182,7 @@ export function SubtitleTypographyColumn({ style, onCommitStyle }: SubtitleTypog
                   onClick={() => onCommitStyle({ ...style, burst_word_count: count })}
                   className={`px-3 py-1 rounded text-xs font-bold transition ${
                     (style.burst_word_count || 2) === count
-                      ? "bg-primary text-black"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >

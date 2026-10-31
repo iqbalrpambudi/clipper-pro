@@ -52,6 +52,30 @@ def ms_to_vtt_time(ms: int) -> str:
 def get_builtin_presets() -> List[Dict[str, Any]]:
     return [
         {
+            "id": "youtube_documentary",
+            "name": "YouTube Documentary Clean",
+            "description": "Subtitle dokumenter 16:9 elegan dengan Sentence Case alami, kotak semi-transparan halus, dan keterbacaan tinggi ala Vox / Lemmino.",
+            "is_builtin": True,
+            "font_family": "Inter",
+            "font_size": 36,
+            "font_weight": "SemiBold",
+            "primary_color": "#F8FAFC",
+            "highlight_color": "#FDE047",
+            "outline_color": "#0F172A",
+            "outline_width": 2,
+            "box_color": "#0F172A",
+            "box_opacity": 0.65,
+            "position": "bottom",
+            "offset_y": -24,
+            "offset_x": 0,
+            "display_mode": "full_sentence",
+            "burst_word_count": 2,
+            "highlight_animation": "color",
+            "scale_factor": 1.0,
+            "text_case": "sentence",
+            "emoji_enabled": False,
+        },
+        {
             "id": "viral_tiktok",
             "name": "Viral TikTok / Reels",
             "description": "Font tebal sans-serif, teks putih dengan outline hitam tebal, highlight kuning cerah, animasi scale-up.",
@@ -72,6 +96,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "burst_word_count": 2,
             "highlight_animation": "color",
             "scale_factor": 1.0,
+            "text_case": "uppercase",
             "emoji_enabled": False,
         },
         {
@@ -95,6 +120,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "burst_word_count": 2,
             "highlight_animation": "scale",
             "scale_factor": 1.15,
+            "text_case": "uppercase",
             "emoji_enabled": False,
         },
         {
@@ -118,6 +144,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "burst_word_count": 2,
             "highlight_animation": "color",
             "scale_factor": 1.0,
+            "text_case": "uppercase",
             "emoji_enabled": False,
         },
         {
@@ -141,6 +168,7 @@ def get_builtin_presets() -> List[Dict[str, Any]]:
             "burst_word_count": 3,
             "highlight_animation": "color",
             "scale_factor": 1.0,
+            "text_case": "uppercase",
             "emoji_enabled": False,
         },
     ]
@@ -191,7 +219,17 @@ def generate_ass_subtitles(
         # Calibrate with React preview's scaledFontSize * 0.9
         ass_font_size = max(16, int(round(ass_font_size * 0.9)))
 
-    bold = -1 if style_config.get("font_weight", "Bold").lower() == "bold" else 0
+    bold = -1 if style_config.get("font_weight", "Bold").lower() in ("bold", "semibold", "extrabold", "black") else 0
+
+    raw_text_case = (style_config.get("text_case") or "").strip().lower()
+    preset_low = (style_config.get("preset_name") or "").strip().lower()
+    if raw_text_case in ("sentence", "uppercase"):
+        use_uppercase = raw_text_case == "uppercase"
+    else:
+        use_uppercase = preset_low not in ("youtube_documentary", "youtube documentary", "youtube documentary clean")
+
+    def _fmt_word(raw_w: str) -> str:
+        return raw_w.upper() if use_uppercase else raw_w
 
     primary_col = hex_to_ass_color(style_config.get("primary_color", "#FFFFFF"), opacity=1.0)
     highlight_col = hex_to_ass_color(style_config.get("highlight_color", "#FFE600"), opacity=1.0)
@@ -267,14 +305,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if display_mode == "per_word":
             # Per-word mode: each word appears for its exact spoken duration
             for w in words:
-                w_text = w["word"].strip()
+                w_text = _fmt_word(w["word"].strip())
                 if not w_text:
                     continue
                 start_t = ms_to_ass_time(w["start_ms"])
                 end_t = ms_to_ass_time(max(w["end_ms"], w["start_ms"] + 150))
 
                 col = primary_col if anim == "none" else highlight_col
-                colored_text = f"{pos_tag}{{\\c{col}}}{pop_fx}{w_text.upper()}{scale_reset}"
+                colored_text = f"{pos_tag}{{\\c{col}}}{pop_fx}{w_text}{scale_reset}"
                 dialogue_lines.append(
                     f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{colored_text}"
                 )
@@ -306,15 +344,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     # Build word parts
                     line_parts = []
                     for m, w in enumerate(group):
-                        w_text = w["word"].strip()
+                        w_text = _fmt_word(w["word"].strip())
 
                         if m == j:
                             if anim == "none":
-                                line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
+                                line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
                             else:
-                                line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}")
+                                line_parts.append(f"{{\\c{highlight_col}}}{pop_fx}{w_text}{scale_reset}")
                         else:
-                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
+                            line_parts.append(f"{{\\c{primary_col}}}{scale_reset}{w_text}")
 
                     dialogue_lines.append(
                         f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{' '.join(line_parts)}"
@@ -332,7 +370,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             wrap_breaks = set()
             cur_len = 0
             for i_w, w_item in enumerate(words):
-                w_str = w_item.get("word", "").strip()
+                w_str = _fmt_word(w_item.get("word", "").strip())
                 if i_w == 0:
                     cur_len = len(w_str)
                 else:
@@ -359,16 +397,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                 line_parts = []
                 for m, w in enumerate(words):
-                    w_text = w["word"].strip()
+                    w_text = _fmt_word(w["word"].strip())
                     prefix = "\\N" if m in wrap_breaks else ("" if m == 0 else " ")
 
                     if m == j:
                         if anim == "none":
-                            line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
+                            line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text}")
                         else:
-                            line_parts.append(f"{prefix}{{\\c{highlight_col}}}{pop_fx}{w_text.upper()}{scale_reset}")
+                            line_parts.append(f"{prefix}{{\\c{highlight_col}}}{pop_fx}{w_text}{scale_reset}")
                     else:
-                        line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text.upper()}")
+                        line_parts.append(f"{prefix}{{\\c{primary_col}}}{scale_reset}{w_text}")
 
                 dialogue_lines.append(
                     f"Dialogue: 0,{start_t},{end_t},KaraokeDefault,,0,0,0,,{pos_tag}{''.join(line_parts)}"

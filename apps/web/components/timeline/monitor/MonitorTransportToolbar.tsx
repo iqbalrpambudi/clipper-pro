@@ -117,7 +117,7 @@ export function MonitorTransportToolbar({
           type="button"
           onClick={() => onPlayingChange(!isPlaying)}
           disabled={clips.length === 0}
-          className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-40 text-black flex items-center justify-center shadow-xs transition active:scale-95 mx-0.5 font-semibold"
+          className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground flex items-center justify-center shadow-xs transition active:scale-95 mx-0.5 font-semibold"
           title={isPlaying ? "Jeda (Spasi)" : "Putar (Spasi)"}
           id="timeline-monitor-play"
         >
@@ -209,7 +209,7 @@ function TransportBtn({
       disabled={disabled}
       className={`w-7 h-7 rounded-lg flex items-center justify-center transition disabled:opacity-25 disabled:cursor-not-allowed ${
         active
-          ? "bg-primary text-black font-semibold shadow-xs"
+          ? "bg-primary text-primary-foreground font-semibold shadow-xs"
           : "text-muted-foreground hover:text-foreground hover:bg-accent"
       }`}
     >

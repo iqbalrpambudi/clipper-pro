@@ -26,6 +26,7 @@ class StoryboardItemResponse(BaseModel):
     script_text: str
     image_prompt: str
     resolved_prompt: Optional[str] = None
+    shot_metadata: Optional[dict] = None
     image_url: Optional[str] = None
     motion_effect: str = "zoom_in"
     start_time: float = 0.0
@@ -41,7 +42,8 @@ class StoryboardItemUpdateRequest(BaseModel):
     chapter_title: Optional[str] = None
     script_text: Optional[str] = None
     image_prompt: Optional[str] = None
-    motion_effect: Optional[str] = None  # zoom_in, zoom_out, pan_left, pan_right, static
+    shot_metadata: Optional[dict] = None
+    motion_effect: Optional[str] = None  # zoom_in, zoom_out, pan_left, pan_right, pan_up, pan_down, static
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     duration: Optional[float] = None
@@ -107,6 +109,7 @@ class StoryboardContinuityBibleExtractRequest(BaseModel):
 class StoryboardSegmentItemUpdate(BaseModel):
     id: str
     image_prompt: str
+    shot_metadata: Optional[dict] = None
 
 
 class StoryboardSegmentUpdateRequest(BaseModel):

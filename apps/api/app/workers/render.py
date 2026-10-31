@@ -78,28 +78,34 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         )
         narration = n_res.scalars().first()
 
-        # Fetch subtitle style
+        # Fetch subtitle style (use YouTube Documentary Clean 16:9 defaults for long_storyboard when unconfigured)
         sub_res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project.id))
         style = sub_res.scalar_one_or_none()
+        is_storyboard = project.project_type == "long_storyboard"
         style_dict = {
-            "preset_name": style.preset_name if style else "viral_tiktok",
-            "font_family": style.font_family if style else "Poppins",
-            "font_size": style.font_size if style else 56,
-            "font_weight": style.font_weight if style else "Bold",
-            "primary_color": style.primary_color if style else "#FFFFFF",
-            "highlight_color": style.highlight_color if style else "#FFE600",
-            "outline_color": style.outline_color if style else "#000000",
-            "outline_width": style.outline_width if style else 4,
-            "box_color": style.box_color if style else "#000000",
-            "box_opacity": style.box_opacity if style else 0.0,
+            "preset_name": style.preset_name if style else ("youtube_documentary" if is_storyboard else "viral_tiktok"),
+            "font_family": style.font_family if style else ("Inter" if is_storyboard else "Poppins"),
+            "font_size": style.font_size if style else (36 if is_storyboard else 56),
+            "font_weight": style.font_weight if style else ("SemiBold" if is_storyboard else "Bold"),
+            "primary_color": style.primary_color if style else ("#F8FAFC" if is_storyboard else "#FFFFFF"),
+            "highlight_color": style.highlight_color if style else ("#FDE047" if is_storyboard else "#FFE600"),
+            "outline_color": style.outline_color if style else ("#0F172A" if is_storyboard else "#000000"),
+            "outline_width": style.outline_width if style else (2 if is_storyboard else 4),
+            "box_color": style.box_color if style else ("#0F172A" if is_storyboard else "#000000"),
+            "box_opacity": style.box_opacity if (style and style.box_opacity is not None) else (0.65 if is_storyboard else 0.0),
             "position": style.position if style else "bottom",
-            "offset_y": style.offset_y if style else 0,
-            "offset_x": style.offset_x if style else 0,
-            "display_mode": style.display_mode if style else "per_word",
+            "offset_y": style.offset_y if (style and style.offset_y is not None) else (-24 if is_storyboard else 0),
+            "offset_x": style.offset_x if (style and style.offset_x is not None) else 0,
+            "display_mode": style.display_mode if style else ("full_sentence" if is_storyboard else "per_word"),
             "burst_word_count": style.burst_word_count if style else 2,
             "highlight_animation": style.highlight_animation if style else "color",
             "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.0,
-            "emoji_enabled": style.emoji_enabled if style else True,
+            "text_case": (
+                getattr(style, "text_case", None)
+                if (style and getattr(style, "text_case", None))
+                else ("sentence" if is_storyboard else "uppercase")
+            ),
+            "emoji_enabled": style.emoji_enabled if (style and style.emoji_enabled is not None) else (False if is_storyboard else True),
             "enabled": (
                 style.enabled
                 if (style and getattr(style, "enabled", None) is not None)
@@ -246,6 +252,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                         "end_time": it.end_time,
                         "duration": it.duration or 4.0,
                         "motion_effect": it.motion_effect or "zoom_in",
+                        "shot_metadata": it.shot_metadata or {},
                         "script_text": it.script_text,
                     }
                     for it, resolved_path in valid_items

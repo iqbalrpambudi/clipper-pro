@@ -345,7 +345,7 @@ export function ScenePreviewModal({
 
           {/* Speed Indicator */}
           {playbackRate !== 1 && (
-            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-[10px] font-bold text-black font-mono">
+            <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-[10px] font-bold text-primary-foreground font-mono">
               {playbackRate}x
             </div>
           )}

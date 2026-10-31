@@ -17,7 +17,7 @@ from app.models.narration import Narration
 from app.models.project import Project
 from app.models.storyboard import StoryboardItem
 from app.services.ai_adapters.factory import get_active_llm_adapter
-from app.services.image_gen import generate_single_image
+from app.services.image_gen import generate_single_image, resolve_image_credentials
 from app.services.image_studio import get_active_image_preset
 
 log = logging.getLogger(__name__)
@@ -515,9 +515,9 @@ async def generate_youtube_thumbnail(
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
 
-    base_url = cfg.image_base_url if cfg else None
-    model = cfg.image_model if cfg else "dall-e-3"
-    api_key = decrypt_secret(cfg.image_api_key_encrypted) if (cfg and cfg.image_api_key_encrypted) else None
+    base_url, api_key, model = resolve_image_credentials(cfg)
+    cfg_steps = getattr(cfg, "image_steps", None)
+    cfg_scale = getattr(cfg, "image_cfg_scale", None)
 
     # Fetch style prompt from specified preset or active preset
     preset = None
@@ -567,6 +567,7 @@ async def generate_youtube_thumbnail(
     )
 
     item_id = f"yt_{uuid.uuid4().hex[:6]}"
+    target_size = "1366x768" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
     file_path, _ = await generate_single_image(
         prompt=resolved_prompt,
         project_id=project_id,
@@ -576,7 +577,9 @@ async def generate_youtube_thumbnail(
         model=model,
         style_prompt=effective_style,
         negative_prompt=getattr(preset, "negative_prompt", None) if preset else None,
-        size="1792x1024",
+        size=target_size,
+        steps=cfg_steps,
+        guidance_scale=cfg_scale,
     )
 
     rel_url = storage.to_relative_url(file_path)

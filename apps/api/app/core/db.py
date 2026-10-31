@@ -59,10 +59,41 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize DB: create all tables on startup."""
+    """Initialize DB: create all tables on startup and ensure incremental columns exist."""
+    from sqlalchemy import inspect, text
     import app.models  # noqa: F401
+
+    def _ensure_incremental_columns(sync_conn) -> None:
+        inspector = inspect(sync_conn)
+        table_names = set(inspector.get_table_names())
+        if "storyboard_items" in table_names:
+            sb_cols = {c["name"] for c in inspector.get_columns("storyboard_items")}
+            if "shot_metadata" not in sb_cols:
+                sync_conn.execute(text("ALTER TABLE storyboard_items ADD COLUMN shot_metadata JSON"))
+        if "subtitle_styles" in table_names:
+            sub_cols = {c["name"] for c in inspector.get_columns("subtitle_styles")}
+            if "text_case" not in sub_cols:
+                sync_conn.execute(
+                    text("ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'")
+                )
+        if "model_configs" in table_names:
+            mc_cols = {c["name"] for c in inspector.get_columns("model_configs")}
+            if "image_provider" not in mc_cols:
+                sync_conn.execute(
+                    text("ALTER TABLE model_configs ADD COLUMN image_provider VARCHAR(50) DEFAULT 'runware'")
+                )
+            if "image_steps" not in mc_cols:
+                sync_conn.execute(
+                    text("ALTER TABLE model_configs ADD COLUMN image_steps INTEGER DEFAULT 5")
+                )
+            if "image_cfg_scale" not in mc_cols:
+                sync_conn.execute(
+                    text("ALTER TABLE model_configs ADD COLUMN image_cfg_scale FLOAT DEFAULT 3.5")
+                )
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_incremental_columns)
     logger.info("Database initialized successfully.")
 
 

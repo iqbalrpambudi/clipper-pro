@@ -14,11 +14,14 @@ class ModelConfigUpdate(BaseModel):
     elevenlabs_model: Optional[str] = None
     runware_api_key: Optional[str] = None
     runware_tts_model: Optional[str] = None
+    image_provider: Optional[str] = None
     image_base_url: Optional[str] = None
     image_model: Optional[str] = None
     image_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
     image_system_prompt: Optional[str] = None
     image_concurrency: Optional[int] = None
+    image_steps: Optional[int] = None
+    image_cfg_scale: Optional[float] = None
 
 
 class ModelConfigResponse(BaseModel):
@@ -40,9 +43,12 @@ class ModelConfigResponse(BaseModel):
     runware_api_key_masked: Optional[str] = None
     has_runware_api_key: bool = False
     runware_tts_model: str = "fishaudio:s2.1@pro"
+    image_provider: str = "runware"
     image_base_url: Optional[str] = None
-    image_model: str = "dall-e-3"
+    image_model: str = "runware:400@2"
     image_concurrency: int = 2
+    image_steps: int = 5
+    image_cfg_scale: float = 3.5
     image_api_key_masked: Optional[str] = None
     has_image_api_key: bool = False
     image_system_prompt: Optional[str] = None
@@ -65,9 +71,12 @@ class TestConnectionResponse(BaseModel):
 
 
 class TestImageConnectionRequest(BaseModel):
+    provider: Optional[str] = None
     base_url: Optional[str] = None
     image_model: Optional[str] = None
     api_key: Optional[str] = None
+    steps: Optional[int] = None
+    cfg_scale: Optional[float] = None
 
 
 class TestImageConnectionResponse(BaseModel):

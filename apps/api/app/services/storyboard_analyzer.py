@@ -382,17 +382,20 @@ async def apply_narration_improvements_to_project(
             updated_segments[idx] = seg_dict
             applied_count += 1
 
-            # Update storyboard items matching this segment
-            for it in items:
-                if str(it.segment_id) == s_id or it.order_index // max(1, len(items) // max(1, len(updated_segments))) == idx:
-                    it.script_text = cleaned
-                    if imp.chapter_title:
-                        it.chapter_title = imp.chapter_title
-                    # Synchronize visual prompt if enabled and provided
-                    if update_visual_prompts and imp.improved_visual_prompt:
-                        it.image_prompt = imp.improved_visual_prompt.strip()
-                        updated_visual_count += 1
-                    it.updated_at = datetime.utcnow()
+            # Update storyboard items matching this segment strictly by segment_id (avoiding integer-division spillover)
+            matched_items = [it for it in items if str(it.segment_id) == s_id]
+            if not matched_items and len(items) == len(updated_segments):
+                matched_items = [it for it in items if it.order_index == idx]
+
+            for it in matched_items:
+                it.script_text = cleaned
+                if imp.chapter_title:
+                    it.chapter_title = imp.chapter_title
+                # Synchronize visual prompt if enabled and provided
+                if update_visual_prompts and imp.improved_visual_prompt:
+                    it.image_prompt = imp.improved_visual_prompt.strip()
+                    updated_visual_count += 1
+                it.updated_at = datetime.utcnow()
 
     narration.segments = updated_segments
     flag_modified(narration, "segments")

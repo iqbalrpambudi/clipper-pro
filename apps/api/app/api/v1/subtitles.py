@@ -32,7 +32,7 @@ from app.services.subtitle_ass import (
 
 router = APIRouter(tags=["subtitles"])
 
-BUILTIN_PRESET_IDS = ["viral_tiktok", "hormozi_punch", "minimalist", "neon_glow"]
+BUILTIN_PRESET_IDS = ["youtube_documentary", "viral_tiktok", "hormozi_punch", "minimalist", "neon_glow"]
 
 
 async def seed_subtitle_presets(db: AsyncSession):
@@ -63,11 +63,12 @@ async def seed_subtitle_presets(db: AsyncSession):
                 burst_word_count=item["burst_word_count"],
                 highlight_animation=item["highlight_animation"],
                 scale_factor=item.get("scale_factor", 1.15),
+                text_case=item.get("text_case", "uppercase"),
                 emoji_enabled=item["emoji_enabled"],
             )
             db.add(style)
         else:
-            if item["id"] in ("hormozi_punch", "neon_glow", "viral_tiktok", "minimalist"):
+            if item["id"] in BUILTIN_PRESET_IDS:
                 style.preset_name = item["name"]
                 style.description = item["description"]
                 style.font_family = item["font_family"]
@@ -75,6 +76,7 @@ async def seed_subtitle_presets(db: AsyncSession):
                 style.box_opacity = item["box_opacity"]
                 style.box_color = item["box_color"]
                 style.scale_factor = item.get("scale_factor", 1.15)
+                style.text_case = item.get("text_case", "uppercase")
     await db.commit()
 
 
@@ -113,6 +115,7 @@ async def list_subtitle_presets(db: AsyncSession = Depends(get_db)):
             burst_word_count=s.burst_word_count,
             highlight_animation=s.highlight_animation,
             scale_factor=s.scale_factor if s.scale_factor is not None else 1.15,
+            text_case=getattr(s, "text_case", None) or "uppercase",
             emoji_enabled=s.emoji_enabled,
         ))
 
@@ -153,6 +156,7 @@ async def create_subtitle_preset(
         burst_word_count=payload.burst_word_count,
         highlight_animation=payload.highlight_animation,
         scale_factor=payload.scale_factor,
+        text_case=payload.text_case,
         emoji_enabled=payload.emoji_enabled,
     )
     db.add(style)
@@ -181,6 +185,7 @@ async def create_subtitle_preset(
         burst_word_count=style.burst_word_count,
         highlight_animation=style.highlight_animation,
         scale_factor=style.scale_factor if style.scale_factor is not None else 1.5,
+        text_case=getattr(style, "text_case", None) or "uppercase",
         emoji_enabled=style.emoji_enabled,
     )
 
@@ -232,6 +237,8 @@ async def update_subtitle_preset(
         style.highlight_animation = payload.highlight_animation
     if payload.scale_factor is not None:
         style.scale_factor = payload.scale_factor
+    if payload.text_case is not None:
+        style.text_case = payload.text_case
     if payload.emoji_enabled is not None:
         style.emoji_enabled = payload.emoji_enabled
 
@@ -261,6 +268,7 @@ async def update_subtitle_preset(
         burst_word_count=style.burst_word_count,
         highlight_animation=style.highlight_animation,
         scale_factor=style.scale_factor if style.scale_factor is not None else 1.15,
+        text_case=getattr(style, "text_case", None) or "uppercase",
         emoji_enabled=style.emoji_enabled,
     )
 
@@ -298,6 +306,7 @@ async def reset_subtitle_preset(
     style.burst_word_count = default_data["burst_word_count"]
     style.highlight_animation = default_data["highlight_animation"]
     style.scale_factor = default_data.get("scale_factor", 1.15)
+    style.text_case = default_data.get("text_case", "uppercase")
     style.emoji_enabled = default_data["emoji_enabled"]
 
     await db.commit()
@@ -325,6 +334,7 @@ async def reset_subtitle_preset(
         burst_word_count=style.burst_word_count,
         highlight_animation=style.highlight_animation,
         scale_factor=style.scale_factor if style.scale_factor is not None else 1.15,
+        text_case=getattr(style, "text_case", None) or "uppercase",
         emoji_enabled=style.emoji_enabled,
     )
 
@@ -350,8 +360,32 @@ async def get_project_subtitle_style(project_id: str, db: AsyncSession = Depends
     res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project_id))
     style = res.scalar_one_or_none()
     if not style:
-        # Create default
-        style = SubtitleStyle(project_id=project_id)
+        proj = await db.get(Project, project_id)
+        if proj and proj.project_type == "long_storyboard":
+            style = SubtitleStyle(
+                project_id=project_id,
+                preset_name="youtube_documentary",
+                font_family="Inter",
+                font_size=36,
+                font_weight="SemiBold",
+                primary_color="#F8FAFC",
+                highlight_color="#FDE047",
+                outline_color="#0F172A",
+                outline_width=2,
+                box_color="#0F172A",
+                box_opacity=0.65,
+                position="bottom",
+                offset_y=-24,
+                offset_x=0,
+                display_mode="full_sentence",
+                burst_word_count=2,
+                highlight_animation="color",
+                scale_factor=1.0,
+                text_case="sentence",
+                emoji_enabled=False,
+            )
+        else:
+            style = SubtitleStyle(project_id=project_id)
         db.add(style)
         await db.commit()
         await db.refresh(style)
@@ -388,6 +422,7 @@ async def update_project_subtitle_style(
     style.burst_word_count = payload.burst_word_count
     style.highlight_animation = payload.highlight_animation
     style.scale_factor = payload.scale_factor
+    style.text_case = payload.text_case
     style.emoji_enabled = payload.emoji_enabled
 
     if payload.save_as_preset and payload.new_preset_name:
@@ -413,6 +448,7 @@ async def update_project_subtitle_style(
             burst_word_count=payload.burst_word_count,
             highlight_animation=payload.highlight_animation,
             scale_factor=payload.scale_factor,
+            text_case=payload.text_case,
             emoji_enabled=payload.emoji_enabled,
         )
         db.add(custom_preset)
@@ -439,27 +475,35 @@ async def preview_ass_subtitles(project_id: str, db: AsyncSession = Depends(get_
 
     s_res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project_id))
     style = s_res.scalar_one_or_none()
+    is_sb = proj.project_type == "long_storyboard"
     style_dict = {
-        "font_family": style.font_family if style else "Poppins",
-        "font_size": style.font_size if style else 56,
-        "font_weight": style.font_weight if style else "Bold",
-        "primary_color": style.primary_color if style else "#FFFFFF",
-        "highlight_color": style.highlight_color if style else "#FFE600",
-        "outline_color": style.outline_color if style else "#000000",
-        "outline_width": style.outline_width if style else 4,
-        "box_color": style.box_color if style else "#000000",
-        "box_opacity": style.box_opacity if style else 0.0,
+        "preset_name": style.preset_name if style else ("youtube_documentary" if is_sb else "viral_tiktok"),
+        "font_family": style.font_family if style else ("Inter" if is_sb else "Poppins"),
+        "font_size": style.font_size if style else (36 if is_sb else 56),
+        "font_weight": style.font_weight if style else ("SemiBold" if is_sb else "Bold"),
+        "primary_color": style.primary_color if style else ("#F8FAFC" if is_sb else "#FFFFFF"),
+        "highlight_color": style.highlight_color if style else ("#FDE047" if is_sb else "#FFE600"),
+        "outline_color": style.outline_color if style else ("#0F172A" if is_sb else "#000000"),
+        "outline_width": style.outline_width if style else (2 if is_sb else 4),
+        "box_color": style.box_color if style else ("#0F172A" if is_sb else "#000000"),
+        "box_opacity": style.box_opacity if (style and style.box_opacity is not None) else (0.65 if is_sb else 0.0),
         "position": style.position if style else "bottom",
-        "offset_y": style.offset_y if style else 0,
-        "offset_x": style.offset_x if style else 0,
-        "display_mode": style.display_mode if style else "per_word",
+        "offset_y": style.offset_y if (style and style.offset_y is not None) else (-24 if is_sb else 0),
+        "offset_x": style.offset_x if (style and style.offset_x is not None) else 0,
+        "display_mode": style.display_mode if style else ("full_sentence" if is_sb else "per_word"),
         "burst_word_count": style.burst_word_count if style else 2,
-        "highlight_animation": style.highlight_animation if style else "scale",
-        "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.5,
-        "emoji_enabled": style.emoji_enabled if style else True,
+        "highlight_animation": style.highlight_animation if style else ("color" if is_sb else "scale"),
+        "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else (1.0 if is_sb else 1.5),
+        "text_case": (
+            getattr(style, "text_case", None)
+            if (style and getattr(style, "text_case", None))
+            else ("sentence" if is_sb else "uppercase")
+        ),
+        "emoji_enabled": style.emoji_enabled if style else False,
     }
 
-    ass_text = generate_ass_subtitles(narration.segments, style_dict)
+    play_res_x, play_res_y = (1920, 1080) if proj.aspect_ratio == "16:9" else (1080, 1920)
+    ass_text = generate_ass_subtitles(narration.segments, style_dict, play_res_x=play_res_x, play_res_y=play_res_y)
     lines = [line for line in ass_text.splitlines() if line.startswith("Dialogue:")]
 
     return SubtitlePreviewResponse(
@@ -499,26 +543,34 @@ async def export_subtitles(
     else:
         s_res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project_id))
         style = s_res.scalar_one_or_none()
+        is_sb = proj.project_type == "long_storyboard"
         style_dict = {
-            "font_family": style.font_family if style else "Poppins",
-            "font_size": style.font_size if style else 56,
-            "font_weight": style.font_weight if style else "Bold",
-            "primary_color": style.primary_color if style else "#FFFFFF",
-            "highlight_color": style.highlight_color if style else "#FFE600",
-            "outline_color": style.outline_color if style else "#000000",
-            "outline_width": style.outline_width if style else 4,
-            "box_color": style.box_color if style else "#000000",
-            "box_opacity": style.box_opacity if style else 0.0,
+            "preset_name": style.preset_name if style else ("youtube_documentary" if is_sb else "viral_tiktok"),
+            "font_family": style.font_family if style else ("Inter" if is_sb else "Poppins"),
+            "font_size": style.font_size if style else (36 if is_sb else 56),
+            "font_weight": style.font_weight if style else ("SemiBold" if is_sb else "Bold"),
+            "primary_color": style.primary_color if style else ("#F8FAFC" if is_sb else "#FFFFFF"),
+            "highlight_color": style.highlight_color if style else ("#FDE047" if is_sb else "#FFE600"),
+            "outline_color": style.outline_color if style else ("#0F172A" if is_sb else "#000000"),
+            "outline_width": style.outline_width if style else (2 if is_sb else 4),
+            "box_color": style.box_color if style else ("#0F172A" if is_sb else "#000000"),
+            "box_opacity": style.box_opacity if (style and style.box_opacity is not None) else (0.65 if is_sb else 0.0),
             "position": style.position if style else "bottom",
-            "offset_y": style.offset_y if style else 0,
-            "offset_x": style.offset_x if style else 0,
-            "display_mode": style.display_mode if style else "per_word",
+            "offset_y": style.offset_y if (style and style.offset_y is not None) else (-24 if is_sb else 0),
+            "offset_x": style.offset_x if (style and style.offset_x is not None) else 0,
+            "display_mode": style.display_mode if style else ("full_sentence" if is_sb else "per_word"),
             "burst_word_count": style.burst_word_count if style else 2,
-            "highlight_animation": style.highlight_animation if style else "scale",
-            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.5,
-            "emoji_enabled": style.emoji_enabled if style else True,
+            "highlight_animation": style.highlight_animation if style else ("color" if is_sb else "scale"),
+            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else (1.0 if is_sb else 1.5),
+            "text_case": (
+                getattr(style, "text_case", None)
+                if (style and getattr(style, "text_case", None))
+                else ("sentence" if is_sb else "uppercase")
+            ),
+            "emoji_enabled": style.emoji_enabled if style else False,
         }
-        content = generate_ass_subtitles(narration.segments, style_dict)
+        play_res_x, play_res_y = (1920, 1080) if proj.aspect_ratio == "16:9" else (1080, 1920)
+        content = generate_ass_subtitles(narration.segments, style_dict, play_res_x=play_res_x, play_res_y=play_res_y)
         media_type = "text/plain; charset=utf-8"
         filename = f"subtitles_{project_id}.ass"
 

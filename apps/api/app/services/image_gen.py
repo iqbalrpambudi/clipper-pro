@@ -195,10 +195,11 @@ def strip_bars_from_cv2_image(img: Any) -> Any:
     return img
 
 
-def strip_bars_and_ensure_16_9(img_bytes: bytes) -> bytes:
+def strip_bars_and_ensure_16_9(img_bytes: bytes, output_format: str = "WEBP") -> bytes:
     """
     Ensure the image is 100% full-bleed 16:9 widescreen without any black or white letterbox/pillarbox bars.
     Detects and strips any baked-in bars, then center-cover crops and normalizes to 1920x1080.
+    Encodes in WEBP (or PNG fallback) to preserve high quality and lightweight payload.
     """
     try:
         import cv2
@@ -210,7 +211,9 @@ def strip_bars_and_ensure_16_9(img_bytes: bytes) -> bytes:
             return img_bytes
 
         processed = strip_bars_from_cv2_image(img)
-        success, encoded = cv2.imencode(".png", processed)
+        ext = ".webp" if output_format.upper() == "WEBP" else ".png"
+        params = [cv2.IMWRITE_WEBP_QUALITY, 95] if ext == ".webp" else []
+        success, encoded = cv2.imencode(ext, processed, params)
         if success:
             return encoded.tobytes()
 
@@ -220,13 +223,13 @@ def strip_bars_and_ensure_16_9(img_bytes: bytes) -> bytes:
     return img_bytes
 
 
-def ensure_16_9_image(img_bytes: bytes) -> bytes:
+def ensure_16_9_image(img_bytes: bytes, output_format: str = "WEBP") -> bytes:
     """Backward-compatible alias for strip_bars_and_ensure_16_9."""
-    return strip_bars_and_ensure_16_9(img_bytes)
+    return strip_bars_and_ensure_16_9(img_bytes, output_format=output_format)
 
 
 def build_full_image_prompt(user_prompt: str, style_prompt: Optional[str] = None) -> str:
-    """Combine user/scene prompt with the consistent master style prompt, strictly enforcing full-bleed 16:9 widescreen without letterbox."""
+    """Combine user/scene prompt with the consistent master style prompt without duplicating already-resolved [preset:style] text."""
     clean_user = (user_prompt or "").strip()
     clean_style = (style_prompt or "").strip()
     aspect_directive = (
@@ -236,10 +239,45 @@ def build_full_image_prompt(user_prompt: str, style_prompt: Optional[str] = None
     )
 
     if clean_style and clean_user:
+        norm_style = re.sub(r"\s+", " ", clean_style).strip().lower()
+        norm_user = re.sub(r"\s+", " ", clean_user).strip().lower()
+        style_probe = norm_style[:60]
+        if style_probe and style_probe in norm_user:
+            return f"{aspect_directive} Visual scene: {clean_user}"
         return f"{aspect_directive} {clean_style}. Visual scene: {clean_user}"
     elif clean_style:
         return f"{aspect_directive} {clean_style}"
     return f"{aspect_directive} Visual scene: {clean_user}"
+
+
+def _encode_reference_image_data_uri(reference_image_path: Optional[str]) -> Optional[str]:
+    """Load an anchor scene image and encode it as a compact 16:9 JPEG base64 data URI for multimodal continuity."""
+    if not reference_image_path:
+        return None
+    ref_path = Path(reference_image_path)
+    if not ref_path.is_file():
+        return None
+    try:
+        import cv2
+
+        img = cv2.imread(str(ref_path))
+        if img is not None:
+            resized = cv2.resize(img, (960, 540), interpolation=cv2.INTER_AREA)
+            ok, buf = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 84])
+            if ok:
+                b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+                return f"data:image/jpeg;base64,{b64}"
+    except Exception as err:
+        log.debug("OpenCV resize for reference image failed, falling back to raw bytes: %s", err)
+
+    try:
+        raw = ref_path.read_bytes()
+        mime = "image/png" if ref_path.suffix.lower() == ".png" else "image/jpeg"
+        b64 = base64.b64encode(raw).decode("ascii")
+        return f"data:{mime};base64,{b64}"
+    except Exception as err:
+        log.warning("Could not read reference_image_path %s: %s", reference_image_path, err)
+        return None
 
 
 def _extract_image_bytes_from_response(data: Dict[str, Any], client: Optional[httpx.Client] = None) -> Optional[bytes]:
@@ -369,10 +407,16 @@ async def generate_image_to_path(
     model: Optional[str] = None,
     style_prompt: Optional[str] = None,
     negative_prompt: Optional[str] = None,
-    size: str = "1792x1024",
+    size: str = "1024x1024",
+    reference_image_path: Optional[str] = None,
+    seed: Optional[int] = None,
+    steps: Optional[int] = None,
+    guidance_scale: Optional[float] = None,
 ) -> Tuple[str, str]:
     """Generate an image using OpenAI-compatible /v1/images/generations or multimodal /chat/completions fallback.
 
+    Supports optional scene-group continuity via `reference_image_path` (multimodal visual reference on Gemini/chat models)
+    and deterministic `seed` (on Runware/FLUX).
     Guarantees the output image is in 16:9 widescreen landscape aspect ratio to match video composition.
     Returns (abs_file_path, relative_url).
     """
@@ -416,6 +460,22 @@ async def generate_image_to_path(
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
+    if steps is None or guidance_scale is None:
+        try:
+            from app.core.db import SessionLocal
+            from app.models.config import ModelConfig
+            from sqlalchemy import select
+            async with SessionLocal() as db_session:
+                res = await db_session.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+                active_cfg = res.scalar_one_or_none()
+                if active_cfg:
+                    if steps is None and getattr(active_cfg, "image_steps", None):
+                        steps = active_cfg.image_steps
+                    if guidance_scale is None and getattr(active_cfg, "image_cfg_scale", None):
+                        guidance_scale = active_cfg.image_cfg_scale
+        except Exception as exc:
+            log.debug("Could not resolve default steps/guidance_scale from DB: %s", exc)
+
     # STRATEGY 0: Runware.ai Native API
     is_runware = (
         "runware.ai" in clean_base
@@ -432,33 +492,143 @@ async def generate_image_to_path(
 
         model_id = chosen_model
         if not model_id or model_id in ("dall-e-3", "default") or model_id.lower() in ("flux-schnell", "flux.1-schnell", "flux_schnell", "flux"):
-            model_id = "runware:100@1"
+            model_id = "runware:400@2"
+
+        is_schnell = model_id in ("runware:100@1",) or "schnell" in model_id.lower()
+        is_dev = model_id in ("runware:101@1",) or "dev" in model_id.lower()
+
+        # Sampling steps: FLUX.1 Schnell configured to sampling 5, Dev defaults to 10
+        if steps is not None and int(steps) > 0:
+            resolved_steps = int(steps)
+        elif is_schnell:
+            resolved_steps = 5
+        elif is_dev:
+            resolved_steps = 10
+        elif "civitai:" in model_id or "sdxl" in model_id.lower():
+            resolved_steps = 25
+        else:
+            resolved_steps = 4 if model_id == "runware:400@2" else 5
+
+        # Guidance scale / CFGScale: FLUX.1 Schnell configured to guidance scale 3.0 – 3.5 (default 3.5)
+        if guidance_scale is not None and float(guidance_scale) > 0:
+            resolved_cfg = float(guidance_scale)
+        elif is_schnell:
+            resolved_cfg = 3.5
+        elif is_dev:
+            resolved_cfg = 3.5
+        elif "civitai:" in model_id or "sdxl" in model_id.lower():
+            resolved_cfg = 7.0
+        else:
+            resolved_cfg = 3.5
 
         task_uuid = str(uuid.uuid4())
-        # 1344x768 is a clean 16:9 widescreen resolution natively supported by FLUX Schnell
-        runware_payload = [
-            {
-                "taskType": "imageInference",
-                "taskUUID": task_uuid,
-                "positivePrompt": full_prompt,
-                "negativePrompt": active_negative,
-                "model": model_id,
-                "width": 1344,
-                "height": 768,
-                "numberResults": 1,
-                "outputFormat": "PNG",
-                "steps": 4,
-                "CFGScale": 1.0,
-            }
-        ]
+
+        # Determine width and height
+        # Default: 1024x1024. For 16:9 landscape projects: 1366x768.
+        task_width = 1024
+        task_height = 1024
+        if size:
+            norm_size = size.strip().lower()
+            if "x" in norm_size:
+                try:
+                    w_str, h_str = norm_size.split("x")
+                    w_val, h_val = int(w_str.strip()), int(h_str.strip())
+                    if w_val > h_val and abs((w_val / h_val) - (16 / 9)) < 0.15:
+                        task_width = 1366
+                        task_height = 768
+                    else:
+                        task_width = w_val
+                        task_height = h_val
+                except Exception:
+                    task_width, task_height = 1024, 1024
+            elif norm_size in ("16:9", "landscape", "widescreen"):
+                task_width = 1366
+                task_height = 768
+
+        is_recraft = model_id.startswith("recraft:") or "recraft" in model_id.lower()
+        is_google = model_id.startswith("google:")
+        is_ideogram = model_id.startswith("ideogram:")
+        is_bria = model_id.startswith("bria:")
+        is_distilled_bfl = model_id.startswith("bfl:") and not model_id.endswith("-base")
+
+        # Proprietary/distilled architectures (Recraft, Google, Ideogram, Bria, distilled BFL FLUX) manage their own
+        # guidance internally and reject negativePrompt, sampling steps, or CFGScale parameters.
+        supports_negative = not (is_google or is_recraft or is_ideogram or is_bria or is_distilled_bfl)
+        supports_steps_cfg = not (is_google or is_recraft or is_ideogram or is_bria or is_distilled_bfl)
+
+        runware_task: Dict[str, Any] = {
+            "taskType": "imageInference",
+            "taskUUID": task_uuid,
+            "positivePrompt": full_prompt,
+            "model": model_id,
+            "width": task_width,
+            "height": task_height,
+            "numberResults": 1,
+            "outputFormat": "WEBP",
+            "includeCost": True,
+        }
+        if active_negative and supports_negative:
+            runware_task["negativePrompt"] = active_negative
+        if supports_steps_cfg:
+            runware_task["steps"] = resolved_steps
+            runware_task["CFGScale"] = resolved_cfg
+        if seed is not None and int(seed) > 0:
+            runware_task["seed"] = int(seed)
+        runware_payload = [runware_task]
         runware_headers = {
             "Authorization": f"Bearer {secret_key}",
             "Content-Type": "application/json",
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
-            log.info("Requesting Runware.ai image generation (model=%s, task=%s) for item=%s...", model_id, task_uuid, out_file.stem)
-            resp = await client.post(runware_url, headers=runware_headers, json=runware_payload)
+            resp = None
+            for _attempt in range(4):  # Initial attempt + up to 3 parameter-strip auto-healing retries
+                log.info(
+                    "Requesting Runware.ai image generation (model=%s, steps=%s, CFGScale=%s, task=%s, seed=%s, size=%dx%d, attempt=%d) for item=%s...",
+                    model_id,
+                    runware_task.get("steps", "n/a"),
+                    runware_task.get("CFGScale", "n/a"),
+                    task_uuid,
+                    seed,
+                    runware_task.get("width", 1024),
+                    runware_task.get("height", 1024),
+                    _attempt + 1,
+                    out_file.stem,
+                )
+                resp = await client.post(runware_url, headers=runware_headers, json=runware_payload)
+
+                # Defensive auto-healing:
+                # 1. If Runware reports invalidWidth or invalidHeight for 1366, fallback to 1344 (nearest multiple of 64)
+                # 2. If Runware reports unsupportedParameter for any parameter, strip and retry
+                if resp.status_code == 400:
+                    try:
+                        err_json = resp.json()
+                        errors = err_json.get("errors", [])
+                        dim_err = any(e.get("code") in ("invalidWidth", "invalidHeight") for e in errors)
+                        if dim_err and runware_task.get("width") == 1366:
+                            log.warning("Runware rejected width=1366 (not a multiple of 64). Adjusting width to 1344...")
+                            runware_task["width"] = 1344
+                            runware_payload = [runware_task]
+                            continue
+
+                        unsupported_params = [
+                            e.get("parameter")
+                            for e in errors
+                            if e.get("code") == "unsupportedParameter" and e.get("parameter")
+                        ]
+                        if unsupported_params:
+                            log.warning(
+                                "Runware rejected unsupported parameter(s) %s for model %s. Retrying without them...",
+                                unsupported_params,
+                                model_id,
+                            )
+                            for param in unsupported_params:
+                                runware_task.pop(param, None)
+                            runware_payload = [runware_task]
+                            continue
+                    except Exception as parse_err:
+                        log.debug("Could not parse 400 error body for unsupportedParameter auto-healing: %s", parse_err)
+                break
             if resp.status_code == 200:
                 res_json = resp.json()
                 if "errors" in res_json and res_json["errors"]:
@@ -468,99 +638,149 @@ async def generate_image_to_path(
                 if data_list and isinstance(data_list, list):
                     item_data = data_list[0]
                     img_url = item_data.get("imageURL") or item_data.get("url")
+                    cost_info = f", cost=${item_data['cost']}" if "cost" in item_data else ""
                     if img_url:
                         dl = await client.get(img_url)
                         if dl.status_code == 200:
                             img_bytes = ensure_16_9_image(dl.content)
                             out_file.write_bytes(img_bytes)
-                            log.info("Successfully generated and saved Runware 16:9 image to %s (%d bytes)", out_file, len(img_bytes))
+                            log.info(
+                                "Successfully generated and saved Runware image to %s (%d bytes%s)",
+                                out_file,
+                                len(img_bytes),
+                                cost_info,
+                            )
                             return str(out_file), storage.to_relative_url(out_file) or ""
             raise RuntimeError(f"Runware HTTP {resp.status_code}: {resp.text[:300]}")
 
     last_error = ""
+    ref_data_uri = _encode_reference_image_data_uri(reference_image_path)
+    is_multimodal_chat_model = "gemini" in chosen_model.lower() and "imagen" not in chosen_model.lower()
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         # STRATEGY 1: Standard /images/generations
-        img_gen_url = f"{clean_base}/images/generations"
-        sizes_to_try = [size, "1024x1024"] if size != "1024x1024" else ["1024x1024"]
+        # Skip direct /images/generations when using a Gemini multimodal chat-image model WITH an active reference frame
+        # so the anchor image is passed directly into multimodal /chat/completions for 100% spatial & character continuity.
+        if not (is_multimodal_chat_model and ref_data_uri):
+            img_gen_url = f"{clean_base}/images/generations"
+            sizes_to_try = [size, "1024x1024"] if size != "1024x1024" else ["1024x1024"]
 
-        for attempt_size in sizes_to_try:
-            payload: Dict[str, Any] = {
-                "model": chosen_model,
-                "prompt": full_prompt,
-                "n": 1,
-                "size": attempt_size,
-                "response_format": "b64_json",
-            }
-            try:
-                log.info(
-                    "Requesting AI image generation via /images/generations (model=%s, size=%s) for item=%s...",
-                    chosen_model,
-                    attempt_size,
-                    out_file.stem,
-                )
-                resp = await client.post(img_gen_url, headers=headers, json=payload)
-
-                # If provider doesn't support b64_json, try without response_format (standard URL format)
-                if resp.status_code == 400 and "response_format" in resp.text:
-                    payload.pop("response_format", None)
+            for attempt_size in sizes_to_try:
+                payload: Dict[str, Any] = {
+                    "model": chosen_model,
+                    "prompt": full_prompt,
+                    "n": 1,
+                    "size": attempt_size,
+                    "response_format": "b64_json",
+                }
+                try:
+                    log.info(
+                        "Requesting AI image generation via /images/generations (model=%s, size=%s) for item=%s...",
+                        chosen_model,
+                        attempt_size,
+                        out_file.stem,
+                    )
                     resp = await client.post(img_gen_url, headers=headers, json=payload)
 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    img_bytes = _extract_image_bytes_from_response(data)
-                    if img_bytes:
-                        img_bytes = ensure_16_9_image(img_bytes)
-                        out_file.write_bytes(img_bytes)
-                        log.info("Successfully saved 16:9 image to %s (%d bytes)", out_file, len(img_bytes))
-                        return str(out_file), storage.to_relative_url(out_file) or ""
+                    # If provider doesn't support b64_json, try without response_format (standard URL format)
+                    if resp.status_code == 400 and "response_format" in resp.text:
+                        payload.pop("response_format", None)
+                        resp = await client.post(img_gen_url, headers=headers, json=payload)
 
-                err_body = resp.text
-                last_error = format_image_error(resp.status_code, err_body, chosen_model)
-                log.warning("Image gen attempt with size %s returned HTTP %s: %s", attempt_size, resp.status_code, err_body[:200])
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        img_bytes = _extract_image_bytes_from_response(data)
+                        if img_bytes:
+                            img_bytes = ensure_16_9_image(img_bytes)
+                            out_file.write_bytes(img_bytes)
+                            log.info("Successfully saved 16:9 image to %s (%d bytes)", out_file, len(img_bytes))
+                            return str(out_file), storage.to_relative_url(out_file) or ""
 
-                # If proxy explicitly says provider does not support image generation endpoint,
-                # break out to STRATEGY 2 (chat completions) immediately!
-                if "does not support image generation" in err_body or resp.status_code in (400, 404, 405):
-                    break
+                    err_body = resp.text
+                    last_error = format_image_error(resp.status_code, err_body, chosen_model)
+                    log.warning("Image gen attempt with size %s returned HTTP %s: %s", attempt_size, resp.status_code, err_body[:200])
 
-            except Exception as e:
-                log.warning("Error during /images/generations attempt: %s", e)
-                last_error = str(e)
+                    # If proxy explicitly says provider does not support image generation endpoint,
+                    # break out to STRATEGY 2 (chat completions) immediately!
+                    if "does not support image generation" in err_body or resp.status_code in (400, 404, 405):
+                        break
 
-        # STRATEGY 2: Multimodal Chat Completions fallback
-        # Used for Gemini/Claude/custom image chat models that return images via chat completions
+                except Exception as e:
+                    log.warning("Error during /images/generations attempt: %s", e)
+                    last_error = str(e)
+
+        # STRATEGY 2: Multimodal Chat Completions (supports optional scene-group reference image!)
         chat_url = f"{clean_base}/chat/completions"
         try:
-            log.info(
-                "Attempting multimodal chat/completions fallback for image model %s (item=%s)...",
-                chosen_model,
-                out_file.stem,
+            base_text_prompt = (
+                "Generate a full-bleed edge-to-edge widescreen 16:9 landscape illustration with no text, completely filling the 16:9 frame "
+                "without letterbox, without black bars, and without white borders (horizontal layout, aspect ratio 16:9, width is greater than height, "
+                f"NOT square, NOT 1:1). Description: {full_prompt}"
             )
-            chat_payload = {
-                "model": chosen_model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"Generate a full-bleed edge-to-edge widescreen 16:9 landscape illustration with no text, completely filling the 16:9 frame without letterbox, without black bars, and without white borders (horizontal layout, aspect ratio 16:9, width is greater than height, NOT square, NOT 1:1). Description: {full_prompt}",
-                    }
-                ],
-                "aspect_ratio": "16:9",
-                "size": "1792x1024",
-            }
-            chat_resp = await client.post(chat_url, headers=headers, json=chat_payload)
-            if chat_resp.status_code in (400, 422):
-                log.info("Chat completions returned HTTP %s with extended payload; retrying with standard strict payload...", chat_resp.status_code)
-                strict_payload = {
+            chat_resp = None
+
+            if ref_data_uri:
+                log.info(
+                    "Attempting multimodal chat/completions WITH scene-group reference image for model %s (item=%s)...",
+                    chosen_model,
+                    out_file.stem,
+                )
+                ref_text_prompt = (
+                    "REFERENCE CONTINUITY INSTRUCTION: The attached image is the established anchor shot from this EXACT same scene and location. "
+                    "You MUST preserve the exact same character design (face, headwear, clothing colors/details), exact same architectural background/stall/room "
+                    "elements, fixed props, art style, and lighting direction while changing the camera framing/shot angle as described below. "
+                    + base_text_prompt
+                )
+                multimodal_payload = {
                     "model": chosen_model,
                     "messages": [
                         {
                             "role": "user",
-                            "content": f"Generate a full-bleed edge-to-edge widescreen 16:9 landscape illustration with no text, completely filling the 16:9 frame without letterbox, without black bars, and without white borders (horizontal layout, aspect ratio 16:9, width is greater than height, NOT square, NOT 1:1). Description: {full_prompt}",
+                            "content": [
+                                {"type": "text", "text": ref_text_prompt},
+                                {"type": "image_url", "image_url": {"url": ref_data_uri}},
+                            ],
                         }
                     ],
                 }
-                chat_resp = await client.post(chat_url, headers=headers, json=strict_payload)
+                chat_resp = await client.post(chat_url, headers=headers, json=multimodal_payload)
+                if chat_resp.status_code != 200:
+                    log.info(
+                        "Multimodal reference payload returned HTTP %s; gracefully falling back to text-only chat/completions...",
+                        chat_resp.status_code,
+                    )
+                    chat_resp = None
+
+            if chat_resp is None:
+                log.info(
+                    "Attempting multimodal chat/completions fallback for image model %s (item=%s)...",
+                    chosen_model,
+                    out_file.stem,
+                )
+                chat_payload = {
+                    "model": chosen_model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": base_text_prompt,
+                        }
+                    ],
+                    "aspect_ratio": "16:9",
+                    "size": "1792x1024",
+                }
+                chat_resp = await client.post(chat_url, headers=headers, json=chat_payload)
+                if chat_resp.status_code in (400, 422):
+                    log.info("Chat completions returned HTTP %s with extended payload; retrying with standard strict payload...", chat_resp.status_code)
+                    strict_payload = {
+                        "model": chosen_model,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": base_text_prompt,
+                            }
+                        ],
+                    }
+                    chat_resp = await client.post(chat_url, headers=headers, json=strict_payload)
 
             if chat_resp.status_code == 200:
                 raw_text = chat_resp.text
@@ -613,7 +833,11 @@ async def generate_single_image(
     model: Optional[str] = None,
     style_prompt: Optional[str] = None,
     negative_prompt: Optional[str] = None,
-    size: str = "1792x1024",
+    size: str = "1024x1024",
+    reference_image_path: Optional[str] = None,
+    seed: Optional[int] = None,
+    steps: Optional[int] = None,
+    guidance_scale: Optional[float] = None,
 ) -> Tuple[str, str]:
     """Generate a single storyboard image and save to project storyboard directory."""
     storyboard_dir = storage.get_storyboard_dir(project_id)
@@ -635,13 +859,42 @@ async def generate_single_image(
         style_prompt=style_prompt,
         negative_prompt=negative_prompt,
         size=size,
+        reference_image_path=reference_image_path,
+        seed=seed,
+        steps=steps,
+        guidance_scale=guidance_scale,
     )
+
+
+def resolve_image_credentials(cfg: Optional[Any]) -> Tuple[Optional[str], Optional[str], str]:
+    """Resolve (base_url, api_key, model) based on active provider ('runware' vs 'custom')."""
+    from app.core.security import decrypt_secret
+    if not cfg:
+        settings = get_settings()
+        return ("https://api.runware.ai/v1", settings.IMAGE_API_KEY or None, "runware:400@2")
+
+    img_prov = getattr(cfg, "image_provider", "runware") or "runware"
+    if img_prov == "runware":
+        base_url = "https://api.runware.ai/v1"
+        model = cfg.image_model if (cfg.image_model and not cfg.image_model.startswith("inferhub") and cfg.image_model != "dall-e-3") else "runware:400@2"
+        api_key = decrypt_secret(cfg.runware_api_key_encrypted) if cfg.runware_api_key_encrypted else None
+        if not api_key and cfg.image_api_key_encrypted:
+            api_key = decrypt_secret(cfg.image_api_key_encrypted)
+        return (base_url, api_key, model)
+    else:
+        base_url = cfg.image_base_url
+        model = cfg.image_model or "dall-e-3"
+        api_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else None
+        return (base_url, api_key, model)
 
 
 async def test_image_connection(
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
+    provider: Optional[str] = None,
+    steps: Optional[int] = None,
+    cfg_scale: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Test connection to the OpenAI-compatible image endpoint or proxy."""
     settings = get_settings()
@@ -649,7 +902,7 @@ async def test_image_connection(
     endpoint_base = normalize_endpoint_url(raw_endpoint)
 
     secret_key = api_key or settings.IMAGE_API_KEY
-    chosen_model = (model or settings.IMAGE_MODEL or "dall-e-3").strip()
+    chosen_model = (model or settings.IMAGE_MODEL or ("runware:400@2" if provider == "runware" else "dall-e-3")).strip()
 
     if not secret_key:
         return {
@@ -660,7 +913,8 @@ async def test_image_connection(
         }
 
     is_runware = (
-        "runware.ai" in endpoint_base
+        provider == "runware"
+        or "runware.ai" in endpoint_base
         or chosen_model.startswith("runware:")
         or (chosen_model.lower() in ("flux-schnell", "flux.1-schnell", "flux_schnell") and "runware" in endpoint_base)
     )
@@ -697,11 +951,12 @@ async def test_image_connection(
                             "latency_ms": latency,
                             "message": f"Runware Auth Error: {err_msg}",
                         }
+                    step_info = f" • Sampling: {steps or 5} steps, Guidance: {cfg_scale or 3.5}" if (chosen_model.startswith("runware:") or "schnell" in chosen_model.lower()) else ""
                     return {
                         "success": True,
                         "image_model_status": f"connected (Runware: {chosen_model})",
                         "latency_ms": latency,
-                        "message": f"Koneksi Runware.ai berhasil! Model: {chosen_model} ({latency}ms)",
+                        "message": f"Koneksi Runware.ai berhasil! Model: {chosen_model}{step_info} ({latency}ms)",
                     }
                 else:
                     return {

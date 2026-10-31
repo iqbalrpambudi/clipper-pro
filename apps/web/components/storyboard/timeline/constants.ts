@@ -35,10 +35,31 @@ export interface ColorPresetItem {
   position?: "top" | "center" | "bottom";
   offset_x?: number;
   offset_y?: number;
+  text_case?: "sentence" | "uppercase";
 }
 
 // Popular 1-Click Color Schemes matching Short Clipper
 export const COLOR_PRESETS: ColorPresetItem[] = [
+  {
+    name: "YouTube Documentary",
+    icon: Eye,
+    font_family: "Inter",
+    font_weight: "SemiBold",
+    primary_color: "#F8FAFC",
+    highlight_color: "#FDE047",
+    outline_color: "#0F172A",
+    outline_width: 2,
+    box_color: "#0F172A",
+    box_opacity: 0.65,
+    display_mode: "full_sentence",
+    burst_word_count: 2,
+    highlight_animation: "color",
+    scale_factor: 1.0,
+    position: "bottom",
+    offset_x: 0,
+    offset_y: -24,
+    text_case: "sentence",
+  },
   {
     name: "TikTok Viral",
     icon: Flame,
@@ -158,22 +179,23 @@ export const COLOR_PRESETS: ColorPresetItem[] = [
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   enabled: true,
-  preset_name: "viral_tiktok",
-  font_family: "Poppins",
-  font_size: 38,
-  font_weight: "Bold",
-  primary_color: "#FFFFFF",
-  highlight_color: "#FFE600",
-  outline_color: "#000000",
-  outline_width: 4,
-  box_color: "#000000",
-  box_opacity: 0.0,
+  preset_name: "youtube_documentary",
+  font_family: "Inter",
+  font_size: 36,
+  font_weight: "SemiBold",
+  primary_color: "#F8FAFC",
+  highlight_color: "#FDE047",
+  outline_color: "#0F172A",
+  outline_width: 2,
+  box_color: "#0F172A",
+  box_opacity: 0.65,
   position: "bottom",
-  offset_y: -30,
+  offset_y: -24,
   offset_x: 0,
-  display_mode: "burst",
+  display_mode: "full_sentence",
   burst_word_count: 2,
   highlight_animation: "color",
   scale_factor: 1.0,
   emoji_enabled: false,
+  text_case: "sentence",
 };

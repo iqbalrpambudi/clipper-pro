@@ -1,9 +1,23 @@
 "use client";
 
 import React from "react";
-import { BookOpen, Layers, Check, Copy, ArrowRight, Edit2, X, Loader2 } from "lucide-react";
-import { SentenceSegment, StoryboardItem } from "@/types";
+import { BookOpen, Layers, Check, Copy, ArrowRight, Edit2, X, Loader2, Link2 } from "lucide-react";
+import { SentenceSegment, StoryboardItem, StoryboardShotMetadata } from "@/types";
 import { Button, Input, Textarea, Badge } from "@/components/ui";
+
+export const SHOT_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "establishing_wide", label: "Establishing Wide" },
+  { value: "wide", label: "Wide" },
+  { value: "medium", label: "Medium" },
+  { value: "over_the_shoulder", label: "Over-the-Shoulder" },
+  { value: "medium_closeup", label: "Medium Close-Up" },
+  { value: "close_up", label: "Close-Up" },
+];
+
+export function shotTypeLabel(value?: string | null): string {
+  if (!value) return "";
+  return SHOT_TYPE_OPTIONS.find((o) => o.value === value)?.label || value.replace(/_/g, " ");
+}
 
 interface SegmentsListProps {
   segments: (SentenceSegment & { chapter?: string; segment_id?: string })[];
@@ -23,6 +37,8 @@ interface SegmentsListProps {
   setEditText: (val: string) => void;
   editItemPrompts: Record<string, string>;
   setEditItemPrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  editItemShotMeta?: Record<string, StoryboardShotMetadata>;
+  setEditItemShotMeta?: React.Dispatch<React.SetStateAction<Record<string, StoryboardShotMetadata>>>;
   onStartEditSegment: (
     seg: SentenceSegment & { chapter?: string; segment_id?: string },
     idx: number,
@@ -50,6 +66,8 @@ export function SegmentsList({
   setEditText,
   editItemPrompts,
   setEditItemPrompts,
+  editItemShotMeta,
+  setEditItemShotMeta,
   onStartEditSegment,
   onCancelEditSegment,
   onSaveEditSegment,
@@ -273,18 +291,88 @@ export function SegmentsList({
                       Visual Prompts AI Hand-drawn ({segItems.length} Ilustrasi):
                     </span>
                     <div className="space-y-2">
-                      {segItems.map((item, iIdx) => (
+                      {segItems.map((item, iIdx) => {
+                        const meta: StoryboardShotMetadata =
+                          (isEditing && editItemShotMeta?.[item.id]) || item.shot_metadata || {};
+                        return (
                         <div
                           key={item.id}
-                          className={`flex items-start gap-2.5 rounded-lg border p-2.5 font-mono text-[11px] leading-relaxed text-[#4D4A42] ${
+                          className={`flex flex-col gap-1.5 rounded-lg border p-2.5 font-mono text-[11px] leading-relaxed text-[#4D4A42] ${
                             isEditing
                               ? "border-[#E5E1D7] bg-[#FFFEFA]"
                               : "border-[#E5E1D7] bg-[#F3F0E8]"
                           }`}
                         >
-                          <span className="mt-1 shrink-0 rounded bg-[#F8EEEA] px-2 py-0.5 text-[10px] font-bold text-[#A9472C]">
-                            #{iIdx + 1}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5 font-sans">
+                            <span className="shrink-0 rounded bg-[#F8EEEA] px-2 py-0.5 text-[10px] font-bold text-[#A9472C]">
+                              #{iIdx + 1}
+                            </span>
+                            {isEditing && setEditItemShotMeta ? (
+                              <>
+                                <select
+                                  value={meta.shot_type || ""}
+                                  onChange={(e) =>
+                                    setEditItemShotMeta((prev) => ({
+                                      ...prev,
+                                      [item.id]: { ...(prev[item.id] || {}), shot_type: e.target.value },
+                                    }))
+                                  }
+                                  className="h-6 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 text-[10px] text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                                  title="Shot Angle"
+                                >
+                                  <option value="">Shot Angle: Auto</option>
+                                  {SHOT_TYPE_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                      {o.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  value={meta.scene_group_id || ""}
+                                  placeholder="scene_group_id"
+                                  onChange={(e) =>
+                                    setEditItemShotMeta((prev) => ({
+                                      ...prev,
+                                      [item.id]: { ...(prev[item.id] || {}), scene_group_id: e.target.value },
+                                    }))
+                                  }
+                                  className="h-6 w-32 rounded border border-[#E5E1D7] bg-[#FFFEFA] px-1.5 font-mono text-[10px] text-[#A9472C] focus:border-[#C45B3A] focus:outline-none"
+                                  title="Scene Group — adegan dengan grup sama berbagi latar & karakter"
+                                />
+                              </>
+                            ) : (
+                              <>
+                                {meta.shot_type && (
+                                  <span className="rounded border border-[#CFDDE9] bg-[#EAF0F5] px-1.5 py-0.5 text-[10px] font-semibold text-[#41627F]">
+                                    🎥 {shotTypeLabel(meta.shot_type)}
+                                  </span>
+                                )}
+                                {meta.scene_group_id && (
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded border border-[#E9C9BD] bg-[#F8EEEA] px-1.5 py-0.5 font-mono text-[10px] text-[#A9472C]"
+                                    title={
+                                      meta.reference_item_id
+                                        ? "Memakai gambar Establishing sebagai referensi latar & karakter"
+                                        : "Anchor grup adegan"
+                                    }
+                                  >
+                                    <Link2 className="h-3 w-3" />
+                                    {meta.scene_group_id}
+                                    {meta.reference_item_id ? " · ref" : ""}
+                                  </span>
+                                )}
+                                {meta.spatial_blocking && (
+                                  <span
+                                    className="max-w-[220px] truncate rounded border border-[#E8D9B5] bg-[#FBF6EA] px-1.5 py-0.5 text-[10px] text-[#8A6A2F]"
+                                    title={meta.spatial_blocking}
+                                  >
+                                    🧭 {meta.spatial_blocking}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                           {isEditing ? (
                             <Textarea
                               value={
@@ -306,7 +394,8 @@ export function SegmentsList({
                             <span className="flex-1 select-all">{item.image_prompt}</span>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                       {segItems.length === 0 && (
                         <div className="rounded-lg border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-3 text-center text-[11px] italic text-[#77766D]">
                           Tidak ada item ilustrasi untuk segmen ini.

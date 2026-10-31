@@ -28,6 +28,9 @@ def _validate_style_fields(values: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"font_weight tidak didukung: {fw}")
     if fw == "Normal":
         values["font_weight"] = "Regular"
+    tc = values.get("text_case")
+    if tc is not None and tc not in {"uppercase", "sentence"}:
+        raise ValueError(f"text_case tidak didukung: {tc}")
     return values
 
 
@@ -41,7 +44,7 @@ class StyleFieldsMixin(BaseModel):
 
 
 class SubtitleStyleBase(StyleFieldsMixin):
-    preset_name: str = "viral_tiktok"  # viral_tiktok | hormozi_punch | minimalist | custom
+    preset_name: str = "viral_tiktok"  # youtube_documentary | viral_tiktok | hormozi_punch | minimalist | custom
     enabled: bool = True
     description: Optional[str] = None
     font_family: str = "Poppins"
@@ -60,6 +63,7 @@ class SubtitleStyleBase(StyleFieldsMixin):
     burst_word_count: int = 2
     highlight_animation: str = "color"  # scale | color | box | none
     scale_factor: float = 1.0
+    text_case: str = "uppercase"  # sentence | uppercase
     emoji_enabled: bool = True
 
 
@@ -96,6 +100,7 @@ class SubtitlePresetCreate(StyleFieldsMixin):
     burst_word_count: int = 2
     highlight_animation: str = "scale"
     scale_factor: float = 1.15
+    text_case: str = "uppercase"
     emoji_enabled: bool = True
 
 
@@ -118,6 +123,7 @@ class SubtitlePresetUpdate(StyleFieldsMixin):
     burst_word_count: Optional[int] = None
     highlight_animation: Optional[str] = None
     scale_factor: Optional[float] = None
+    text_case: Optional[str] = None
     emoji_enabled: Optional[bool] = None
 
 

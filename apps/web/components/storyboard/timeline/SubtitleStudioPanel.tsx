@@ -328,6 +328,10 @@ export function SubtitleStudioPanel({
                     burst_word_count: p.burst_word_count,
                     highlight_animation: p.highlight_animation,
                     scale_factor: p.scale_factor,
+                    text_case: p.text_case ?? "uppercase",
+                    ...(p.position ? { position: p.position } : {}),
+                    ...(p.offset_y !== undefined ? { offset_y: p.offset_y } : {}),
+                    ...(p.offset_x !== undefined ? { offset_x: p.offset_x } : {}),
                   };
                   setSubtitleStyle(updated);
                   updateStyleMutation.mutate(updated);
@@ -406,6 +410,24 @@ export function SubtitleStudioPanel({
             </div>
           </div>
         )}
+
+        <div className="space-y-1.5 pt-1">
+          <span className="block text-[11px] font-semibold text-[#4D4A42]">Format Huruf:</span>
+          <OptionGrid
+            columns={2}
+            options={[
+              { id: "sentence", label: "Sentence case", desc: "Standar YouTube / dokumenter" },
+              { id: "uppercase", label: "HURUF KAPITAL", desc: "Gaya Shorts / TikTok" },
+            ]}
+            value={subtitleStyle.text_case ?? "sentence"}
+            onChange={(id) =>
+              setSubtitleStyle((prev) => ({
+                ...prev,
+                text_case: id as NonNullable<SubtitleStyle["text_case"]>,
+              }))
+            }
+          />
+        </div>
       </SectionCard>
 
       {/* Animasi & Efek Gerak Highlight */}

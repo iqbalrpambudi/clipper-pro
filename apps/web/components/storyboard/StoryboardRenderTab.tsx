@@ -498,6 +498,25 @@ export function StoryboardRenderTab({ project }: StoryboardRenderTabProps) {
                               <span>Unduh MP4</span>
                             </a>
 
+                            <a
+                              href={api.getSubtitleExportUrl(project.id, "srt")}
+                              download
+                              title="Subtitle .SRT untuk YouTube Studio (Closed Captions)"
+                              className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-3 py-1.5 text-xs font-semibold text-[#4D4A42] hover:border-[#C45B3A] hover:text-[#A9472C]"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>.SRT (YouTube CC)</span>
+                            </a>
+                            <a
+                              href={api.getSubtitleExportUrl(project.id, "vtt")}
+                              download
+                              title="Subtitle .VTT (WebVTT)"
+                              className="flex items-center gap-1.5 rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-3 py-1.5 text-xs font-semibold text-[#4D4A42] hover:border-[#C45B3A] hover:text-[#A9472C]"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>.VTT</span>
+                            </a>
+
                             <Button
                               size="sm"
                               onClick={() => setActiveTab("storyboard_publishing")}
