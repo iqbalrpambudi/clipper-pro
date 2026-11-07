@@ -5,7 +5,7 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -629,6 +629,34 @@ async def generate_image_to_path(
 
         task_uuid = str(uuid.uuid4())
 
+        is_recraft = model_id.startswith("recraft:") or "recraft" in model_id.lower()
+        is_google = model_id.startswith("google:")
+        is_ideogram = model_id.startswith("ideogram:")
+        is_bria = model_id.startswith("bria:")
+        is_distilled_bfl = model_id.startswith("bfl:") and not model_id.endswith("-base")
+
+        # Per-model supported resolutions (Runware rejects unknown width/height pairs).
+        # Recraft V4.1 flash supports only these fixed pairs.
+        MODEL_RESOLUTIONS: Dict[str, List[Tuple[int, int]]] = {
+            "recraft": [
+                (1024, 1024), (1536, 768), (768, 1536), (1280, 832), (832, 1280),
+                (1216, 896), (896, 1216), (1152, 896), (896, 1152),
+            ],
+        }
+
+        def _snap_to_supported(w: int, h: int) -> Tuple[int, int]:
+            """Snap (w, h) to closest supported pair by matching aspect ratio, preserving orientation."""
+            key = "recraft" if is_recraft else None
+            if not key or key not in MODEL_RESOLUTIONS:
+                return w, h
+            target = w / h
+            landscape = w >= h
+            candidates = [p for p in MODEL_RESOLUTIONS[key] if (p[0] >= p[1]) == landscape]
+            if not candidates:
+                return w, h
+            best = min(candidates, key=lambda p: abs((p[0] / p[1]) - target))
+            return best
+
         # Determine width and height
         # Default: 1024x1024. For 16:9 landscape projects: 1280x720 (Standard 720p HD, < 1MP tier for 50%+ cheaper Runware cost).
         task_width = 1024
@@ -651,11 +679,7 @@ async def generate_image_to_path(
                 task_width = 1280
                 task_height = 720
 
-        is_recraft = model_id.startswith("recraft:") or "recraft" in model_id.lower()
-        is_google = model_id.startswith("google:")
-        is_ideogram = model_id.startswith("ideogram:")
-        is_bria = model_id.startswith("bria:")
-        is_distilled_bfl = model_id.startswith("bfl:") and not model_id.endswith("-base")
+        task_width, task_height = _snap_to_supported(task_width, task_height)
 
         # Proprietary/distilled architectures (Recraft, Google, Ideogram, Bria, distilled BFL FLUX) manage their own
         # guidance internally and reject negativePrompt, sampling steps, or CFGScale parameters.
