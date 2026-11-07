@@ -111,6 +111,10 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
 
         raise ValueError(f"Could not parse valid model completion from response: {text[:250]}")
 
+    def _is_thinking_model(self) -> bool:
+        m = self.chat_model.lower()
+        return any(k in m for k in ("opus", "o1", "o3", "o4-mini", "deepseek-r1", "qwq"))
+
     async def generate_chat(
         self,
         prompt: str,
@@ -120,6 +124,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> str:
+        is_thinking = self._is_thinking_model()
+
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -131,14 +137,20 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             "temperature": 0.7,
             "stream": False,
             "max_tokens": max_tokens or 16384,
-            "thinking": {"type": "disabled"},
         }
+        if is_thinking:
+            payload["thinking"] = {"type": "enabled", "budget_tokens": 8192}
+            payload.pop("temperature", None)
+        else:
+            payload["thinking"] = {"type": "disabled"}
+
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
         if kwargs:
             payload.update(kwargs)
 
-        timeout_cfg = httpx.Timeout(timeout, connect=10.0)
+        effective_timeout = max(timeout, 480.0) if is_thinking else timeout
+        timeout_cfg = httpx.Timeout(effective_timeout, connect=15.0)
         async with httpx.AsyncClient(timeout=timeout_cfg) as client:
             resp = await client.post(
                 f"{self.base_url}/chat/completions",
