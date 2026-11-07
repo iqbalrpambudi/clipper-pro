@@ -579,6 +579,113 @@ export function DrawSvgPath({
   );
 }
 
+/* ── SvgIllustration ── orchestrated multi-layer progressive SVG drawing ── */
+
+export interface SvgIllustrationPathDef {
+  d: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+}
+
+export interface SvgIllustrationLayer {
+  id: string;
+  paths: SvgIllustrationPathDef[];
+  drawOrder: number;
+}
+
+export interface SvgIllustrationProps {
+  viewBox: string;
+  layers: SvgIllustrationLayer[];
+  startFrame?: number;
+  staggerPerGroup?: number;
+  drawDurationPerPath?: number;
+  style?: React.CSSProperties;
+  ambient?: boolean;
+}
+
+export function SvgIllustration({
+  viewBox,
+  layers,
+  startFrame = 0,
+  staggerPerGroup = 8,
+  drawDurationPerPath = 18,
+  style,
+  ambient = false,
+}: SvgIllustrationProps) {
+  const frame = useCurrentFrame();
+
+  const sorted = React.useMemo(
+    () => [...layers].sort((a, b) => a.drawOrder - b.drawOrder),
+    [layers]
+  );
+
+  // Assign each drawOrder rank a unique index for stagger timing
+  const orderRanks = React.useMemo(() => {
+    const ranks = new Map<number, number>();
+    let idx = 0;
+    for (const l of sorted) {
+      if (!ranks.has(l.drawOrder)) ranks.set(l.drawOrder, idx++);
+    }
+    return ranks;
+  }, [sorted]);
+
+  // Ambient breathing after all paths drawn
+  const totalDraw =
+    startFrame +
+    ((orderRanks.size - 1) * staggerPerGroup + drawDurationPerPath);
+  const allDone = frame >= totalDraw;
+  const breathe = ambient && allDone
+    ? 1 + Math.sin((frame - totalDraw) * 0.06) * 0.008
+    : 1;
+  const floatY = ambient && allDone
+    ? Math.sin((frame - totalDraw) * 0.04) * 3
+    : 0;
+
+  return (
+    <svg
+      viewBox={viewBox}
+      style={{
+        ...style,
+        transform: `translateY(${floatY}px) scale(${breathe})`,
+        overflow: "visible",
+      }}
+    >
+      {sorted.map((layer) => {
+        const rank = orderRanks.get(layer.drawOrder) ?? 0;
+        const groupStart = startFrame + rank * staggerPerGroup;
+        return (
+          <g key={layer.id}>
+            {layer.paths.map((p, pi) => {
+              const progress = safeInterpolate(
+                frame,
+                [groupStart, groupStart + Math.max(6, drawDurationPerPath)],
+                [0, 1]
+              );
+              const hasFill = p.fill && p.fill !== "none";
+              return (
+                <path
+                  key={`${layer.id}-${pi}`}
+                  d={p.d}
+                  fill={hasFill ? p.fill : "none"}
+                  fillOpacity={hasFill ? progress : 0}
+                  stroke={p.stroke ?? "currentColor"}
+                  strokeWidth={p.strokeWidth ?? 2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pathLength={1}
+                  strokeDasharray={1}
+                  strokeDashoffset={1 - progress}
+                />
+              );
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export interface AnimatedConnectorProps {
   from: [number, number];
   to: [number, number];

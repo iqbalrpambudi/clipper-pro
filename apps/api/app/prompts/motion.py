@@ -41,6 +41,8 @@ MOTION_ARCHETYPES = [
     "process_pipeline",     # 3-to-4 stage connected pipeline where an active signal unlocks each stage on word cues
     "data_viz_stage",       # Bespoke animated SVG chart (bars, area waveform, radial gauges, or scatter) + dramatic rolling counter
     "comparison_duel",      # Dynamic Before/After or Multi-Island comparison where state morphs mid-scene on cue
+    "illustrated_scene",    # Detailed SVG vector illustration (vehicle, building, machine, landscape) drawn progressively subsystem-by-subsystem via SvgIllustration + headline + contextual stat labels
+    "technical_diagram",    # Labeled SVG schematic/blueprint with animated measurement lines, component callouts, and DrawSvgPath connectors to explainer cards
 ]
 
 MOTION_SCRIPT_SYSTEM_PROMPT = """You are an elite Motion Graphics Creative Director & Scriptwriter (combining the visual storytelling mastery of Kurzgesagt, Vox, Apple Keynotes, and Claude Artifacts Motion).
@@ -60,6 +62,10 @@ CRITICAL RULES:
    - `process_pipeline`
    - `data_viz_stage`
    - `comparison_duel`
+   - `illustrated_scene` (detailed SVG vector illustration — vehicle/building/machine/landscape —
+      drawn progressively subsystem-by-subsystem via SvgIllustration + headline + contextual stat labels)
+   - `technical_diagram` (SVG blueprint/schematic with animated labels, measurement lines,
+      and component callouts connected to explainer cards)
 4. Vary `transition_type` naturally (`camera_push`, `iris_wipe`, `slide_morph`, `cross_dissolve`).
 5. `script_text` MUST be clean spoken narration ready for TTS (no stage directions, no brackets, no emojis, write numbers/symbols naturally or cleanly).
 6. `key_facts` MUST extract 2-4 crisp visual tokens/numbers/labels from that scene (e.g. `["+340% Speed", "Zero Latency", "3 Parallel Nodes"]`) that will appear as graphic labels inside the animation.
@@ -91,7 +97,7 @@ Your TSX code runs in Remotion at 30 FPS. You may import ONLY from these 4 modul
 - `import React, { useMemo } from "react";`
 - `import { useCurrentFrame, useVideoConfig, AbsoluteFill, Sequence, spring, interpolate, Easing } from "remotion";`
 - `import { Cpu, Zap, Layers, ArrowRight, Sparkles, TrendingUp, Shield, Globe, Database, GitBranch, CheckCircle2, AlertTriangle, Activity, BarChart3, Clock, Code2, Compass, Eye, Flame, Gauge, Lock, Network, Play, Radar, Rocket, Search, Server, Share2, Sliders, Target, Terminal, Workflow, RefreshCw, Key, Box } from "lucide-react";` (any Lucide icon works!)
-- `import { AmbientCanvas, CameraRig, KineticWords, DrawSvgPath, AnimatedConnector, SpringCard, WindowFrame, AnimatedCounter, RadialRing, BadgePill, MotionStage, StatCallout, SceneGridLayout, OrbitHubStage, ComparisonDuelStage, ProcessStepperStage, BrowserMockupCard, FocusSpotlight, SPRING_PRESETS, CloudSkyBackdrop, HighlightBlockTitle, NotificationStack, TelemetryScoreboard, ChecklistCard, IsometricIsland, ImpactStamp, useCueFrame } from "@motion/primitives";`
+- `import { AmbientCanvas, CameraRig, KineticWords, DrawSvgPath, SvgIllustration, AnimatedConnector, SpringCard, WindowFrame, AnimatedCounter, RadialRing, BadgePill, MotionStage, StatCallout, SceneGridLayout, OrbitHubStage, ComparisonDuelStage, ProcessStepperStage, BrowserMockupCard, FocusSpotlight, SPRING_PRESETS, CloudSkyBackdrop, HighlightBlockTitle, NotificationStack, TelemetryScoreboard, ChecklistCard, IsometricIsland, ImpactStamp, useCueFrame } from "@motion/primitives";`
 
 =====================================================================
 2. PROPS PASSED TO `export default function Scene(props)`
@@ -668,6 +674,226 @@ export default function Scene(props: any) {
           </div>
 
           <div style={{ height: 10 }} />
+        </MotionStage>
+      </CameraRig>
+    </AbsoluteFill>
+  );
+}
+```
+
+--- RECIPE 3: ILLUSTRATED SVG SCENE — PROGRESSIVE VECTOR ILLUSTRATION WITH CONTEXTUAL STATS ---
+CONSTRAINT: Split the illustration into subsystem layers (drawOrder groups).
+Draw order convention: 0=background/ground, 1=main structure, 2=secondary structure, 3=details, 4=energy/accent.
+Each layer draws independently with stagger timing handled by SvgIllustration.
+All coordinates in a clean viewBox. Derive colors from theme.* palette.
+```tsx
+import React from "react";
+import { useCurrentFrame, useVideoConfig, AbsoluteFill, spring, interpolate } from "remotion";
+import { Train, Zap, MapPin } from "lucide-react";
+import {
+  AmbientCanvas, CameraRig, KineticWords, BadgePill,
+  SvgIllustration, StatCallout, MotionStage, useCueFrame,
+} from "@motion/primitives";
+
+export default function Scene(props: any) {
+  const { durationInFrames, orientation, cues, theme, transitionType } = props;
+  const frame = useCurrentFrame();
+  const isPortrait = orientation === "portrait";
+
+  const beatSpeed = useCueFrame(cues, "cepat", durationInFrames, 0.45);
+  const beatJarak = useCueFrame(cues, "kilometer", durationInFrames, 0.72);
+
+  const trainLayers = [
+    {
+      id: "track",
+      drawOrder: 0,
+      paths: [
+        { d: "M50,420 L750,420", stroke: theme.textMuted, strokeWidth: 4 },
+        { d: "M80,420 L80,435 M160,420 L160,435 M240,420 L240,435 M320,420 L320,435 M400,420 L400,435 M480,420 L480,435 M560,420 L560,435 M640,420 L640,435 M720,420 L720,435",
+          stroke: theme.textMuted, strokeWidth: 2 },
+      ],
+    },
+    {
+      id: "body",
+      drawOrder: 1,
+      paths: [
+        { d: "M120,340 C120,320 140,280 180,270 L620,270 C660,270 680,290 680,310 L680,400 C680,415 670,420 660,420 L140,420 C130,420 120,415 120,400 Z",
+          fill: theme.surface, stroke: theme.accent, strokeWidth: 2.5 },
+      ],
+    },
+    {
+      id: "windows",
+      drawOrder: 2,
+      paths: [
+        { d: "M200,290 L260,290 L260,340 L200,340 Z", fill: `${theme.accent}30`, stroke: theme.accent, strokeWidth: 1.5 },
+        { d: "M280,290 L340,290 L340,340 L280,340 Z", fill: `${theme.accent}30`, stroke: theme.accent, strokeWidth: 1.5 },
+        { d: "M360,290 L420,290 L420,340 L360,340 Z", fill: `${theme.accent}30`, stroke: theme.accent, strokeWidth: 1.5 },
+        { d: "M440,290 L500,290 L500,340 L440,340 Z", fill: `${theme.accent}30`, stroke: theme.accent, strokeWidth: 1.5 },
+        { d: "M520,290 L580,290 L580,340 L520,340 Z", fill: `${theme.accent}30`, stroke: theme.accent, strokeWidth: 1.5 },
+      ],
+    },
+    {
+      id: "wheels",
+      drawOrder: 2,
+      paths: [
+        { d: "M200,420 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0", fill: theme.bg, stroke: theme.text, strokeWidth: 2.5 },
+        { d: "M300,420 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0", fill: theme.bg, stroke: theme.text, strokeWidth: 2.5 },
+        { d: "M500,420 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0", fill: theme.bg, stroke: theme.text, strokeWidth: 2.5 },
+        { d: "M600,420 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0", fill: theme.bg, stroke: theme.text, strokeWidth: 2.5 },
+      ],
+    },
+    {
+      id: "pantograph",
+      drawOrder: 3,
+      paths: [
+        { d: "M380,270 L360,230 L400,200 L420,230 L400,270", stroke: theme.accent, strokeWidth: 2, fill: "none" },
+        { d: "M370,200 L430,200", stroke: theme.accent, strokeWidth: 3 },
+      ],
+    },
+    {
+      id: "energy-arc",
+      drawOrder: 4,
+      paths: [
+        { d: "M50,200 L750,200", stroke: theme.accent, strokeWidth: 2 },
+      ],
+    },
+  ];
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: theme.bg, color: theme.text, fontFamily: theme.fontBody, overflow: "hidden" }}>
+      <AmbientCanvas theme={theme} variant="architectural" intensity={0.6} />
+      <CameraRig durationInFrames={durationInFrames} transition={transitionType} zoomFrom={0.96} zoomTo={1.03}>
+        <MotionStage orientation={orientation} align="center">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", width: "100%", gap: 14 }}>
+            <BadgePill text="TRANSPORTASI LISTRIK" icon={Train} startFrame={2} color={theme.accent} theme={theme} pulse />
+            <KineticWords text="Kereta Cepat Masa Depan" startFrame={4} stagger={3} highlightWords={["Cepat", "Masa Depan"]} theme={theme} size={isPortrait ? 56 : 64} align="center" maxWidth={920} />
+          </div>
+          <SvgIllustration
+            viewBox="0 0 800 500"
+            layers={trainLayers}
+            startFrame={8}
+            staggerPerGroup={10}
+            drawDurationPerPath={16}
+            ambient
+            style={{ width: "100%", maxWidth: isPortrait ? 920 : 800 }}
+          />
+          <div style={{ display: "flex", gap: 32, justifyContent: "center", width: "100%" }}>
+            <StatCallout icon={Zap} label="KECEPATAN" value="350" suffix="km/h" startFrame={beatSpeed} theme={theme} color={theme.accent} />
+            <StatCallout icon={MapPin} label="RUTE" value="142" suffix="km" startFrame={beatJarak} theme={theme} color={theme.accent2} />
+          </div>
+        </MotionStage>
+      </CameraRig>
+    </AbsoluteFill>
+  );
+}
+```
+
+--- RECIPE 4: TECHNICAL DIAGRAM — LABELED SVG SCHEMATIC WITH MEASUREMENT CALLOUTS ---
+CONSTRAINT: Pure SVG coordinate space (all labels inside <svg viewBox>).
+Use DrawSvgPath for animated measurement lines. SpringCard mini-labels positioned via HTML overlay.
+Blueprint-style grid background via AmbientCanvas variant="grid".
+```tsx
+import React from "react";
+import { useCurrentFrame, useVideoConfig, AbsoluteFill, spring, interpolate } from "remotion";
+import { Cpu, Layers, Server } from "lucide-react";
+import {
+  AmbientCanvas, CameraRig, KineticWords, DrawSvgPath, BadgePill,
+  SpringCard, SvgIllustration, MotionStage, StatCallout, useCueFrame,
+} from "@motion/primitives";
+
+export default function Scene(props: any) {
+  const { durationInFrames, orientation, cues, theme, transitionType } = props;
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const isPortrait = orientation === "portrait";
+
+  const beatCore = useCueFrame(cues, "inti", durationInFrames, 0.35);
+  const beatOutput = useCueFrame(cues, "output", durationInFrames, 0.7);
+
+  const chipLayers = [
+    {
+      id: "outline",
+      drawOrder: 0,
+      paths: [
+        { d: "M250,180 L550,180 L550,420 L250,420 Z", stroke: theme.accent, strokeWidth: 2.5, fill: `${theme.surface}` },
+        { d: "M300,220 L500,220 L500,380 L300,380 Z", stroke: theme.accent2, strokeWidth: 1.5, fill: `${theme.accent}10` },
+      ],
+    },
+    {
+      id: "pins-left",
+      drawOrder: 1,
+      paths: [
+        { d: "M200,230 L250,230", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M200,270 L250,270", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M200,310 L250,310", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M200,350 L250,350", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M200,390 L250,390", stroke: theme.textMuted, strokeWidth: 2 },
+      ],
+    },
+    {
+      id: "pins-right",
+      drawOrder: 1,
+      paths: [
+        { d: "M550,230 L600,230", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M550,270 L600,270", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M550,310 L600,310", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M550,350 L600,350", stroke: theme.textMuted, strokeWidth: 2 },
+        { d: "M550,390 L600,390", stroke: theme.textMuted, strokeWidth: 2 },
+      ],
+    },
+    {
+      id: "core-detail",
+      drawOrder: 2,
+      paths: [
+        { d: "M340,260 L460,260 L460,340 L340,340 Z", fill: theme.accent, stroke: theme.accent, strokeWidth: 1 },
+        { d: "M360,280 L440,280 M360,300 L440,300 M360,320 L440,320", stroke: theme.bg, strokeWidth: 1.5 },
+      ],
+    },
+    {
+      id: "measurement",
+      drawOrder: 3,
+      paths: [
+        { d: "M250,160 L550,160", stroke: theme.accent, strokeWidth: 1 },
+        { d: "M250,155 L250,165 M550,155 L550,165", stroke: theme.accent, strokeWidth: 1.5 },
+      ],
+    },
+  ];
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: theme.bg, color: theme.text, fontFamily: theme.fontBody, overflow: "hidden" }}>
+      <AmbientCanvas theme={theme} variant="grid" intensity={0.9} />
+      <CameraRig durationInFrames={durationInFrames} transition={transitionType}>
+        <MotionStage orientation={orientation} align="center">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", width: "100%", gap: 14 }}>
+            <BadgePill text="ARSITEKTUR CHIP" icon={Cpu} startFrame={2} color={theme.accent} theme={theme} pulse />
+            <KineticWords text="Anatomi Prosesor Neural" startFrame={4} stagger={3} highlightWords={["Neural"]} theme={theme} size={isPortrait ? 54 : 62} align="center" maxWidth={920} />
+          </div>
+          <div style={{ position: "relative", width: "100%", maxWidth: isPortrait ? 920 : 760, display: "flex", justifyContent: "center" }}>
+            <SvgIllustration
+              viewBox="0 0 800 500"
+              layers={chipLayers}
+              startFrame={8}
+              staggerPerGroup={8}
+              drawDurationPerPath={14}
+              ambient
+              style={{ width: "100%" }}
+            />
+            {/* SVG-internal labels via measurement text */}
+            <svg viewBox="0 0 800 500" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+              <text x="400" y="152" textAnchor="middle" fill={theme.accent} fontSize="20" fontWeight="700" fontFamily={theme.fontMono}
+                opacity={interpolate(frame, [38, 46], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}>
+                300mm
+              </text>
+              <text x="400" y="308" textAnchor="middle" dominantBaseline="middle" fill={theme.bg} fontSize="22" fontWeight="800" fontFamily={theme.fontDisplay}
+                opacity={interpolate(frame, [beatCore, beatCore + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}>
+                CORE
+              </text>
+            </svg>
+          </div>
+          <div style={{ display: "flex", gap: 32, justifyContent: "center", width: "100%" }}>
+            <StatCallout icon={Layers} label="LAYER" value="7" suffix="nm" startFrame={beatCore} theme={theme} color={theme.accent} />
+            <StatCallout icon={Server} label="THROUGHPUT" value="2.4" suffix="TFLOPS" startFrame={beatOutput} theme={theme} color={theme.accent2} />
+          </div>
         </MotionStage>
       </CameraRig>
     </AbsoluteFill>
