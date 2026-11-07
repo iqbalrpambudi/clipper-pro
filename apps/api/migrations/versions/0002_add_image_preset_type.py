@@ -21,13 +21,16 @@ def upgrade() -> None:
         "image_presets",
         sa.Column("preset_type", sa.String(length=20), server_default="style", nullable=False),
     )
-    op.create_check_constraint(
-        "ck_image_presets_preset_type",
-        "image_presets",
-        "preset_type IN ('style', 'character', 'combined')",
-    )
-
+    conn = op.get_bind()
+    if conn.dialect.name != "sqlite":
+        op.create_check_constraint(
+            "ck_image_presets_preset_type",
+            "image_presets",
+            "preset_type IN ('style', 'character', 'combined')",
+        )
 
 def downgrade() -> None:
-    op.drop_constraint("ck_image_presets_preset_type", "image_presets", type_="check")
+    conn = op.get_bind()
+    if conn.dialect.name != "sqlite":
+        op.drop_constraint("ck_image_presets_preset_type", "image_presets", type_="check")
     op.drop_column("image_presets", "preset_type")

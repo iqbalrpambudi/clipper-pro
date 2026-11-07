@@ -9,7 +9,11 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from pgvector.sqlalchemy import Vector
+
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:
+    Vector = None
 
 # revision identifiers, used by Alembic.
 revision: str = "0001_initial_schema"
@@ -19,10 +23,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Enable pgvector extension
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-
     conn = op.get_bind()
+    is_sqlite = conn.dialect.name == "sqlite"
+
+    if not is_sqlite:
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+    embedding_type = sa.JSON() if (is_sqlite or Vector is None) else Vector(768)
+    now_default = sa.text("CURRENT_TIMESTAMP") if is_sqlite else sa.text("(NOW() AT TIME ZONE 'utc')")
+
     inspector = sa.inspect(conn)
     existing_tables = set(inspector.get_table_names())
 
@@ -44,8 +53,8 @@ def upgrade() -> None:
             sa.Column("locations", sa.JSON(), server_default="[]", nullable=True),
             sa.Column("world_setting", sa.JSON(), server_default="{}", nullable=True),
             sa.Column("language", sa.String(10), server_default="id", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 3. source_videos table
@@ -66,7 +75,7 @@ def upgrade() -> None:
             sa.Column("status", sa.String(50), server_default="pending", nullable=False),
             sa.Column("progress", sa.Integer(), server_default="0", nullable=False),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 4. scenes table
@@ -85,9 +94,9 @@ def upgrade() -> None:
             sa.Column("tags", sa.JSON(), nullable=True),
             sa.Column("analysis", sa.JSON(), nullable=True),
             sa.Column("transcript", sa.Text(), nullable=True),
-            sa.Column("embedding", Vector(768), nullable=True),
+            sa.Column("embedding", embedding_type, nullable=True),
             sa.Column("status", sa.String(50), server_default="detected", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 5. render_jobs table
@@ -103,7 +112,7 @@ def upgrade() -> None:
             sa.Column("thumbnail_path", sa.String(500), nullable=True),
             sa.Column("log_output", sa.Text(), nullable=True),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
             sa.Column("completed_at", sa.DateTime(), nullable=True),
         )
 
@@ -121,7 +130,7 @@ def upgrade() -> None:
             sa.Column("default_tone", sa.String(50), server_default="santai", nullable=False),
             sa.Column("default_voice", sa.String(50), server_default="Puck", nullable=False),
             sa.Column("is_builtin", sa.Boolean(), server_default="false", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 7. narrations table
@@ -134,8 +143,8 @@ def upgrade() -> None:
             sa.Column("script_text", sa.Text(), nullable=False),
             sa.Column("segments", sa.JSON(), nullable=False),
             sa.Column("language", sa.String(10), server_default="id", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 8. audio_tracks table
@@ -154,7 +163,7 @@ def upgrade() -> None:
             sa.Column("words", sa.JSON(), nullable=True),
             sa.Column("status", sa.String(50), server_default="ready", nullable=False),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 9. timelines table
@@ -167,8 +176,8 @@ def upgrade() -> None:
             sa.Column("total_duration", sa.Float(), server_default="0.0", nullable=False),
             sa.Column("has_audio", sa.Boolean(), server_default="true", nullable=False),
             sa.Column("has_subtitles", sa.Boolean(), server_default="true", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 10. subtitle_styles table
@@ -198,7 +207,7 @@ def upgrade() -> None:
             sa.Column("highlight_animation", sa.String(20), server_default="color", nullable=False),
             sa.Column("scale_factor", sa.Float(), server_default="1.0", nullable=False),
             sa.Column("emoji_enabled", sa.Boolean(), server_default="true", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 11. model_configs table
@@ -224,8 +233,8 @@ def upgrade() -> None:
             sa.Column("image_api_key_encrypted", sa.Text(), nullable=True),
             sa.Column("image_system_prompt", sa.Text(), nullable=True),
             sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 12. storyboard_items table
@@ -247,8 +256,8 @@ def upgrade() -> None:
             sa.Column("motion_effect", sa.String(50), server_default="zoom_in", nullable=False),
             sa.Column("status", sa.String(50), server_default="pending", nullable=False),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
     # 13. image_presets table
@@ -267,8 +276,8 @@ def upgrade() -> None:
             sa.Column("style_attributes", sa.JSON(), server_default="{}", nullable=True),
             sa.Column("is_builtin", sa.Boolean(), server_default="false", nullable=False),
             sa.Column("is_active", sa.Boolean(), server_default="false", nullable=False),
-            sa.Column("created_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
-            sa.Column("updated_at", sa.DateTime(), server_default=sa.text("(NOW() AT TIME ZONE 'utc')"), nullable=False),
+            sa.Column("created_at", sa.DateTime(), server_default=now_default, nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=now_default, nullable=False),
         )
 
 
