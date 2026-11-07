@@ -602,6 +602,15 @@ async def generate_image_to_path(
 
         is_schnell = model_id in ("runware:100@1",) or "schnell" in model_id.lower()
         is_dev = model_id in ("runware:101@1",) or "dev" in model_id.lower()
+        # acceleration is a Runware-native optimisation for FLUX checkpoints only.
+        # Proprietary endpoints (recraft:/google:/ideogram:/bria:/bfl:), SDXL and Qwen reject it.
+        is_flux_family = (
+            not model_id.startswith(("bfl:", "recraft:", "google:", "ideogram:", "bria:"))
+            and (
+                "flux" in model_id.lower()
+                or model_id.startswith(("runware:100", "runware:101", "runware:4"))
+            )
+        )
 
         # Sampling steps: FLUX.1 Schnell configured to sampling 5, Dev defaults to 10
         if steps is not None and int(steps) > 0:
@@ -685,6 +694,8 @@ async def generate_image_to_path(
         # guidance internally and reject negativePrompt, sampling steps, or CFGScale parameters.
         supports_negative = not (is_google or is_recraft or is_ideogram or is_bria or is_distilled_bfl)
         supports_steps_cfg = not (is_google or is_recraft or is_ideogram or is_bria or is_distilled_bfl)
+        # acceleration only exists on the FLUX family; SDXL, SD1.5, Qwen and every proprietary model reject it.
+        supports_acceleration = is_flux_family
 
         runware_task: Dict[str, Any] = {
             "taskType": "imageInference",
@@ -697,9 +708,10 @@ async def generate_image_to_path(
             "outputType": "URL",
             "outputFormat": "WEBP",
             "outputQuality": 95,
-            "acceleration": "high",
             "includeCost": True,
         }
+        if supports_acceleration:
+            runware_task["acceleration"] = "high"
         if active_negative and supports_negative:
             runware_task["negativePrompt"] = active_negative
         if supports_steps_cfg:
@@ -747,18 +759,31 @@ async def generate_image_to_path(
                         err_json = resp.json()
                         errors = err_json.get("errors", [])
                         dim_err = any(e.get("code") in ("invalidWidth", "invalidHeight") for e in errors)
-                        if dim_err and runware_task.get("width") != 1280:
-                            log.warning("Runware rejected dimensions (%sx%s). Adjusting width to 1280x720...", runware_task.get("width"), runware_task.get("height"))
-                            runware_task["width"] = 1280
-                            runware_task["height"] = 720
+                        if dim_err and runware_task.get("width") != 1024:
+                            fallback_w, fallback_h = _snap_to_supported(1280, 720)
+                            log.warning(
+                                "Runware rejected dimensions (%sx%s). Falling back to %sx%s...",
+                                runware_task.get("width"),
+                                runware_task.get("height"),
+                                fallback_w,
+                                fallback_h,
+                            )
+                            runware_task["width"] = fallback_w
+                            runware_task["height"] = fallback_h
                             runware_payload = [runware_task]
                             continue
 
                         unsupported_params = [
                             e.get("parameter")
                             for e in errors
-                            if e.get("code") == "unsupportedParameter" and e.get("parameter")
+                            if e.get("parameter")
+                            and e.get("parameter") in runware_task
                         ]
+                        # Some Runware errors name the offending parameter only in the message text.
+                        joined = " ".join(str(e.get("message", "")) for e in errors).lower()
+                        for optional_param in ("acceleration", "outputQuality", "includeCost"):
+                            if optional_param in runware_task and optional_param.lower() in joined:
+                                unsupported_params.append(optional_param)
                         seed_err = any(
                             "seedimage" in str(e).lower() or "strength" in str(e).lower()
                             for e in errors
