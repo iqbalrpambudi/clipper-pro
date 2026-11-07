@@ -749,12 +749,6 @@
     linear-gradient(145deg, #849494, #465c5d 58%, #313f42);
 }
 
-.workspace-project-art-motion {
-  background:
-    radial-gradient(circle at 76% 24%, #f4c89b 0 13px, transparent 14px),
-    linear-gradient(142deg, #c45b3a, #494158 58%, #1e2336);
-}
-
 .workspace-project-art>span {
   position: relative;
   z-index: 1;
@@ -795,11 +789,6 @@
 .workspace-project-type.is-storyboard {
   color: #4e6258;
   background: #e9eee7;
-}
-
-.workspace-project-type.is-motion {
-  color: #9e4328;
-  background: #f7eae4;
 }
 
 .workspace-project-format {
@@ -1626,11 +1615,6 @@ input[type="range"] {
 .dark .workspace-project-type.is-storyboard {
   color: #9cb8a9;
   background: rgba(78, 98, 88, 0.28);
-}
-
-.dark .workspace-project-type.is-motion {
-  color: #f29579;
-  background: rgba(217, 119, 87, 0.2);
 }
 
 .dark .workspace-project-format {

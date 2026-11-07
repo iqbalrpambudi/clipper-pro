@@ -35,11 +35,7 @@ export function useCreateProject() {
     onSuccess: (newProj) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
       const mode =
-        newProj.project_type === "motion_graphic"
-          ? "motion"
-          : newProj.project_type === "long_storyboard"
-            ? "storyboard"
-            : "short";
+        newProj.project_type === "long_storyboard" ? "storyboard" : "short";
       router.push(`/project/${mode}/${newProj.id}`);
     },
     onError: (err: Error) => {

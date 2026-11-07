@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Film, Image as ImageIcon, Code2 } from "lucide-react";
+import { Film, Image as ImageIcon } from "lucide-react";
 import type { ProjectType } from "@/types";
 import {
   Dialog,
@@ -68,7 +68,7 @@ export function CreateProjectDialog({
             <label className="block text-xs font-semibold text-foreground mb-2">
               Pilih Mode Project
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Card 1: Short Video */}
               <button
                 type="button"
@@ -129,37 +129,6 @@ export function CreateProjectDialog({
                 </div>
               </button>
 
-              {/* Card 3: Generative Motion Graphic Studio */}
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("motion_graphic");
-                  setAspectRatio("16:9");
-                }}
-                className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${
-                  createMode === "motion_graphic"
-                    ? "border-primary bg-accent/60 ring-1 ring-primary/30"
-                    : "border-border bg-card hover:border-primary/40"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground">
-                      <Code2 className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
-                      Remotion TSX
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-bold text-foreground mb-1">
-                    Motion Graphic Studio
-                  </h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Koreografi vektor SVG, tipografi kinetik & diagram React/Remotion gaya Claude
-                    Motion.
-                  </p>
-                </div>
-              </button>
             </div>
           </div>
 
@@ -171,11 +140,9 @@ export function CreateProjectDialog({
               type="text"
               required
               placeholder={
-                createMode === "motion_graphic"
-                  ? "Mis. Cara Kerja Arsitektur Transformer & Self-Attention"
-                  : createMode === "long_storyboard"
-                    ? "Mis. Misteri Segitiga Bermuda dan Dimensi Waktu"
-                    : "Mis. Fakta Menakjubkan Lautan Dalam"
+                createMode === "long_storyboard"
+                  ? "Mis. Misteri Segitiga Bermuda dan Dimensi Waktu"
+                  : "Mis. Fakta Menakjubkan Lautan Dalam"
               }
               value={name}
               onChange={(e) => setName(e.target.value)}

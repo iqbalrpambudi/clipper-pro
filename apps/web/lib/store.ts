@@ -15,11 +15,7 @@ export type StudioTab =
   | "storyboard_watermark"
   | "storyboard_render"
   | "storyboard_publishing"
-  | "storyboard_youtube"
-  | "motion_script"
-  | "motion_voice"
-  | "motion_studio"
-  | "motion_render";
+  | "storyboard_youtube";
 
 export interface TaskEvent {
   project_id: string;
@@ -32,8 +28,7 @@ export interface TaskEvent {
     | "tts_align"
     | "render"
     | "storyboard_images"
-    | "storyboard_generate"
-    | "motion_generate";
+    | "storyboard_generate";
   status: "queued" | "progress" | "success" | "error";
   progress: number;
   stage: string;
@@ -52,13 +47,6 @@ const STORYBOARD_TABS: StudioTab[] = [
   "storyboard_render",
   "storyboard_publishing",
 ];
-const MOTION_TABS: StudioTab[] = [
-  "motion_script",
-  "motion_voice",
-  "motion_studio",
-  "motion_render",
-];
-
 const SHORT_FALLBACK: Record<string, StudioTab> = {
   storyboard_script: "narration",
   storyboard_voice: "tts",
@@ -66,10 +54,6 @@ const SHORT_FALLBACK: Record<string, StudioTab> = {
   storyboard_render: "render",
   storyboard_publishing: "media",
   storyboard_youtube: "media",
-  motion_script: "narration",
-  motion_voice: "tts",
-  motion_studio: "timeline",
-  motion_render: "render",
 };
 
 const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
@@ -79,26 +63,11 @@ const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
   storyboard_watermark: "storyboard_timeline",
   render: "storyboard_render",
   storyboard_youtube: "storyboard_publishing",
-  motion_script: "storyboard_script",
-  motion_voice: "storyboard_voice",
-  motion_studio: "storyboard_timeline",
-  motion_render: "storyboard_render",
-};
-
-const MOTION_FALLBACK: Record<string, StudioTab> = {
-  narration: "motion_script",
-  storyboard_script: "motion_script",
-  tts: "motion_voice",
-  storyboard_voice: "motion_voice",
-  timeline: "motion_studio",
-  storyboard_timeline: "motion_studio",
-  render: "motion_render",
-  storyboard_render: "motion_render",
 };
 
 function normalizeTab(
   tab: StudioTab,
-  mode: "short" | "storyboard" | "motion" | null
+  mode: "short" | "storyboard" | null
 ): StudioTab {
   if (tab === "storyboard_youtube") {
     tab = "storyboard_publishing";
@@ -108,18 +77,14 @@ function normalizeTab(
     if (SHORT_TABS.includes(tab)) return tab;
     return SHORT_FALLBACK[tab] ?? "media";
   }
-  if (mode === "motion") {
-    if (MOTION_TABS.includes(tab)) return tab;
-    return MOTION_FALLBACK[tab] ?? "motion_script";
-  }
   if (STORYBOARD_TABS.includes(tab)) return tab;
   return STORYBOARD_FALLBACK[tab] ?? "storyboard_script";
 }
 
 
 interface StudioState {
-  projectMode: "short" | "storyboard" | "motion" | null;
-  setProjectMode: (mode: "short" | "storyboard" | "motion" | null) => void;
+  projectMode: "short" | "storyboard" | null;
+  setProjectMode: (mode: "short" | "storyboard" | null) => void;
 
   activeTab: StudioTab;
   setActiveTab: (tab: StudioTab) => void;

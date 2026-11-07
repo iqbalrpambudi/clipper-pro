@@ -11,7 +11,6 @@ import {
   Clock3,
   Video,
   Image as ImageIcon,
-  Code2,
   Trash2,
   Edit3,
   AlertTriangle,
@@ -107,10 +106,6 @@ export default function DashboardPage() {
     () => projects.filter((p) => p.project_type === "long_storyboard").length,
     [projects]
   );
-  const motionCount = useMemo(
-    () => projects.filter((p) => p.project_type === "motion_graphic").length,
-    [projects]
-  );
 
   // Filtered & Sorted Projects
   const filteredProjects = useMemo(() => {
@@ -169,7 +164,7 @@ export default function DashboardPage() {
 
   const handleOpenCreate = (mode: ProjectType = "short_video") => {
     setCreateMode(mode);
-    setAspectRatio(mode === "long_storyboard" || mode === "motion_graphic" ? "16:9" : "9:16");
+    setAspectRatio(mode === "long_storyboard" ? "16:9" : "9:16");
     setName("");
     setIsCreateOpen(true);
   };
@@ -263,14 +258,6 @@ export default function DashboardPage() {
               Cari Sumber Video
             </Button>
             <Button
-              variant="outline"
-              onClick={() => handleOpenCreate("motion_graphic")}
-              className="h-10 px-4 text-xs font-semibold gap-2 border-border/80 hover:border-primary/50 hover:bg-accent text-foreground transition-all shadow-sm"
-            >
-              <Code2 className="h-4 w-4 text-primary" />
-              Motion Studio
-            </Button>
-            <Button
               onClick={() => handleOpenCreate("short_video")}
               className="workspace-create-button"
             >
@@ -320,24 +307,14 @@ export default function DashboardPage() {
                   <h3 id="featured-project-title">{featuredProject.name}</h3>
                   <p>
                     {featuredProject.description ||
-                      (featuredProject.project_type === "motion_graphic"
-                        ? "Lanjutkan menyusun koreografi vektor React/Remotion di Motion Studio."
-                        : featuredProject.project_type === "long_storyboard"
-                          ? "Lanjutkan menyusun storyboard dan ilustrasi project ini."
-                          : "Lanjutkan memilih media dan menyusun klip video project ini.")}
+                      (featuredProject.project_type === "long_storyboard"
+                        ? "Lanjutkan menyusun storyboard dan ilustrasi project ini."
+                        : "Lanjutkan memilih media dan menyusun klip video project ini.")}
                   </p>
                 </div>
                 <div className="workspace-featured-footer">
                   <div className="workspace-project-facts">
-                    {featuredProject.project_type === "motion_graphic" ? (
-                      <span>
-                        <Code2 aria-hidden="true" />{" "}
-                        {featuredProject.motion_scene_count ??
-                          featuredProject.motion_scenes?.length ??
-                          0}{" "}
-                        adegan TSX
-                      </span>
-                    ) : featuredProject.project_type === "long_storyboard" ? (
+                    {featuredProject.project_type === "long_storyboard" ? (
                       <span>
                         <ImageIcon aria-hidden="true" /> {featuredProject.storyboard_count || 0}{" "}
                         ilustrasi
@@ -383,11 +360,9 @@ export default function DashboardPage() {
                     <Button asChild className="workspace-open-project">
                       <Link
                         href={
-                          featuredProject.project_type === "motion_graphic"
-                            ? `/project/motion/${featuredProject.id}`
-                            : featuredProject.project_type === "long_storyboard"
-                              ? `/project/storyboard/${featuredProject.id}`
-                              : `/project/short/${featuredProject.id}`
+                          featuredProject.project_type === "long_storyboard"
+                            ? `/project/storyboard/${featuredProject.id}`
+                            : `/project/short/${featuredProject.id}`
                         }
                       >
                         Buka project <ArrowRight aria-hidden="true" />
@@ -399,11 +374,9 @@ export default function DashboardPage() {
               <div className="workspace-featured-art" aria-hidden="true">
                 <span className="workspace-art-orb" />
                 <span className="workspace-art-frame">
-                  {featuredProject.project_type === "motion_graphic"
-                    ? "MOTION STUDIO"
-                    : featuredProject.project_type === "long_storyboard"
-                      ? "STORYBOARD"
-                      : "VIDEO PROJECT"}
+                  {featuredProject.project_type === "long_storyboard"
+                    ? "STORYBOARD"
+                    : "VIDEO PROJECT"}
                   <small>
                     {featuredProject.aspect_ratio} · {featuredProject.resolution}
                   </small>
@@ -432,7 +405,6 @@ export default function DashboardPage() {
             totalCount={projects.length}
             shortCount={shortCount}
             storyboardCount={storyboardCount}
-            motionCount={motionCount}
             filteredCount={filteredProjects.length}
             onResetFilters={handleResetFilters}
           />
@@ -467,13 +439,6 @@ export default function DashboardPage() {
                     className="workspace-secondary-button"
                   >
                     <Plus className="h-4 w-4" /> Buat storyboard
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenCreate("motion_graphic")}
-                    variant="outline"
-                    className="workspace-secondary-button"
-                  >
-                    <Code2 className="h-4 w-4" /> Buat motion graphic
                   </Button>
                 </div>
               </div>

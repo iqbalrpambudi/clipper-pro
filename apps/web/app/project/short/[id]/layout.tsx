@@ -63,13 +63,11 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
     }
   }, [project, syncShortsConfigFromProject]);
 
-  // If this project is actually a long storyboard or motion graphic, redirect to its studio
+  // If this project is actually a long storyboard, redirect to its studio
   useEffect(() => {
     if (!project) return;
     if (project.project_type === "long_storyboard") {
       router.replace(`/project/storyboard/${id}`);
-    } else if (project.project_type === "motion_graphic") {
-      router.replace(`/project/motion/${id}`);
     }
   }, [project, id, router]);
 

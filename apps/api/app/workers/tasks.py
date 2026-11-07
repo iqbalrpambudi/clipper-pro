@@ -11,7 +11,6 @@ All jobs are re-exported here for backward compatibility with ARQ worker setting
 and existing API route endpoints.
 """
 
-from app.workers.motion import generate_motion_scenes_job
 from app.workers.render import cleanup_stuck_render_jobs, render_video_job
 from app.workers.scenes import detect_scenes_job, transcribe_scenes_job
 from app.workers.storyboard import generate_storyboard_images_job
@@ -22,7 +21,6 @@ __all__ = [
     "cleanup_stuck_render_jobs",
     "detect_scenes_job",
     "download_youtube_job",
-    "generate_motion_scenes_job",
     "generate_storyboard_images_job",
     "generate_tts_and_align_job",
     "render_video_job",

@@ -13,7 +13,7 @@ interface PageProps {
 export default async function ProjectRedirectPage({ params }: PageProps) {
   const { id } = await params;
 
-  let targetMode: "short" | "storyboard" | "motion" = "short";
+  let targetMode: "short" | "storyboard" = "short";
 
   try {
     const res = await fetch(`${API_URL}/api/v1/projects/${id}`, {
@@ -22,9 +22,7 @@ export default async function ProjectRedirectPage({ params }: PageProps) {
 
     if (res.ok) {
       const project = await res.json();
-      if (project.project_type === "motion_graphic") {
-        targetMode = "motion";
-      } else if (project.project_type === "long_storyboard") {
+      if (project.project_type === "long_storyboard") {
         targetMode = "storyboard";
       } else {
         targetMode = "short";

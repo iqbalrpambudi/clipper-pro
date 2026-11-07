@@ -9,7 +9,6 @@ from sqlalchemy import select
 from app.core.db import SessionLocal
 from app.core.events import publish_project_event
 from app.core.storage import storage
-from app.models.motion import MotionScene
 from app.models.narration import AudioTrack, Narration
 from app.models.project import Project, RenderJob, SourceVideo
 from app.models.storyboard import StoryboardItem
@@ -20,7 +19,6 @@ from app.services.cancellation import (
     is_cancelled,
     kill_all_matching_processes,
 )
-from app.services.motion_renderer import render_motion_graphic_video
 from app.services.renderer import render_timeline_video
 from app.services.storyboard_renderer import render_storyboard_video
 from app.services.subtitle_ass import generate_ass_subtitles
@@ -109,12 +107,12 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             "enabled": (
                 style.enabled
                 if (style and getattr(style, "enabled", None) is not None)
-                else (project.project_type != "motion_graphic")
+                else True
             ),
         }
 
         subtitles_enabled = style_dict.get("enabled", True)
-        if project.project_type not in ("long_storyboard", "motion_graphic"):
+        if project.project_type != "long_storyboard":
             t_check = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
             tl = t_check.scalar_one_or_none()
             if tl and tl.has_subtitles is False:
@@ -193,37 +191,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     )
 
         async def _do_render() -> str:
-            if project.project_type == "motion_graphic":
-                ms_res = await db.execute(
-                    select(MotionScene)
-                    .where(MotionScene.project_id == project.id)
-                    .order_by(MotionScene.order_index.asc())
-                )
-                m_scenes = list(ms_res.scalars().all())
-                if not m_scenes:
-                    raise RuntimeError(
-                        "Belum ada adegan Motion Graphic. Silakan buat naskah dan generate kode animasi terlebih dahulu."
-                    )
-
-                total_frames = sum(max(45, int(s.duration_frames or 120)) for s in m_scenes)
-                if await is_cancelled(project.id, job_id=render_job_id):
-                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
-
-                return await render_motion_graphic_video(
-                    project_id=project.id,
-                    total_frames=total_frames,
-                    audio_path=audio_path,
-                    ass_subtitle_path=ass_file_path,
-                    output_path=str(out_file),
-                    aspect_ratio=project.aspect_ratio or "16:9",
-                    resolution=project.resolution or "1080p",
-                    watermark=project.watermark,
-                    is_preview=(job.render_type == "preview"),
-                    progress_callback=_progress,
-                    heartbeat_callback=_heartbeat,
-                    job_id=render_job_id,
-                )
-            elif project.project_type == "long_storyboard":
+            if project.project_type == "long_storyboard":
                 # Fetch storyboard items
                 sb_res = await db.execute(
                     select(StoryboardItem)

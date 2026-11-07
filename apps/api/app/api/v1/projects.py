@@ -7,7 +7,6 @@ from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db
 from app.core.storage import storage
-from app.models.motion import MotionScene
 from app.models.project import Project, Scene, SourceVideo
 from app.models.storyboard import StoryboardItem
 from app.models.timeline import SubtitleStyle, Timeline
@@ -32,12 +31,10 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
             func.count(func.distinct(SourceVideo.id)).label("video_count"),
             func.count(func.distinct(Scene.id)).label("scene_count"),
             func.count(func.distinct(StoryboardItem.id)).label("storyboard_count"),
-            func.count(func.distinct(MotionScene.id)).label("motion_scene_count"),
         )
         .outerjoin(SourceVideo, Project.id == SourceVideo.project_id)
         .outerjoin(Scene, Project.id == Scene.project_id)
         .outerjoin(StoryboardItem, Project.id == StoryboardItem.project_id)
-        .outerjoin(MotionScene, Project.id == MotionScene.project_id)
         .group_by(Project.id)
         .order_by(Project.created_at.desc())
     )
@@ -45,12 +42,11 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     rows = res.all()
 
     output = []
-    for proj, v_count, s_count, sb_count, ms_count in rows:
+    for proj, v_count, s_count, sb_count in rows:
         resp = ProjectResponse.model_validate(proj)
         resp.source_video_count = v_count
         resp.scene_count = s_count
         resp.storyboard_count = sb_count
-        resp.motion_scene_count = ms_count
         output.append(resp)
     return output
 
@@ -59,9 +55,7 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_db)):
     # If long storyboard mode, default aspect ratio to 16:9 if user left it 9:16
     aspect = "16:9" if payload.project_type == "long_storyboard" and payload.aspect_ratio == "9:16" else payload.aspect_ratio
-    world_cfg = payload.world_setting or (
-        {"motion_theme": "claude_editorial"} if payload.project_type == "motion_graphic" else {}
-    )
+    world_cfg = payload.world_setting or {}
     proj = Project(
         name=payload.name,
         description=payload.description,
@@ -76,7 +70,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
     db.add(proj)
     await db.flush()
 
-    # Create default subtitle style (disabled by default for motion_graphic since typography is kinetic)
+    # Create default subtitle style
     sub_style = SubtitleStyle(
         project_id=proj.id,
         preset_name="viral_tiktok",
@@ -93,7 +87,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         highlight_animation="color",
         scale_factor=1.0,
         emoji_enabled=True,
-        enabled=(payload.project_type != "motion_graphic"),
+        enabled=True,
     )
     db.add(sub_style)
 
@@ -120,7 +114,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             selectinload(Project.subtitle_style),
             selectinload(Project.render_jobs),
             selectinload(Project.storyboard_items),
-            selectinload(Project.motion_scenes),
         )
     )
     res = await db.execute(stmt)
@@ -146,7 +139,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         source_video_count=len(proj.source_videos),
         scene_count=len(proj.scenes),
         storyboard_count=len(proj.storyboard_items),
-        motion_scene_count=len(proj.motion_scenes),
         youtube_metadata=proj.youtube_metadata or {},
         characters=proj.characters or [],
         locations=proj.locations or [],
@@ -330,33 +322,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "created_at": it.created_at,
         }
         for it in sorted(proj.storyboard_items, key=lambda x: x.order_index)
-    ]
-
-    resp.motion_scenes = [
-        {
-            "id": ms.id,
-            "project_id": ms.project_id,
-            "narration_id": ms.narration_id,
-            "segment_id": ms.segment_id,
-            "order_index": ms.order_index,
-            "title": ms.title,
-            "archetype": ms.archetype,
-            "script_text": ms.script_text,
-            "visual_concept": ms.visual_concept,
-            "component_code": ms.component_code,
-            "cues": ms.cues or [],
-            "key_facts": ms.key_facts or [],
-            "transition_type": ms.transition_type,
-            "start_time": ms.start_time,
-            "end_time": ms.end_time,
-            "duration": ms.duration,
-            "duration_frames": ms.duration_frames,
-            "status": ms.status,
-            "error_message": ms.error_message,
-            "created_at": ms.created_at,
-            "updated_at": ms.updated_at,
-        }
-        for ms in sorted(proj.motion_scenes, key=lambda x: x.order_index)
     ]
 
     return resp

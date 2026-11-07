@@ -33,7 +33,6 @@ import {
   VideoSearchResponse,
   VideoImportRequest,
   VideoImportResponse,
-  MotionScene,
   ProjectType,
 } from "@/types";
 
@@ -828,78 +827,4 @@ export const api = {
   getYouTubeMetadata: (projectId: string) =>
     request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`),
 
-  // Generative Motion Graphic Studio (True Claude Motion)
-  getMotionThemes: (projectId: string) =>
-    request<Array<{ id: string; name: string; vibe: string }>>(
-      `/api/v1/projects/${projectId}/motion/themes`
-    ),
-  getMotionScenes: (projectId: string) =>
-    request<MotionScene[]>(`/api/v1/projects/${projectId}/motion/scenes`),
-  generateMotionScript: (
-    projectId: string,
-    data: {
-      topic: string;
-      target_duration_secs: number;
-      tone: string;
-      language?: string;
-      theme_id?: string;
-      custom_instructions?: string;
-    }
-  ) =>
-    request<{
-      narration_id: string;
-      raw_text: string;
-      scene_count: number;
-      motion_scenes: MotionScene[];
-    }>(`/api/v1/projects/${projectId}/motion/generate-script`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  createMotionScene: (
-    projectId: string,
-    data: {
-      title?: string;
-      archetype?: string;
-      script_text: string;
-      visual_concept?: string;
-      duration?: number;
-    }
-  ) =>
-    request<MotionScene>(`/api/v1/projects/${projectId}/motion/scenes`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  updateMotionScene: (projectId: string, sceneId: string, data: Partial<MotionScene>) =>
-    request<MotionScene>(`/api/v1/projects/${projectId}/motion/scenes/${sceneId}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  deleteMotionScene: (projectId: string, sceneId: string) =>
-    request<void>(`/api/v1/projects/${projectId}/motion/scenes/${sceneId}`, {
-      method: "DELETE",
-    }),
-  syncMotionTiming: (projectId: string) =>
-    request<MotionScene[]>(`/api/v1/projects/${projectId}/motion/sync-timing`, {
-      method: "POST",
-    }),
-  generateMotionCodeBatch: (
-    projectId: string,
-    data?: { only_pending?: boolean; theme_id?: string; style_instructions?: string }
-  ) =>
-    request<{ status: string; message: string }>(
-      `/api/v1/projects/${projectId}/motion/generate-code`,
-      {
-        method: "POST",
-        body: JSON.stringify(data || {}),
-      }
-    ),
-  regenerateMotionScene: (
-    projectId: string,
-    sceneId: string,
-    data?: { remix_prompt?: string; theme_id?: string }
-  ) =>
-    request<MotionScene>(`/api/v1/projects/${projectId}/motion/scenes/${sceneId}/regenerate`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    }),
 };

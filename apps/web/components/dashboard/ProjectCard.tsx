@@ -6,7 +6,6 @@ import {
   Film,
   Video,
   Image as ImageIcon,
-  Code2,
   Edit3,
   Trash2,
   ArrowRight,
@@ -23,12 +22,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   const isStoryboard = project.project_type === "long_storyboard";
-  const isMotion = project.project_type === "motion_graphic";
-  const projectUrl = isMotion
-    ? `/project/motion/${project.id}`
-    : isStoryboard
-      ? `/project/storyboard/${project.id}`
-      : `/project/short/${project.id}`;
+  const projectUrl = isStoryboard ? `/project/storyboard/${project.id}` : `/project/short/${project.id}`;
 
   const formattedDate = React.useMemo(() => {
     if (!project.created_at) return null;
@@ -48,16 +42,12 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
     <Card className="workspace-project-card group relative flex flex-col justify-between">
       <div
         className={`workspace-project-art ${
-          isMotion
-            ? "workspace-project-art-motion"
-            : isStoryboard
-              ? "workspace-project-art-storyboard"
-              : ""
+          isStoryboard ? "workspace-project-art-storyboard" : ""
         }`}
         aria-hidden="true"
       >
         <span>
-          {isMotion ? "MOTION STUDIO" : isStoryboard ? "STORYBOARD" : "VIDEO PROJECT"}
+          {isStoryboard ? "STORYBOARD" : "VIDEO PROJECT"}
         </span>
       </div>
       <CardHeader className="workspace-project-card-header">
@@ -65,20 +55,14 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <span
               className={`workspace-project-type ${
-                isMotion ? "is-motion" : isStoryboard ? "is-storyboard" : ""
+                isStoryboard ? "is-storyboard" : ""
               }`}
             >
-              {isMotion ? (
-                <Code2 aria-hidden="true" />
-              ) : isStoryboard ? (
-                <ImageIcon aria-hidden="true" />
-              ) : (
-                <Video aria-hidden="true" />
-              )}
-              {isMotion ? "Motion Studio" : isStoryboard ? "Storyboard" : "Clip pendek"}
+              {isStoryboard ? <ImageIcon aria-hidden="true" /> : <Video aria-hidden="true" />}
+              {isStoryboard ? "Storyboard" : "Clip pendek"}
             </span>
             <span className="workspace-project-format">
-              {project.aspect_ratio || (isStoryboard || isMotion ? "16:9" : "9:16")} ·{" "}
+              {project.aspect_ratio || (isStoryboard ? "16:9" : "9:16")} ·{" "}
               {project.resolution}
             </span>
 
@@ -143,12 +127,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
 
       <CardFooter className="workspace-project-footer">
         <div className="flex items-center gap-3">
-          {isMotion ? (
-            <span className="workspace-project-stat">
-              <Code2 aria-hidden="true" />
-              {project.motion_scene_count ?? project.motion_scenes?.length ?? 0} adegan TSX
-            </span>
-          ) : isStoryboard ? (
+          {isStoryboard ? (
             <span className="workspace-project-stat">
               <ImageIcon aria-hidden="true" />
               {project.storyboard_count || 0} ilustrasi
