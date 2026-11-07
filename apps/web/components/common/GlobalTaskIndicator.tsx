@@ -133,6 +133,18 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
           icon: Sparkles,
           badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
         };
+      case "storyboard_generate":
+        return {
+          label: "Multi-Agent Storyboard",
+          icon: Sparkles,
+          badgeColor: "text-[#A9472C] border-[#E9C9BD] bg-[#F8EEEA]",
+        };
+      case "storyboard_images":
+        return {
+          label: "Generate Gambar AI",
+          icon: Film,
+          badgeColor: "text-[#8A6A2F] border-[#E8D9BC] bg-[#F7EFE0]",
+        };
       default:
         return {
           label: "Worker Task",

@@ -228,26 +228,132 @@ def ensure_16_9_image(img_bytes: bytes, output_format: str = "WEBP") -> bytes:
     return strip_bars_and_ensure_16_9(img_bytes, output_format=output_format)
 
 
+def _neutralize_static_style_phrases(style_text: str) -> str:
+    """Neutralize phrases in preset master prompts that encourage blank/empty static backgrounds during diffusion
+    or inject conversational LLM meta-instructions that dilute diffusion token weights.
+
+    This preserves the art medium (e.g. watercolor, ink line, anime, doodle stickman) and palette,
+    while removing instructions like 'ample negative space', 'no clutter', or 'preserve character traits'.
+    """
+    if not style_text:
+        return ""
+    neutralized = style_text
+    patterns = [
+        # Conversational meta-instructions from preset builders
+        r"\bA\s+storyboard\s+illustration\s+combining\s+a\s+cohesive\s+visual\s+style\s+with\s+a\s+recognizable\s+character\s+based\s+on\b\s*",
+        r"\bEducational\s+explainer\s+storyboard\s+illustration\s+(?:rendered\s+in|in\s+a\s+distinctive|in)\b\s*",
+        r"\bA\s+storyboard\s+illustration\s+(?:rendered\s+in|in)\b\s*",
+        r"\bPreserve\s+the\s+defined\s+character\s+traits,?\s*proportions,?\s*face,?\s*clothing,?\s*palette,?\s*and\s+signature\s+details\s+within\s+the\s+described\s+artistic\s+medium\.?\b\s*",
+        r"\bKeep\s+the\s+character's\s+face,?\s*proportions,?\s*clothing,?\s*palette,?\s*and\s+distinctive\s+identity\s+details\s+coherent\s+and\s+clearly\s+visible\.?\b\s*",
+        r"\bUse\s+a\s+clear\s+storytelling\s+composition\s+with\s+balanced\s+negative\s+space\.?\b\s*",
+        r"\bUse\s+a\s+simple\s+uncluttered\s+setting\s+that\s+emphasizes\s+the\s+character\.?\b\s*",
+        r"\bApply\s+this\s+visual\s+treatment\s+only[^\.]*\.\s*",
+        r"\bNo\s+text\s+artifacts,?\s*no\s+blurry\s+details\.?\b\s*",
+        r"\bNo\s+additional\s+characters,?\s*no\s+cropped\s+body[^\.]*\.\s*",
+        # Aspect ratio / full-bleed / framing boilerplate in preset styles
+        r"\b(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?16:9[^\.]*\.\s*|widescreen\s+16:9[^\.]*\.\s*|16:9\s+landscape\s+aspect\s+ratio[^\.]*\.\s*|16:9\s+widescreen[^\.]*\.\s*)\b",
+        r",?\s*\bfull[\s-]bleed\s+(?:edge-to-edge\s+)?(?:16:9\s+)?(?:widescreen\s+)?(?:composition\s+)?(?:without\s+any\s+black\s+bars[^\,\.]*)?\b",
+        r",?\s*\bwithout\s+(?:any\s+)?(?:black\s+bars|letterbox|white\s+borders?|frames?)\b",
+        # Anti-detail / freeze phrases
+        r",?\s*\bample\s+negative\s+space\b",
+        r",?\s*\bnegative\s+space\b",
+        r",?\s*\bno\s+clutter\b",
+        r",?\s*\bdiagrammatic\s+storytelling(?:\s+elements)?\b",
+        r",?\s*\bclean\s+visual\s+metaphors\b",
+        r",?\s*\bminimalist\s+composition\b",
+    ]
+    for p in patterns:
+        neutralized = re.sub(p, "", neutralized, flags=re.IGNORECASE)
+    neutralized = re.sub(r"\s+", " ", neutralized).strip(" ,.")
+    return neutralized
+
+
 def build_full_image_prompt(user_prompt: str, style_prompt: Optional[str] = None) -> str:
-    """Combine user/scene prompt with the consistent master style prompt without duplicating already-resolved [preset:style] text."""
+    """Combine user/scene prompt with the consistent master style prompt without duplicating aspect ratio directives or already-resolved style text.
+
+    Ensures the artistic style is front-loaded in token order so the diffusion model adheres strictly to the chosen art medium.
+    """
     clean_user = (user_prompt or "").strip()
     clean_style = (style_prompt or "").strip()
-    aspect_directive = (
-        "Full bleed edge-to-edge widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 ratio, "
-        "completely filling the entire 16:9 frame without letterbox, without black bars, without white border, "
-        "without framing, margins, or padding, NOT square, NOT vertical)."
+
+    # Regex to detect aspect ratio boilerplates (both long verbose ones and compact ones)
+    aspect_pattern = re.compile(
+        r"(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|widescreen\s+16:9\s+landscape\s+aspect\s+ratio[^\.]*\.\s*|16:9\s+landscape\s+aspect\s+ratio[^\.]*\.\s*|16:9\s+widescreen[^\.]*\.\s*|16:9\s+widescreen\s+composition[^\.]*\.\s*|full[\s-]bleed\s+16:9\s*|full[\s-]bleed\s*)",
+        re.IGNORECASE,
     )
 
-    if clean_style and clean_user:
-        norm_style = re.sub(r"\s+", " ", clean_style).strip().lower()
-        norm_user = re.sub(r"\s+", " ", clean_user).strip().lower()
-        style_probe = norm_style[:60]
-        if style_probe and style_probe in norm_user:
-            return f"{aspect_directive} Visual scene: {clean_user}"
-        return f"{aspect_directive} {clean_style}. Visual scene: {clean_user}"
-    elif clean_style:
-        return f"{aspect_directive} {clean_style}"
-    return f"{aspect_directive} Visual scene: {clean_user}"
+    clean_style_core = _neutralize_static_style_phrases(aspect_pattern.sub("", clean_style).strip())
+
+    # Strip inner duplicated aspect boilerplate from user prompt
+    clean_user = aspect_pattern.sub("", clean_user).strip()
+    clean_user = re.sub(r"[,;\s]*,[,;\s]*", ", ", clean_user).strip(" ,")
+
+    # If unresolved [preset:style] or [style] is present in clean_user, substitute it
+    if clean_style_core and re.search(r"\[(?:preset:)?style\]", clean_user, re.IGNORECASE):
+        clean_user = re.sub(r"\[(?:preset:)?style\]", clean_style_core, clean_user, flags=re.IGNORECASE)
+
+    # Format scene text cleanly without robotic "Visual scene:" prefix
+    def _format_scene(scene_text: str) -> str:
+        s = scene_text.strip()
+        if not s:
+            return ""
+        if s.lower().startswith("visual scene:"):
+            s = s[len("visual scene:"):].strip()
+        # Strip any leading Full-bleed 16:9 or 16:9 boilerplate
+        s = re.sub(
+            r"^(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|16:9\s+(?:widescreen\s+)?|full[\s-]bleed\s+16:9\s*|full[\s-]bleed\s*)",
+            "",
+            s,
+            flags=re.IGNORECASE,
+        ).strip(" ,.")
+        # If scene prompt embeds "in [preset:style]" or "in [style]", strip it cleanly
+        s = re.sub(r"\b(shot|composition|framing|scene)\s+in\s+\[(?:preset:)?style\]", r"\1", s, flags=re.IGNORECASE)
+        s = re.sub(r"\[(?:preset:)?style\][,\s.]*", "", s, flags=re.IGNORECASE).strip(" ,.")
+        # Normalize shot type enum underscores into clean English
+        for st, repl in [
+            ("close_up", "close-up"),
+            ("medium_closeup", "medium close-up"),
+            ("medium_close_up", "medium close-up"),
+            ("establishing_wide", "establishing wide"),
+            ("over_the_shoulder", "over-the-shoulder"),
+            ("extreme_closeup", "extreme close-up"),
+            ("extreme_close_up", "extreme close-up"),
+        ]:
+            s = re.sub(rf"\b{st}\b", repl, s, flags=re.IGNORECASE)
+        if s:
+            s = s[0].upper() + s[1:]
+        return s
+
+    scene_formatted = _format_scene(clean_user)
+
+    # Reinforce stickman/doodle when present so diffusion doesn't draw realistic humans
+    is_stickman = bool(re.search(r"\b(stickman|stick\s+figure|doodle)\b", f"{clean_style_core} {scene_formatted}", re.IGNORECASE))
+    if is_stickman:
+        # Prevent realistic human renderings on anonymous silhouettes / cook
+        scene_formatted = re.sub(r"\bcook\s+silhouette\b", "minimalist stickman cook silhouette", scene_formatted, flags=re.IGNORECASE)
+        scene_formatted = re.sub(r"\bsilhouette\s+of\s+(?:a\s+)?cook\b", "silhouette of a minimalist stickman cook", scene_formatted, flags=re.IGNORECASE)
+
+    # Front-load style: style MUST be at the very front of the prompt!
+    if clean_style_core and scene_formatted:
+        norm_style = re.sub(r"\s+", " ", clean_style_core).strip().lower()
+        norm_user = re.sub(r"\s+", " ", scene_formatted).strip().lower()
+        style_probe = norm_style[:50]
+        if style_probe and (style_probe in norm_user[:len(style_probe) + 25]):
+            final_p = scene_formatted
+        else:
+            final_p = f"{clean_style_core}. {scene_formatted}"
+    elif clean_style_core:
+        final_p = clean_style_core
+    elif scene_formatted:
+        final_p = scene_formatted
+    else:
+        final_p = "16:9 widescreen composition."
+
+    # Clean redundant punctuation and spacing
+    final_p = re.sub(r"\s+", " ", final_p)
+    final_p = re.sub(r"\s+([,.;])", r"\1", final_p)
+    final_p = re.sub(r"([,.;])\s*([,.;])", r"\1", final_p)
+    return final_p.strip()
 
 
 def _encode_reference_image_data_uri(reference_image_path: Optional[str]) -> Optional[str]:
@@ -524,7 +630,7 @@ async def generate_image_to_path(
         task_uuid = str(uuid.uuid4())
 
         # Determine width and height
-        # Default: 1024x1024. For 16:9 landscape projects: 1366x768.
+        # Default: 1024x1024. For 16:9 landscape projects: 1280x720 (Standard 720p HD, < 1MP tier for 50%+ cheaper Runware cost).
         task_width = 1024
         task_height = 1024
         if size:
@@ -534,16 +640,16 @@ async def generate_image_to_path(
                     w_str, h_str = norm_size.split("x")
                     w_val, h_val = int(w_str.strip()), int(h_str.strip())
                     if w_val > h_val and abs((w_val / h_val) - (16 / 9)) < 0.15:
-                        task_width = 1366
-                        task_height = 768
+                        task_width = 1280
+                        task_height = 720
                     else:
                         task_width = w_val
                         task_height = h_val
                 except Exception:
                     task_width, task_height = 1024, 1024
             elif norm_size in ("16:9", "landscape", "widescreen"):
-                task_width = 1366
-                task_height = 768
+                task_width = 1280
+                task_height = 720
 
         is_recraft = model_id.startswith("recraft:") or "recraft" in model_id.lower()
         is_google = model_id.startswith("google:")
@@ -564,7 +670,10 @@ async def generate_image_to_path(
             "width": task_width,
             "height": task_height,
             "numberResults": 1,
+            "outputType": "URL",
             "outputFormat": "WEBP",
+            "outputQuality": 95,
+            "acceleration": "high",
             "includeCost": True,
         }
         if active_negative and supports_negative:
@@ -574,6 +683,15 @@ async def generate_image_to_path(
             runware_task["CFGScale"] = resolved_cfg
         if seed is not None and int(seed) > 0:
             runware_task["seed"] = int(seed)
+
+        # Inject visual continuity reference image (seedImage) if provided
+        ref_data_uri = _encode_reference_image_data_uri(reference_image_path)
+        if ref_data_uri:
+            runware_task["seedImage"] = ref_data_uri
+            # Low strength: reference only nudges identity/palette, never locks composition or background
+            runware_task["strength"] = float(settings.STORYBOARD_REFERENCE_STRENGTH)
+            log.info("Attached visual reference image to Runware task (seedImage) for item=%s", out_file.stem)
+
         runware_payload = [runware_task]
         runware_headers = {
             "Authorization": f"Bearer {secret_key}",
@@ -605,9 +723,10 @@ async def generate_image_to_path(
                         err_json = resp.json()
                         errors = err_json.get("errors", [])
                         dim_err = any(e.get("code") in ("invalidWidth", "invalidHeight") for e in errors)
-                        if dim_err and runware_task.get("width") == 1366:
-                            log.warning("Runware rejected width=1366 (not a multiple of 64). Adjusting width to 1344...")
-                            runware_task["width"] = 1344
+                        if dim_err and runware_task.get("width") != 1280:
+                            log.warning("Runware rejected dimensions (%sx%s). Adjusting width to 1280x720...", runware_task.get("width"), runware_task.get("height"))
+                            runware_task["width"] = 1280
+                            runware_task["height"] = 720
                             runware_payload = [runware_task]
                             continue
 
@@ -616,6 +735,17 @@ async def generate_image_to_path(
                             for e in errors
                             if e.get("code") == "unsupportedParameter" and e.get("parameter")
                         ]
+                        seed_err = any(
+                            "seedimage" in str(e).lower() or "strength" in str(e).lower()
+                            for e in errors
+                        )
+                        if seed_err or ("seedImage" in unsupported_params or "strength" in unsupported_params):
+                            log.warning("Runware rejected seedImage/strength for model %s. Retrying without visual reference...", model_id)
+                            runware_task.pop("seedImage", None)
+                            runware_task.pop("strength", None)
+                            runware_payload = [runware_task]
+                            continue
+
                         if unsupported_params:
                             log.warning(
                                 "Runware rejected unsupported parameter(s) %s for model %s. Retrying without them...",
@@ -633,7 +763,17 @@ async def generate_image_to_path(
                 res_json = resp.json()
                 if "errors" in res_json and res_json["errors"]:
                     err_msg = res_json["errors"][0].get("message") or str(res_json["errors"][0])
-                    raise RuntimeError(f"Runware API error: {err_msg}")
+                    if ("seedImage" in err_msg or "strength" in err_msg) and "seedImage" in runware_task:
+                        log.warning("Runware reported error on seedImage (%s). Retrying without reference...", err_msg)
+                        runware_task.pop("seedImage", None)
+                        runware_task.pop("strength", None)
+                        runware_payload = [runware_task]
+                        retry_resp = await client.post(runware_url, headers=runware_headers, json=runware_payload)
+                        if retry_resp.status_code == 200:
+                            res_json = retry_resp.json()
+                    if "errors" in res_json and res_json["errors"]:
+                        err_msg = res_json["errors"][0].get("message") or str(res_json["errors"][0])
+                        raise RuntimeError(f"Runware API error: {err_msg}")
                 data_list = res_json.get("data", [])
                 if data_list and isinstance(data_list, list):
                     item_data = data_list[0]

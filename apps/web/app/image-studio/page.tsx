@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
-  Blend,
   Check,
   CheckCircle2,
   Image as ImageIcon,
@@ -16,7 +15,6 @@ import {
   Sparkles,
   Trash2,
   Upload,
-  UserRound,
   WandSparkles,
 } from "lucide-react";
 import { WorkspaceShell } from "@/components/layout";
@@ -38,37 +36,16 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import type { ImagePreset, StudioAnalysisResult } from "@/types";
 import { ImageZoomModal } from "./_components/ImageZoomModal";
-import { QUICK_INSPIRATION_TAGS, SAMPLE_SCENES } from "./_components/constants";
+import { SAMPLE_SCENES } from "./_components/constants";
 
-type PresetType = ImagePreset["preset_type"];
 type StudioStep = "design" | "sample" | "test";
 type TestImage = { url: string; prompt: string };
 
-const typeOptions: {
-  value: PresetType;
-  label: string;
-  description: string;
-  icon: typeof Palette;
-}[] = [
-  {
-    value: "style",
-    label: "Gaya ilustrasi",
-    description: "Medium, warna, garis, dan suasana visual",
-    icon: Palette,
-  },
-  {
-    value: "character",
-    label: "Karakter",
-    description: "Sosok dan ciri yang ingin dikenali",
-    icon: UserRound,
-  },
-  {
-    value: "combined",
-    label: "Gaya + karakter",
-    description: "Bangun dunia visual beserta tokohnya",
-    icon: Blend,
-  },
-];
+interface ReferenceImageItem {
+  url: string;
+  file_path: string;
+  filename?: string;
+}
 
 const stepOptions: { id: StudioStep; label: string }[] = [
   { id: "design", label: "Rancang" },
@@ -76,18 +53,8 @@ const stepOptions: { id: StudioStep; label: string }[] = [
   { id: "test", label: "Uji prompt" },
 ];
 
-const samplePromptFor = (type: PresetType) =>
-  type === "character"
-    ? "Satu karakter tampak seluruh tubuh, berdiri dengan pose percaya diri di latar sederhana"
-    : type === "combined"
-      ? "Seorang tokoh utama menjelajahi tempat yang memperlihatkan dunia visualnya"
-      : "Sebuah adegan sederhana yang memperlihatkan tekstur, garis, dan palet warna gaya ini";
-
-const analysisKeyFor = (type: PresetType, text: string, reference: string) =>
-  JSON.stringify([type, text.trim(), reference]);
-
-const typeLabel = (type: PresetType) =>
-  typeOptions.find((option) => option.value === type)?.label ?? "Gaya ilustrasi";
+const DEFAULT_SAMPLE_PROMPT =
+  "Sebuah adegan sederhana yang memperlihatkan tekstur, garis, dan palet warna gaya ini";
 
 function InlineError({ message }: { message?: string }) {
   if (!message) return null;
@@ -133,7 +100,11 @@ function PresetCard({
           </div>
         )}
         <div className="absolute left-3 top-3 flex gap-2">
-          <Badge variant="workspace">{typeLabel(preset.preset_type ?? "style")}</Badge>
+          {preset.category && preset.category !== "custom" && (
+            <Badge variant="workspace" className="capitalize">
+              {preset.category}
+            </Badge>
+          )}
           {preset.is_active && <Badge variant="workspace-success">Aktif di storyboard</Badge>}
         </div>
       </div>
@@ -207,11 +178,9 @@ export default function ImageStudioPage() {
   const [view, setView] = useState<"collection" | "studio">("collection");
   const [step, setStep] = useState<StudioStep>("design");
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
-  const [presetType, setPresetType] = useState<PresetType>("style");
   const [analyzedInputKey, setAnalyzedInputKey] = useState<string | null>(null);
   const [userText, setUserText] = useState("");
-  const [referenceImageUrl, setReferenceImageUrl] = useState("");
-  const [referenceImagePath, setReferenceImagePath] = useState("");
+  const [referenceImages, setReferenceImages] = useState<ReferenceImageItem[]>([]);
   const [presetName, setPresetName] = useState("");
   const [category, setCategory] = useState("custom");
   const [description, setDescription] = useState("");
@@ -220,7 +189,7 @@ export default function ImageStudioPage() {
   const [styleAttributes, setStyleAttributes] = useState<
     StudioAnalysisResult["style_attributes"] | null
   >(null);
-  const [representativePrompt, setRepresentativePrompt] = useState(samplePromptFor("style"));
+  const [representativePrompt, setRepresentativePrompt] = useState(DEFAULT_SAMPLE_PROMPT);
   const [representativeImageUrl, setRepresentativeImageUrl] = useState("");
   const [scenePrompt, setScenePrompt] = useState("");
   const [testImages, setTestImages] = useState<TestImage[]>([]);
@@ -237,20 +206,41 @@ export default function ImageStudioPage() {
   const currentStepIndex = stepOptions.findIndex((option) => option.id === step);
 
   const uploadMutation = useMutation({
-    mutationFn: api.uploadReferenceImage,
-    onSuccess: (image) => {
-      setReferenceImageUrl(image.url);
-      setReferenceImagePath(image.file_path);
+    mutationFn: async (files: File[]) => {
+      return api.uploadReferenceImages(files);
+    },
+    onSuccess: (uploaded) => {
+      setReferenceImages((prev) => [...prev, ...uploaded]);
       setRepresentativeImageUrl("");
+      showToast(`${uploaded.length} gambar referensi berhasil diunggah.`, "success");
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Gagal mengunggah gambar referensi.", "error");
     },
   });
+
+  const removeReferenceImage = (index: number) => {
+    setReferenceImages((prev) => prev.filter((_, i) => i !== index));
+    setRepresentativeImageUrl("");
+  };
+
+  const currentAnalysisKey = JSON.stringify([
+    userText.trim(),
+    referenceImages.map((img) => img.url).sort(),
+  ]);
+  const canAnalyze = Boolean(userText.trim().length > 0 || referenceImages.length > 0);
+  const hasCurrentAnalysis = Boolean(masterPrompt && analyzedInputKey === currentAnalysisKey);
+  const canSave = Boolean(presetName.trim() && masterPrompt.trim() && hasCurrentAnalysis);
+
   const analyzeMutation = useMutation({
     mutationFn: () =>
       api.analyzeStylePreset({
         user_text: userText.trim(),
-        preset_type: presetType,
-        reference_image_url: referenceImageUrl || undefined,
-        reference_image_path: referenceImagePath || undefined,
+        preset_type: "style",
+        reference_image_urls: referenceImages.map((img) => img.url),
+        reference_image_paths: referenceImages.map((img) => img.file_path).filter(Boolean),
+        reference_image_url: referenceImages[0]?.url,
+        reference_image_path: referenceImages[0]?.file_path,
       }),
     onSuccess: (result) => {
       setPresetName(result.name);
@@ -259,11 +249,12 @@ export default function ImageStudioPage() {
       setMasterPrompt(result.master_prompt);
       setNegativePrompt(result.negative_prompt);
       setStyleAttributes(result.style_attributes);
-      setAnalyzedInputKey(analysisKeyFor(presetType, userText, referenceImageUrl));
+      setAnalyzedInputKey(currentAnalysisKey);
       setStep("sample");
-      showToast("Rancangan preset siap ditinjau.", "success");
+      showToast("Rancangan preset berhasil disusun dari sumber art utama.", "success");
     },
   });
+
   const representativeMutation = useMutation({
     mutationFn: () =>
       api.testGeneratePresetImage({
@@ -278,6 +269,7 @@ export default function ImageStudioPage() {
       showToast("Gambar contoh berhasil dibuat.", "success");
     },
   });
+
   const testMutation = useMutation({
     mutationFn: () =>
       api.testGeneratePresetImage({
@@ -293,20 +285,24 @@ export default function ImageStudioPage() {
       showToast("Hasil uji prompt siap.", "success");
     },
   });
+
   const saveMutation = useMutation({
     mutationFn: () =>
       api.createImagePreset({
         id: editingPresetId ?? undefined,
         name: presetName.trim(),
         category,
-        preset_type: presetType,
+        preset_type: "style",
         description: description.trim(),
         master_prompt: masterPrompt.trim(),
         negative_prompt: negativePrompt.trim(),
-        reference_image_url: referenceImageUrl || null,
+        reference_image_url: referenceImages[0]?.url || null,
         preview_image_url: representativeImageUrl || null,
         user_text_input: userText.trim(),
-        style_attributes: styleAttributes ?? undefined,
+        style_attributes: {
+          ...(styleAttributes ?? {}),
+          reference_image_urls: referenceImages.map((img) => img.url),
+        },
         is_active: false,
       }),
     onSuccess: (saved) => {
@@ -321,6 +317,7 @@ export default function ImageStudioPage() {
       );
     },
   });
+
   const activateMutation = useMutation({
     mutationFn: api.activateImagePreset,
     onSuccess: (preset) => {
@@ -328,6 +325,7 @@ export default function ImageStudioPage() {
       showToast(`“${preset.name}” aktif untuk storyboard.`, "success");
     },
   });
+
   const deleteMutation = useMutation({
     mutationFn: api.deleteImagePreset,
     onSuccess: () => {
@@ -339,18 +337,16 @@ export default function ImageStudioPage() {
 
   const resetDraft = () => {
     setEditingPresetId(null);
-    setPresetType("style");
     setAnalyzedInputKey(null);
     setUserText("");
-    setReferenceImageUrl("");
-    setReferenceImagePath("");
+    setReferenceImages([]);
     setPresetName("");
     setCategory("custom");
     setDescription("");
     setMasterPrompt("");
     setNegativePrompt("");
     setStyleAttributes(null);
-    setRepresentativePrompt(samplePromptFor("style"));
+    setRepresentativePrompt(DEFAULT_SAMPLE_PROMPT);
     setRepresentativeImageUrl("");
     setScenePrompt("");
     setTestImages([]);
@@ -370,25 +366,23 @@ export default function ImageStudioPage() {
 
   const editPreset = (preset: ImagePreset) => {
     setEditingPresetId(preset.id);
-    setPresetType(preset.preset_type ?? "style");
     setUserText(preset.user_text_input ?? "");
-    setReferenceImageUrl(preset.reference_image_url ?? "");
-    setReferenceImagePath("");
+    const rawUrls = preset.style_attributes?.reference_image_urls;
+    const refUrls: string[] = Array.isArray(rawUrls)
+      ? (rawUrls as string[])
+      : preset.reference_image_url
+        ? [preset.reference_image_url]
+        : [];
+    setReferenceImages(refUrls.map((url) => ({ url, file_path: "" })));
     setPresetName(preset.name);
     setCategory(preset.category);
     setDescription(preset.description ?? "");
     setMasterPrompt(preset.master_prompt);
     setNegativePrompt(preset.negative_prompt ?? "");
     setStyleAttributes(preset.style_attributes ?? null);
-    setRepresentativePrompt(samplePromptFor(preset.preset_type ?? "style"));
+    setRepresentativePrompt(DEFAULT_SAMPLE_PROMPT);
     setRepresentativeImageUrl(preset.preview_image_url ?? "");
-    setAnalyzedInputKey(
-      analysisKeyFor(
-        preset.preset_type ?? "style",
-        preset.user_text_input ?? "",
-        preset.reference_image_url ?? ""
-      )
-    );
+    setAnalyzedInputKey(JSON.stringify([(preset.user_text_input ?? "").trim(), refUrls.sort()]));
     setScenePrompt("");
     setTestImages([]);
     setSelectedTestImage(null);
@@ -400,20 +394,7 @@ export default function ImageStudioPage() {
     setView("studio");
   };
 
-  const handleUpload = (file?: File) => {
-    if (file) uploadMutation.mutate(file);
-  };
-  const handleSelectType = (type: PresetType) => {
-    setPresetType(type);
-    setRepresentativeImageUrl("");
-    setRepresentativePrompt(samplePromptFor(type));
-  };
-
   const errorMessage = (error: Error | null) => error?.message;
-  const currentAnalysisKey = analysisKeyFor(presetType, userText, referenceImageUrl);
-  const canAnalyze = Boolean(userText.trim() || referenceImageUrl);
-  const hasCurrentAnalysis = Boolean(masterPrompt && analyzedInputKey === currentAnalysisKey);
-  const canSave = Boolean(presetName.trim() && masterPrompt.trim() && hasCurrentAnalysis);
 
   return (
     <WorkspaceShell activePage="image-studio">
@@ -427,7 +408,7 @@ export default function ImageStudioPage() {
               Art Studio
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[#77766D]">
-              Bangun bahasa visual dan karakter, lihat hasilnya, lalu uji dengan adegan cerita.
+              Definisikan gaya visual dari teks atau referensi gambar, terjemahkan menjadi Master Prompt, lalu uji dengan adegan cerita.
             </p>
           </div>
           {view === "collection" ? (
@@ -497,7 +478,7 @@ export default function ImageStudioPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-[#26251F]">Mulai dari satu ide visual</h3>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#77766D]">
-                  Jelaskan gaya atau karakter dengan kata-kata, tambahkan referensi gambar bila ada,
+                  Jelaskan gaya visual dengan kata-kata, tambahkan referensi gambar bila ada,
                   lalu lihat bagaimana AI menerjemahkannya.
                 </p>
                 <Button variant="workspace-primary" onClick={createPreset} className="mt-5">
@@ -567,117 +548,80 @@ export default function ImageStudioPage() {
                     Rancang preset
                   </p>
                   <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
-                    Apa yang ingin Anda bangun?
+                    Visual Art Direction
                   </h2>
                   <p className="mt-1 text-sm text-[#77766D]">
-                    Pilih fokus preset. Anda dapat mengganti detailnya setelah AI menyusun
-                    rancangan.
+                    Definisikan gaya visual dari ide tertulis, gambar referensi, atau kombinasi keduanya.
+                    AI akan menerjemahkan sumber art utama ini menjadi Master Prompt yang kohesif.
                   </p>
-                  <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    {typeOptions.map(({ value, label, description: detail, icon: Icon }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={presetType === value}
-                        onClick={() => handleSelectType(value)}
-                        className={`rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C45B3A] ${
-                          presetType === value
-                            ? "border-[#C45B3A] bg-[#F8EEEA]"
-                            : "border-[#E5E1D7] bg-[#FFFEFA] hover:border-[#CFC5B3]"
-                        }`}
-                      >
-                        <Icon className="mb-3 h-5 w-5 text-[#A9472C]" aria-hidden="true" />
-                        <span className="block text-sm font-semibold text-[#26251F]">{label}</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#77766D]">
-                          {detail}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
 
-                  <div className="mt-6 grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
+                  <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+                    {/* Left Column: Visual Description */}
                     <div>
                       <label
                         htmlFor="art-concept"
                         className="mb-2 block text-sm font-medium text-[#4B4941]"
                       >
-                        Ceritakan ide visual
+                        Ceritakan ide visual{" "}
+                        <span className="font-normal text-[#858176]">· opsional jika ada gambar</span>
                       </label>
                       <Textarea
                         id="art-concept"
-                        rows={6}
+                        rows={7}
                         value={userText}
                         onChange={(event) => {
                           setUserText(event.target.value);
                           setRepresentativeImageUrl("");
                         }}
-                        placeholder="Contoh: rubah penjelajah kecil dengan mantel biru, digambar seperti ilustrasi buku cerita dari potongan kertas…"
+                        placeholder="Contoh: ilustrasi doodle stickman berkepala bulat botak di atas kertas parchment kuno, tinta hitam ekspresif, dan sapuan cat air hangat sepia..."
                         className="resize-y bg-[#FFFEFA] text-sm"
                       />
                       <p className="mt-2 text-xs leading-5 text-[#858176]">
-                        {referenceImageUrl
-                          ? "Deskripsi dan gambar referensi akan dibaca bersama."
-                          : "Tulis deskripsi, unggah gambar referensi, atau gunakan keduanya."}
+                        {referenceImages.length > 0
+                          ? `${referenceImages.length} gambar referensi dan deskripsi akan dianalisis bersama.`
+                          : "Tulis deskripsi gaya, unggah gambar referensi di sebelah kanan, atau gunakan keduanya."}
                       </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {QUICK_INSPIRATION_TAGS.map((tag) => (
-                          <WorkspaceChip key={tag.label} onClick={() => setUserText(tag.text)}>
-                            {tag.label}
-                          </WorkspaceChip>
-                        ))}
-                      </div>
                     </div>
+
+                    {/* Right Column: Multiple Reference Images */}
                     <div>
-                      <span className="mb-2 block text-sm font-medium text-[#4B4941]">
-                        Gambar referensi{" "}
-                        <span className="font-normal text-[#858176]">· opsional</span>
-                      </span>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#4B4941]">
+                          Gambar referensi{" "}
+                          <span className="font-normal text-[#858176]">· opsional jika ada teks</span>
+                        </span>
+                        {referenceImages.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="workspace-quiet"
+                            size="workspace-sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadMutation.isPending}
+                            className="gap-1 text-xs"
+                          >
+                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            Tambah gambar
+                          </Button>
+                        )}
+                      </div>
+
                       <input
                         ref={fileInputRef}
                         type="file"
+                        multiple
                         accept="image/png,image/jpeg,image/webp"
                         className="sr-only"
                         aria-label="Pilih gambar referensi"
                         onChange={(event) => {
-                          handleUpload(event.target.files?.[0]);
+                          const files = event.target.files ? Array.from(event.target.files) : [];
+                          if (files.length > 0) {
+                            uploadMutation.mutate(files);
+                          }
                           event.currentTarget.value = "";
                         }}
                       />
-                      {referenceImageUrl ? (
-                        <div className="overflow-hidden rounded-xl border border-[#E5E1D7] bg-[#FFFEFA]">
-                          <div className="aspect-[16/10] bg-[#171717]">
-                            <img
-                              src={referenceImageUrl}
-                              alt="Gambar referensi preset"
-                              className="h-full w-full object-contain"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between gap-2 p-3">
-                            <span className="truncate text-xs text-[#77766D]">Referensi siap</span>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="workspace-quiet"
-                                size="workspace-sm"
-                                onClick={() => fileInputRef.current?.click()}
-                              >
-                                Ganti
-                              </Button>
-                              <Button
-                                variant="workspace-quiet"
-                                size="workspace-sm"
-                                className="text-rose-700"
-                                onClick={() => {
-                                  setReferenceImageUrl("");
-                                  setReferenceImagePath("");
-                                  setRepresentativeImageUrl("");
-                                }}
-                              >
-                                Hapus
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
+
+                      {referenceImages.length === 0 ? (
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
@@ -695,17 +639,91 @@ export default function ImageStudioPage() {
                           <span className="text-xs font-semibold text-[#4B4941]">
                             {uploadMutation.isPending
                               ? "Mengunggah gambar…"
-                              : "Pilih gambar referensi"}
+                              : "Unggah satu atau beberapa gambar referensi"}
                           </span>
-                          <span className="mt-1 text-xs text-[#858176]">PNG, JPG, atau WebP</span>
+                          <span className="mt-1 text-xs text-[#858176]">
+                            Pilih multiple file PNG, JPG, atau WebP
+                          </span>
                         </button>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 max-h-60 overflow-y-auto rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-2">
+                            {referenceImages.map((img, idx) => (
+                              <div
+                                key={`${img.url}-${idx}`}
+                                className="group relative aspect-square overflow-hidden rounded-lg border border-[#E5E1D7] bg-[#171717]"
+                              >
+                                <img
+                                  src={img.url}
+                                  alt={`Referensi ${idx + 1}`}
+                                  className="h-full w-full object-cover transition duration-150 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/45 opacity-0 transition group-hover:opacity-100">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setZoomImage({
+                                        url: img.url,
+                                        title: `Gambar Referensi ${idx + 1}`,
+                                      })
+                                    }
+                                    className="rounded-full bg-white/85 p-1.5 text-zinc-900 shadow hover:bg-white"
+                                    title="Perbesar"
+                                    aria-label={`Perbesar referensi ${idx + 1}`}
+                                  >
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeReferenceImage(idx)}
+                                    className="rounded-full bg-rose-600/90 p-1.5 text-white shadow hover:bg-rose-700"
+                                    title="Hapus gambar ini"
+                                    aria-label={`Hapus referensi ${idx + 1}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploadMutation.isPending}
+                              className="flex aspect-square flex-col items-center justify-center rounded-lg border border-dashed border-[#CFC5B3] bg-zinc-50 text-center transition hover:border-[#C45B3A] hover:bg-zinc-100"
+                            >
+                              {uploadMutation.isPending ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-[#A9472C]" />
+                              ) : (
+                                <Plus className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              <span className="mt-1 text-[11px] font-medium text-muted-foreground">
+                                Tambah
+                              </span>
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between px-1 text-xs text-[#77766D]">
+                            <span>{referenceImages.length} gambar referensi siap</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReferenceImages([]);
+                                setRepresentativeImageUrl("");
+                              }}
+                              className="text-rose-600 hover:underline"
+                            >
+                              Hapus semua
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
+
                   <InlineError message={errorMessage(uploadMutation.error)} />
-                  <div className="mt-5 flex flex-col justify-between gap-3 border-t border-[#E5E1D7] pt-5 sm:flex-row sm:items-center">
+
+                  <div className="mt-6 flex flex-col justify-between gap-3 border-t border-[#E5E1D7] pt-5 sm:flex-row sm:items-center">
                     <p className="max-w-lg text-xs leading-5 text-[#858176]">
-                      AI akan menyusun arahan yang bisa Anda sunting sebelum membuat gambar contoh.
+                      AI akan menyusun arahan visual Master Prompt yang dapat Anda sunting sebelum membuat gambar contoh.
                     </p>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {hasCurrentAnalysis && (
@@ -741,18 +759,18 @@ export default function ImageStudioPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
-                        Hasil rancangan · {typeLabel(presetType)}
+                        Hasil rancangan AI
                       </p>
                       <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
                         Rapikan arahan visual
                       </h2>
                       <p className="mt-1 text-sm text-[#77766D]">
-                        Prompt ini menjadi resep visual untuk setiap gambar yang Anda uji.
+                        Master prompt ini menjadi arahan gaya visual untuk setiap gambar storyboard yang dibuat.
                       </p>
                     </div>
                     <Button variant="workspace-quiet" onClick={() => setStep("design")}>
                       <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-                      Ubah konsep
+                      Ubah sumber art
                     </Button>
                   </div>
 
@@ -812,11 +830,11 @@ export default function ImageStudioPage() {
                         htmlFor="master-prompt"
                         className="mb-1.5 block text-xs font-medium text-[#5E5C54]"
                       >
-                        Arahan visual
+                        Master Prompt (Arahan Visual Utama)
                       </label>
                       <Textarea
                         id="master-prompt"
-                        rows={7}
+                        rows={6}
                         value={masterPrompt}
                         onChange={(event) => {
                           setMasterPrompt(event.target.value);
@@ -866,7 +884,7 @@ export default function ImageStudioPage() {
                 <section className="grid gap-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 sm:p-7 lg:grid-cols-[0.8fr_1.2fr]">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
-                      Gambar utama preset · 16:9
+                      Gambar contoh preset · 16:9
                     </p>
                     <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
                       Lihat seperti apa hasilnya
@@ -875,7 +893,7 @@ export default function ImageStudioPage() {
                       htmlFor="representative-prompt"
                       className="mb-1.5 mt-5 block text-xs font-medium text-[#5E5C54]"
                     >
-                      Arahan gambar contoh
+                      Arahan adegan contoh
                     </label>
                     <Textarea
                       id="representative-prompt"
@@ -888,9 +906,7 @@ export default function ImageStudioPage() {
                       className="text-sm"
                     />
                     <p className="mt-2 text-xs leading-5 text-[#858176]">
-                      {presetType === "character"
-                        ? "Tampilkan satu tokoh secara utuh agar ciri-cirinya mudah dinilai."
-                        : "Pilih adegan sederhana yang memperlihatkan bahasa visual preset."}
+                      Pilih adegan sederhana yang memperlihatkan bahasa visual preset.
                     </p>
                     <Button
                       className="mt-4 w-full"
@@ -911,8 +927,7 @@ export default function ImageStudioPage() {
                     </Button>
                     <InlineError message={errorMessage(representativeMutation.error)} />
                     <p className="mt-3 text-xs text-[#858176]">
-                      Gambar ini menjadi sampul preset setelah disimpan. Anda tetap bisa menyimpan
-                      tanpa gambar.
+                      Gambar ini menjadi sampul preset setelah disimpan. Anda tetap bisa menyimpan tanpa gambar.
                     </p>
                   </div>
                   <div className="workspace-image-canvas relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-[#333]">
@@ -986,21 +1001,14 @@ export default function ImageStudioPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8A7768]">
-                        Uji konsistensi · {presetName || typeLabel(presetType)}
+                        Uji konsistensi · {presetName || "Preset Baru"}
                       </p>
                       <h2 className="mt-2 font-serif text-2xl text-[#26251F]">
-                        Coba pada adegan yang berbeda
+                        Coba pada adegan cerita berbeda
                       </h2>
                       <p className="mt-1 text-sm leading-6 text-[#77766D]">
-                        Hasil uji hanya tersimpan selama sesi ini dan tidak mengganti gambar sampul
-                        preset.
+                        Hasil uji hanya tersimpan selama sesi ini dan tidak mengganti gambar sampul preset.
                       </p>
-                      {presetType !== "style" && (
-                        <p className="mt-2 text-xs text-[#8A7768]">
-                          Ciri karakter dijelaskan lewat prompt; identitas persis dapat bervariasi
-                          di tiap gambar.
-                        </p>
-                      )}
                     </div>
                     <Badge variant="workspace">16:9 · storyboard</Badge>
                   </div>
@@ -1026,7 +1034,7 @@ export default function ImageStudioPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#E5E1D7] pt-4">
                     <p className="text-xs text-[#858176]">
-                      Gunakan adegan yang berbeda untuk menilai penerapan gaya.
+                      Gunakan adegan yang berbeda untuk menilai penerapan gaya secara menyeluruh.
                     </p>
                     <Button
                       variant="workspace-primary"
@@ -1082,8 +1090,7 @@ export default function ImageStudioPage() {
                       </div>
                     ) : (
                       <p className="px-5 text-center text-sm text-white/55">
-                        Hasil uji akan muncul di sini. Anda bisa membuatnya nanti dan menyimpan
-                        preset sekarang.
+                        Hasil uji akan muncul di sini. Anda bisa membuatnya nanti dan menyimpan preset sekarang.
                       </p>
                     )}
                   </div>

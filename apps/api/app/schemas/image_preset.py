@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 PresetType = Literal["style", "character", "combined"]
 
@@ -49,10 +49,25 @@ class ImagePresetResponse(ImagePresetBase):
 
 
 class StudioAnalyzeRequest(BaseModel):
-    user_text: str
-    preset_type: PresetType = "style"
+    user_text: Optional[str] = ""
+    preset_type: Optional[PresetType] = "style"
     reference_image_url: Optional[str] = None
     reference_image_path: Optional[str] = None
+    reference_image_urls: Optional[List[str]] = Field(default_factory=list)
+    reference_image_paths: Optional[List[str]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_has_source(self):
+        has_text = bool(self.user_text and self.user_text.strip())
+        has_images = bool(
+            self.reference_image_path
+            or self.reference_image_url
+            or (self.reference_image_paths and len(self.reference_image_paths) > 0)
+            or (self.reference_image_urls and len(self.reference_image_urls) > 0)
+        )
+        if not has_text and not has_images:
+            raise ValueError("Wajib menyertakan ide visual (teks) atau minimal satu gambar referensi.")
+        return self
 
 
 class StudioAnalyzeResponse(BaseModel):

@@ -1,10 +1,13 @@
 "use client";
 
-import React from "react";
-import { Plus, Trash2, Sparkles, Anchor, Sun, Camera } from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Trash2, Sparkles, Anchor, Sun, Camera, Loader2, Image as ImageIcon } from "lucide-react";
 import { StoryboardLocation } from "@/types";
+import { api } from "@/lib/api";
+import { useStudioStore } from "@/lib/store";
 
 interface LocationsTabProps {
+  projectId?: string;
   locationsList: StoryboardLocation[];
   setLocationsList: React.Dispatch<React.SetStateAction<StoryboardLocation[]>>;
   editingBible: boolean;
@@ -13,12 +16,44 @@ interface LocationsTabProps {
 }
 
 export function LocationsTab({
+  projectId,
   locationsList,
   setLocationsList,
   editingBible,
   onAddLocation,
   onDeleteLocation,
 }: LocationsTabProps) {
+  const { showToast } = useStudioStore();
+  const [loadingLocIdx, setLoadingLocIdx] = useState<number | null>(null);
+
+  const handleGenerateMasterPlate = async (loc: StoryboardLocation, idx: number) => {
+    if (!projectId) {
+      showToast("Project ID tidak ditemukan", "error");
+      return;
+    }
+    const locId = loc.id || loc.name;
+    if (!locId) {
+      showToast("ID atau nama lokasi harus diisi", "error");
+      return;
+    }
+
+    try {
+      setLoadingLocIdx(idx);
+      showToast(`Sedang merender Master Latar untuk '${loc.name}'...`, "info");
+      const res = await api.generateLocationMasterImage(projectId, locId);
+      if (res.success && res.location) {
+        const updated = [...locationsList];
+        updated[idx] = { ...updated[idx], ...res.location };
+        setLocationsList(updated);
+        showToast(`Berhasil membuat Master Latar untuk '${loc.name}'!`, "success");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Gagal membuat latar: ${msg}`, "error");
+    } finally {
+      setLoadingLocIdx(null);
+    }
+  };
   if (!locationsList || locationsList.length === 0) {
     return (
       <div className="flex flex-col space-y-3 mt-3.5">
@@ -169,6 +204,23 @@ export function LocationsTab({
                     />
                   </div>
                 </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs uppercase font-semibold tracking-wider text-[#456A4E] flex items-center gap-1">
+                    <span>👥 Dinamika Latar / Kehidupan Sekitar (Ambient Life)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={loc.ambient_life || ""}
+                    placeholder="Contoh: busy market crowd in background, street vendors haggling, chickens pecking cobblestones"
+                    onChange={(e) => {
+                      const updated = [...locationsList];
+                      updated[lIdx] = { ...loc, ambient_life: e.target.value };
+                      setLocationsList(updated);
+                    }}
+                    className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
+                  />
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
@@ -209,6 +261,63 @@ export function LocationsTab({
                       <span className="uppercase font-bold shrink-0">Cahaya:</span>
                       <span className="truncate max-w-[260px]">{loc.lighting_direction}</span>
                     </div>
+                  )}
+                  {loc.ambient_life && (
+                    <div className="flex items-center gap-1.5 text-xs font-mono bg-[#EAF2EC] text-[#3D6647] px-2.5 py-1 rounded-lg border border-[#C6DCcb]">
+                      <span className="uppercase font-bold shrink-0">Ambient:</span>
+                      <span className="truncate max-w-[260px]">{loc.ambient_life}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Visual Reference Anchor Plate */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E5E1D7]">
+                  {loc.image_url ? (
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-md border border-[#CFDDE9] bg-black/5">
+                        <img
+                          src={loc.image_url}
+                          alt={loc.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-[#456A4E]">
+                          <Sparkles className="w-3 h-3 text-[#456A4E]" />
+                          <span>Master Referensi Aktif</span>
+                        </span>
+                        <p className="text-[10px] text-[#77766D]">
+                          Latar ini dijadikan referensi piksel visual untuk semua shot di lokasi ini.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#77766D]">
+                      <ImageIcon className="w-3.5 h-3.5 text-[#77766D]" />
+                      <span>Belum ada gambar latar master untuk lokasi ini.</span>
+                    </div>
+                  )}
+
+                  {projectId && (
+                    <button
+                      type="button"
+                      disabled={loadingLocIdx === lIdx}
+                      onClick={() => handleGenerateMasterPlate(loc, lIdx)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#CFDDE9] bg-[#FBFAF7] px-2.5 py-1 text-xs font-semibold text-[#41627F] transition hover:bg-[#EAF0F5] hover:border-[#41627F] disabled:opacity-50"
+                      title="Render gambar master latar bersih tanpa karakter sebagai referensi AI"
+                    >
+                      {loadingLocIdx === lIdx ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin text-[#41627F]" />
+                          <span>Merender Latar...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-3 h-3 text-[#41627F]" />
+                          <span>{loc.image_url ? "Regenerate Latar" : "📸 Buat Latar Master"}</span>
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>

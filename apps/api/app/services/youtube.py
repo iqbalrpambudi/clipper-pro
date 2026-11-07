@@ -567,7 +567,7 @@ async def generate_youtube_thumbnail(
     )
 
     item_id = f"yt_{uuid.uuid4().hex[:6]}"
-    target_size = "1366x768" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
+    target_size = "1280x720" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
     file_path, _ = await generate_single_image(
         prompt=resolved_prompt,
         project_id=project_id,

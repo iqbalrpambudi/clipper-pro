@@ -230,28 +230,87 @@ async def upload_reference_image(file: UploadFile = File(...)):
     }
 
 
+@router.post("/image-studio/upload-references")
+async def upload_reference_images(files: List[UploadFile] = File(...)):
+    """Upload multiple visual reference images for style analysis."""
+    if not files:
+        raise HTTPException(status_code=400, detail="Setidaknya satu file gambar wajib disertakan")
+
+    presets_dir = storage.get_presets_dir()
+    results = []
+
+    for file in files:
+        if not file.filename:
+            continue
+        ext = Path(file.filename).suffix.lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+            continue
+
+        unique_name = f"ref_{uuid.uuid4().hex[:12]}{ext}"
+        dest_path = presets_dir / unique_name
+
+        try:
+            with open(dest_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            rel_url = storage.to_relative_url(dest_path)
+            results.append({
+                "success": True,
+                "filename": unique_name,
+                "file_path": str(dest_path),
+                "url": rel_url or f"/storage/presets/{unique_name}",
+            })
+        except Exception as e:
+            log.warning("Failed to save reference image %s: %s", file.filename, e)
+
+    if not results:
+        raise HTTPException(
+            status_code=400,
+            detail="Tidak ada gambar valid yang berhasil diunggah. Gunakan format PNG, JPG, JPEG, atau WebP",
+        )
+
+    return results
+
+
 @router.post("/image-studio/analyze", response_model=StudioAnalyzeResponse)
 async def analyze_style_preset(
     payload: StudioAnalyzeRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    AI Visual Engine: Analyzes reference image & user text prompt to synthesize
+    AI Visual Engine: Analyzes reference images & user text prompt to synthesize
     a consistent Master Prompt and structured style attributes for Ilustrasi AI.
     """
-    resolved_path: Optional[str] = None
-    if payload.reference_image_path:
-        resolved_path = payload.reference_image_path
-    elif payload.reference_image_url:
+    resolved_paths: List[str] = []
+
+    # Handle explicit paths
+    if payload.reference_image_paths:
+        for p in payload.reference_image_paths:
+            if p and Path(p).exists() and str(p) not in resolved_paths:
+                resolved_paths.append(str(p))
+
+    if payload.reference_image_path and payload.reference_image_path not in resolved_paths:
+        if Path(payload.reference_image_path).exists():
+            resolved_paths.append(str(payload.reference_image_path))
+
+    # Resolve from URLs if needed
+    if payload.reference_image_urls:
+        for url in payload.reference_image_urls:
+            if url:
+                abs_p = storage.to_absolute_path(url)
+                if abs_p and abs_p.exists() and str(abs_p) not in resolved_paths:
+                    resolved_paths.append(str(abs_p))
+
+    if payload.reference_image_url:
         abs_p = storage.to_absolute_path(payload.reference_image_url)
-        if abs_p and abs_p.exists():
-            resolved_path = str(abs_p)
+        if abs_p and abs_p.exists() and str(abs_p) not in resolved_paths:
+            resolved_paths.append(str(abs_p))
 
     try:
         res = await analyze_visual_style(
-            user_text=payload.user_text,
-            preset_type=payload.preset_type,
-            reference_image_path=resolved_path,
+            user_text=payload.user_text or "",
+            preset_type=payload.preset_type or "style",
+            reference_image_paths=resolved_paths,
+            reference_image_path=resolved_paths[0] if resolved_paths else None,
             db=db,
         )
         return StudioAnalyzeResponse(**res)

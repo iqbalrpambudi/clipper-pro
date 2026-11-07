@@ -29,8 +29,9 @@ export function CharactersTab({
         <div className="space-y-2 rounded-xl border border-dashed border-[#D2CDBF] bg-[#F3F0E8] p-5 text-center">
           <p className="text-xs text-[#77766D]">Belum ada profil karakter terkunci.</p>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Karakter dan varian wujudnya akan dideteksi otomatis saat generate naskah, atau Anda
-            dapat menambahkannya manual sekarang.
+            Jika opsi &quot;Gunakan Character Bible&quot; dinonaktifkan (mode explainer/narasi bebas),
+            adegan langsung disutradarai dari narasi tiap segmen tanpa mengunci karakter tertentu. Anda
+            juga dapat menambahkan karakter secara manual kapan saja.
           </p>
           <button
             type="button"
@@ -159,6 +160,42 @@ export function CharactersTab({
                         }}
                         rows={2}
                         className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs leading-relaxed text-[#26251F] focus:border-[#C45B3A] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#8A6A2F]">
+                        🎭 Rentang Ekspresi (Expression Range)
+                      </label>
+                      <input
+                        type="text"
+                        value={char.expression_range || ""}
+                        placeholder="wide grin, furrowed brow when thinking, shocked gasp"
+                        onChange={(e) => {
+                          const updated = [...charactersList];
+                          updated[cIdx] = { ...char, expression_range: e.target.value };
+                          setCharactersList(updated);
+                        }}
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#8A6A2F] focus:border-[#C45B3A] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#456A4E]">
+                        ✋ Gestur Khas (Signature Gesture)
+                      </label>
+                      <input
+                        type="text"
+                        value={char.signature_gesture || ""}
+                        placeholder="crosses arms defensively, scratches back of neck"
+                        onChange={(e) => {
+                          const updated = [...charactersList];
+                          updated[cIdx] = { ...char, signature_gesture: e.target.value };
+                          setCharactersList(updated);
+                        }}
+                        className="w-full rounded-lg border border-[#E5E1D7] bg-[#FFFEFA] px-2.5 py-1.5 font-mono text-xs text-[#456A4E] focus:border-[#C45B3A] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -355,6 +392,23 @@ export function CharactersTab({
                     <p className="text-xs text-[#4D4A42] leading-relaxed font-mono bg-[#F3F0E8] p-2.5 rounded-lg border border-[#E5E1D7]">
                       {char.visual_anchor || "Belum ada ciri visual khusus."}
                     </p>
+                  )}
+
+                  {(char.expression_range || char.signature_gesture) && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {char.expression_range && (
+                        <div className="flex items-center gap-1.5 text-xs font-mono bg-[#FBF6EA] text-[#8A6A2F] px-2.5 py-1 rounded-lg border border-[#E8D9B5]">
+                          <span className="uppercase font-bold shrink-0">Ekspresi:</span>
+                          <span className="truncate max-w-[260px]">{char.expression_range}</span>
+                        </div>
+                      )}
+                      {char.signature_gesture && (
+                        <div className="flex items-center gap-1.5 text-xs font-mono bg-[#EAF2EC] text-[#3D6647] px-2.5 py-1 rounded-lg border border-[#C6DCCB]">
+                          <span className="uppercase font-bold shrink-0">Gestur:</span>
+                          <span className="truncate max-w-[260px]">{char.signature_gesture}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Display Variants if any */}

@@ -63,7 +63,11 @@ function formatErrorDetail(errJson: unknown, fallback: string): string {
   return fallback;
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export interface RequestOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   const headers = {
     ...(!(options.body instanceof FormData) && { "Content-Type": "application/json" }),
@@ -72,7 +76,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   // Abort hung requests so a dead backend surfaces as an error, not a spinner forever.
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   if (options.signal) {
     options.signal.addEventListener("abort", () => controller.abort(), { once: true });
   }
@@ -515,6 +520,7 @@ export const api = {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
+      use_character_bible?: boolean;
     }
   ) =>
     request<{
@@ -530,6 +536,22 @@ export const api = {
     }>(`/api/v1/projects/${projectId}/storyboard/generate-script`, {
       method: "POST",
       body: JSON.stringify(data),
+      timeoutMs: 360_000,
+    }),
+  redirectStoryboardVisuals: (
+    projectId: string,
+    data?: { preset_id?: string; custom_instructions?: string; use_character_bible?: boolean }
+  ) =>
+    request<{
+      success: boolean;
+      message: string;
+      project_id: string;
+      updated_count: number;
+      storyboard_items: StoryboardItem[];
+    }>(`/api/v1/projects/${projectId}/storyboard/redirect-visuals`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+      timeoutMs: 360_000,
     }),
   updateStoryboardCharacters: (projectId: string, characters: StoryboardCharacter[]) =>
     request<{ success: boolean; characters: StoryboardCharacter[] }>(
@@ -572,6 +594,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data || {}),
     }),
+  generateLocationMasterImage: (projectId: string, locationId: string) =>
+    request<{
+      success: boolean;
+      location: StoryboardLocation;
+      locations: StoryboardLocation[];
+    }>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/storyboard/locations/${encodeURIComponent(locationId)}/generate-image`,
+      {
+        method: "POST",
+      }
+    ),
   updateStoryboardSegment: (
     projectId: string,
     segmentId: string,
@@ -719,11 +752,33 @@ export const api = {
       url: string;
     }>;
   },
+  uploadReferenceImages: async (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const res = await fetch(`${BASE_URL}/api/v1/image-studio/upload-references`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Gagal mengunggah gambar referensi");
+    }
+    return res.json() as Promise<
+      Array<{
+        success: boolean;
+        filename: string;
+        file_path: string;
+        url: string;
+      }>
+    >;
+  },
   analyzeStylePreset: (data: {
-    user_text: string;
+    user_text?: string;
     preset_type?: ImagePreset["preset_type"];
     reference_image_url?: string;
     reference_image_path?: string;
+    reference_image_urls?: string[];
+    reference_image_paths?: string[];
   }) =>
     request<StudioAnalysisResult>("/api/v1/image-studio/analyze", {
       method: "POST",

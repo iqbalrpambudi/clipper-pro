@@ -7,6 +7,12 @@ from typing import Optional
 import httpx
 
 from app.core.config import get_settings
+from app.services.cancellation import (
+    TaskCancelledException,
+    is_cancelled,
+    register_process,
+    unregister_process,
+)
 from app.services.tts.audio_utils import _build_audio_filter, get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -21,13 +27,20 @@ async def generate_gemini_tts(
     pitch: str = "+0Hz",
     model: str = "gemini-2.5-flash-preview-tts",
     language: Optional[str] = None,
+    project_id: Optional[str] = None,
 ) -> float:
-    """Generate audio via Gemini API multimodal endpoint (:generateContent) with rate & pitch tuning."""
+    """Generate audio via Gemini API multimodal endpoint (:generateContent) with rate & pitch tuning.
+
+    Fails immediately on error or cancellation without fallback to other models or providers.
+    """
+    if project_id and await is_cancelled(project_id):
+        raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
     settings = get_settings()
     key = (api_key or "").strip() or (settings.GEMINI_API_KEY or "").strip() or (settings.AI_API_KEY or "").strip()
 
     if not key:
-        raise RuntimeError("Gemini API Key belum dikonfigurasi. Silakan simpan Gemini API Key pada menu Pengaturan.")
+        raise ValueError("Gemini API Key belum dikonfigurasi. Silakan simpan GEMINI_API_KEY pada menu Pengaturan.")
 
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
@@ -44,23 +57,10 @@ async def generate_gemini_tts(
     }
     actual_voice = voice_lookup.get(voice.lower().strip(), voice.strip())
 
-    # Supported multimodal audio TTS model candidates in priority order
-    models_to_try = [clean_model]
-    for m in [
-        "gemini-2.5-flash-preview-tts",
-        "gemini-3.8-flash-lite-tts",
-        "gemini-3.8-flash-tts",
-        "gemini-3.1-flash-tts-preview",
-    ]:
-        if m not in models_to_try:
-            models_to_try.append(m)
-
     clean_text = " ".join(line.strip() for line in text.splitlines() if line.strip())
+    if not clean_text:
+        raise ValueError("Teks untuk Gemini TTS tidak boleh kosong.")
 
-    # CRITICAL: Gemini TTS models read whatever text is in the parts directly.
-    # Never add meta-prompt instructions or systemInstruction.
-    # Do NOT pass temperature or maxOutputTokens: passing temperature causes Google API to hang or timeout,
-    # while omitting them allows the audio decoder to stop naturally with finishReason: STOP.
     payload = {
         "contents": [
             {
@@ -83,114 +83,118 @@ async def generate_gemini_tts(
         },
     }
 
-    last_error_detail = ""
-    for attempt_model in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{attempt_model}:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent?key={key}"
+
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(url, json=payload)
+    except httpx.TimeoutException as te:
+        log.error("Gemini TTS request timeout (25s): %s", te)
+        raise RuntimeError(
+            f"Koneksi ke Gemini TTS ({clean_model}) timeout (25 detik). Server Gemini tidak merespons tepat waktu."
+        ) from te
+    except httpx.RequestError as re:
+        log.error("Gemini TTS network request error: %s", re)
+        raise RuntimeError(f"Gagal menghubungi Gemini API: {re}") from re
+
+    if project_id and await is_cancelled(project_id):
+        raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
+    if resp.status_code != 200:
+        err_msg = ""
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                resp = await client.post(url, json=payload)
-                # If model rejects systemInstruction with HTTP 400, retry without it
-                if resp.status_code == 400 and "systemInstruction" in payload:
-                    fallback_payload = dict(payload)
-                    fallback_payload.pop("systemInstruction", None)
-                    resp = await client.post(url, json=fallback_payload)
+            raw_err = resp.json()
+            err_json = await raw_err if asyncio.iscoroutine(raw_err) else raw_err
+            err_msg = err_json.get("error", {}).get("message") or resp.text
+        except Exception:
+            err_msg = resp.text[:300]
 
-                if resp.status_code in (429, 500, 503, 504):
-                    err_json = {}
-                    try:
-                        err_json = resp.json()
-                    except Exception:
-                        pass
-                    last_error_detail = err_json.get("error", {}).get("message") or resp.text
-                    log.warning(
-                        "Gemini TTS model %s returned HTTP %s (%s), trying next candidate...",
-                        attempt_model,
-                        resp.status_code,
-                        last_error_detail[:100],
-                    )
-                    await asyncio.sleep(1.0)
-                    continue
+        log.error("Gemini TTS API error HTTP %s (%s): %s", resp.status_code, clean_model, err_msg)
 
-                if resp.status_code != 200:
-                    err_detail = resp.text
-                    try:
-                        err_json = resp.json()
-                        err_detail = err_json.get("error", {}).get("message") or resp.text
-                    except Exception:
-                        pass
-                    last_error_detail = f"HTTP {resp.status_code}: {err_detail}"
-                    log.error(
-                        "Gemini TTS API error HTTP %s (%s): %s",
-                        resp.status_code,
-                        attempt_model,
-                        err_detail[:300],
-                    )
-                    continue
+        if resp.status_code in (401, 403):
+            raise RuntimeError(
+                f"Akses Gemini API ditolak (HTTP {resp.status_code}: {err_msg}). Periksa kembali Gemini API Key Anda di menu Pengaturan."
+            )
+        elif resp.status_code == 400:
+            raise RuntimeError(
+                f"Permintaan Gemini TTS ditolak (HTTP 400: {err_msg}). Model '{clean_model}' atau suara '{actual_voice}' mungkin tidak didukung."
+            )
+        elif resp.status_code == 404:
+            raise RuntimeError(
+                f"Model Gemini TTS '{clean_model}' tidak ditemukan (HTTP 404). Silakan periksa nama model di pengaturan TTS."
+            )
+        elif resp.status_code == 429:
+            raise RuntimeError(
+                f"Batas kuota Gemini API terlampaui (HTTP 429: Rate limit/Quota exceeded). Silakan coba beberapa saat lagi."
+            )
+        else:
+            raise RuntimeError(
+                f"Gemini TTS gagal dengan HTTP {resp.status_code}: {err_msg or resp.text[:200]}"
+            )
 
-                data = resp.json()
-                candidates = data.get("candidates") or []
-                if not candidates:
-                    prompt_feedback = data.get("promptFeedback") or {}
-                    block_reason = prompt_feedback.get("blockReason") or "Tidak ada respons dari Gemini API"
-                    last_error_detail = block_reason
-                    continue
+    try:
+        raw_data = resp.json()
+        data = await raw_data if asyncio.iscoroutine(raw_data) else raw_data
+    except Exception as je:
+        raise RuntimeError(f"Respons Gemini TTS bukan JSON valid: {je}") from je
 
-                parts = candidates[0].get("content", {}).get("parts", [])
-                inline_data = None
-                for part in parts:
-                    if "inlineData" in part:
-                        inline_data = part["inlineData"]
-                        break
+    candidates = data.get("candidates") or []
+    if not candidates:
+        prompt_feedback = data.get("promptFeedback") or {}
+        block_reason = prompt_feedback.get("blockReason") or "Tidak ada kandidat respons dari Gemini API"
+        raise RuntimeError(f"Gemini TTS diblokir atau gagal menghasilkan audio: {block_reason}")
 
-                if not inline_data or "data" not in inline_data:
-                    finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
-                    last_error_detail = finish_reason
-                    continue
+    parts = candidates[0].get("content", {}).get("parts", [])
+    inline_data = None
+    for part in parts:
+        if "inlineData" in part:
+            inline_data = part["inlineData"]
+            break
 
-                raw_bytes = base64.b64decode(inline_data["data"])
-                mime_type = inline_data.get("mimeType", "")
-                audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
-                af_args = ["-af", audio_filter] if audio_filter else []
+    if not inline_data or "data" not in inline_data:
+        finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
+        raise RuntimeError(f"Gemini TTS tidak mengembalikan data audio (finishReason: {finish_reason})")
 
-                # Gemini 3.8 TTS returns WAV (RIFF); 2.5/3.1 returns PCM.
-                # Cleanly transcode to MP3 without destructive reverse silence trimming
-                # so that every word and natural ending pause is preserved at full fidelity.
-                is_wav = raw_bytes.startswith(b"RIFF") or "wav" in mime_type.lower()
-                if is_wav:
-                    cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
-                elif "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
-                    not raw_bytes.startswith(b"ID3")
-                    and not raw_bytes.startswith(b"\xff\xfb")
-                ):
-                    # Raw PCM (24kHz 16-bit mono): feed with explicit format flags
-                    cmd = [
-                        "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
-                        *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
-                    ]
-                else:
-                    cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+    try:
+        raw_bytes = base64.b64decode(inline_data["data"])
+    except Exception as de:
+        raise RuntimeError(f"Gagal decode base64 audio Gemini TTS: {de}") from de
 
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                _, stderr = await proc.communicate(input=raw_bytes)
-                if proc.returncode != 0:
-                    raise RuntimeError(f"FFmpeg transcode failed: {stderr.decode()[:300]}")
+    mime_type = inline_data.get("mimeType", "")
+    audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=24000)
+    af_args = ["-af", audio_filter] if audio_filter else []
 
-                dur = await get_audio_duration(str(out_p))
-                if dur <= 0.1:
-                    log.warning(
-                        "Generated audio duration too short (%.2fs) for %s, trying next candidate...",
-                        dur,
-                        attempt_model,
-                    )
-                    continue
-                return dur
-        except Exception as e:
-            log.warning("Gemini TTS synthesis attempt failed for %s: %s", attempt_model, e)
-            last_error_detail = str(e)
+    is_wav = raw_bytes.startswith(b"RIFF") or "wav" in mime_type.lower()
+    if is_wav:
+        cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+    elif "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
+        not raw_bytes.startswith(b"ID3")
+        and not raw_bytes.startswith(b"\xff\xfb")
+    ):
+        cmd = [
+            "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
+            *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+        ]
+    else:
+        cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
 
-    raise RuntimeError(f"Gemini TTS gagal ({clean_model}): {last_error_detail}")
+    proc_key = f"tts:{project_id}" if project_id else f"tts:{out_p.name}"
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    register_process(proc_key, proc)
+    try:
+        _, stderr = await proc.communicate(input=raw_bytes)
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg audio transcode gagal: {stderr.decode()[:300]}")
+    finally:
+        unregister_process(proc_key)
+
+    dur = await get_audio_duration(str(out_p))
+    if dur <= 0.1:
+        raise RuntimeError(f"Audio yang dihasilkan Gemini TTS terlalu pendek ({dur:.2f} detik) atau kosong.")
+
+    return dur

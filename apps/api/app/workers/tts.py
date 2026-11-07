@@ -103,6 +103,7 @@ async def generate_tts_and_align_job(
                 model=tts_model,
                 segments=narration.segments,
                 language=narration_lang,
+                project_id=project_id,
             )
 
             actual_provider = provider

@@ -52,3 +52,37 @@ def test_strip_bars_and_ensure_16_9_pillarbox():
     assert res.shape == (1080, 1920, 3)
     assert np.mean(res[:, :10]) > 40
     assert np.mean(res[:, -10:]) > 40
+
+
+def test_build_full_image_prompt_strips_meta_and_frontloads_style():
+    from app.services.image_gen import build_full_image_prompt
+
+    verbose_preset_prompt = (
+        "Widescreen 16:9 landscape aspect ratio. "
+        "A storyboard illustration combining a cohesive visual style with a recognizable character based on Doodle stickman vintage parchment watercolor. "
+        "Preserve the defined character traits, proportions, face, clothing, palette, and signature details within the described artistic medium. "
+        "Use a clear storytelling composition with balanced negative space. No text artifacts, no blurry details."
+    )
+    user_scene = (
+        "Full-bleed 16:9 wide high-angle shot at [loc:dapur_rumah]. "
+        "Three heavy plates sliding across a dining table, cook silhouette flipping steak at stove with steam."
+    )
+
+    final = build_full_image_prompt(user_scene, verbose_preset_prompt)
+
+    # 1. Meta-instructions must be stripped
+    assert "A storyboard illustration combining" not in final
+    assert "Preserve the defined character traits" not in final
+    assert "balanced negative space" not in final
+
+    # 2. Art style must be front-loaded in the first 60 chars
+    assert final.lower().startswith("doodle stickman vintage parchment watercolor")
+
+    # 3. 40-word verbose aspect ratio boilerplate must NOT be prepended
+    assert "completely filling the entire 16:9 frame without letterbox" not in final
+    assert "full-bleed" not in final.lower()
+    assert "16:9" not in final
+
+    # 4. Cook silhouette should be reinforced as minimalist stickman cook silhouette
+    assert "stickman cook" in final.lower()
+

@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     IMAGE_CONCURRENCY: int = 2
     IMAGE_STEPS: int = 5
     IMAGE_CFG_SCALE: float = 3.5
+    # img2img strength used ONLY when a reference image is explicitly supplied (e.g. Image Studio).
+    # Storyboard shots no longer chain previous frames as references (it froze composition & background).
+    STORYBOARD_REFERENCE_STRENGTH: float = 0.30
     IMAGE_SYSTEM_PROMPT: str = DEFAULT_IMAGE_SYSTEM_PROMPT
 
     @property

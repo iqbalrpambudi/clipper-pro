@@ -8,24 +8,43 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_project_event
 from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
 from app.models.storyboard import StoryboardItem
 from app.prompts.storyboard import (
-    CHAPTER_EXPANSION_SYSTEM_PROMPT_EN_TEMPLATE,
-    CHAPTER_EXPANSION_SYSTEM_PROMPT_ID_TEMPLATE,
+    CHARACTER_AGENT_SYSTEM_PROMPT_EN,
+    CHARACTER_AGENT_SYSTEM_PROMPT_ID,
+    DIRECTOR_CHAPTER_EN_TEMPLATE,
+    DIRECTOR_CHAPTER_ID_TEMPLATE,
     EXTRACT_CONTINUITY_BIBLE_SYSTEM_PROMPT,
     NARRATIVE_ARC_DEFAULT_EN,
     NARRATIVE_ARC_DEFAULT_ID,
     NARRATIVE_ARC_DRAMATIC_EN,
     NARRATIVE_ARC_DRAMATIC_ID,
-    OUTLINE_SYSTEM_PROMPT_EN_TEMPLATE,
-    OUTLINE_SYSTEM_PROMPT_ID_TEMPLATE,
-    STORYBOARD_SYSTEM_PROMPT_EN_TEMPLATE,
-    STORYBOARD_SYSTEM_PROMPT_ID_TEMPLATE,
+    SCRIPTWRITER_CHAPTER_EN_TEMPLATE,
+    SCRIPTWRITER_CHAPTER_ID_TEMPLATE,
+    SCRIPTWRITER_OUTLINE_EN_TEMPLATE,
+    SCRIPTWRITER_OUTLINE_ID_TEMPLATE,
     format_tone_storytelling_guidelines,
 )
 from app.services.ai_adapters.factory import get_active_llm_adapter
+from app.services.storyboard_shots import (
+    ALL_SHOT_TYPES,
+    FALLBACK_ENVIRONMENT,
+    FALLBACK_VISUAL_ACTION,
+    SHOT_PALETTE,
+    classify_beat_type,
+    compile_scene_prompt,
+    compile_scene_prompt_parts,
+    default_motion,
+    normalize_angle,
+    normalize_beat_type,
+    normalize_shot_type,
+    normalize_subjects,
+    plan_shot_variety,
+    storyboard_quality_metrics,
+)
 
 log = logging.getLogger(__name__)
 
@@ -41,17 +60,9 @@ CLOSEUP_SHOT_TYPES = {
     "mcu",
 }
 
-VALID_SHOT_TYPES = {
-    "establishing_wide",
-    "wide",
-    "medium",
-    "over_the_shoulder",
-    "medium_closeup",
-    "close_up",
-    "extreme_closeup",
-}
+VALID_SHOT_TYPES = set(ALL_SHOT_TYPES)
 
-VALID_CAMERA_ANGLES = {"eye_level", "low_angle", "high_angle", "dutch_angle"}
+VALID_CAMERA_ANGLES = {"eye_level", "low_angle", "high_angle", "dutch_angle", "birds_eye"}
 VALID_FOCAL_POINTS = {"center", "left", "right", "upper_center"}
 VALID_CAMERA_MOTIONS = {
     "zoom_in",
@@ -69,6 +80,31 @@ def _normalize_key(text: str) -> str:
     if not text:
         return ""
     return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+def _normalize_key_views(raw: Any) -> List[Dict[str, str]]:
+    """Normalize a location's `key_views` into [{view_id, description}] (accepts list[str|dict] or a multi-line str)."""
+    if isinstance(raw, str):
+        raw = [ln for ln in re.split(r"[\n;]+", raw) if ln.strip()]
+    if not isinstance(raw, (list, tuple)):
+        return []
+    views: List[Dict[str, str]] = []
+    for idx, v in enumerate(raw):
+        if isinstance(v, dict):
+            vid = str(v.get("view_id") or v.get("id") or "").strip()
+            desc = str(v.get("description") or v.get("desc") or "").strip()
+        else:
+            text = str(v).strip()
+            vid, _, desc = text.partition(":")
+            if not desc:
+                vid, desc = "", text
+            vid, desc = vid.strip(), desc.strip()
+        if not desc:
+            continue
+        if not vid:
+            vid = f"view_{idx + 1}"
+        views.append({"view_id": re.sub(r"[^a-zA-Z0-9_-]", "_", vid)[:40], "description": desc})
+    return views
 
 
 def _normalize_continuity_bible(
@@ -89,6 +125,11 @@ def _normalize_continuity_bible(
         item["face_head_anchor"] = face
         item["outfit_body_anchor"] = outfit
         item["visual_anchor"] = visual
+        for extra_key in ("expression_range", "signature_gesture", "silhouette_note"):
+            raw_extra = item.get(extra_key)
+            if isinstance(raw_extra, (list, tuple)):
+                raw_extra = ", ".join(str(x).strip() for x in raw_extra if str(x).strip())
+            item[extra_key] = (str(raw_extra).strip() if raw_extra else "")
 
         raw_variants = item.get("variants")
         if isinstance(raw_variants, list):
@@ -122,6 +163,11 @@ def _normalize_continuity_bible(
         l_item["closeup_background_anchor"] = closeup_bg
         l_item["focal_props"] = props
         l_item["lighting_direction"] = light
+        l_item["key_views"] = _normalize_key_views(l_item.get("key_views"))
+        raw_ambient = l_item.get("ambient_life")
+        if isinstance(raw_ambient, (list, tuple)):
+            raw_ambient = ", ".join(str(x).strip() for x in raw_ambient if str(x).strip())
+        l_item["ambient_life"] = (str(raw_ambient).strip() if raw_ambient else "")
         norm_locs.append(l_item)
 
     return norm_chars, norm_locs
@@ -131,56 +177,108 @@ def _is_closeup_shot(prompt_template: str, shot_metadata: Optional[Dict[str, Any
     """Detect whether the current shot is a close-up / medium-close-up shot."""
     if isinstance(shot_metadata, dict):
         st = (shot_metadata.get("shot_type") or "").strip().lower().replace("-", "_").replace(" ", "_")
-        if st:
-            return st in CLOSEUP_SHOT_TYPES
+        if st in CLOSEUP_SHOT_TYPES:
+            return True
 
     lower_prompt = (prompt_template or "").lower()
     return bool(
         re.search(
-            r"\b(extreme\s+close[- ]?up|tight\s+close[- ]?up|medium\s+close[- ]?up|close[- ]?up\s+shot|close[- ]?up\s+portrait|close[- ]?up\s+on|close[- ]?up\s+of)\b",
+            r"\b(extreme[-_ ]?close[-_ ]?up|tight[-_ ]?close[-_ ]?up|medium[-_ ]?close[-_ ]?up|close[-_ ]?up|closeup|macro[-_ ]?shot|portrait[-_ ]?shot)\b",
             lower_prompt,
         )
     )
 
 
-def _compile_character_anchor(entity_dict: Dict[str, Any], closeup_mode: bool) -> str:
-    """Compile character or variant anchor tailored to Close-Up vs Wide/Medium shot scale."""
+def _compile_character_anchor(entity_dict: Dict[str, Any], closeup_mode: Any) -> str:
+    """Compile character or variant anchor tailored to shot scale.
+
+    `closeup_mode` accepts a bool (True = face only, False = face + outfit) or a scale string
+    (`"face"`, `"upper"`, `"full"`). Full-body scale also appends the silhouette note when present.
+    """
     face = (entity_dict.get("face_head_anchor") or "").strip()
     outfit = (entity_dict.get("outfit_body_anchor") or "").strip()
     visual = (entity_dict.get("visual_anchor") or entity_dict.get("description") or "").strip()
+    silhouette = (entity_dict.get("silhouette_note") or "").strip()
 
-    if closeup_mode:
+    if isinstance(closeup_mode, str):
+        scale = closeup_mode.strip().lower()
+    else:
+        scale = "face" if closeup_mode else "full"
+
+    if scale == "face":
         if face:
             return face
         return visual or outfit
 
     if face and outfit:
-        return f"{face}, {outfit}"
-    return visual or face or outfit
+        base = f"{face}, {outfit}"
+    else:
+        base = visual or face or outfit
+    if scale == "full" and silhouette and base and silhouette.lower() not in base.lower():
+        base = f"{base}, {silhouette}"
+    return base
 
 
-def _compile_location_anchor(loc_item: Dict[str, Any], closeup_mode: bool) -> str:
-    """Compile location micro-set anchor tailored to Close-Up (bokeh behind subject) vs Wide/Medium architecture."""
+def _pick_location_view(loc_item: Dict[str, Any], view_id: Optional[str]) -> str:
+    """Return the description of the requested `key_views` entry (empty when absent)."""
+    if not view_id:
+        return ""
+    norm = _normalize_key(view_id)
+    for v in loc_item.get("key_views") or []:
+        if isinstance(v, dict) and _normalize_key(v.get("view_id", "")) == norm:
+            return (v.get("description") or "").strip()
+    return ""
+
+
+def _compile_location_anchor(loc_item: Dict[str, Any], closeup_mode: bool, view_id: Optional[str] = None) -> str:
+    """Compile a location anchor for the shot scale and (optionally) a specific viewpoint.
+
+    Wide/medium shots use the layout + the selected viewpoint + ambient life, so shots at the same place can
+    look at it from different directions. Close shots keep the setting readable behind the subject.
+    """
     env_anchor = (loc_item.get("environment_anchor") or loc_item.get("description") or "").strip()
     closeup_bg = (loc_item.get("closeup_background_anchor") or "").strip()
     props = (loc_item.get("focal_props") or loc_item.get("key_props") or "").strip()
     lighting = (loc_item.get("lighting_direction") or "").strip()
+    ambient = (loc_item.get("ambient_life") or "").strip()
+    view_desc = _pick_location_view(loc_item, view_id)
 
     if closeup_mode:
-        if closeup_bg:
-            base = closeup_bg
+        if view_desc:
+            base = f"{view_desc}, setting still clearly readable behind the subject"
+        elif closeup_bg:
+            base = f"{closeup_bg}, setting still clearly readable behind the subject"
         elif env_anchor:
-            base = f"softly defocused close-up background of {env_anchor}"
+            base = f"{env_anchor}, seen close behind the subject and still clearly readable"
         else:
             base = ""
     else:
-        base = env_anchor or closeup_bg
+        if env_anchor and view_desc:
+            base = f"{env_anchor}, viewed from: {view_desc}"
+        else:
+            base = view_desc or env_anchor or closeup_bg
+
+    # Keep setting base concise (max ~16 words) to avoid exhausting diffusion token window
+    if base and len(base.split()) > 18:
+        first_clause = re.split(r"[,;.]\s*(?:with|featuring|equipped with|key anchor elements|ambient life)\b", base, flags=re.IGNORECASE)[0].strip()
+        words = first_clause.split()
+        if len(words) > 16:
+            base = " ".join(words[:16]).rstrip(" ,;.")
+        else:
+            base = first_clause.rstrip(" ,;.")
 
     parts: List[str] = [base] if base else []
-    if props and props.lower() not in base.lower():
-        parts.append(f"key anchor elements: {props}")
-    if lighting and lighting.lower() not in base.lower():
-        parts.append(f"consistent lighting: {lighting}")
+    if props:
+        prop_items = [p.strip() for p in props.split(",") if p.strip()]
+        new_props = [p for p in prop_items if p.lower() not in base.lower()]
+        if new_props:
+            parts.append(f"key anchor elements: {', '.join(new_props[:3])}")
+    if ambient and not closeup_mode:
+        clean_amb = ambient.strip()
+        if clean_amb.lower() not in base.lower() and len(clean_amb) < 40:
+            parts.append(f"ambient life: {clean_amb}")
+    if lighting and lighting.lower() not in base.lower() and len(lighting) < 40:
+        parts.append(f"lighting: {lighting}")
 
     return ", ".join(parts)
 
@@ -211,11 +309,22 @@ def resolve_prompt_variables(
     if not prompt_template or not isinstance(prompt_template, str):
         return ""
 
+    # Strip any technical aspect ratio / full-bleed / 16:9 boilerplates
+    prompt_template = re.sub(
+        r"\b(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|16:9\s+(?:widescreen\s+)?|full[\s-]bleed\s+16:9\s*|full[\s-]bleed\s*)\b",
+        "",
+        prompt_template,
+        flags=re.IGNORECASE,
+    ).strip(" ,.")
+
     chars = characters or []
     locs = locations or []
     world = world_setting or {}
     style_text = (preset_master_prompt or "").strip()
     scene_is_closeup = _is_closeup_shot(prompt_template, shot_metadata)
+    scene_view_id = (
+        (shot_metadata.get("location_view") or "").strip() if isinstance(shot_metadata, dict) else ""
+    )
 
     # Pre-index characters for rapid and fuzzy lookup
     char_map: Dict[str, Dict[str, Any]] = {}
@@ -290,10 +399,10 @@ def resolve_prompt_variables(
         if not norm_q:
             return None
         if norm_q in loc_map:
-            return _compile_location_anchor(loc_map[norm_q], closeup_mode)
+            return _compile_location_anchor(loc_map[norm_q], closeup_mode, scene_view_id)
         for k, loc_item in loc_map.items():
             if norm_q in k or k in norm_q:
-                return _compile_location_anchor(loc_item, closeup_mode)
+                return _compile_location_anchor(loc_item, closeup_mode, scene_view_id)
         return None
 
     def _token_replacer(match: re.Match) -> str:
@@ -302,7 +411,13 @@ def resolve_prompt_variables(
 
         # 1. Preset Style
         if lower_inner in ["preset:style", "style", "preset style", "preset_style"]:
-            return style_text
+            clean_style = re.sub(
+                r"^(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|widescreen\s+16:9[^\.]*\.\s*|16:9\s+landscape\s+aspect\s+ratio[^\.]*\.\s*|16:9\s+widescreen[^\.]*\.\s*|full[\s-]bleed\s+16:9\s*)",
+                "",
+                style_text,
+                flags=re.IGNORECASE,
+            ).strip()
+            return clean_style if clean_style else style_text
 
         # 2. Era & World Setting
         if lower_inner in ["era", "world:era", "world_setting:era"]:
@@ -367,12 +482,33 @@ def resolve_prompt_variables(
     if isinstance(shot_metadata, dict) and shot_metadata:
         continuity_notes: List[str] = []
         camera_angle = (shot_metadata.get("camera_angle") or "").strip().lower().replace("_", " ")
-        if camera_angle and camera_angle != "eye level" and camera_angle not in resolved.lower():
+        if (
+            camera_angle
+            and camera_angle != "eye level"
+            and camera_angle.replace("birds eye", "bird's eye") not in resolved.lower().replace("-", " ")
+            and camera_angle not in resolved.lower().replace("-", " ").replace("bird's", "birds")
+        ):
             continuity_notes.append(f"{camera_angle} camera perspective")
 
         blocking = (shot_metadata.get("spatial_blocking") or "").strip()
+        has_staging_kw = any(k in blocking.lower() for k in ("screen-left", "screen-right", "left of frame", "right of frame", "center of frame", "foreground", "stands", "facing", "seated", "positioned", "behind", "across", "side"))
+        indoor_kw = ("kitchen", "dapur", "room", "kamar", "ruang", "indoor", "interior", "office", "bedroom", "dining")
+        is_indoor = any(k in resolved.lower() for k in indoor_kw)
+        is_landscape_hallucination = any(k in blocking.lower() for k in ("expansive landscape", "atmospheric haze", "mountain", "valley", "panoramic outdoor"))
+        if (is_indoor and is_landscape_hallucination) or not has_staging_kw:
+            blocking = ""
+
         if blocking and blocking.lower()[:32] not in resolved.lower():
             continuity_notes.append(f"180-degree spatial blocking: {blocking}")
+
+        # Character identity stays consistent through the Bible anchors already resolved above.
+        # We deliberately do NOT ask the model to copy environment/lighting from a reference frame:
+        # that froze backgrounds and made consecutive shots near-identical.
+        if (
+            "consistent" not in resolved.lower()
+            and re.search(r"\[(?:char|character):", prompt_template, re.IGNORECASE)
+        ):
+            continuity_notes.append("keep character designs and outfit colors consistent with the story bible")
 
         if continuity_notes:
             suffix = ". " if not resolved.rstrip().endswith((".", "!", "?")) else " "
@@ -628,84 +764,7 @@ def _build_preset_character_guidance(preset: Optional[Any], language: str = "id"
     )
 
 
-def build_storyboard_outline_prompt(
-    topic: str,
-    duration_mins: int = 5,
-    tone: str = "santai",
-    num_chapters: int = 5,
-    custom_instructions: Optional[str] = None,
-    language: str = "id",
-    preset: Optional[Any] = None,
-) -> Tuple[str, str]:
-    """Build prompts for Phase 1: High-level Master Storyboard Outline + Story Continuity Bible (Characters with variants, locations, world setting)."""
-    target_words = max(400, int(duration_mins * 135))
-    words_per_chapter = int(round(target_words / max(1, num_chapters)))
-    tone_clean = (tone or "").strip().lower()
-    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
-    preset_character_guidance = _build_preset_character_guidance(preset, language)
 
-    if language == "en":
-        narrative_arc_en = (
-            NARRATIVE_ARC_DRAMATIC_EN
-            if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]
-            else NARRATIVE_ARC_DEFAULT_EN
-        )
-
-        system_prompt = OUTLINE_SYSTEM_PROMPT_EN_TEMPLATE.format(
-            tone_guidelines=tone_guidelines,
-            preset_character_guidance=preset_character_guidance,
-            duration_mins=duration_mins,
-            target_words=target_words,
-            num_chapters=num_chapters,
-            words_per_chapter=words_per_chapter,
-            narrative_arc=narrative_arc_en,
-        )
-
-        user_prompt = (
-            f"Video Topic: {topic}\n"
-            f"Target Total Duration: {duration_mins} Minutes (~{target_words} words total)\n"
-            f"Number of Chapters: Exactly {num_chapters} chapters (~{words_per_chapter} words per chapter)\n"
-            f"Tone: {tone}\n"
-            "Language: ENGLISH (Generate all outline text in English)\n"
-        )
-        if custom_instructions:
-            user_prompt += f"Additional Instructions: {custom_instructions}\n"
-
-        user_prompt += (
-            f"\nGenerate the Master Outline and Story Continuity Bible for exactly {num_chapters} chapters now in pure JSON format."
-        )
-        return system_prompt, user_prompt
-
-    narrative_arc_id = (
-        NARRATIVE_ARC_DRAMATIC_ID
-        if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]
-        else NARRATIVE_ARC_DEFAULT_ID
-    )
-
-    system_prompt = OUTLINE_SYSTEM_PROMPT_ID_TEMPLATE.format(
-        tone_guidelines=tone_guidelines,
-        preset_character_guidance=preset_character_guidance,
-        duration_mins=duration_mins,
-        target_words=target_words,
-        num_chapters=num_chapters,
-        words_per_chapter=words_per_chapter,
-        narrative_arc=narrative_arc_id,
-    )
-
-    user_prompt = (
-        f"Topik Video: {topic}\n"
-        f"Target Total Durasi: {duration_mins} Menit (~{target_words} kata total)\n"
-        f"Jumlah Babak (Chapters): Tepat {num_chapters} babak (~{words_per_chapter} kata per babak)\n"
-        f"Tone: {tone}\n"
-        "Bahasa: BAHASA INDONESIA (Buat outline dalam Bahasa Indonesia)\n"
-    )
-    if custom_instructions:
-        user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
-
-    user_prompt += (
-        f"\nBuatlah Master Outline dan Story Continuity Bible untuk tepat {num_chapters} babak sekarang dalam format JSON murni."
-    )
-    return system_prompt, user_prompt
 
 
 def _format_continuity_bible_instructions(
@@ -746,6 +805,18 @@ def _format_continuity_bible_instructions(
             else:
                 detail = f"Close-Up Face/Head: {c_face} | Outfit/Body: {c_outfit}" if (c_face or c_outfit) else f"Visual: {c_anchor}"
                 lines.append(f"   • {c_name}{c_role}: Use token `[char:{c_id}]` ({detail})")
+        lines.append("")
+    else:
+        if language == "en":
+            lines.append("1. CHARACTER CONSISTENCY: DISABLED (NO FIXED CHARACTER BIBLE / EXPLAINER MODE)")
+            lines.append("   • DO NOT output `[char:...]` tokens. Direct each shot purely and dynamically based on the beat narration.")
+            lines.append("   • If people appear (e.g. historical figures, crowd, scientists), describe them freely as anonymous situational elements or in `visual_action`.")
+            lines.append("   • Focus on visual metaphors, artifacts, diagrams, and lively environmental illustrations that match the narration.")
+        else:
+            lines.append("1. KONSISTENSI KARAKTER: NON-AKTIF (MODE EXPLAINER / TANPA CHARACTER BIBLE)")
+            lines.append("   • JANGAN gunakan token `[char:...]` sama sekali. Sutradarai adegan murni dan dinamis langsung dari isi narasi per segmen.")
+            lines.append("   • Jika narasi membutuhkan manusia (misal: pekerja kuno, ilmuwan, pedagang, kerumunan), deskripsikan secara bebas sebagai figuran situasional di `visual_action`.")
+            lines.append("   • Fokuskan pada metafora visual, artefak, diagram/peta, dan ilustrasi latar yang hidup sesuai isi narasi.")
         lines.append("")
 
     # 2. Locations
@@ -794,7 +865,7 @@ def _format_continuity_bible_instructions(
             "- Insert character variant token: `[char:<char_id>:<variant_id>]` (or `[char:<char_id>]`).\n"
             "- Insert location token: `[loc:<loc_id>]`.\n"
             "- Insert visual preset token: `[preset:style]`.\n"
-            "- Describe specific character action, emotion, full-bleed 16:9 widescreen framing (edge-to-edge, NO letterbox, NO black bars, NO white border), and lighting vividly.\n"
+            "- Start prompt with '[preset:style].'. Describe specific character action, emotion, scene composition, and lighting vividly. DO NOT include technical boilerplate like 'Full-bleed 16:9' or aspect ratio labels.\n"
             "- SEQUENTIAL SPATIAL CONTINUITY & ANTI-TELEPORTATION (MANDATORY):\n"
             "  * If two or more consecutive scenes take place within the same location/interaction (e.g. buying at a market stall, conversing in a room):\n"
             "    - Share the EXACT SAME `scene_group_id` and maintain the exact same stall architecture, counter materials, lighting direction, and anchor props.\n"
@@ -813,7 +884,7 @@ def _format_continuity_bible_instructions(
             "- Sisipkan token karakter & varian: `[char:<char_id>:<variant_id>]` (contoh: `[char:malin:muda]`, `[char:malin:dewasa]`).\n"
             "- Sisipkan token latar tempat: `[loc:<loc_id>]` (contoh: `[loc:kios_pasar_rempah]`, `[loc:pesisir_air_manis]`).\n"
             "- Sisipkan token gaya visual preset: `[preset:style]`.\n"
-            "- Tuliskan aksi konkret tokoh, ekspresi emosi, framing 16:9 widescreen full-bleed (penuh layar edge-to-edge, TANPA letterbox, TANPA bar hitam/putih, TANPA bingkai), dan pencahayaan secara hidup.\n"
+            "- Awali prompt dengan '[preset:style].'. Tuliskan aksi konkret tokoh, ekspresi emosi, komposisi adegan, dan pencahayaan secara hidup. DILARANG memasukkan boilerplate teknis seperti 'Full-bleed 16:9' atau keterangan rasio layar.\n"
             "- KONTINUITAS SPASIAL & ANTI-TELEPORTASI WIDE -> CLOSE-UP (MUTLAK):\n"
             "  * Jika adegan berturut-turut berlangsung dalam satu interaksi/lokasi yang sama (misal di pasar, di kios pedagang, atau percakapan dua tokoh):\n"
             "    - Gunakan `scene_group_id` yang SAMA PERSIS serta pertahankan arsitektur latar, bentuk kios/meja, arah cahaya, dan objek patokan (props) yang identik.\n"
@@ -828,260 +899,657 @@ def _format_continuity_bible_instructions(
     return "\n".join(lines) + "\n\n"
 
 
-def build_chapter_expansion_prompt(
+def build_scriptwriter_outline_prompt(
+    topic: str,
+    duration_mins: int = 5,
+    tone: str = "santai",
+    num_chapters: int = 5,
+    custom_instructions: Optional[str] = None,
+    language: str = "id",
+) -> Tuple[str, str]:
+    """Agent 1 (Scriptwriter Agent): Build Master Narrative Outline prompt focusing strictly on storytelling."""
+    target_words = max(400, int(duration_mins * 135))
+    words_per_chapter = int(round(target_words / max(1, num_chapters)))
+    beats_per_chapter = max(4, int(round(words_per_chapter / 19)))
+    tone_clean = (tone or "").strip().lower()
+    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
+
+    if language == "en":
+        narrative_arc_en = (
+            NARRATIVE_ARC_DRAMATIC_EN
+            if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]
+            else NARRATIVE_ARC_DEFAULT_EN
+        )
+        system_prompt = SCRIPTWRITER_OUTLINE_EN_TEMPLATE.format(
+            tone_guidelines=tone_guidelines,
+            duration_mins=duration_mins,
+            target_words=target_words,
+            num_chapters=num_chapters,
+            words_per_chapter=words_per_chapter,
+            beats_per_chapter=beats_per_chapter,
+            narrative_arc=narrative_arc_en,
+        )
+        user_prompt = (
+            f"Topic: {topic}\n"
+            f"Target Total Duration: {duration_mins} Minutes (~{target_words} words total across {num_chapters} chapters)\n"
+            f"Beats per chapter: ~{beats_per_chapter} beats (~{words_per_chapter} words/chapter)\n"
+            f"Tone: {tone}\n"
+        )
+        if custom_instructions:
+            user_prompt += f"Custom Instructions: {custom_instructions}\n"
+        user_prompt += f"\nGenerate the Master Narrative Outline for exactly {num_chapters} chapters now in pure JSON format."
+        return system_prompt, user_prompt
+
+    narrative_arc_id = (
+        NARRATIVE_ARC_DRAMATIC_ID
+        if tone_clean in ["dramatis", "dramatic", "misterius", "mysterious"]
+        else NARRATIVE_ARC_DEFAULT_ID
+    )
+    system_prompt = SCRIPTWRITER_OUTLINE_ID_TEMPLATE.format(
+        tone_guidelines=tone_guidelines,
+        duration_mins=duration_mins,
+        target_words=target_words,
+        num_chapters=num_chapters,
+        words_per_chapter=words_per_chapter,
+        beats_per_chapter=beats_per_chapter,
+        narrative_arc=narrative_arc_id,
+    )
+    user_prompt = (
+        f"Topik Cerita: {topic}\n"
+        f"Target Total Durasi: {duration_mins} Menit (~{target_words} kata total dalam {num_chapters} babak)\n"
+        f"Target Beat per Babak: ~{beats_per_chapter} beat (~{words_per_chapter} kata per babak)\n"
+        f"Tone: {tone}\n"
+    )
+    if custom_instructions:
+        user_prompt += f"Instruksi Khusus: {custom_instructions}\n"
+    user_prompt += f"\nBuatlah Master Narrative Outline untuk tepat {num_chapters} babak sekarang dalam format JSON murni."
+    return system_prompt, user_prompt
+
+
+def build_scriptwriter_chapter_prompt(
     video_title: str,
     video_overview: str,
     chapter_index: int,
     total_chapters: int,
     chapter_title: str,
     chapter_synopsis: str,
-    chapter_key_points: List[str],
+    opening_hook: Optional[str],
+    closing_rehook: Optional[str],
+    target_beats: int,
     target_chapter_words: int,
-    target_segments: int,
-    images_per_segment: int,
-    tone: str,
-    preset: Optional[Any] = None,
+    tone: str = "santai",
+    language: str = "id",
     custom_instructions: Optional[str] = None,
-    chapters_roadmap: Optional[List[Dict[str, Any]]] = None,
+    previous_chapter_ending: Optional[str] = None,
+) -> Tuple[str, str]:
+    """Agent 1 (Scriptwriter Agent): Build Chapter Pure Narration Beats prompt."""
+    min_chapter_words = max(80, int(target_chapter_words * 0.85))
+    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
+
+    if language == "en":
+        system_prompt = SCRIPTWRITER_CHAPTER_EN_TEMPLATE.format(
+            chapter_index=chapter_index,
+            total_chapters=total_chapters,
+            chapter_title=chapter_title,
+            tone_guidelines=tone_guidelines,
+            target_beats=target_beats,
+            min_chapter_words=min_chapter_words,
+            target_chapter_words=target_chapter_words,
+        )
+        user_prompt = (
+            f"Story Title: {video_title}\n"
+            f"Story Arc Overview: {video_overview}\n"
+            f"Current Chapter: {chapter_index} of {total_chapters} ('{chapter_title}')\n"
+            f"Chapter Synopsis: {chapter_synopsis}\n"
+            f"Target Word Count: Minimum {min_chapter_words} words (ideal ~{target_chapter_words} words)\n"
+            f"Number of Beats: Exactly {target_beats} narrative beats\n"
+        )
+        if opening_hook:
+            user_prompt += f"Opening Hook / Transition Guidance: {opening_hook}\n"
+        if closing_rehook:
+            user_prompt += f"Closing Re-hook Guidance: {closing_rehook}\n"
+        if previous_chapter_ending:
+            user_prompt += f"Previous Chapter Ending Sentence: '{previous_chapter_ending}'\n"
+        if custom_instructions:
+            user_prompt += f"Additional Directives: {custom_instructions}\n"
+        user_prompt += f"\nWrite the complete narrative beats for Chapter {chapter_index} now in pure JSON format."
+        return system_prompt, user_prompt
+
+    system_prompt = SCRIPTWRITER_CHAPTER_ID_TEMPLATE.format(
+        chapter_index=chapter_index,
+        total_chapters=total_chapters,
+        chapter_title=chapter_title,
+        tone_guidelines=tone_guidelines,
+        target_beats=target_beats,
+        min_chapter_words=min_chapter_words,
+        target_chapter_words=target_chapter_words,
+    )
+    user_prompt = (
+        f"Judul Cerita: {video_title}\n"
+        f"Gambaran Cerita Keseluruhan: {video_overview}\n"
+        f"Babak Saat Ini: {chapter_index} dari {total_chapters} ('{chapter_title}')\n"
+        f"Sinopsis Babak: {chapter_synopsis}\n"
+        f"Target Panjang Kata: Minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata)\n"
+        f"Jumlah Beat Narasi: Tepat {target_beats} beat\n"
+    )
+    if opening_hook:
+        user_prompt += f"Panduan Opening Hook / Jembatan: {opening_hook}\n"
+    if closing_rehook:
+        user_prompt += f"Panduan Closing Re-hook: {closing_rehook}\n"
+    if previous_chapter_ending:
+        user_prompt += f"Kalimat Terakhir Babak Sebelumnya: '{previous_chapter_ending}'\n"
+    if custom_instructions:
+        user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
+    user_prompt += f"\nTuliskan naskah narasi lengkap untuk Babak {chapter_index} sekarang dalam format JSON murni."
+    return system_prompt, user_prompt
+
+
+def build_character_agent_prompt(
+    full_script_text: str,
+    topic: str,
+    tone: str = "santai",
+    preset: Optional[Any] = None,
+    language: str = "id",
+) -> Tuple[str, str]:
+    """Agent 2 (Character & World Designer): Build prompt to extract Continuity Bible from complete script."""
+    preset_guidance = _build_preset_character_guidance(preset, language)
+    if language == "en":
+        system_prompt = CHARACTER_AGENT_SYSTEM_PROMPT_EN.format(preset_guidance=preset_guidance)
+        user_prompt = (
+            f"Topic: {topic}\nTone: {tone}\n\n"
+            f"=== COMPLETE STORY SCRIPT WRITTEN BY SCRIPTWRITER AGENT ===\n"
+            f"{full_script_text}\n\n"
+            "Extract the complete Story World & Spatial Continuity Bible (characters with close-up & wide anchors, micro-set locations, world setting) in pure JSON format."
+        )
+        return system_prompt, user_prompt
+
+    system_prompt = CHARACTER_AGENT_SYSTEM_PROMPT_ID.format(preset_guidance=preset_guidance)
+    user_prompt = (
+        f"Topik: {topic}\nTone: {tone}\n\n"
+        f"=== NASKAH CERITA LENGKAP HASIL SCRIPTWRITER AGENT ===\n"
+        f"{full_script_text}\n\n"
+        "Ekstrak Story World & Spatial Continuity Bible lengkap (karakter dengan close-up & wide anchors, micro-set lokasi, world setting) sekarang dalam format JSON murni."
+    )
+    return system_prompt, user_prompt
+
+
+def build_director_chapter_prompt(
+    chapter_index: int,
+    chapter_title: str,
+    beats: List[Dict[str, Any]],
     characters: Optional[List[Dict[str, Any]]] = None,
     locations: Optional[List[Dict[str, Any]]] = None,
     world_setting: Optional[Dict[str, Any]] = None,
+    preset: Optional[Any] = None,
     language: str = "id",
-    previous_chapter_context: Optional[Dict[str, Any]] = None,
-    opening_hook: Optional[str] = None,
-    closing_rehook: Optional[str] = None,
+    video_overview: Optional[str] = None,
+    chapter_synopsis: Optional[str] = None,
 ) -> Tuple[str, str]:
-    """Build prompts for Phase 2: Expanding a single chapter into full narration & visual scenes with rolling continuity."""
-    visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
-    min_chapter_words = int(round(target_chapter_words * 0.90))
-    total_chapter_scenes = target_segments * images_per_segment
-    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
-
+    """Agent 3 (Director / Sutradara): Build prompt to map narrative beats to comic cinematography shots & prompts."""
     continuity_instruction = _format_continuity_bible_instructions(
         characters=characters,
         locations=locations,
         world_setting=world_setting,
         language=language,
     )
+    visual_guidelines, _, _, _ = _build_visual_guidelines(preset)
+
+    context_lines = []
+    if video_overview:
+        context_lines.append(f"Story Overview: {video_overview}")
+    if chapter_synopsis:
+        context_lines.append(f"Chapter Synopsis: {chapter_synopsis}")
+    context_block = ("=== STORY CONTEXT ===\n" + "\n".join(context_lines) + "\n\n") if context_lines else ""
 
     if language == "en":
-        system_prompt = CHAPTER_EXPANSION_SYSTEM_PROMPT_EN_TEMPLATE.format(
+        system_prompt = DIRECTOR_CHAPTER_EN_TEMPLATE.format(
             chapter_index=chapter_index,
-            total_chapters=total_chapters,
-            tone_guidelines=tone_guidelines,
-            target_segments=target_segments,
-            images_per_segment=images_per_segment,
-            total_chapter_scenes=total_chapter_scenes,
-            continuity_instruction=continuity_instruction,
-            visual_guidelines=visual_guidelines,
-            min_chapter_words=min_chapter_words,
-            target_chapter_words=target_chapter_words,
             chapter_title=chapter_title,
-        )
-    else:
-        system_prompt = CHAPTER_EXPANSION_SYSTEM_PROMPT_ID_TEMPLATE.format(
-            chapter_index=chapter_index,
-            total_chapters=total_chapters,
-            tone_guidelines=tone_guidelines,
-            target_segments=target_segments,
-            images_per_segment=images_per_segment,
-            total_chapter_scenes=total_chapter_scenes,
             continuity_instruction=continuity_instruction,
             visual_guidelines=visual_guidelines,
-            min_chapter_words=min_chapter_words,
-            target_chapter_words=target_chapter_words,
-            chapter_title=chapter_title,
         )
-
-    roadmap_str = ""
-    if chapters_roadmap:
-        roadmap_lines = []
-        for i, ch in enumerate(chapters_roadmap):
-            c_idx = i + 1
-            c_title = ch.get("chapter_title", f"Babak {c_idx}" if language == "id" else f"Chapter {c_idx}")
-            c_syn = ch.get("synopsis", "")
-            marker = (" ➔ [CURRENT FOCUS]" if language == "en" else " ➔ [FOKUS SAAT INI]") if c_idx == chapter_index else ""
-            roadmap_lines.append(f"  {c_idx}. {c_title}{marker}: {c_syn}")
-        roadmap_header = "OVERALL STORY ROADMAP (FOR STORY CONTINUITY):\n" if language == "en" else "ROADMAP KESELURUHAN ALUR CERITA (AGAR CERITA TETAP KONSISTEN & NYAMBUNG):\n"
-        roadmap_str = roadmap_header + "\n".join(roadmap_lines) + "\n\n"
-
-    rolling_str = ""
-    if isinstance(previous_chapter_context, dict) and previous_chapter_context:
-        last_sents = (previous_chapter_context.get("last_sentences") or "").strip()
-        last_group = (previous_chapter_context.get("last_scene_group") or "").strip()
-        last_blocking = (previous_chapter_context.get("last_spatial_blocking") or "").strip()
-        used_phrases = previous_chapter_context.get("used_phrases") or []
-        if language == "en":
-            rolling_lines = ["ROLLING CONTINUITY FROM PREVIOUS CHAPTER (BRIDGE SEAMLESSLY):"]
-            if last_sents:
-                rolling_lines.append(f"- Closing sentences of Chapter {chapter_index - 1}: \"{last_sents}\"")
-            if last_group or last_blocking:
-                rolling_lines.append(f"- Last visual state: group='{last_group}', blocking='{last_blocking}'")
-            if used_phrases:
-                rolling_lines.append(f"- Do NOT repeat these sensory phrases already used earlier: {', '.join(used_phrases[:12])}")
-            rolling_str = "\n".join(rolling_lines) + "\n\n"
-        else:
-            rolling_lines = ["KONTEKS BERGULIR DARI BABAK SEBELUMNYA (SAMBUNG SECARA MULUS TANPA PENGULANGAN):"]
-            if last_sents:
-                rolling_lines.append(f"- Kalimat penutup Babak {chapter_index - 1}: \"{last_sents}\"")
-            if last_group or last_blocking:
-                rolling_lines.append(f"- Status kamera terakhir: scene_group='{last_group}', blocking='{last_blocking}'")
-            if used_phrases:
-                rolling_lines.append(f"- JANGAN mengulang frasa/metafora yang sudah dipakai di babak sebelumnya: {', '.join(used_phrases[:12])}")
-            rolling_str = "\n".join(rolling_lines) + "\n\n"
-
-    char_remind_str = ""
-    if characters and len(characters) > 0:
-        names = ", ".join(c.get("name", "") for c in characters if c.get("name"))
-        char_remind_str = f"- Locked Characters (Use exact visual anchors): {names}\n" if language == "en" else f"- Karakter Terkunci (Gunakan visual anchor mereka persis): {names}\n"
-
-    kp_str = "\n".join(f"- {kp}" for kp in chapter_key_points) if chapter_key_points else ("- Develop according to chapter synopsis" if language == "en" else "- Kembangkan sesuai sinopsis babak")
-    hook_lines = ""
-    if opening_hook:
-        hook_lines += (f"- Chapter Opening Bridge/Hook: {opening_hook}\n" if language == "en" else f"- Arah Hook Pembuka Babak: {opening_hook}\n")
-    if closing_rehook:
-        hook_lines += (f"- Chapter Closing Re-Hook / Takeaway: {closing_rehook}\n" if language == "en" else f"- Arah Re-Hook / Penutup Babak: {closing_rehook}\n")
-
-    if language == "en":
+        beats_json = json.dumps(beats, ensure_ascii=False, indent=2)
         user_prompt = (
-            f"Overall Video Context:\n"
-            f"- Video Title: {video_title}\n"
-            f"- Overview: {video_overview}\n\n"
-            f"{roadmap_str}"
-            f"{rolling_str}"
-            f"CHAPTER WRITING FOCUS:\n"
-            f"- Chapter: {chapter_title} (Chapter {chapter_index} of {total_chapters})\n"
-            f"- Chapter Synopsis: {chapter_synopsis}\n"
-            f"{hook_lines}"
-            f"- Key Points to Cover:\n{kp_str}\n\n"
-            f"TECHNICAL TARGETS:\n"
-            f"- Target Chapter Word Count: Minimum {min_chapter_words} words (target ~{target_chapter_words} words)\n"
-            f"- Chapter Structure: Exactly {target_segments} segments, {images_per_segment} scenes each (Total exactly {total_chapter_scenes} scenes)\n"
-            f"- Tone: {tone}\n"
-            f"- Language: ENGLISH ONLY\n"
-            f"- Visual Style Preset: {preset_label}\n"
-            f"{char_remind_str}"
+            f"Chapter {chapter_index}: {chapter_title}\n\n"
+            f"{context_block}"
+            f"=== NARRATIVE BEATS TO DIRECT (EXACTLY {len(beats)} BEATS) ===\n"
+            f"{beats_json}\n\n"
+            f"Act as Master 2D Comic Storyboard Artist & Director. For each beat above, design the corresponding 16:9 dynamic comic panel scene in pure JSON format."
         )
-        if custom_instructions:
-            user_prompt += f"- Additional Instructions: {custom_instructions}\n"
+        return system_prompt, user_prompt
 
-        user_prompt += (
-            f"\nWrite the complete script for Chapter {chapter_index} now in pure JSON format in ENGLISH.\n"
-            f"CRITICAL: Ensure the narration connects fluidly with the roadmap above, meets the minimum {min_chapter_words} words, is FREE of bracket tokens (plain names only), and contains NO colons or semicolons!"
-        )
-    else:
-        user_prompt = (
-            f"Konteks Video Keseluruhan:\n"
-            f"- Judul Video: {video_title}\n"
-            f"- Overview: {video_overview}\n\n"
-            f"{roadmap_str}"
-            f"{rolling_str}"
-            f"FOKUS PENULISAN BABAK INI:\n"
-            f"- Babak: {chapter_title} (Babak {chapter_index} dari {total_chapters})\n"
-            f"- Sinopsis Babak: {chapter_synopsis}\n"
-            f"{hook_lines}"
-            f"- Poin Kunci yang Harus Dibahas:\n{kp_str}\n\n"
-            f"TARGET TEKNIS:\n"
-            f"- Target Kata Narasi Babak Ini: Minimal {min_chapter_words} kata (target ~{target_chapter_words} kata)\n"
-            f"- Struktur Babak: Tepat {target_segments} segmen, masing-masing {images_per_segment} scenes (Total tepat {total_chapter_scenes} scenes)\n"
-            f"- Tone: {tone}\n"
-            f"- Bahasa: BAHASA INDONESIA\n"
-            f"- Gaya Visual Preset: {preset_label}\n"
-            f"{char_remind_str}"
-        )
-        if custom_instructions:
-            user_prompt += f"- Instruksi Tambahan: {custom_instructions}\n"
-
-        user_prompt += (
-            f"\nTuliskan naskah lengkap Babak {chapter_index} sekarang dalam format JSON murni.\n"
-            f"PENTING: Pastikan alur cerita menyambung secara alami dengan roadmap di atas, memenuhi minimal {min_chapter_words} kata, BEBAS token variabel pada teks narasi (tulis nama asli tokoh biasa), dan TANPA tanda titik dua (:) atau titik koma (;)."
-        )
-    return system_prompt, user_prompt
-
-
-def build_storyboard_prompt(
-    topic: str,
-    duration_mins: int = 5,
-    tone: str = "santai",
-    images_per_segment: int = 2,
-    preset: Optional[Any] = None,
-    custom_instructions: Optional[str] = None,
-    language: str = "id",
-) -> Tuple[str, str]:
-    """Build system and user prompts for single-shot long-form storyboard scriptwriting + Story Continuity Bible."""
-    target_words = max(400, int(duration_mins * 135))
-    min_words = int(target_words * 0.90)
-    max_words = int(target_words * 1.10)
-
-    # Visual pacing: 1 illustration per ~7.5-8.5 seconds (each scene ~16-22 spoken words)
-    seconds_per_scene = 8.0
-    total_scenes = max(10, int(round((duration_mins * 60) / seconds_per_scene)))
-    target_segments = max(4, int(round(total_scenes / max(1, images_per_segment))))
-    num_chapters = max(3, min(6, int(round(duration_mins * 0.7))))
-
-    visual_guidelines, example_prompt_1, example_prompt_2, preset_label = _build_visual_guidelines(preset)
-    tone_guidelines = _format_tone_storytelling_guidelines(tone, language)
-    continuity_instruction = _format_continuity_bible_instructions(language=language)
-
-    if language == "en":
-        system_prompt = STORYBOARD_SYSTEM_PROMPT_EN_TEMPLATE.format(
-            tone_guidelines=tone_guidelines,
-            continuity_instruction=continuity_instruction,
-            images_per_segment=images_per_segment,
-            visual_guidelines=visual_guidelines,
-            duration_mins=duration_mins,
-            target_words=target_words,
-            min_words=min_words,
-            max_words=max_words,
-            tone=tone,
-        )
-
-        user_prompt = (
-            f"Video Topic: {topic}\n"
-            f"Target Duration: {duration_mins} minutes (~{target_words} words, minimum {min_words} words)\n"
-            f"AI Visual Style Preset: {preset_label}\n"
-            f"Structure: {num_chapters} Chapters, ~{target_segments} segments, exactly {images_per_segment} scenes per segment (total ~{total_scenes} scenes)\n"
-            f"Tone: {tone}\n"
-            "Language: ENGLISH (Write all narration exclusively in English)\n"
-        )
-    else:
-        system_prompt = STORYBOARD_SYSTEM_PROMPT_ID_TEMPLATE.format(
-            tone_guidelines=tone_guidelines,
-            continuity_instruction=continuity_instruction,
-            images_per_segment=images_per_segment,
-            visual_guidelines=visual_guidelines,
-            duration_mins=duration_mins,
-            target_words=target_words,
-            min_words=min_words,
-            max_words=max_words,
-            num_chapters=num_chapters,
-            target_segments=target_segments,
-            total_scenes=total_scenes,
-            tone=tone,
-        )
-
-        user_prompt = (
-            f"Topik Video: {topic}\n"
-            f"Target Durasi: {duration_mins} menit (~{target_words} kata, minimal {min_words} kata)\n"
-            f"Gaya Visual Preset AI: {preset_label}\n"
-            f"Struktur: {num_chapters} Babak, sekitar {target_segments} segmen, tepat {images_per_segment} scenes per segmen (total ~{total_scenes} adegan visual)\n"
-            f"Tone: {tone}\n"
-            f"Jumlah Gambar per Segmen: {images_per_segment} scene per segmen\n"
-            "Bahasa: BAHASA INDONESIA\n"
-        )
-    if custom_instructions:
-        user_prompt += f"Instruksi Tambahan: {custom_instructions}\n"
-
-    user_prompt += (
-        f"\nTuliskan naskah narasi lengkap dan Story Continuity Bible sekarang dalam format JSON murni.\n"
-        f"PENTING SEKALI TENTANG PANJANG KATA & DURASI:\n"
-        f"- Target durasi bicara adalah {duration_mins} menit penuh.\n"
-        f"- Total kata narasi WAJIB mencapai minimal {min_words} kata (target ideal ~{target_words} kata).\n"
-        f"- Kembangkan setiap scene menjadi 2 kalimat narasi yang padat, ekspresif, dan mendalam (18–25 kata per scene).\n"
-        f"- Gunakan token variabel [preset:style], [char:id:variant], dan [loc:id] pada setiap image_prompt secara konsisten.\n"
-        f"- DILARANG KERAS menyertakan token kurung siku (seperti [char:...]), titik dua (:), atau titik koma (;) pada narration_text!"
+    system_prompt = DIRECTOR_CHAPTER_ID_TEMPLATE.format(
+        chapter_index=chapter_index,
+        chapter_title=chapter_title,
+        continuity_instruction=continuity_instruction,
+        visual_guidelines=visual_guidelines,
+    )
+    beats_json = json.dumps(beats, ensure_ascii=False, indent=2)
+    user_prompt = (
+        f"Babak {chapter_index}: {chapter_title}\n\n"
+        f"{context_block}"
+        f"=== BEAT NARASI YANG HARUS DIARAHKAN (TEPAT {len(beats)} BEAT) ===\n"
+        f"{beats_json}\n\n"
+        f"Bertindaklah sebagai Sutradara Storyboard Komik 2D & Sinematografi Visual. Untuk SETIAP beat di atas, rancang tata adegan visual 16:9 yang dinamis dan ekspresif sekarang dalam format JSON murni."
     )
     return system_prompt, user_prompt
+
+
+def _synthesize_fallback_beats(
+    topic: str,
+    chapter_index: int,
+    chapter_title: str,
+    target_beats: int,
+    target_words: int,
+    language: str = "id",
+) -> List[Dict[str, Any]]:
+    """Synthesize high-quality fallback narrative beats if LLM call experiences an unrecoverable failure, preserving target duration."""
+    beats: List[Dict[str, Any]] = []
+    num_beats = max(2, target_beats)
+
+    if language == "en":
+        for b_idx in range(1, num_beats + 1):
+            if b_idx == 1:
+                text = f"The compelling exploration of {topic} opens here with profound intrigue, directly framing the conflict of {chapter_title}."
+            elif b_idx == num_beats:
+                text = f"As the tensions of {chapter_title} draw to a decisive turning point, a lingering mystery unfolds, setting up the consequential chapter ahead."
+            else:
+                text = f"Within this pivotal beat of {chapter_title}, critical dimensions of {topic} reveal unexpected realities and heighten the stakes for everyone involved."
+            beats.append({"beat_index": b_idx, "narration_text": text})
+    else:
+        for b_idx in range(1, num_beats + 1):
+            if b_idx == 1:
+                text = f"Penjelajahan mendalam mengenai {topic} bermula di sini dengan pertanyaan besar yang mengawali babak {chapter_title}."
+            elif b_idx == num_beats:
+                text = f"Ketika babak {chapter_title} mencapai titik baliknya, sebuah teka-teki baru mulai terkuak dan memicu rasa penasaran menuju perjalanan berikutnya."
+            else:
+                text = f"Di tengah ketegangan {chapter_title}, fakta tersembunyi mengenai {topic} perlahan tersingkap dan mengubah pemahaman yang ada sebelumnya."
+            beats.append({"beat_index": b_idx, "narration_text": text})
+
+    return beats
+
+
+COMMON_TITLES = {
+    "dewi", "raden", "prabu", "raja", "ratu", "patih", "sultan", "putri", "pangeran",
+    "sang", "si", "kapten", "komandan", "jenderal", "profesor", "dr", "guru", "mbah",
+    "kyai", "pak", "bu", "ibu", "bapak", "tuan", "nyonya", "king", "queen", "prince",
+    "princess", "captain", "commander", "doctor", "general", "lord", "lady", "sir",
+    "mr", "mrs", "miss", "master",
+}
+
+COMMON_LOC_NOISE = {
+    "di", "ke", "dari", "pada", "yang", "dan", "the", "in", "at", "on", "of", "to", "from",
+    "tempat", "daerah", "area", "lokasi", "suasana", "latar", "scene", "view",
+}
+
+
+def _match_characters_from_text(narr: str, characters: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    """Match characters using whole-word token scoring against Indonesian & English titles and names."""
+    if not characters:
+        return []
+    narr_lower = (narr or "").lower()
+    narr_words = set(re.findall(r"\b[a-zA-Z0-9_-]+\b", narr_lower))
+
+    scored_matches = []
+    for c in characters:
+        if not isinstance(c, dict):
+            continue
+        score = 0
+        c_id = (c.get("id") or "").lower().strip()
+        c_name = (c.get("name") or "").lower().strip()
+
+        if c_name and c_name in narr_lower:
+            score += 10
+        if c_id and c_id in narr_words:
+            score += 8
+
+        for tok in re.split(r"[\s_-]+", c_name):
+            if len(tok) >= 3 and tok in narr_words:
+                score += 3 if tok in COMMON_TITLES else 7
+
+        for tok in re.split(r"[\s_-]+", c_id):
+            if len(tok) >= 3 and tok in narr_words:
+                score += 3 if tok in COMMON_TITLES else 6
+
+        if score > 0:
+            scored_matches.append((score, c))
+
+    scored_matches.sort(key=lambda x: x[0], reverse=True)
+    return [c for score, c in scored_matches]
+
+
+def _match_location_from_text(narr: str, locations: Optional[List[Dict[str, Any]]]) -> Optional[Dict[str, Any]]:
+    """Match location using token scoring across name, id, props, and environment description."""
+    if not locations:
+        return None
+    narr_lower = (narr or "").lower()
+    narr_words = set(re.findall(r"\b[a-zA-Z0-9_-]+\b", narr_lower))
+
+    scored_matches = []
+    for loc in locations:
+        if not isinstance(loc, dict):
+            continue
+        score = 0
+        l_id = (loc.get("id") or loc.get("location_id") or "").lower().strip()
+        l_name = (loc.get("name") or "").lower().strip()
+        props = (loc.get("focal_props") or loc.get("key_props") or "").lower().strip()
+        env = (loc.get("environment_anchor") or loc.get("description") or "").lower().strip()
+
+        if l_name and l_name in narr_lower:
+            score += 10
+        if l_id and l_id in narr_words:
+            score += 8
+
+        for tok in re.split(r"[\s_-]+", l_name):
+            if len(tok) >= 3 and tok not in COMMON_LOC_NOISE and tok in narr_words:
+                score += 6
+
+        for tok in re.split(r"[\s_-]+", l_id):
+            if len(tok) >= 3 and tok not in COMMON_LOC_NOISE and tok in narr_words:
+                score += 5
+
+        for tok in re.findall(r"\b[a-zA-Z0-9_-]{4,}\b", f"{props} {env}"):
+            if tok not in COMMON_LOC_NOISE and tok in narr_words:
+                score += 3
+
+        if score > 0:
+            scored_matches.append((score, loc))
+
+    scored_matches.sort(key=lambda x: x[0], reverse=True)
+    return scored_matches[0][1] if scored_matches else None
+
+
+def _detect_extra_subject_role(narr: str) -> str:
+    """Identify extra or minor characters present in narration when not registered in Continuity Bible."""
+    narr_lower = (narr or "").lower()
+    role_map = [
+        (("penjaga gerbang", "gatekeeper", "gate guard", "penjaga pintu"), "the stern gatekeeper sentry on guard duty"),
+        (("penjaga", "pengawal", "guard", "sentry", "warden"), "an alert guard sentry standing watch"),
+        (("prajurit", "pasukan", "tentara", "soldier", "warrior"), "a disciplined armed soldier"),
+        (("saudagar", "pedagang", "merchant", "vendor", "penjual"), "a merchant attending to trade"),
+        (("nelayan", "fisherman"), "a weathered fisherman"),
+        (("petani", "farmer"), "a hardworking farmer"),
+        (("sosok", "bayangan", "silhouette", "figure"), "a shadowy enigmatic silhouette"),
+        (("raksasa", "ogre", "giant"), "a towering ogre sentinel"),
+        (("tahanan", "tawanan", "prisoner", "captive"), "a captive prisoner in restrained posture"),
+    ]
+    for keys, desc in role_map:
+        if any(k in narr_lower for k in keys):
+            return desc
+    return ""
+
+
+def _detect_narration_leak(img_prompt: str, narration: str) -> bool:
+    """Check if image prompt leaks raw narration or illustration clauses."""
+    if not img_prompt:
+        return False
+    if re.search(r"\b(illustrating|representing|depicting|menampilkan)\b", img_prompt, re.IGNORECASE):
+        return True
+    if narration:
+        n_clean = re.sub(r"[^\w\s]", "", narration.lower()).strip()
+        p_clean = re.sub(r"[^\w\s]", "", img_prompt.lower()).strip()
+        if len(n_clean) >= 20:
+            for i in range(0, max(1, len(n_clean) - 20), 6):
+                chunk = n_clean[i : i + 20]
+                if chunk in p_clean:
+                    return True
+    return False
+
+
+def _synthesize_director_fallback_scene(
+    beat: Dict[str, Any],
+    b_i: int,
+    total_beats: int,
+    characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    world_setting: Optional[Dict[str, Any]] = None,
+    preset: Optional[Any] = None,
+    prev_scene: Optional[Dict[str, Any]] = None,
+    ch_idx: int = 1,
+    default_character_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Synthesize a rich, comic-style visual scene for a narrative beat when LLM output fails, times out, or misses prompts."""
+    narration = (beat.get("narration_text") or "").strip()
+    narr_lower = narration.lower()
+
+    # 1. Match character(s) from narration text
+    matched_chars = _match_characters_from_text(narration, characters)
+
+    active_char_id = ""
+    subjects: List[Dict[str, str]] = []
+    if matched_chars:
+        active_char_id = matched_chars[0].get("id") or ""
+        subjects.append({
+            "char_id": active_char_id,
+            "pose": "actively engaged in the scene with expressive body language",
+            "expression": "focused and emotionally present",
+        })
+        if len(matched_chars) > 1:
+            second_char_id = matched_chars[1].get("id") or ""
+            if second_char_id:
+                subjects.append({
+                    "char_id": second_char_id,
+                    "pose": "facing and interacting within the environment",
+                    "expression": "alert",
+                })
+    else:
+        # Check pronouns bridging to previous scene character
+        pronoun_found = any(p in narr_lower.split() for p in ("ia", "dia", "mereka", "sang", "si", "beliau", "he", "she", "they"))
+        if prev_scene and pronoun_found and prev_scene.get("character_id"):
+            active_char_id = prev_scene["character_id"]
+            subjects.append({
+                "char_id": active_char_id,
+                "pose": "moving with clear dramatic purpose through the setting",
+                "expression": "determined",
+            })
+        else:
+            # Check for extra/minor subject role without forcing characters[0]
+            extra_role = _detect_extra_subject_role(narration)
+            if extra_role:
+                active_char_id = ""
+                subjects.append({
+                    "extra": extra_role,
+                    "pose": "alert and grounded in the environment",
+                    "expression": "stern",
+                })
+            elif default_character_id:
+                active_char_id = default_character_id
+                subjects.append({
+                    "char_id": active_char_id,
+                    "pose": "moving with purpose within the scene",
+                    "expression": "focused",
+                })
+            else:
+                active_char_id = ""
+                subjects = []
+
+    # 2. Match location from narration text or inherit from prev_scene
+    matched_loc = _match_location_from_text(narration, locations)
+    if matched_loc:
+        active_loc_id = matched_loc.get("id") or matched_loc.get("location_id") or "cinematic_setting"
+    elif prev_scene and prev_scene.get("location_id"):
+        active_loc_id = prev_scene["location_id"]
+    elif locations and len(locations) > 0:
+        active_loc_id = locations[0].get("id") or locations[0].get("location_id") or "cinematic_setting"
+    else:
+        active_loc_id = "cinematic_setting"
+
+    # 3. Scene group ID
+    if prev_scene and prev_scene.get("location_id") == active_loc_id and prev_scene.get("scene_group_id"):
+        scene_grp = prev_scene["scene_group_id"]
+    else:
+        scene_grp = f"grp_ch{ch_idx}_{b_i // 3}"
+
+    # 4. Classify beat type
+    has_char = bool(subjects)
+    is_first = (b_i == 0)
+    is_last = (b_i == total_beats - 1)
+    loc_changed = (prev_scene is not None and prev_scene.get("location_id") != active_loc_id)
+    beat_type = classify_beat_type(
+        narration,
+        has_character=has_char,
+        is_first=is_first,
+        is_last=is_last,
+        location_changed=loc_changed,
+    )
+
+    # 5. Shot type and camera angle
+    if is_first or loc_changed:
+        shot_type = "establishing_wide" if is_first else "wide"
+        camera_angle = "eye_level"
+    elif len(subjects) >= 2:
+        shot_type = "two_shot" if b_i % 2 == 0 else "medium"
+        camera_angle = "eye_level"
+    elif beat_type == "reaction" and has_char:
+        shot_type = "medium_closeup" if b_i % 2 == 0 else "close_up"
+        camera_angle = "eye_level"
+    elif beat_type == "general_explainer":
+        shot_type = "wide" if b_i % 2 == 0 else "full_shot"
+        camera_angle = "high_angle" if b_i % 2 == 1 else "eye_level"
+    else:
+        palette = SHOT_PALETTE.get(beat_type, ["wide", "full_shot", "medium"])
+        shot_type = palette[b_i % len(palette)]
+        camera_angle = ["eye_level", "low_angle", "eye_level", "high_angle"][b_i % 4]
+
+    # 6. Concrete visual action and environment detail
+    action_tmpl = FALLBACK_VISUAL_ACTION.get(beat_type, FALLBACK_VISUAL_ACTION["action"])
+    visual_action = action_tmpl
+    environment_detail = FALLBACK_ENVIRONMENT.get(beat_type, FALLBACK_ENVIRONMENT["action"])
+
+    # Spatial blocking & focal point
+    if len(subjects) >= 2:
+        spatial_blocking = "Dynamic two-figure staging across screen-left and screen-right with deep perspective"
+        focal_point = "center"
+    elif subjects:
+        spatial_blocking = "Subject positioned dynamically within the frame interacting with environment"
+        focal_point = "left" if b_i % 2 == 1 else "center"
+    else:
+        spatial_blocking = "Expansive landscape composition with depth layers and atmospheric haze"
+        focal_point = "center"
+
+    scene_data = {
+        "beat_index": beat.get("beat_index", b_i + 1),
+        "beat_type": beat_type,
+        "scene_group_id": scene_grp,
+        "shot_type": shot_type,
+        "camera_angle": camera_angle,
+        "spatial_blocking": spatial_blocking,
+        "focal_point": focal_point,
+        "camera_motion": default_motion(shot_type, camera_angle, b_i),
+        "location_id": active_loc_id,
+        "subjects": subjects,
+        "visual_action": visual_action,
+        "environment_detail": environment_detail,
+        "composition": "dynamic 16:9 comic panel composition with clear depth",
+        "lighting_time": "atmospheric directional lighting",
+        "narration_text": narration,
+        "character_id": active_char_id,
+    }
+
+    scene_data["image_prompt"] = compile_scene_prompt(
+        scene_data,
+        characters=characters,
+        locations=locations,
+    )
+
+    return scene_data
+
+
+def _sanitize_director_image_prompt(
+    img_prompt: str,
+    beat: Dict[str, Any],
+    b_i: int = 0,
+    shot_type: str = "wide",
+    characters: Optional[List[Dict[str, Any]]] = None,
+    locations: Optional[List[Dict[str, Any]]] = None,
+    preset: Optional[Any] = None,
+) -> str:
+    """Sanitize director image prompt: remove copied narration snippets or 'illustrating ...' clauses and elevate to rich comic staging."""
+    clean = (img_prompt or "").strip()
+    # Strip any technical aspect ratio / full-bleed / 16:9 boilerplates
+    clean = re.sub(
+        r"\b(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|16:9\s+(?:widescreen\s+)?|full[\s-]bleed\s+16:9\s*|full[\s-]bleed\s*)\b",
+        "",
+        clean,
+        flags=re.IGNORECASE,
+    ).strip(" ,.")
+    if not clean:
+        fallback = _synthesize_director_fallback_scene(
+            beat=beat,
+            b_i=b_i,
+            total_beats=1,
+            characters=characters,
+            locations=locations,
+            preset=preset,
+        )
+        return fallback["image_prompt"]
+
+    narration = (beat.get("narration_text") or "").strip()
+    leak_detected = _detect_narration_leak(clean, narration)
+
+    if leak_detected:
+        fallback = _synthesize_director_fallback_scene(
+            beat=beat,
+            b_i=b_i,
+            total_beats=1,
+            characters=characters,
+            locations=locations,
+            preset=preset,
+        )
+        fb_prompt = fallback["image_prompt"]
+        fb_char_id = fallback.get("character_id")
+        fb_loc_id = fallback.get("location_id")
+
+        # Check for explicit "illustrating ..." or "representing ..." pattern
+        ill_match = re.search(r"\b(illustrating|representing|depicting|menampilkan)\s+(.+)$", clean, re.IGNORECASE)
+        prefix = clean[:ill_match.start()].rstrip(" ,;.") if ill_match else ""
+
+        _, staging_part = compile_scene_prompt_parts(fallback, characters=characters, locations=locations)
+        if not staging_part:
+            staging_part = "Action: caught in a vivid narrative moment with rich environmental depth."
+
+        if prefix:
+            # If prefix contains a character token [char:X]
+            char_match = re.search(r",?\s*(?:featuring\s+)?\[char:([^\]]+)\]", prefix, re.IGNORECASE)
+            if char_match:
+                pref_char_id = char_match.group(1).split(":")[0].strip().lower()
+                if not fb_char_id or pref_char_id != fb_char_id.lower() or "[char:" in staging_part.lower():
+                    # Strip character token from prefix to prevent duplication with staging_part
+                    prefix = re.sub(r",?\s*(?:featuring\s+)?\[char:[^\]]+\]", "", prefix, flags=re.IGNORECASE).rstrip(" ,;.")
+
+            # If prefix contains a location token [loc:Y]
+            loc_match = re.search(r"\[loc:([^\]]+)\]", prefix, re.IGNORECASE)
+            if loc_match and fb_loc_id:
+                pref_loc_id = loc_match.group(1).split(":")[0].strip().lower()
+                if pref_loc_id != fb_loc_id.lower() and _match_location_from_text(narration, locations):
+                    prefix = re.sub(r"\[loc:[^\]]+\]", f"[loc:{fb_loc_id}]", prefix, flags=re.IGNORECASE)
+
+            clean = f"{prefix}, {staging_part}"
+        else:
+            clean = fb_prompt
+
+    # Strip any remaining Full-bleed 16:9 / 16:9 boilerplate
+    clean = re.sub(
+        r"\b(?:full[\s-]bleed\s+(?:edge-to-edge\s+)?(?:widescreen\s+)?(?:16:9\s+)?|16:9\s+(?:widescreen\s+)?|full[\s-]bleed\s+16:9\s*|full[\s-]bleed\s*)\b",
+        "",
+        clean,
+        flags=re.IGNORECASE,
+    ).strip(" ,.")
+
+    # Front-load [preset:style] if embedded as 'in [preset:style]'
+    if re.search(r"\b(?:shot|composition|framing|scene)\s+in\s+\[(?:preset:)?style\]", clean, re.IGNORECASE):
+        clean = re.sub(r"\b(shot|composition|framing|scene)\s+in\s+\[(?:preset:)?style\]", r"\1", clean, flags=re.IGNORECASE).strip(" ,.")
+        if not clean.lower().startswith("[preset:style]"):
+            clean = f"[preset:style]. {clean[0].upper() + clean[1:] if clean else ''}"
+    elif "[preset:style]" not in clean.lower():
+        clean = f"[preset:style]. {clean[0].upper() + clean[1:] if clean else ''}"
+
+    # Strip any dangling partial words at the end caused by truncated text
+    clean = re.sub(r"[,\s;]+$", "", clean).strip()
+    if not clean.endswith((".", "!", "?")):
+        clean += "."
+
+    return clean
 
 
 def _split_text_into_subsegments(text: str, n_parts: int) -> List[str]:
@@ -1136,9 +1604,92 @@ def _split_text_into_subsegments(text: str, n_parts: int) -> List[str]:
     return [text] * n_parts
 
 
+def repair_json_string(json_str: str) -> str:
+    """Repair truncated or malformed JSON string generated by LLMs by closing strings and delimiter stacks."""
+    if not json_str or not isinstance(json_str, str):
+        return "{}"
+
+    text = json_str.strip()
+    fence_pattern = r"^```(?:json)?\s*\n?(.*?)\n?```$"
+    match = re.search(fence_pattern, text, re.DOTALL | re.IGNORECASE)
+    if match:
+        text = match.group(1).strip()
+
+    start_brace = text.find("{")
+    start_bracket = text.find("[")
+    if start_brace != -1 and (start_bracket == -1 or start_brace < start_bracket):
+        text = text[start_brace:]
+    elif start_bracket != -1:
+        text = text[start_bracket:]
+
+    try:
+        json.loads(text)
+        return text
+    except Exception:
+        pass
+
+    in_string = False
+    escape = False
+    stack: List[str] = []
+
+    for char in text:
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+        else:
+            if char == '"':
+                in_string = True
+            elif char in ("{", "["):
+                stack.append(char)
+            elif char in ("}", "]"):
+                if stack:
+                    if (char == "}" and stack[-1] == "{") or (char == "]" and stack[-1] == "["):
+                        stack.pop()
+
+    repaired = text
+    if in_string:
+        repaired += '"'
+
+    repaired = re.sub(r',\s*"[^"]*"\s*:\s*$', "", repaired)
+    repaired = re.sub(r",\s*$", "", repaired)
+
+    stack = []
+    in_str = False
+    esc = False
+    for char in repaired:
+        if in_str:
+            if esc:
+                esc = False
+            elif char == "\\":
+                esc = True
+            elif char == '"':
+                in_str = False
+        else:
+            if char == '"':
+                in_str = True
+            elif char in ("{", "["):
+                stack.append(char)
+            elif char in ("}", "]"):
+                if stack:
+                    if (char == "}" and stack[-1] == "{") or (char == "]" and stack[-1] == "["):
+                        stack.pop()
+
+    for opener in reversed(stack):
+        if opener == "{":
+            repaired += "}"
+        elif opener == "[":
+            repaired += "]"
+
+    return repaired
+
+
 def extract_json_payload(raw_content: str) -> Dict[str, Any]:
-    """Safely extract JSON from LLM output with fence and regex stripping."""
-    text = raw_content.strip()
+    """Safely extract JSON from LLM output with fence and regex stripping, repairing truncated JSON when necessary."""
+    text = (raw_content or "").strip()
 
     # Remove markdown code fences
     fence_pattern = r"^```(?:json)?\s*\n?(.*?)\n?```$"
@@ -1146,58 +1697,29 @@ def extract_json_payload(raw_content: str) -> Dict[str, Any]:
     if match:
         text = match.group(1).strip()
 
+    # 1. Direct parse
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(text[start : end + 1])
-            except json.JSONDecodeError as err:
-                log.error("Failed to parse extracted JSON substring: %s", err)
-        raise ValueError("Gagal mengurai respons AI ke dalam format JSON naskah storyboard.")
+    except Exception:
+        pass
 
+    # 2. Substring between first { and last }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except Exception:
+            pass
 
-def _extract_rolling_context_from_chapter(
-    ch_res: Dict[str, Any],
-    prev_used_phrases: Optional[List[str]] = None,
-) -> Dict[str, Any]:
-    """Extract tail narration sentences, active camera state, and notable 3-word phrases for rolling chapter continuity."""
-    all_texts: List[str] = []
-    last_group = ""
-    last_blocking = ""
+    # 3. Truncated repair attempt using repair_json_string
+    try:
+        repaired = repair_json_string(text)
+        return json.loads(repaired)
+    except Exception as err:
+        log.warning("JSON repair failed on LLM output: %s", err)
 
-    for seg in ch_res.get("segments", []) or []:
-        scenes = seg.get("scenes")
-        if isinstance(scenes, list) and scenes:
-            for sc in scenes:
-                txt = (sc.get("narration_text") or "").strip()
-                if txt:
-                    all_texts.append(txt)
-                if sc.get("scene_group_id"):
-                    last_group = str(sc.get("scene_group_id")).strip()
-                if sc.get("spatial_blocking"):
-                    last_blocking = str(sc.get("spatial_blocking")).strip()
-        elif seg.get("narration_text"):
-            all_texts.append(str(seg.get("narration_text")).strip())
-
-    tail_sentences = " ".join(all_texts[-2:]) if all_texts else ""
-    used = list(prev_used_phrases or [])
-    # Capture a few distinctive bigrams/trigrams from opening clauses to prevent repetitive sensory clichés
-    for txt in all_texts[:3]:
-        words = [w.strip(".,!?\"'“”") for w in txt.split() if len(w.strip(".,!?\"'“”")) > 3]
-        if len(words) >= 3:
-            phrase = " ".join(words[:3]).lower()
-            if phrase not in used:
-                used.append(phrase)
-
-    return {
-        "last_sentences": tail_sentences[:340],
-        "last_scene_group": last_group,
-        "last_spatial_blocking": last_blocking,
-        "used_phrases": used[-16:],
-    }
+    raise ValueError("Gagal mengurai respons AI ke dalam format JSON naskah storyboard.")
 
 
 def _extract_shot_metadata_and_motion(
@@ -1229,15 +1751,8 @@ def _extract_shot_metadata_and_motion(
         group_id = f"grp_c{chap_idx + 1}_s{seg_counter}"
 
     # 3. Shot type
-    raw_shot = (scene.get("shot_type") or "").strip().lower().replace("-", "_").replace(" ", "_")
-    if raw_shot == "closeup":
-        raw_shot = "close_up"
-    elif raw_shot == "extreme_close_up":
-        raw_shot = "extreme_closeup"
-    elif raw_shot == "medium_close_up":
-        raw_shot = "medium_closeup"
-
-    if raw_shot in VALID_SHOT_TYPES:
+    raw_shot = normalize_shot_type(scene.get("shot_type"))
+    if raw_shot:
         shot_type = raw_shot
     elif "extreme close" in lower_p:
         shot_type = "extreme_closeup"
@@ -1249,10 +1764,14 @@ def _extract_shot_metadata_and_motion(
         shot_type = "over_the_shoulder"
     elif "establishing" in lower_p:
         shot_type = "establishing_wide"
-    elif "wide" in lower_p or "widescreen" in lower_p and group_id != prev_group_id:
+    elif "two-shot" in lower_p or "two shot" in lower_p:
+        shot_type = "two_shot"
+    elif "full" in lower_p or "full-body" in lower_p:
+        shot_type = "full_shot"
+    elif "wide" in lower_p or "widescreen" in lower_p:
         shot_type = "establishing_wide" if group_id != prev_group_id else "wide"
     else:
-        shot_type = "establishing_wide" if group_id != prev_group_id else ("close_up" if scene_idx > 0 else "medium")
+        shot_type = "establishing_wide" if group_id != prev_group_id else ("wide" if scene_idx == 0 else "medium")
 
     # 4. Camera angle
     raw_angle = (scene.get("camera_angle") or "").strip().lower().replace("-", "_").replace(" ", "_")
@@ -1307,6 +1826,16 @@ def _extract_shot_metadata_and_motion(
         shot_meta["spatial_blocking"] = spatial_blocking
     if cur_loc_token:
         shot_meta["location_id"] = cur_loc_token
+    elif scene.get("location_id"):
+        shot_meta["location_id"] = str(scene["location_id"]).strip()
+    if scene.get("location_view"):
+        shot_meta["location_view"] = str(scene["location_view"]).strip()
+    if scene.get("beat_type"):
+        shot_meta["beat_type"] = str(scene["beat_type"]).strip()
+    if scene.get("visual_action"):
+        shot_meta["visual_action"] = str(scene["visual_action"]).strip()
+    if scene.get("subjects"):
+        shot_meta["subjects"] = scene["subjects"]
 
     return shot_meta, motion, cur_loc_token, group_id
 
@@ -1321,6 +1850,7 @@ async def generate_storyboard_script(
     preset_id: Optional[str] = None,
     custom_instructions: Optional[str] = None,
     language: str = "id",
+    use_character_bible: bool = True,
 ) -> Tuple[Narration, List[StoryboardItem]]:
     """Generate long-form storyboard script and save Narration + StoryboardItem records."""
     proj = await db.get(Project, project_id)
@@ -1355,200 +1885,548 @@ async def generate_storyboard_script(
     detected_locations: List[Dict[str, Any]] = []
     detected_world_setting: Dict[str, Any] = {}
 
-    # TWO-PHASE CHUNKED GENERATION (for duration_mins >= 3)
-    if duration_mins >= 3:
-        try:
-            # PHASE 1: Generate Master Outline + Preset-Aware Structured Continuity Bible
-            outline_sys, outline_usr = build_storyboard_outline_prompt(
+    # =========================================================================
+    # MULTI-AGENT STORYBOARD PIPELINE:
+    # Agent 1: Scriptwriter Agent (Narrative lead, pure beats, 18-25 words each)
+    # Agent 2: Character & World Agent (Concept Artist & Spatial Continuity Supervisor)
+    # Agent 3: Director Agent (Sutradara: Camera framing, shot types, angles, image prompts)
+    # =========================================================================
+
+    # STEP 1: SCRIPTWRITER AGENT - OUTLINE & CHAPTER BEATS
+    await publish_project_event(
+        project_id=project_id,
+        task_type="storyboard_generate",
+        status="progress",
+        progress=5,
+        stage="scriptwriter",
+        message=f"Scriptwriter Agent: Merancang outline alur cerita ({duration_mins} menit, ~{target_total_words} kata)...",
+        data={
+            "agent": "scriptwriter",
+            "agent_name": "Scriptwriter Agent",
+            "agent_progress": 10,
+            "step": "outline",
+            "duration_mins": duration_mins,
+        },
+    )
+
+    outline_sys, outline_usr = build_scriptwriter_outline_prompt(
+        topic=topic,
+        duration_mins=duration_mins,
+        tone=tone,
+        num_chapters=num_chapters,
+        custom_instructions=custom_instructions,
+        language=language,
+    )
+
+    try:
+        raw_outline = await llm_adapter.generate_chat(
+            prompt=outline_usr,
+            system_prompt=outline_sys,
+            json_mode=True,
+            timeout=90.0,
+            max_tokens=4096,
+        )
+        outline_data = extract_json_payload(raw_outline)
+        outline_chapters = outline_data.get("chapters", [])
+        video_title = outline_data.get("title", topic)
+        video_overview = outline_data.get("overview", f"Video cerita mendalam mengenai {topic}")
+    except Exception as e:
+        log.warning("Outline generation error: %s. Using default chapter roadmap.", e)
+        video_title = topic
+        video_overview = f"Video cerita mendalam mengenai {topic}"
+        outline_chapters = []
+
+    if not outline_chapters or not isinstance(outline_chapters, list):
+        outline_chapters = [
+            {
+                "chapter_index": i + 1,
+                "chapter_title": f"Babak {i + 1}",
+                "synopsis": f"Perjalanan dan konflik babak {i + 1} cerita {topic}",
+                "target_beats": scenes_per_chapter,
+                "target_words": words_per_chapter,
+            }
+            for i in range(num_chapters)
+        ]
+
+    # Scriptwriter Agent: Write pure narrative beats per chapter
+    script_chapters: List[Dict[str, Any]] = []
+    prev_chapter_ending: Optional[str] = None
+
+    for ch_idx, ch_info in enumerate(outline_chapters):
+        ch_title = ch_info.get("chapter_title", f"Babak {ch_idx + 1}")
+        ch_synopsis = ch_info.get("synopsis", "")
+        ch_opening = ch_info.get("opening_hook")
+        ch_closing = ch_info.get("closing_rehook")
+        ch_beats_target = ch_info.get("target_beats") or scenes_per_chapter
+        ch_words_target = ch_info.get("target_words") or words_per_chapter
+
+        agent1_progress = int(10 + (32 * (ch_idx + 1) / len(outline_chapters)))
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=agent1_progress,
+            stage="scriptwriter",
+            message=f"Scriptwriter Agent: Menulis naskah narasi Babak {ch_idx + 1}/{len(outline_chapters)} ('{ch_title[:30]}')...",
+            data={
+                "agent": "scriptwriter",
+                "agent_name": "Scriptwriter Agent",
+                "agent_progress": int(100 * (ch_idx + 1) / len(outline_chapters)),
+                "chapter": ch_idx + 1,
+                "total_chapters": len(outline_chapters),
+            },
+        )
+
+        sys_p, usr_p = build_scriptwriter_chapter_prompt(
+            video_title=video_title,
+            video_overview=video_overview,
+            chapter_index=ch_idx + 1,
+            total_chapters=len(outline_chapters),
+            chapter_title=ch_title,
+            chapter_synopsis=ch_synopsis,
+            opening_hook=ch_opening,
+            closing_rehook=ch_closing,
+            target_beats=ch_beats_target,
+            target_chapter_words=ch_words_target,
+            tone=tone,
+            language=language,
+            custom_instructions=custom_instructions,
+            previous_chapter_ending=prev_chapter_ending,
+        )
+
+        ch_beats: List[Dict[str, Any]] = []
+        for attempt in range(2):
+            try:
+                raw_ch = await llm_adapter.generate_chat(
+                    prompt=usr_p,
+                    system_prompt=sys_p,
+                    json_mode=True,
+                    timeout=90.0,
+                    max_tokens=4096,
+                )
+                parsed_ch = extract_json_payload(raw_ch)
+                raw_beats = parsed_ch.get("beats") or parsed_ch.get("scenes") or []
+                if isinstance(raw_beats, list) and len(raw_beats) > 0:
+                    for b_i, b in enumerate(raw_beats):
+                        t = clean_narration_for_tts(b.get("narration_text") or b.get("text") or "").strip()
+                        if t:
+                            ch_beats.append({"beat_index": b_i + 1, "narration_text": t})
+                if ch_beats:
+                    break
+            except Exception as err:
+                log.warning("Attempt %d failed writing chapter %d: %s", attempt + 1, ch_idx + 1, err)
+                if attempt == 0:
+                    await asyncio.sleep(1.0)
+
+        if not ch_beats:
+            log.warning("Using fallback beats synthesis for chapter %d...", ch_idx + 1)
+            ch_beats = _synthesize_fallback_beats(
                 topic=topic,
-                duration_mins=duration_mins,
-                tone=tone,
-                num_chapters=num_chapters,
-                custom_instructions=custom_instructions,
+                chapter_index=ch_idx + 1,
+                chapter_title=ch_title,
+                target_beats=ch_beats_target,
+                target_words=ch_words_target,
                 language=language,
+            )
+
+        if ch_beats:
+            prev_chapter_ending = ch_beats[-1].get("narration_text")
+
+        script_chapters.append({
+            "chapter_index": ch_idx + 1,
+            "chapter_title": ch_title,
+            "beats": ch_beats,
+        })
+
+    # Assemble full script text
+    full_script_lines_raw = [
+        b["narration_text"] for ch in script_chapters for b in ch["beats"]
+    ]
+    full_script_text = "\n\n".join(full_script_lines_raw)
+    total_script_words = len(full_script_text.split())
+    log.info("Scriptwriter Agent completed: %d chapters, %d total words", len(script_chapters), total_script_words)
+
+    await publish_project_event(
+        project_id=project_id,
+        task_type="storyboard_generate",
+        status="progress",
+        progress=45,
+        stage="scriptwriter",
+        message=f"Scriptwriter Agent: Naskah selesai ({total_script_words} kata, ~{round(total_script_words / 135, 1)} mnt)!",
+        data={
+            "agent": "scriptwriter",
+            "agent_name": "Scriptwriter Agent",
+            "agent_progress": 100,
+            "word_count": total_script_words,
+        },
+    )
+
+    # STEP 2: CHARACTER & WORLD AGENT
+    if use_character_bible:
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=48,
+            stage="character_designer",
+            message="Character & World Agent: Menganalisis naskah & merancang Story Continuity Bible...",
+            data={
+                "agent": "character_designer",
+                "agent_name": "Character & World Agent",
+                "agent_progress": 25,
+                "step": "analyzing",
+            },
+        )
+
+        char_sys, char_usr = build_character_agent_prompt(
+            full_script_text=full_script_text,
+            topic=topic,
+            tone=tone,
+            preset=preset,
+            language=language,
+        )
+
+        try:
+            raw_bible = await llm_adapter.generate_chat(
+                prompt=char_usr,
+                system_prompt=char_sys,
+                json_mode=True,
+                timeout=120.0,
+                max_tokens=4096,
+            )
+            bible_data = extract_json_payload(raw_bible)
+            detected_characters = bible_data.get("characters", []) or []
+            detected_locations = bible_data.get("locations", []) or []
+            detected_world_setting = bible_data.get("world_setting", {}) or {}
+        except Exception as e:
+            log.warning("Character Agent extraction failed: %s. Using default entities.", e)
+            detected_characters = [
+                {
+                    "id": "protagonist",
+                    "name": "Tokoh Utama",
+                    "role": "Protagonist",
+                    "face_head_anchor": "expressive eyes, distinctive hairstyle, focused gaze",
+                    "outfit_body_anchor": "cinematic tailored attire authentic to the setting",
+                    "visual_anchor": "protagonist figure with expressive eyes and cinematic attire",
+                    "variants": [],
+                }
+            ]
+            detected_locations = [
+                {
+                    "id": "main_set",
+                    "name": "Latar Utama",
+                    "environment_anchor": f"cinematic detailed setting representing {topic}",
+                    "closeup_background_anchor": f"softly defocused background of {topic} environment",
+                    "focal_props": "central props, atmospheric textures",
+                    "lighting_direction": "warm directional morning sunlight streaming from screen-left",
+                }
+            ]
+            detected_world_setting = {
+                "era": "Contemporary",
+                "time_setting": "Present",
+                "atmosphere": "Cinematic warm palette with dynamic contrast",
+            }
+
+        detected_characters, detected_locations = _normalize_continuity_bible(
+            detected_characters, detected_locations
+        )
+
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=65,
+            stage="character_designer",
+            message=f"Character & World Agent: {len(detected_characters)} Tokoh & {len(detected_locations)} Micro-set berhasil dikunci!",
+            data={
+                "agent": "character_designer",
+                "agent_name": "Character & World Agent",
+                "agent_progress": 100,
+                "characters_count": len(detected_characters),
+                "locations_count": len(detected_locations),
+            },
+        )
+    else:
+        log.info("Mode Tanpa Karakter Aktif (use_character_bible=False) untuk proyek %s", project_id)
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=55,
+            stage="character_designer",
+            message="Mode Tanpa Karakter Aktif: Melewati Character Bible, menyiapkan latar & dunia cerita...",
+            data={
+                "agent": "character_designer",
+                "agent_name": "Character & World Agent",
+                "agent_progress": 100,
+                "step": "skipped_character_bible",
+            },
+        )
+        detected_characters = []
+        try:
+            char_sys, char_usr = build_character_agent_prompt(
+                full_script_text=full_script_text,
+                topic=topic,
+                tone=tone,
                 preset=preset,
+                language=language,
             )
-            log.info(
-                "Phase 1: Generating Master Outline & Continuity Bible for project %s (topic='%s', dur=%dm, chapters=%d, target=%d words)...",
-                project_id, topic, duration_mins, num_chapters, target_total_words
+            char_usr += (
+                "\n\nCATATAN KHUSUS: Mode eksplainer/tanpa karakter spesifik aktif! "
+                "JANGAN mengekstrak karakter (kembalikan `\"characters\": []`). "
+                "Hanya ekstrak latar tempat (`locations`) dan konteks era/dunia (`world_setting`)."
             )
-            raw_outline = await llm_adapter.generate_chat(
-                prompt=outline_usr,
-                system_prompt=outline_sys,
+            raw_bible = await llm_adapter.generate_chat(
+                prompt=char_usr,
+                system_prompt=char_sys,
                 json_mode=True,
                 timeout=90.0,
                 max_tokens=4096,
             )
-            outline_data = extract_json_payload(raw_outline)
-            outline_chapters = outline_data.get("chapters", [])
-            video_title = outline_data.get("title", topic)
-            video_overview = outline_data.get("overview", f"Video explainer mengenai {topic}")
-            if outline_data.get("characters"):
-                detected_characters = outline_data.get("characters", []) or []
-            if outline_data.get("locations"):
-                detected_locations = outline_data.get("locations", []) or []
-            detected_characters, detected_locations = _normalize_continuity_bible(
-                detected_characters, detected_locations
-            )
-            if detected_characters:
-                log.info("Detected %d locked characters from outline: %s", len(detected_characters), [c.get("name") for c in detected_characters])
-            if detected_locations:
-                log.info("Detected %d locations from outline: %s", len(detected_locations), [loc.get("name") for loc in detected_locations])
-            if outline_data.get("world_setting"):
-                detected_world_setting = outline_data.get("world_setting", {}) or {}
-                log.info("Detected world setting from outline: %s", detected_world_setting.get("era"))
-
-            if outline_chapters and len(outline_chapters) > 0:
-                # PHASE 2: Sequential Chapter Expansion with Rolling Continuity Context
-                expanded_chapters: List[Dict[str, Any]] = []
-                rolling_ctx: Optional[Dict[str, Any]] = None
-
-                for ch_idx, ch_info in enumerate(outline_chapters):
-                    ch_title = ch_info.get("chapter_title", f"Babak {ch_idx + 1}")
-                    ch_synopsis = ch_info.get("synopsis", "")
-                    ch_kp = ch_info.get("key_points", [])
-                    ch_opening_hook = ch_info.get("opening_hook")
-                    ch_closing_rehook = ch_info.get("closing_rehook")
-                    log.info(
-                        "Phase 2 (Sequential Rolling Continuity): Expanding chapter %d/%d ('%s') for project %s...",
-                        ch_idx + 1, len(outline_chapters), ch_title, project_id
-                    )
-
-                    sys_p, usr_p = build_chapter_expansion_prompt(
-                        video_title=video_title,
-                        video_overview=video_overview,
-                        chapter_index=ch_idx + 1,
-                        total_chapters=len(outline_chapters),
-                        chapter_title=ch_title,
-                        chapter_synopsis=ch_synopsis,
-                        chapter_key_points=ch_kp,
-                        target_chapter_words=words_per_chapter,
-                        target_segments=segments_per_chapter,
-                        images_per_segment=images_per_segment,
-                        tone=tone,
-                        preset=preset,
-                        custom_instructions=custom_instructions,
-                        chapters_roadmap=outline_chapters,
-                        characters=detected_characters,
-                        locations=detected_locations,
-                        world_setting=detected_world_setting,
-                        language=language,
-                        previous_chapter_context=rolling_ctx,
-                        opening_hook=ch_opening_hook,
-                        closing_rehook=ch_closing_rehook,
-                    )
-
-                    last_err = None
-                    ch_res: Optional[Dict[str, Any]] = None
-                    for attempt in range(2):
-                        try:
-                            raw_ch = await llm_adapter.generate_chat(
-                                prompt=usr_p,
-                                system_prompt=sys_p,
-                                json_mode=True,
-                                timeout=120.0,
-                                max_tokens=4096,
-                            )
-                            parsed_ch = extract_json_payload(raw_ch)
-                            if not parsed_ch.get("chapter_title"):
-                                parsed_ch["chapter_title"] = ch_title
-                            for s_seg in parsed_ch.get("segments", []):
-                                if isinstance(s_seg.get("scenes"), list):
-                                    for sc in s_seg["scenes"]:
-                                        if sc.get("narration_text"):
-                                            sc["narration_text"] = clean_narration_for_tts(
-                                                sc["narration_text"],
-                                                characters=detected_characters,
-                                                locations=detected_locations,
-                                                world_setting=detected_world_setting,
-                                            )
-                                elif s_seg.get("narration_text"):
-                                    s_seg["narration_text"] = clean_narration_for_tts(
-                                        s_seg["narration_text"],
-                                        characters=detected_characters,
-                                        locations=detected_locations,
-                                        world_setting=detected_world_setting,
-                                    )
-                            ch_res = parsed_ch
-                            break
-                        except Exception as err:
-                            last_err = err
-                            log.warning("Attempt %d failed expanding chapter %d: %s", attempt + 1, ch_idx + 1, err)
-                            if attempt == 0:
-                                await asyncio.sleep(1.0)
-
-                    if ch_res is None:
-                        raise last_err or ValueError(f"Gagal generate babak {ch_idx + 1}")
-
-                    expanded_chapters.append(ch_res)
-                    rolling_ctx = _extract_rolling_context_from_chapter(
-                        ch_res,
-                        prev_used_phrases=(rolling_ctx or {}).get("used_phrases"),
-                    )
-
-                chapters = expanded_chapters
-            else:
-                log.warning("Master outline did not contain chapters, falling back to single-shot...")
+            bible_data = extract_json_payload(raw_bible)
+            detected_characters = []
+            detected_locations = bible_data.get("locations", []) or []
+            detected_world_setting = bible_data.get("world_setting", {}) or {}
         except Exception as e:
-            log.warning("Two-phase storyboard generation encountered error: %s. Falling back to single-shot...", e)
-            chapters = []
+            log.warning("Location/world extraction failed: %s", e)
+            detected_characters = []
+            detected_locations = []
+            detected_world_setting = {
+                "era": "Contemporary",
+                "time_setting": "Present",
+                "atmosphere": "Cinematic warm palette with dynamic contrast",
+            }
+        _, detected_locations = _normalize_continuity_bible([], detected_locations)
 
-    # FALLBACK TO SINGLE-SHOT GENERATION (if duration < 3 or two-phase failed)
-    if not chapters:
-        log.info("Executing single-shot storyboard generation for project %s...", project_id)
-        system_prompt, user_prompt = build_storyboard_prompt(
-            topic=topic,
-            duration_mins=duration_mins,
-            tone=tone,
-            images_per_segment=images_per_segment,
-            preset=preset,
-            custom_instructions=custom_instructions,
-            language=language,
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=65,
+            stage="character_designer",
+            message=f"World Context Siap: {len(detected_locations)} Latar diekstrak (Tanpa Character Bible).",
+            data={
+                "agent": "character_designer",
+                "agent_name": "Character & World Agent",
+                "agent_progress": 100,
+                "characters_count": 0,
+                "locations_count": len(detected_locations),
+            },
         )
-        raw_response = await llm_adapter.generate_chat(
-            prompt=user_prompt,
-            system_prompt=system_prompt,
-            json_mode=True,
-            timeout=240.0,
-            max_tokens=8192,
-        )
-        data = extract_json_payload(raw_response)
-        chapters = data.get("chapters", [])
-        if not chapters:
-            raise ValueError("Respons AI tidak mengandung data chapters.")
-        if data.get("characters"):
-            detected_characters = data.get("characters", []) or []
-        if data.get("locations"):
-            detected_locations = data.get("locations", []) or []
-        detected_characters, detected_locations = _normalize_continuity_bible(
-            detected_characters, detected_locations
-        )
-        if detected_characters:
-            log.info("Detected %d locked characters from single-shot: %s", len(detected_characters), [c.get("name") for c in detected_characters])
-        if detected_locations:
-            log.info("Detected %d locations from single-shot: %s", len(detected_locations), [loc.get("name") for loc in detected_locations])
-        if data.get("world_setting"):
-            detected_world_setting = data.get("world_setting", {}) or {}
-            log.info("Detected world setting from single-shot: %s", detected_world_setting.get("era"))
 
-        for ch in chapters:
-            for s_seg in ch.get("segments", []):
-                if isinstance(s_seg.get("scenes"), list):
-                    for sc in s_seg["scenes"]:
-                        if sc.get("narration_text"):
-                            sc["narration_text"] = clean_narration_for_tts(
-                                sc["narration_text"],
-                                characters=detected_characters,
-                                locations=detected_locations,
-                                world_setting=detected_world_setting,
-                            )
-                elif s_seg.get("narration_text"):
-                    s_seg["narration_text"] = clean_narration_for_tts(
-                        s_seg["narration_text"],
-                        characters=detected_characters,
-                        locations=detected_locations,
-                        world_setting=detected_world_setting,
-                    )
+    # STEP 3: DIRECTOR AGENT (SUTRADARA & AI CINEMATOGRAPHY)
+    await publish_project_event(
+        project_id=project_id,
+        task_type="storyboard_generate",
+        status="progress",
+        progress=68,
+        stage="director",
+        message="Director Agent: Merancang sudut kamera, framing & prompt visual 16:9...",
+        data={
+            "agent": "director",
+            "agent_name": "Director Agent",
+            "agent_progress": 10,
+            "step": "director_prep",
+        },
+    )
+
+    sem = asyncio.Semaphore(2)
+    completed_directors = 0
+
+    async def _direct_single_chapter(ch: Dict[str, Any]) -> Dict[str, Any]:
+        nonlocal completed_directors
+        ch_idx = ch["chapter_index"]
+        ch_title = ch["chapter_title"]
+        ch_beats = ch["beats"]
+
+        ch_synopsis = ""
+        if ch_idx - 1 < len(outline_chapters):
+            ch_synopsis = outline_chapters[ch_idx - 1].get("synopsis", "")
+
+        try:
+            d_sys, d_usr = build_director_chapter_prompt(
+                chapter_index=ch_idx,
+                chapter_title=ch_title,
+                beats=ch_beats,
+                characters=detected_characters,
+                locations=detected_locations,
+                world_setting=detected_world_setting,
+                preset=preset,
+                language=language,
+                video_overview=video_overview,
+                chapter_synopsis=ch_synopsis,
+            )
+        except Exception as e:
+            log.warning("Failed building director prompt for chapter %d: %s", ch_idx, e)
+            d_sys, d_usr = "", ""
+
+        directed_scenes: List[Dict[str, Any]] = []
+        if d_sys and d_usr:
+            async with sem:
+                for attempt in range(2):
+                    try:
+                        raw_dir = await llm_adapter.generate_chat(
+                            prompt=d_usr,
+                            system_prompt=d_sys,
+                            json_mode=True,
+                            timeout=90.0,
+                            max_tokens=6144,
+                        )
+                        dir_data = extract_json_payload(raw_dir)
+                        directed_scenes = dir_data.get("scenes") or []
+                        if directed_scenes:
+                            break
+                    except Exception as err:
+                        log.warning("Attempt %d failed directing chapter %d: %s", attempt + 1, ch_idx, err)
+                        if attempt == 0:
+                            await asyncio.sleep(0.5)
+
+        # Pre-index known character slugs
+        known_chars = {_normalize_key(c.get("id") or c.get("name")): (c.get("id") or "") for c in (detected_characters or []) if isinstance(c, dict)}
+
+        # Map 1-to-1: beat narration + director shot metadata & image prompt
+        scenes_map = {s.get("beat_index", idx + 1): s for idx, s in enumerate(directed_scenes)}
+        merged_scenes: List[Dict[str, Any]] = []
+        for b_i, beat in enumerate(ch_beats):
+            b_num = beat.get("beat_index", b_i + 1)
+            dir_scene = scenes_map.get(b_num) or (directed_scenes[b_i] if b_i < len(directed_scenes) else {})
+            prev_sc = merged_scenes[-1] if merged_scenes else None
+            fallback_sc = _synthesize_director_fallback_scene(
+                beat=beat,
+                b_i=b_i,
+                total_beats=len(ch_beats),
+                characters=detected_characters,
+                locations=detected_locations,
+                world_setting=detected_world_setting,
+                preset=preset,
+                prev_scene=prev_sc,
+                ch_idx=ch_idx,
+            )
+
+            beat_type = normalize_beat_type(dir_scene.get("beat_type")) or fallback_sc.get("beat_type", "action")
+            shot_type = normalize_shot_type(dir_scene.get("shot_type")) or fallback_sc["shot_type"]
+            camera_angle = normalize_angle(dir_scene.get("camera_angle")) or fallback_sc["camera_angle"]
+            spatial_blocking = (dir_scene.get("spatial_blocking") or fallback_sc.get("spatial_blocking", "")).strip()
+            focal_point = (dir_scene.get("focal_point") or fallback_sc.get("focal_point", "center")).strip()
+            camera_motion = (
+                dir_scene.get("camera_motion") or fallback_sc["camera_motion"]
+            ).strip()
+            scene_grp = (dir_scene.get("scene_group_id") or fallback_sc["scene_group_id"]).strip()
+            loc_id = (dir_scene.get("location_id") or fallback_sc.get("location_id", "")).strip()
+            loc_view = (dir_scene.get("location_view") or "").strip()
+
+            subjects = normalize_subjects(dir_scene.get("subjects"), known_chars) or fallback_sc.get("subjects", [])
+            visual_action = (dir_scene.get("visual_action") or fallback_sc.get("visual_action", "")).strip()
+            env_detail = (dir_scene.get("environment_detail") or fallback_sc.get("environment_detail", "")).strip()
+            comp = (dir_scene.get("composition") or "").strip()
+            light_time = (dir_scene.get("lighting_time") or "").strip()
+
+            raw_img_prompt = (dir_scene.get("image_prompt") or "").strip()
+            if raw_img_prompt:
+                img_prompt = _sanitize_director_image_prompt(
+                    img_prompt=raw_img_prompt,
+                    beat=beat,
+                    b_i=b_i,
+                    shot_type=shot_type,
+                    characters=detected_characters,
+                    locations=detected_locations,
+                    preset=preset,
+                )
+            else:
+                img_prompt = compile_scene_prompt(
+                    {
+                        "shot_type": shot_type,
+                        "camera_angle": camera_angle,
+                        "location_id": loc_id,
+                        "location_view": loc_view,
+                        "subjects": subjects,
+                        "visual_action": visual_action,
+                        "environment_detail": env_detail,
+                        "composition": comp,
+                        "lighting_time": light_time,
+                    },
+                    characters=detected_characters,
+                    locations=detected_locations,
+                )
+
+            char_id = ""
+            for s in subjects:
+                if s.get("char_id"):
+                    char_id = s["char_id"]
+                    break
+
+            merged_scenes.append({
+                "_chapter": ch_idx,
+                "scene_id": f"scene-{b_i + 1}",
+                "beat_index": b_num,
+                "beat_type": beat_type,
+                "scene_group_id": scene_grp,
+                "shot_type": shot_type,
+                "camera_angle": camera_angle,
+                "spatial_blocking": spatial_blocking,
+                "focal_point": focal_point,
+                "camera_motion": camera_motion,
+                "narration_text": beat["narration_text"],
+                "image_prompt": img_prompt,
+                "character_id": char_id or fallback_sc.get("character_id", ""),
+                "location_id": loc_id,
+                "location_view": loc_view,
+                "subjects": subjects,
+                "visual_action": visual_action,
+                "environment_detail": env_detail,
+                "composition": comp,
+                "lighting_time": light_time,
+            })
+
+        # Apply Comic Shot Variety Planner across the chapter
+        merged_scenes = plan_shot_variety(merged_scenes, group_key="scene_group_id", chapter_key="_chapter")
+        for sc in merged_scenes:
+            if sc.get("_replanned"):
+                sc["image_prompt"] = compile_scene_prompt(sc, characters=detected_characters, locations=detected_locations)
+
+        # Quality metrics logging
+        metrics = storyboard_quality_metrics(merged_scenes)
+        log.info(
+            "Chapter %d Directed: %d scenes (closeup_ratio=%.2f, max_run=%d, env_multi=%.2f)",
+            ch_idx, len(merged_scenes), metrics.get("closeup_ratio", 0), metrics.get("max_same_shot_run", 0), metrics.get("env_multi_ratio", 0)
+        )
+
+        completed_directors += 1
+        cur_progress = int(68 + (28 * completed_directors / max(1, len(script_chapters))))
+        await publish_project_event(
+            project_id=project_id,
+            task_type="storyboard_generate",
+            status="progress",
+            progress=cur_progress,
+            stage="director",
+            message=f"Director Agent: Menyusun tata visual Babak {completed_directors}/{len(script_chapters)} ('{ch_title[:25]}')...",
+            data={
+                "agent": "director",
+                "agent_name": "Director Agent",
+                "agent_progress": int(100 * completed_directors / max(1, len(script_chapters))),
+                "completed_chapters": completed_directors,
+                "total_chapters": len(script_chapters),
+            },
+        )
+
+        # Structure into segments
+        segs: List[Dict[str, Any]] = []
+        chunk_size = max(1, images_per_segment)
+        for seg_idx in range(0, len(merged_scenes), chunk_size):
+            sub_scenes = merged_scenes[seg_idx : seg_idx + chunk_size]
+            segs.append({
+                "segment_id": f"seg-{ch_idx}_{len(segs) + 1}",
+                "scenes": sub_scenes,
+            })
+
+        return {
+            "chapter_index": ch_idx,
+            "chapter_title": ch_title,
+            "segments": segs,
+        }
+
+    director_tasks = [_direct_single_chapter(ch) for ch in script_chapters]
+    chapters = await asyncio.gather(*director_tasks)
 
     # Flatten segments for the Narration model and construct StoryboardItems with AI Cinematography metadata
     all_segments: List[Dict[str, Any]] = []
@@ -1559,8 +2437,7 @@ async def generate_storyboard_script(
     seg_counter = 1
     prev_loc_token = ""
     prev_group_id = ""
-    group_anchor_id_map: Dict[str, str] = {}
-
+    
     for chap_idx, chapter in enumerate(chapters):
         chap_title = chapter.get("chapter_title", f"Babak {chap_idx + 1}")
         for seg in chapter.get("segments", []):
@@ -1581,10 +2458,28 @@ async def generate_storyboard_script(
                     if not scene_text:
                         scene_text = "..."
                     if not scene_prompt:
-                        if preset:
-                            scene_prompt = f"Scene illustration in the visual style of {preset.name} representing {scene_text[:80]}"
-                        else:
-                            scene_prompt = f"Minimalist stickman illustration on warm vintage parchment representing {scene_text[:80]}"
+                        prev_sc = storyboard_items[-1] if storyboard_items else None
+                        prev_sc_dict = (
+                            {
+                                "character_id": getattr(prev_sc, "shot_metadata", {}).get("character_id"),
+                                "location_id": getattr(prev_sc, "shot_metadata", {}).get("location_id"),
+                                "scene_group_id": getattr(prev_sc, "shot_metadata", {}).get("scene_group_id"),
+                            }
+                            if prev_sc and getattr(prev_sc, "shot_metadata", None)
+                            else None
+                        )
+                        fb_sc = _synthesize_director_fallback_scene(
+                            beat={"narration_text": scene_text, "beat_index": scene_idx + 1},
+                            b_i=scene_idx,
+                            total_beats=len(scenes),
+                            characters=detected_characters,
+                            locations=detected_locations,
+                            world_setting=detected_world_setting,
+                            preset=preset,
+                            prev_scene=prev_sc_dict,
+                            ch_idx=chap_idx + 1,
+                        )
+                        scene_prompt = fb_sc["image_prompt"]
 
                     sub_seg_id = f"seg-{seg_counter}_{scene_idx + 1}" if len(scenes) > 1 else f"seg-{seg_counter}"
                     all_segments.append({
@@ -1608,13 +2503,6 @@ async def generate_storyboard_script(
                         prev_group_id=prev_group_id,
                     )
                     item_id = str(uuid.uuid4())
-                    grp_id = shot_meta.get("scene_group_id", "")
-                    if grp_id:
-                        if grp_id not in group_anchor_id_map:
-                            group_anchor_id_map[grp_id] = item_id
-                        else:
-                            shot_meta["reference_item_id"] = group_anchor_id_map[grp_id]
-
                     item = StoryboardItem(
                         id=item_id,
                         project_id=project_id,
@@ -1645,7 +2533,28 @@ async def generate_storyboard_script(
 
             img_prompts = seg.get("image_prompts", [])
             if not isinstance(img_prompts, list) or len(img_prompts) == 0:
-                img_prompts = [f"Illustration representing {seg_text[:80]}"]
+                prev_sc = storyboard_items[-1] if storyboard_items else None
+                prev_sc_dict = (
+                    {
+                        "character_id": getattr(prev_sc, "shot_metadata", {}).get("character_id"),
+                        "location_id": getattr(prev_sc, "shot_metadata", {}).get("location_id"),
+                        "scene_group_id": getattr(prev_sc, "shot_metadata", {}).get("scene_group_id"),
+                    }
+                    if prev_sc and getattr(prev_sc, "shot_metadata", None)
+                    else None
+                )
+                fb_sc = _synthesize_director_fallback_scene(
+                    beat={"narration_text": seg_text, "beat_index": 1},
+                    b_i=0,
+                    total_beats=1,
+                    characters=detected_characters,
+                    locations=detected_locations,
+                    world_setting=detected_world_setting,
+                    preset=preset,
+                    prev_scene=prev_sc_dict,
+                    ch_idx=chap_idx + 1,
+                )
+                img_prompts = [fb_sc["image_prompt"]]
 
             # If a segment has multiple images, split the segment into subsegments
             if len(img_prompts) > 1:
@@ -1680,13 +2589,6 @@ async def generate_storyboard_script(
                         prev_group_id=prev_group_id,
                     )
                     item_id = str(uuid.uuid4())
-                    grp_id = shot_meta.get("scene_group_id", "")
-                    if grp_id:
-                        if grp_id not in group_anchor_id_map:
-                            group_anchor_id_map[grp_id] = item_id
-                        else:
-                            shot_meta["reference_item_id"] = group_anchor_id_map[grp_id]
-
                     item = StoryboardItem(
                         id=item_id,
                         project_id=project_id,
@@ -1725,13 +2627,6 @@ async def generate_storyboard_script(
                     prev_group_id=prev_group_id,
                 )
                 item_id = str(uuid.uuid4())
-                grp_id = shot_meta.get("scene_group_id", "")
-                if grp_id:
-                    if grp_id not in group_anchor_id_map:
-                        group_anchor_id_map[grp_id] = item_id
-                    else:
-                        shot_meta["reference_item_id"] = group_anchor_id_map[grp_id]
-
                 item = StoryboardItem(
                     id=item_id,
                     project_id=project_id,
@@ -1787,6 +2682,9 @@ async def generate_storyboard_script(
 
     proj.characters = detected_characters
     proj.locations = detected_locations
+    if not isinstance(detected_world_setting, dict):
+        detected_world_setting = {}
+    detected_world_setting["use_character_bible"] = bool(use_character_bible)
     proj.world_setting = detected_world_setting
     proj.status = "ready"
     await db.commit()
@@ -1794,6 +2692,26 @@ async def generate_storyboard_script(
     await db.refresh(proj)
 
     log.info("Successfully created narration with %d segments and %d storyboard image slots.", len(all_segments), len(storyboard_items))
+
+    await publish_project_event(
+        project_id=project_id,
+        task_type="storyboard_generate",
+        status="success",
+        progress=100,
+        stage="completed",
+        message=f"Naskah ({word_count} kata, ~{round(actual_duration_seconds / 60, 1)} mnt) & {len(storyboard_items)} adegan visual selesai dibuat oleh 3 Agent!",
+        data={
+            "agent": "completed",
+            "agent_name": "Multi-Agent System",
+            "agent_progress": 100,
+            "total_words": word_count,
+            "actual_duration_seconds": actual_duration_seconds,
+            "total_scenes": len(storyboard_items),
+            "characters_count": len(detected_characters),
+            "locations_count": len(detected_locations),
+        },
+    )
+
     return narration, storyboard_items
 
 
@@ -1961,3 +2879,214 @@ async def extract_storyboard_continuity_bible_from_script(
         "world_setting": world_setting,
     }
 
+
+async def redirect_storyboard_visuals(
+    db: AsyncSession,
+    project_id: str,
+    preset_id: Optional[str] = None,
+    custom_instructions: Optional[str] = None,
+    use_character_bible: Optional[bool] = None,
+) -> List[StoryboardItem]:
+    """Re-direct cinematography and visual prompts for an existing project's storyboard items.
+
+    Leaves narration text, audio, and timings untouched while refreshing shot_metadata and image_prompt
+    with the comic Director v2 + Shot Variety Planner.
+    """
+    proj = await db.get(Project, project_id)
+    if not proj:
+        raise ValueError(f"Project {project_id} tidak ditemukan.")
+
+    from app.models.image_preset import ImagePreset
+    from app.services.image_studio import get_active_image_preset
+    from collections import OrderedDict
+    from datetime import datetime
+
+    preset = None
+    if preset_id:
+        preset = await db.get(ImagePreset, preset_id)
+    if not preset:
+        preset = await get_active_image_preset(db)
+
+    items_stmt = (
+        select(StoryboardItem)
+        .where(StoryboardItem.project_id == project_id)
+        .order_by(StoryboardItem.order_index.asc())
+    )
+    res = await db.execute(items_stmt)
+    items = list(res.scalars().all())
+    if not items:
+        return []
+
+    llm_adapter = await get_active_llm_adapter(db)
+    detected_world_setting = getattr(proj, "world_setting", {}) or {}
+    if use_character_bible is None:
+        effective_use_char = detected_world_setting.get("use_character_bible", True)
+    else:
+        effective_use_char = use_character_bible
+
+    detected_characters = (getattr(proj, "characters", []) or []) if effective_use_char else []
+    detected_locations = getattr(proj, "locations", []) or []
+    language = proj.language or "id"
+
+    chapters_dict: Dict[str, List[StoryboardItem]] = OrderedDict()
+    for it in items:
+        ch_name = it.chapter_title or "Babak 1"
+        chapters_dict.setdefault(ch_name, []).append(it)
+
+    sem = asyncio.Semaphore(2)
+
+    async def _redirect_chapter(ch_title: str, ch_items: List[StoryboardItem], ch_idx: int):
+        beats = [
+            {"beat_index": idx + 1, "narration_text": it.script_text}
+            for idx, it in enumerate(ch_items)
+        ]
+        d_sys, d_usr = build_director_chapter_prompt(
+            chapter_index=ch_idx,
+            chapter_title=ch_title,
+            beats=beats,
+            characters=detected_characters,
+            locations=detected_locations,
+            world_setting=detected_world_setting,
+            preset=preset,
+            language=language,
+        )
+        directed_scenes: List[Dict[str, Any]] = []
+        async with sem:
+            for attempt in range(2):
+                try:
+                    raw_dir = await llm_adapter.generate_chat(
+                        prompt=d_usr,
+                        system_prompt=d_sys,
+                        json_mode=True,
+                        timeout=90.0,
+                        max_tokens=6144,
+                    )
+                    dir_data = extract_json_payload(raw_dir)
+                    directed_scenes = dir_data.get("scenes") or []
+                    if directed_scenes:
+                        break
+                except Exception as err:
+                    log.warning("Redirect attempt %d failed for chapter %s: %s", attempt + 1, ch_title, err)
+
+        known_chars = {_normalize_key(c.get("id") or c.get("name")): (c.get("id") or "") for c in detected_characters if isinstance(c, dict)}
+        scenes_map = {s.get("beat_index", idx + 1): s for idx, s in enumerate(directed_scenes)}
+        merged: List[Dict[str, Any]] = []
+        for b_i, it in enumerate(ch_items):
+            beat = {"beat_index": b_i + 1, "narration_text": it.script_text}
+            dir_scene = scenes_map.get(b_i + 1) or (directed_scenes[b_i] if b_i < len(directed_scenes) else {})
+            prev_sc = merged[-1] if merged else None
+            fb_sc = _synthesize_director_fallback_scene(
+                beat=beat,
+                b_i=b_i,
+                total_beats=len(ch_items),
+                characters=detected_characters,
+                locations=detected_locations,
+                world_setting=detected_world_setting,
+                preset=preset,
+                prev_scene=prev_sc,
+                ch_idx=ch_idx,
+            )
+
+            beat_type = normalize_beat_type(dir_scene.get("beat_type")) or fb_sc.get("beat_type", "action")
+            shot_type = normalize_shot_type(dir_scene.get("shot_type")) or fb_sc["shot_type"]
+            camera_angle = normalize_angle(dir_scene.get("camera_angle")) or fb_sc["camera_angle"]
+            spatial_blocking = (dir_scene.get("spatial_blocking") or fb_sc.get("spatial_blocking", "")).strip()
+            focal_point = (dir_scene.get("focal_point") or fb_sc.get("focal_point", "center")).strip()
+            camera_motion = (dir_scene.get("camera_motion") or fb_sc.get("camera_motion", "static")).strip()
+            scene_grp = (dir_scene.get("scene_group_id") or fb_sc["scene_group_id"]).strip()
+            loc_id = (dir_scene.get("location_id") or fb_sc.get("location_id", "")).strip()
+            loc_view = (dir_scene.get("location_view") or "").strip()
+
+            subjects = normalize_subjects(dir_scene.get("subjects"), known_chars) or fb_sc.get("subjects", [])
+            visual_action = (dir_scene.get("visual_action") or fb_sc.get("visual_action", "")).strip()
+            env_detail = (dir_scene.get("environment_detail") or fb_sc.get("environment_detail", "")).strip()
+            comp = (dir_scene.get("composition") or "").strip()
+            light_time = (dir_scene.get("lighting_time") or "").strip()
+
+            raw_prompt = (dir_scene.get("image_prompt") or "").strip()
+            if raw_prompt:
+                img_prompt = _sanitize_director_image_prompt(
+                    img_prompt=raw_prompt,
+                    beat=beat,
+                    b_i=b_i,
+                    shot_type=shot_type,
+                    characters=detected_characters,
+                    locations=detected_locations,
+                    preset=preset,
+                )
+            else:
+                img_prompt = compile_scene_prompt(
+                    {
+                        "shot_type": shot_type,
+                        "camera_angle": camera_angle,
+                        "location_id": loc_id,
+                        "location_view": loc_view,
+                        "subjects": subjects,
+                        "visual_action": visual_action,
+                        "environment_detail": env_detail,
+                        "composition": comp,
+                        "lighting_time": light_time,
+                    },
+                    characters=detected_characters,
+                    locations=detected_locations,
+                )
+
+            char_id = ""
+            for s in subjects:
+                if s.get("char_id"):
+                    char_id = s["char_id"]
+                    break
+
+            merged.append({
+                "_chapter": ch_idx,
+                "item_ref": it,
+                "beat_type": beat_type,
+                "scene_group_id": scene_grp,
+                "shot_type": shot_type,
+                "camera_angle": camera_angle,
+                "spatial_blocking": spatial_blocking,
+                "focal_point": focal_point,
+                "camera_motion": camera_motion,
+                "image_prompt": img_prompt,
+                "character_id": char_id or fb_sc.get("character_id", ""),
+                "location_id": loc_id,
+                "location_view": loc_view,
+                "subjects": subjects,
+                "visual_action": visual_action,
+                "environment_detail": env_detail,
+                "composition": comp,
+                "lighting_time": light_time,
+            })
+
+        merged = plan_shot_variety(merged, group_key="scene_group_id", chapter_key="_chapter")
+        for sc in merged:
+            if sc.get("_replanned"):
+                sc["image_prompt"] = compile_scene_prompt(sc, characters=detected_characters, locations=detected_locations)
+            it = sc["item_ref"]
+            it.image_prompt = sc["image_prompt"]
+            it.motion_effect = sc["camera_motion"]
+            shot_meta = it.shot_metadata if isinstance(it.shot_metadata, dict) else {}
+            shot_meta.update({
+                "scene_group_id": sc["scene_group_id"],
+                "shot_type": sc["shot_type"],
+                "camera_angle": sc["camera_angle"],
+                "focal_point": sc["focal_point"],
+                "spatial_blocking": sc["spatial_blocking"],
+                "location_id": sc["location_id"],
+                "location_view": sc["location_view"],
+                "beat_type": sc["beat_type"],
+                "visual_action": sc["visual_action"],
+                "subjects": sc["subjects"],
+            })
+            it.shot_metadata = shot_meta
+            it.updated_at = datetime.utcnow()
+
+    tasks = [
+        _redirect_chapter(ch_title, ch_items, ch_idx + 1)
+        for ch_idx, (ch_title, ch_items) in enumerate(chapters_dict.items())
+    ]
+    await asyncio.gather(*tasks)
+    await db.commit()
+    for it in items:
+        await db.refresh(it)
+    return items

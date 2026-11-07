@@ -10,8 +10,8 @@ from app.services.narrative import (
     split_into_sentence_segments,
 )
 from app.services.storyboard import (
-    build_chapter_expansion_prompt,
-    build_storyboard_outline_prompt,
+    build_scriptwriter_chapter_prompt,
+    build_scriptwriter_outline_prompt,
 )
 from app.services.tts import AVAILABLE_VOICES
 
@@ -92,34 +92,33 @@ def test_multilingual_script_and_storyboard_directives():
     assert "Bahasa: BAHASA INDONESIA" in id_directive
     assert "Misteri segitiga bermuda" in id_directive
 
-    # 2. Test storyboard outline prompt in EN
-    sys_en, usr_en = build_storyboard_outline_prompt(
+    # 2. Test scriptwriter outline prompt in EN
+    sys_en, usr_en = build_scriptwriter_outline_prompt(
         topic="The Rise and Fall of the Roman Empire",
         duration_mins=10,
         tone="edukatif",
         num_chapters=5,
         language="en",
     )
-    assert "CRITICAL LANGUAGE RULE: Write the entire outline" in sys_en
+    assert "Lead Scriptwriter" in sys_en
     assert "The Rise and Fall of the Roman Empire" in usr_en
 
-    # 3. Test chapter expansion prompt in EN
-    exp_sys, exp_usr = build_chapter_expansion_prompt(
+    # 3. Test scriptwriter chapter prompt in EN
+    exp_sys, exp_usr = build_scriptwriter_chapter_prompt(
         video_title="The Rise and Fall of the Roman Empire",
         video_overview="An in-depth historical documentary",
         chapter_index=1,
         total_chapters=5,
         chapter_title="Chapter 1: The Foundations of Rome",
         chapter_synopsis="From the mythical twins Romulus and Remus to the Senate",
-        chapter_key_points=["Seven Hills of Rome", "Establishment of the Republic"],
+        opening_hook="In the hills of central Italy...",
+        closing_rehook="The empire was about to expand...",
+        target_beats=10,
         target_chapter_words=450,
-        target_segments=3,
-        images_per_segment=2,
         tone="edukatif",
-        characters=[],
         language="en",
     )
-    assert "All `narration_text` MUST be written in natural, engaging, fluent spoken ENGLISH" in exp_sys
+    assert "Lead YouTube Documentary Scriptwriter" in exp_sys
     assert "The Foundations of Rome" in exp_usr
 
     # 4. Test voice list multilingual flags

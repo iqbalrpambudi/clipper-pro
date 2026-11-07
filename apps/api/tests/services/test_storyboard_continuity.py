@@ -7,9 +7,8 @@ import pytest
 from app.schemas.storyboard import NarrationSegmentImprovement
 from app.services.image_gen import build_full_image_prompt
 from app.services.storyboard import (
-    _extract_rolling_context_from_chapter,
-    build_chapter_expansion_prompt,
-    build_storyboard_outline_prompt,
+    build_character_agent_prompt,
+    build_scriptwriter_chapter_prompt,
     resolve_prompt_variables,
 )
 from app.services.storyboard_analyzer import apply_narration_improvements_to_project
@@ -111,70 +110,39 @@ def test_build_full_image_prompt_does_not_duplicate_resolved_style():
     assert out_plain.lower().count("cinematic hand-drawn 2d animation") == 1
 
 
-def test_outline_prompt_is_preset_aware_without_keyerror():
+def test_character_agent_prompt_is_preset_aware():
     preset = MagicMock()
     preset.name = "Stickman Doodle"
     preset.master_prompt = "minimalist stickman doodle, bald white head, stick limbs, dot eyes"
     preset.style_attributes = {"character_style": "stickman"}
 
     for lang in ("id", "en"):
-        sys_p, usr_p = build_storyboard_outline_prompt(
+        sys_p, usr_p = build_character_agent_prompt(
+            full_script_text="Kisah seorang pedagang di pasar tradisional",
             topic="Pasar Tradisional",
-            duration_mins=5,
-            tone="santai",
-            num_chapters=4,
-            language=lang,
             preset=preset,
+            language=lang,
         )
         assert "stickman" in sys_p.lower()
-        assert "{preset_character_guidance}" not in sys_p
         assert "face_head_anchor" in sys_p
 
 
-def test_outline_prompt_without_preset_has_no_guidance_placeholder():
-    sys_p, _ = build_storyboard_outline_prompt(topic="Topik", duration_mins=5)
-    assert "{preset_character_guidance}" not in sys_p
-
-
-def test_rolling_context_extracts_tail_and_last_group():
-    chapter = {
-        "segments": [
-            {
-                "scenes": [
-                    {"narration_text": "Kalimat pembuka yang pertama di pasar.", "scene_group_id": "pasar_1"},
-                    {
-                        "narration_text": "Kalimat penutup yang terakhir sebelum babak berganti.",
-                        "scene_group_id": "pasar_2",
-                        "spatial_blocking": "vendor right of frame",
-                    },
-                ]
-            }
-        ]
-    }
-    ctx = _extract_rolling_context_from_chapter(chapter)
-    assert "Kalimat penutup yang terakhir" in str(ctx)
-    assert "pasar_2" in str(ctx)
-
-
-def test_chapter_expansion_prompt_accepts_rolling_context():
-    rolling = _extract_rolling_context_from_chapter(
-        {"segments": [{"scenes": [{"narration_text": "Ujung babak sebelumnya yang unik."}]}]}
-    )
-    sys_p, usr_p = build_chapter_expansion_prompt(
+def test_scriptwriter_chapter_prompt_accepts_rolling_context():
+    sys_p, usr_p = build_scriptwriter_chapter_prompt(
         video_title="Legenda",
         video_overview="Ringkasan",
         chapter_index=2,
         total_chapters=3,
         chapter_title="Babak 2",
         chapter_synopsis="Sinopsis",
-        chapter_key_points=["a"],
+        opening_hook="Awal babak",
+        closing_rehook="Akhir babak",
+        target_beats=6,
         target_chapter_words=300,
-        target_segments=2,
-        images_per_segment=2,
         tone="santai",
-        previous_chapter_context=rolling,
+        previous_chapter_ending="Ujung babak sebelumnya yang unik.",
     )
-    assert "Ujung babak sebelumnya yang unik" in sys_p + usr_p
+    assert "Ujung babak sebelumnya yang unik." in usr_p
 
 
 @pytest.mark.asyncio

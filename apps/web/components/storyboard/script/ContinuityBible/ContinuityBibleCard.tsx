@@ -28,6 +28,7 @@ import { LocationsTab } from "./LocationsTab";
 import { WorldSettingTab } from "./WorldSettingTab";
 
 interface ContinuityBibleCardProps {
+  projectId?: string;
   charactersList: StoryboardCharacter[];
   setCharactersList: React.Dispatch<React.SetStateAction<StoryboardCharacter[]>>;
   locationsList: StoryboardLocation[];
@@ -52,6 +53,7 @@ interface ContinuityBibleCardProps {
 }
 
 export function ContinuityBibleCard({
+  projectId,
   charactersList,
   setCharactersList,
   locationsList,
@@ -217,6 +219,7 @@ export function ContinuityBibleCard({
 
       {bibleTab === "locations" && (
         <LocationsTab
+          projectId={projectId}
           locationsList={locationsList}
           setLocationsList={setLocationsList}
           editingBible={editingBible}

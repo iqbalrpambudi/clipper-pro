@@ -67,7 +67,13 @@ async def test_gemini_tts_payload_structure_omits_temperature(tmp_path, monkeypa
         ]
     }
 
-    with patch("httpx.AsyncClient.post", return_value=mock_resp) as mock_post:
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.communicate.return_value = (b"", b"")
+
+    with patch("httpx.AsyncClient.post", return_value=mock_resp) as mock_post, \
+         patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
+         patch("app.services.tts.providers.gemini.get_audio_duration", return_value=1.5):
         await generate_gemini_tts(
             text="Halo dunia",
             voice="Puck",
@@ -191,3 +197,81 @@ async def test_test_tts_connection_edge_and_missing_keys():
     ok_el, msg_el = await test_tts_connection(provider="elevenlabs", api_key="")
     assert ok_el is False
     assert "tidak ditemukan" in msg_el
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_raises_immediately_on_http_error_without_fallback(tmp_path):
+    out_file = tmp_path / "test_err.mp3"
+    mock_resp = AsyncMock()
+    mock_resp.status_code = 403
+    mock_resp.json.return_value = {
+        "error": {
+            "code": 403,
+            "message": "Method doesn't allow unregistered callers. Please use API Key.",
+            "status": "PERMISSION_DENIED",
+        }
+    }
+
+    with patch("httpx.AsyncClient.post", return_value=mock_resp) as mock_post:
+        with pytest.raises(RuntimeError, match="Akses Gemini API ditolak.*HTTP 403"):
+            await generate_gemini_tts(
+                text="Halo dunia",
+                voice="Puck",
+                output_path=str(out_file),
+                api_key="fake-key",
+                model="gemini-2.5-flash-preview-tts",
+            )
+        # Verify it called the API exactly once and did NOT attempt any fallback models
+        assert mock_post.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_respects_cancellation(tmp_path):
+    out_file = tmp_path / "test_cancel.mp3"
+    from app.services.cancellation import TaskCancelledException
+
+    with patch("app.services.tts.providers.gemini.is_cancelled", return_value=True):
+        with pytest.raises(TaskCancelledException, match="dibatalkan oleh pengguna"):
+            await generate_gemini_tts(
+                text="Halo dunia",
+                voice="Puck",
+                output_path=str(out_file),
+                api_key="fake-key",
+                project_id="proj-cancel-123",
+            )
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_audio_gemini_propagates_error_without_silent_fallback(tmp_path):
+    out_file = tmp_path / "test_no_fb.mp3"
+
+    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota exceeded")):
+        with pytest.raises(RuntimeError, match="Gemini quota exceeded"):
+            await generate_speech_audio(
+                text="Halo dari naskah narasi",
+                output_path=str(out_file),
+                provider="gemini",
+                voice="Puck",
+                api_key="fake-key",
+            )
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_audio_gemini_cancels_in_chapter_loop(tmp_path):
+    out_file = tmp_path / "test_cancel_loop.mp3"
+    from app.services.cancellation import TaskCancelledException
+
+    with patch("app.services.tts.dispatcher.is_cancelled", return_value=True):
+        with pytest.raises(TaskCancelledException, match="dibatalkan oleh pengguna"):
+            await generate_speech_audio(
+                text="Babak satu narasi. Babak dua kelanjutan.",
+                output_path=str(out_file),
+                provider="gemini",
+                voice="Puck",
+                api_key="fake-key",
+                project_id="proj-cancel-loop",
+                segments=[
+                    {"text": "Babak satu narasi.", "chapter_index": 1},
+                    {"text": "Babak dua kelanjutan.", "chapter_index": 2},
+                ],
+            )

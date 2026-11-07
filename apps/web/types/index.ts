@@ -60,6 +60,9 @@ export interface StoryboardCharacterVariant {
   visual_anchor: string;
   face_head_anchor?: string;
   outfit_body_anchor?: string;
+  expression_range?: string;
+  signature_gesture?: string;
+  silhouette_note?: string;
 }
 
 export interface StoryboardCharacter {
@@ -69,7 +72,15 @@ export interface StoryboardCharacter {
   visual_anchor: string;
   face_head_anchor?: string;
   outfit_body_anchor?: string;
+  expression_range?: string;
+  signature_gesture?: string;
+  silhouette_note?: string;
   variants?: StoryboardCharacterVariant[];
+}
+
+export interface StoryboardLocationKeyView {
+  view_id: string;
+  description: string;
 }
 
 export interface StoryboardLocation {
@@ -79,6 +90,10 @@ export interface StoryboardLocation {
   closeup_background_anchor?: string;
   focal_props?: string;
   lighting_direction?: string;
+  key_views?: StoryboardLocationKeyView[];
+  ambient_life?: string;
+  image_url?: string;
+  file_path?: string;
 }
 
 export interface StoryboardWorldSetting {
@@ -388,13 +403,29 @@ export type StoryboardMotionEffect =
   | "pan_down"
   | "static";
 
+export interface StoryboardShotSubject {
+  char_id?: string;
+  variant?: string;
+  extra?: string;
+  pose?: string;
+  expression?: string;
+}
+
 export interface StoryboardShotMetadata {
   scene_group_id?: string;
   shot_type?: string;
   camera_angle?: string;
+  camera_motion?: string;
   spatial_blocking?: string;
   focal_point?: string;
   location_id?: string;
+  location_view?: string;
+  beat_type?: string;
+  visual_action?: string;
+  environment_detail?: string;
+  composition?: string;
+  lighting_time?: string;
+  subjects?: StoryboardShotSubject[];
   reference_item_id?: string;
   [key: string]: unknown;
 }

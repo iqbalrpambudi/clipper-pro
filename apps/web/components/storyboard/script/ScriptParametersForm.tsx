@@ -27,6 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { ScriptPreset } from "@/lib/presetStorage";
+import { useStudioStore } from "@/lib/store";
+import { MultiAgentProgressBar } from "./MultiAgentProgressBar";
 
 interface ScriptParametersFormProps {
   topic: string;
@@ -45,6 +47,8 @@ interface ScriptParametersFormProps {
   setImagesPerSegment: (val: number) => void;
   customInstructions: string;
   setCustomInstructions: (val: string) => void;
+  useCharacterBible?: boolean;
+  setUseCharacterBible?: (val: boolean) => void;
   hasSegments: boolean;
   isGenerating: boolean;
   onGenerate: (e: React.FormEvent) => void;
@@ -77,6 +81,8 @@ export function ScriptParametersForm({
   setImagesPerSegment,
   customInstructions,
   setCustomInstructions,
+  useCharacterBible = true,
+  setUseCharacterBible,
   hasSegments,
   isGenerating,
   onGenerate,
@@ -90,6 +96,17 @@ export function ScriptParametersForm({
   setNewScriptPresetName,
   onSaveScriptPreset,
 }: ScriptParametersFormProps) {
+  const { activeTask, currentProjectId, tasksByProject } = useStudioStore();
+  const currentStoryboardTask = currentProjectId
+    ? (tasksByProject[currentProjectId]?.task_type === "storyboard_generate"
+        ? tasksByProject[currentProjectId]
+        : activeTask?.task_type === "storyboard_generate"
+        ? activeTask
+        : null)
+    : activeTask?.task_type === "storyboard_generate"
+    ? activeTask
+    : null;
+
   return (
     <div className="flex flex-col space-y-5 rounded-2xl border border-[#E5E1D7] bg-[#FBFAF7] p-5 shadow-sm lg:col-span-6">
       <div className="flex items-center gap-2">
@@ -335,6 +352,28 @@ export function ScriptParametersForm({
           />
         </div>
 
+        {/* Checkbox: Gunakan Character Bible */}
+        <div className="rounded-xl border border-[#E5E1D7] bg-[#FFFEFA] p-3 transition hover:border-[#C45B3A]/60">
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={useCharacterBible}
+              onChange={(e) => setUseCharacterBible?.(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-[#D2CDBF] text-[#C45B3A] focus:ring-[#C45B3A] accent-[#C45B3A]"
+            />
+            <div className="space-y-0.5">
+              <span className="block text-xs font-semibold text-[#26251F]">
+                Gunakan Character Bible (Kunci Konsistensi Tokoh)
+              </span>
+              <p className="text-xs text-[#77766D] leading-relaxed">
+                {useCharacterBible
+                  ? "Karakter utama & wujudnya akan dikunci konsisten antar babak."
+                  : "Mode Narasi Bebas / Explainer aktif. Adegan langsung disutradarai dari narasi segmen tanpa mengunci karakter tertentu (cocok untuk sejarah, sains, atau dokumenter)."}
+              </p>
+            </div>
+          </label>
+        </div>
+
         {/* Bottom Action & Save Preset Bar */}
         <div className="space-y-2 pt-2 border-t border-[#E5E1D7]">
           {showSaveScriptModal && (
@@ -382,6 +421,15 @@ export function ScriptParametersForm({
                 </Button>
               </div>
             </div>
+          )}
+
+          {(isGenerating || currentStoryboardTask?.status === "progress") && (
+            <MultiAgentProgressBar
+              activeTask={currentStoryboardTask}
+              isGenerating={isGenerating}
+              targetDurationMins={durationMins}
+              className="mt-1 mb-2"
+            />
           )}
 
           <div className="flex items-center gap-2">

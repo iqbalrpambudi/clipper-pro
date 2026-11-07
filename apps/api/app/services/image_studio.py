@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,16 +18,9 @@ from app.services.image_gen import generate_image_to_path, resolve_image_credent
 log = logging.getLogger(__name__)
 
 DEFAULT_DOODLE_STYLE_PROMPT = (
-    "Full bleed edge-to-edge widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, completely filling the frame without letterbox, without black bars, without white borders or frames, NOT square, NOT vertical). "
-    "Educational explainer storyboard illustration in a distinctive hand-drawn cartoon doodle comic style. "
-    "Features iconic minimalist stick-figure characters with large, smooth, perfectly round bald white heads (no hair), "
-    "simple solid black dot eyes with expressive eyebrows, and thin black stick limbs. "
-    "Characters wear loose draped robes, tunics, or simple stylized fabric garments with fluid folds. "
-    "Clean, confident black ink linework with subtle sketchy hatching and expressive gestures. "
-    "Warm vintage parchment and tea-stained paper background texture with aged cream, sandy beige, and warm desert sepia watercolor washes. "
-    "Hand-painted watercolor fills with earthy tones (ochre, terracotta, warm sand, muted tan, subtle olive accents) and soft pigment bleeding. "
-    "Diagrammatic storytelling elements, clean visual metaphors, full bleed edge-to-edge 16:9 widescreen composition without any black bars, letterbox, white border, or frames, ample negative space. "
-    "No 3D CGI, no photorealism, no glossy gradients, no clutter, no digital text artifacts."
+    "Minimalist stickman doodle art style, hand-drawn ink illustration. "
+    "Iconic stick-figure characters with smooth round bald white heads, expressive solid black dot eyes, thin black stick limbs, wearing simple draped robes. "
+    "Clean black ink linework, warm vintage aged parchment paper background texture, soft sepia and earthy terracotta watercolor washes."
 )
 
 DEFAULT_DOODLE_PRESET = {
@@ -53,7 +46,7 @@ DEFAULT_DOODLE_PRESET = {
         ],
         "lighting": "Soft warm vintage parchment ambient illumination",
         "character_style": "Minimalist stick-figure, smooth round bald white head without hair, expressive solid black dot eyes, draped robes and fabric folds",
-        "composition": "Full bleed widescreen 16:9 landscape aspect ratio, edge-to-edge composition, diagrammatic storytelling, ample negative space, no letterbox, no black bars",
+        "composition": "Dynamic storytelling composition, clean staging, balanced negative space",
     },
     "is_builtin": True,
     "is_active": True,
@@ -64,7 +57,6 @@ async def seed_default_image_presets(db: AsyncSession) -> None:
     """Ensure the default 'Doodle Ilustrasi' preset exists and sync active preset with ModelConfig."""
     preset = await db.get(ImagePreset, DEFAULT_DOODLE_PRESET["id"])
     if not preset:
-        # Check if another preset is active
         res = await db.execute(select(ImagePreset).where(ImagePreset.is_active == True))
         active_preset = res.scalar_one_or_none()
 
@@ -87,7 +79,6 @@ async def seed_default_image_presets(db: AsyncSession) -> None:
         await db.commit()
         log.info("Seeded default 'Doodle Ilustrasi' image preset.")
     else:
-        # Keep builtin definitions updated
         if preset.is_builtin:
             if not preset.reference_image_url:
                 preset.reference_image_url = DEFAULT_DOODLE_PRESET["reference_image_url"]
@@ -107,7 +98,6 @@ async def get_active_image_preset(db: AsyncSession) -> Optional[ImagePreset]:
     res = await db.execute(select(ImagePreset).where(ImagePreset.is_active == True).limit(1))
     preset = res.scalar_one_or_none()
     if not preset:
-        # Fallback to doodle-ilustrasi if available
         preset = await db.get(ImagePreset, "doodle-ilustrasi")
     return preset
 
@@ -118,11 +108,9 @@ async def set_active_image_preset(db: AsyncSession, preset_id: str) -> ImagePres
     if not target:
         raise ValueError(f"Image preset '{preset_id}' tidak ditemukan")
 
-    # Set all presets is_active = False
     await db.execute(update(ImagePreset).values(is_active=False))
     target.is_active = True
 
-    # Sync to active model_config
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     if cfg:
@@ -157,52 +145,80 @@ def _clean_json_output(raw_text: str) -> Dict[str, Any]:
 
 
 async def analyze_visual_style(
-    user_text: str,
-    preset_type: str = "style",
+    user_text: Optional[str] = "",
+    reference_image_paths: Optional[List[str]] = None,
     reference_image_path: Optional[str] = None,
+    preset_type: str = "style",
     db: Optional[AsyncSession] = None,
 ) -> Dict[str, Any]:
     """
-    Reverse-engineers visual style and synthesizes a master prompt from user text + reference image.
-    Uses Vision model when reference image is supplied, with intelligent prompt engineering.
+    Reverse-engineers visual style and synthesizes a master prompt from user text and/or reference images.
+    Uses Multimodal Vision model when reference images are supplied.
     """
     clean_text = (user_text or "").strip()
 
+    # Collect and validate all reference image paths
+    paths: List[str] = []
+    if reference_image_paths:
+        paths.extend(reference_image_paths)
+    if reference_image_path and reference_image_path not in paths:
+        paths.append(reference_image_path)
+    valid_paths = [p for p in paths if Path(p).exists() and Path(p).is_file()]
+
+    has_images = len(valid_paths) > 0
+    has_text = bool(clean_text)
+
+    source_descriptions = []
+    if has_text:
+        source_descriptions.append(f'USER CONCEPT & CREATIVE DIRECTION:\n"{clean_text}"')
+    if has_images:
+        source_descriptions.append(
+            f"VISUAL REFERENCE IMAGES: {len(valid_paths)} reference image(s) provided. "
+            "Analyze these images as the primary visual style reference."
+        )
+    source_context = (
+        "\n\n".join(source_descriptions)
+        if source_descriptions
+        else "No specific source provided. Generate a high quality illustration style."
+    )
+
     prompt_instruction = (
-        "You are a World-Class AI Art Director & Master Prompt Engineer specializing in image models (FLUX Schnell, Midjourney v6, DALL-E 3).\n\n"
-        "Your task: Engineer an exquisite, highly reusable illustration preset for AI Storyboard Illustrations based on the user's concept "
-        f"and visual reference image. Preset intent: {preset_type}.\n"
-        "For 'style', extract only reusable rendering traits: medium, linework, palette, lighting, shading, detail level, and texture treatment. "
-        "Treat the reference image as style-only: do not preserve or describe its specific subject, character identity, clothing, pose, props, setting, background, camera angle, layout, or object arrangement. "
-        "The scene prompt supplied later must determine all subjects, objects, setting, background, and composition. "
-        "Favor crisp, clean, decisive contours and controlled fills; retain only subtle intentional texture and avoid grain, speckles, and random noise. "
-        "For 'character', focus on a distinct, repeatable character identity, proportions, face, clothing, colors, and signature details; avoid implying exact identity is guaranteed in future images. "
-        "For 'combined', define both the visual language and the character identity.\n\n"
-        f'USER CONCEPT & NOTES:\n"{clean_text or "Doodle illustration stickman style on vintage paper"}"\n\n'
-        "INSTRUCTIONS:\n"
-        "1. Reverse-engineer details appropriate to the preset intent. For a style preset, exclude the reference's specific content and composition; for character presets, describe only the intended character identity.\n"
-        "2. Formulate a comprehensive 'master_prompt' in English (100-220 words) suitable as a style prefix for storyboard scenes.\n"
-        "   CRITICAL: The master prompt MUST begin with: 'Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical).'\n"
-        "   For 'style', describe a reusable visual treatment only; any scene appended as 'Visual scene: [scene description]' supplies the content and composition, which must not be copied from the reference.\n"
-        "   For 'style', require clean, sharp linework, clear edges, controlled texture, and no unwanted grain or noise.\n"
-        "3. Provide a clear negative prompt (exclusions).\n"
-        "4. Extract structured attributes (medium, linework, palette hex/name list, lighting, character_style, and identity_traits for character or combined presets). For 'style', composition must remain generic and must not describe the reference's layout or setting.\n\n"
+        "You are a World-Class AI Art Director & Master Prompt Engineer specializing in image models (FLUX, Midjourney v6, SDXL).\n\n"
+        "Your task: Engineer an exquisite, cohesive Art Style Preset (Master Prompt) based on the user's visual art source.\n\n"
+        f"{source_context}\n\n"
+        "CORE DIRECTIVES:\n"
+        "1. Extract the unifying artistic DNA across the reference(s):\n"
+        "   - Medium & execution: (e.g. hand-drawn ink sketch, watercolor wash, vintage parchment illustration, digital cel animation, gouache, linocut).\n"
+        "   - Linework & contouring: (e.g. clean confident ink lines, sketchy pencil cross-hatching, lineless painterly, bold graphic outlines).\n"
+        "   - Figure & character stylization: (if figures or characters appear or are implied, describe how they are rendered stylistically—e.g. minimalist stick-figure with bald round head and expressive dot eyes, stylized anime proportions, or semi-realistic ink anatomy).\n"
+        "   - Color palette & lighting: (dominant tones, accent colors, color temperature, lighting atmosphere, contrast).\n"
+        "   - Surface texture: (e.g. aged tea-stained parchment, watercolor paper grain, smooth matte, subtle ink bleed).\n"
+        "2. DO NOT copy transient scene content: Do not copy specific temporary subjects, plot actions, temporary props, or exact camera angles from the reference images. The preset will be used to illustrate diverse story scenes later. Only the visual rendering style, artistic medium, figure conventions, linework, and palette should be defined.\n"
+        "3. MASTER PROMPT RULES:\n"
+        "   - Formulate a cohesive, vivid 'master_prompt' in English (60-140 words).\n"
+        "   - Focus strictly on the visual aesthetic, artistic medium, figure styling conventions, linework, color palette, and atmosphere.\n"
+        "   - DO NOT include aspect ratio instructions (e.g. NO 'Widescreen 16:9', NO 'Full bleed', NO 'NOT square, NOT vertical'). Aspect ratio is handled by generation configuration.\n"
+        "   - DO NOT include meta-instructions like 'Apply this visual treatment only' or 'Visual scene: ...'.\n"
+        "4. NEGATIVE PROMPT:\n"
+        "   - Exclude elements conflicting with this aesthetic (e.g. photorealism, 3D CGI, glossy digital gradients, blurry details, unwanted grain/noise).\n"
+        "5. STRUCTURED ATTRIBUTES:\n"
+        "   - Extract medium, linework, palette (4-5 color names with hex codes), lighting, character_style, and composition.\n\n"
         "OUTPUT STRICTLY VALID JSON ONLY, matching this schema:\n"
         "{\n"
-        '  "name": "Nama Preset Singkat Menarik (Bahasa Indonesia)",\n'
+        '  "name": "Nama Preset Singkat & Menarik (Bahasa Indonesia)",\n'
         '  "category": "doodle" | "watercolor" | "comic" | "anime" | "vintage" | "cinematic" | "custom",\n'
-        f'  "preset_type": "{preset_type}",\n'
+        '  "preset_type": "style",\n'
         '  "description": "Ringkasan gaya visual dalam 1-2 kalimat Bahasa Indonesia",\n'
-        '  "master_prompt": "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical). [Complete detailed artistic instructions in English]",\n'
-        '  "negative_prompt": "Negative prompt exclusions in English",\n'
+        '  "master_prompt": "Pure artistic style description in English focusing on medium, linework, figure rendering, palette, and texture.",\n'
+        '  "negative_prompt": "Negative prompt exclusions in English.",\n'
         '  "style_attributes": {\n'
         '    "medium": "Art medium description",\n'
         '    "linework": "Linework style",\n'
-        '    "palette": ["Color 1", "Color 2", "Color 3", "Color 4", "Color 5"],\n'
-        '    "lighting": "Lighting description",\n'
-        '    "character_style": "Character anatomy & styling",\n'
-        '    "composition": "16:9 composition and framing"\n'
-        "  }\n"
+        '    "palette": ["Color Name (#HEX)", "Color Name (#HEX)", "Color Name (#HEX)", "Color Name (#HEX)"],\n'
+        '    "lighting": "Lighting atmosphere",\n'
+        '    "character_style": "Figure / character rendering style",\n'
+        '    "composition": "Storytelling layout and balanced negative space"\n'
+        '  }\n'
         "}"
     )
 
@@ -210,15 +226,15 @@ async def analyze_visual_style(
 
     if db:
         try:
-            if reference_image_path and Path(reference_image_path).exists():
+            if valid_paths:
                 adapter = await get_active_vision_adapter(db)
                 log.info(
-                    "Analyzing reference image (%s) with multimodal vision adapter...",
-                    reference_image_path,
+                    "Analyzing %d reference image(s) with multimodal vision adapter...",
+                    len(valid_paths),
                 )
                 raw_res = await adapter.analyze_multimodal(
                     prompt=prompt_instruction,
-                    image_paths=[reference_image_path],
+                    image_paths=valid_paths,
                     system_prompt="You are a professional AI art director and master prompt engineer.",
                     json_mode=True,
                 )
@@ -238,74 +254,49 @@ async def analyze_visual_style(
                 e,
             )
 
-    # Validate or apply intelligent heuristic fallback if model returned incomplete payload
     name = parsed.get("name") or (
         f"Preset {clean_text[:25]}" if clean_text else "Preset Gaya Ilustrasi AI"
     )
     category = parsed.get("category") or ("doodle" if "doodle" in clean_text.lower() else "custom")
     description = (
         parsed.get("description")
-        or f"Preset visual berbasis '{clean_text or 'gaya ilustrasi visual'}' untuk serial storyboard 16:9."
+        or f"Preset visual berbasis '{clean_text or 'gaya ilustrasi visual'}' untuk serial storyboard."
     )
 
     master_prompt = parsed.get("master_prompt", "")
     if not master_prompt or len(master_prompt.strip()) < 30:
-        aspect = "Widescreen 16:9 landscape aspect ratio (horizontal orientation, 16:9 widescreen framing, wide composition, NOT square, NOT vertical)."
-        if preset_type == "character":
-            master_prompt = (
-                f"{aspect} A clear full-body character design of {clean_text or 'a memorable story character'}. "
-                "Keep the character's face, proportions, clothing, palette, and distinctive identity details coherent and clearly visible. "
-                "Use a simple uncluttered setting that emphasizes the character. "
-                "No additional characters, no cropped body, no text artifacts, no blurry details."
-            )
-        elif preset_type == "combined":
-            master_prompt = (
-                f"{aspect} A storyboard illustration combining a cohesive visual style with a recognizable character based on {clean_text or 'the supplied concept'}. "
-                "Preserve the defined character traits, proportions, face, clothing, palette, and signature details within the described artistic medium. "
-                "Use a clear storytelling composition with balanced negative space. "
-                "No text artifacts, no blurry details."
-            )
-        elif "doodle" in clean_text.lower() or not clean_text:
+        if "doodle" in clean_text.lower() or not clean_text:
             master_prompt = DEFAULT_DOODLE_STYLE_PROMPT
         else:
-            master_prompt = (
-                f"{aspect} Educational explainer storyboard illustration rendered in {clean_text}. "
-                "Cohesive artistic styling, distinctive handcrafted aesthetic, rich textural depth, "
-                "harmonious color palette, clean diagrammatic storytelling, ample negative space. "
-                "No 3D CGI, no photorealism, no modern digital glossy gradients, no text artifacts, no blurry details."
-            )
+            master_prompt = f"{clean_text}. Distinctive artistic medium, hand-drawn linework, textural depth, harmonious color palette."
 
     negative_prompt = (
         parsed.get("negative_prompt")
-        or "No 3D CGI, no photorealism, no glossy gradients, no cluttered background, no digital text artifacts, no blurry details."
+        or "3D render, photorealistic, modern glossy CGI gradients, blurry details, text artifacts, distortion, noise."
     )
-    if preset_type == "style":
-        master_prompt = (
-            f"{master_prompt.strip()} "
-            "Apply this visual treatment only; take the subjects, characters, props, setting, background, and composition from the scene prompt, not from the reference image. "
-            "Use crisp, clean contours, clear edges, controlled fills, and only subtle intentional texture."
-        )
-        negative_prompt = (
-            f"{negative_prompt.rstrip('. ')}; film grain, speckles, random noise, dirty or distressed texture, "
-            "rough sketch strokes, fuzzy edges, blurry linework, smudges."
-        )
+
     style_attributes = parsed.get("style_attributes") or {
         "medium": "Hand-drawn stylized illustration",
         "linework": "Clean, expressive ink linework",
-        "palette": ["Warm Parchment", "Earth Sepia", "Terracotta", "Solid Black", "Muted Gold"],
+        "palette": [
+            "Warm Parchment (#F5E6CA)",
+            "Earth Sepia (#704214)",
+            "Terracotta (#CC7722)",
+            "Solid Black (#111111)",
+        ],
         "lighting": "Soft ambient natural warm illumination",
-        "character_style": "Distinctive stylized character design",
-        "composition": "16:9 widescreen landscape framing, storytelling focal point, balanced negative space",
+        "character_style": "Distinctive stylized figure rendering",
+        "composition": "Storytelling focal point, balanced negative space",
     }
-    style_attributes["preset_type"] = preset_type
+    style_attributes["preset_type"] = "style"
 
     return {
         "name": name,
         "category": category,
-        "preset_type": preset_type,
+        "preset_type": "style",
         "description": description,
-        "master_prompt": master_prompt,
-        "negative_prompt": negative_prompt,
+        "master_prompt": master_prompt.strip(),
+        "negative_prompt": negative_prompt.strip(),
         "style_attributes": style_attributes,
     }
 

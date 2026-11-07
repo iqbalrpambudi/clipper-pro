@@ -146,14 +146,14 @@ async def test_resolution_defaults_and_landscape_16_9(tmp_path):
             model="runware:400@2",
             size="1024x1024",
         )
-        # 2. 16:9 Landscape -> 1366x768
+        # 2. 16:9 Landscape -> 1280x720
         await image_gen.generate_image_to_path(
             prompt="Landscape 16:9 test",
             out_file=out_file2,
             base_url="https://api.runware.ai/v1",
             api_key="fake-key",
             model="runware:400@2",
-            size="1366x768",
+            size="1280x720",
         )
 
     assert len(captured) == 2
@@ -164,10 +164,12 @@ async def test_resolution_defaults_and_landscape_16_9(tmp_path):
     assert task1["outputFormat"] == "WEBP"
 
     task2 = captured[1][0]
-    assert task2["width"] == 1366
-    assert task2["height"] == 768
+    assert task2["width"] == 1280
+    assert task2["height"] == 720
     assert task2["includeCost"] is True
     assert task2["outputFormat"] == "WEBP"
+    assert task2["acceleration"] == "high"
+    assert task2["outputType"] == "URL"
 
 
 

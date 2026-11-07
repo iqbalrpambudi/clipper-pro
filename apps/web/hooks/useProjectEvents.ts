@@ -29,6 +29,7 @@ export function useProjectEvents(projectId: string) {
         const currentTask = useStudioStore.getState().activeTask;
         if (currentTask && (currentTask.status === "progress" || currentTask.status === "queued")) {
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["storyboard-items", projectId] });
           queryClient.invalidateQueries({ queryKey: ["render-jobs", projectId] });
         }
       }, 45000);
@@ -74,6 +75,10 @@ export function useProjectEvents(projectId: string) {
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
           queryClient.invalidateQueries({ queryKey: ["motion-scenes", projectId] });
         }
+        if (task.task_type === "storyboard_generate" || task.task_type === "storyboard_images") {
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["storyboard-items", projectId] });
+        }
 
         if (task.status === "success") {
           if (watchdogTimerRef.current) {
@@ -84,6 +89,7 @@ export function useProjectEvents(projectId: string) {
           showToast(task.message || "Proses berhasil diselesaikan!", "success");
           // refetchType "all" makes invalidate also refetch active + inactive queries
           queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["storyboard-items", projectId], refetchType: "all" });
           queryClient.invalidateQueries({
             queryKey: ["render-jobs", projectId],
             refetchType: "all",
@@ -110,6 +116,7 @@ export function useProjectEvents(projectId: string) {
             );
           }
           queryClient.invalidateQueries({ queryKey: ["project", projectId], refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: ["storyboard-items", projectId], refetchType: "all" });
           queryClient.invalidateQueries({
             queryKey: ["render-jobs", projectId],
             refetchType: "all",

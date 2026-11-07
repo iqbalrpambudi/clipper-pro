@@ -12,6 +12,7 @@ class StoryboardScriptGenerateRequest(BaseModel):
     preset_id: Optional[str] = None
     custom_instructions: Optional[str] = None
     language: Optional[str] = "id"  # id | en
+    use_character_bible: bool = True
 
 
 class StoryboardItemResponse(BaseModel):
@@ -52,6 +53,12 @@ class StoryboardItemUpdateRequest(BaseModel):
 class StoryboardSingleGenerateRequest(BaseModel):
     prompt: Optional[str] = None
     preset_id: Optional[str] = None
+
+
+class StoryboardRedirectVisualsRequest(BaseModel):
+    preset_id: Optional[str] = None
+    custom_instructions: Optional[str] = None
+    use_character_bible: Optional[bool] = None
 
 
 class StoryboardBatchGenerateRequest(BaseModel):

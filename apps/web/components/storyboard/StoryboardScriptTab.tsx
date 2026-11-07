@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, Check, Copy, FileText, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Copy, FileText, Sparkles, RefreshCw } from "lucide-react";
 import { Project } from "@/types";
 import { Button } from "@/components/ui";
 import { StoryboardTabHeader } from "./StoryboardTabHeader";
@@ -33,6 +33,29 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
         actions={
           state.segments.length > 0 ? (
             <>
+              <Button
+                size="sm"
+                onClick={state.handleRedirectVisuals}
+                disabled={
+                  state.redirectVisualsMutation.isPending ||
+                  state.generateScriptMutation.isPending
+                }
+                variant="workspace-secondary"
+                className="h-9 gap-1.5 border-[#E2D8CE] bg-[#FAF6F0] text-xs font-semibold text-[#8A6A2F] shadow-sm transition hover:bg-[#F3ECE1]"
+                title="Sutradarai ulang prompt visual tiap adegan berdasarkan narasi dan bible saat ini, tanpa mengubah narasi atau audio"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 text-[#8A6A2F] ${
+                    state.redirectVisualsMutation.isPending ? "animate-spin" : ""
+                  }`}
+                />
+                <span>
+                  {state.redirectVisualsMutation.isPending
+                    ? "Menyutradarai..."
+                    : "Sutradarai Ulang Visual"}
+                </span>
+              </Button>
+
               <Button
                 size="sm"
                 onClick={() => state.handleOpenNarrationAnalysis()}
@@ -94,6 +117,8 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             setImagesPerSegment={state.setImagesPerSegment}
             customInstructions={state.customInstructions}
             setCustomInstructions={state.setCustomInstructions}
+            useCharacterBible={state.useCharacterBible}
+            setUseCharacterBible={state.setUseCharacterBible}
             hasSegments={state.segments.length > 0}
             isGenerating={state.generateScriptMutation.isPending}
             onGenerate={state.handleGenerate}
@@ -120,6 +145,7 @@ export function StoryboardScriptTab({ project }: StoryboardScriptTabProps) {
             />
 
             <ContinuityBibleCard
+              projectId={project.id}
               charactersList={state.charactersList}
               setCharactersList={state.setCharactersList}
               locationsList={state.locationsList}

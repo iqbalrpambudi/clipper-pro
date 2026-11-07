@@ -7,31 +7,74 @@ from app.schemas.image_preset import StudioAnalyzeRequest, StudioTestGenerateReq
 from app.services import image_studio
 
 
-@pytest.mark.parametrize("preset_type", ["style", "character", "combined"])
 @pytest.mark.asyncio
-async def test_analyze_visual_style_preserves_preset_intent(preset_type):
+async def test_analyze_visual_style_from_text():
     result = await image_studio.analyze_visual_style(
-        user_text="A tiny fox explorer in a paper-cut style",
-        preset_type=preset_type,
+        user_text="Minimalist stickman doodle ink sketch on parchment",
     )
 
-    assert result["preset_type"] == preset_type
-    assert result["style_attributes"]["preset_type"] == preset_type
-    if preset_type == "character":
-        assert "full-body character design" in result["master_prompt"]
-    if preset_type == "combined":
-        assert "combining a cohesive visual style" in result["master_prompt"]
+    assert result["preset_type"] == "style"
+    assert "stickman doodle" in result["master_prompt"].lower() or "doodle" in result["master_prompt"].lower()
+    assert "Widescreen 16:9" not in result["master_prompt"]
+    assert "Apply this visual treatment only" not in result["master_prompt"]
+    assert "palette" in result["style_attributes"]
 
 
 @pytest.mark.asyncio
-async def test_style_reference_only_informs_visual_treatment(monkeypatch, tmp_path):
-    reference = tmp_path / "reference.png"
-    reference.write_bytes(b"reference")
+async def test_analyze_visual_style_from_multiple_reference_images(monkeypatch, tmp_path):
+    ref1 = tmp_path / "ref1.png"
+    ref1.write_bytes(b"image1")
+    ref2 = tmp_path / "ref2.jpg"
+    ref2.write_bytes(b"image2")
+
     adapter = AsyncMock()
     adapter.analyze_multimodal.return_value = json.dumps(
         {
-            "master_prompt": "A clean ink-and-watercolor illustration style.",
-            "negative_prompt": "No photorealism.",
+            "name": "Vintage Watercolor",
+            "category": "watercolor",
+            "preset_type": "style",
+            "description": "Gaya cat air vintage dengan garis tinta lembut.",
+            "master_prompt": "Vintage hand-painted watercolor illustration with delicate sepia ink outlines and soft paper washes.",
+            "negative_prompt": "Photorealism, 3D CGI, glossy digital gradient.",
+            "style_attributes": {
+                "medium": "Watercolor and ink",
+                "palette": ["Sepia (#704214)", "Ochre (#CC7722)"],
+            },
+        }
+    )
+    monkeypatch.setattr(
+        image_studio, "get_active_vision_adapter", AsyncMock(return_value=adapter)
+    )
+
+    result = await image_studio.analyze_visual_style(
+        user_text="Warm vintage feeling",
+        reference_image_paths=[str(ref1), str(ref2)],
+        db=object(),
+    )
+
+    assert adapter.analyze_multimodal.called
+    kwargs = adapter.analyze_multimodal.await_args.kwargs
+    assert kwargs["image_paths"] == [str(ref1), str(ref2)]
+    assert "2 reference image(s) provided" in kwargs["prompt"]
+    assert "Widescreen 16:9" not in result["master_prompt"]
+    assert result["master_prompt"] == "Vintage hand-painted watercolor illustration with delicate sepia ink outlines and soft paper washes."
+    assert result["name"] == "Vintage Watercolor"
+
+
+@pytest.mark.asyncio
+async def test_analyze_visual_style_empty_text_with_images(monkeypatch, tmp_path):
+    ref = tmp_path / "ref.webp"
+    ref.write_bytes(b"webpdata")
+
+    adapter = AsyncMock()
+    adapter.analyze_multimodal.return_value = json.dumps(
+        {
+            "name": "Anime Cel Style",
+            "category": "anime",
+            "preset_type": "style",
+            "description": "Gaya cel shading anime klasik.",
+            "master_prompt": "Classic 90s anime cel shading illustration style with bold black lineart.",
+            "negative_prompt": "3D render, photorealistic.",
             "style_attributes": {},
         }
     )
@@ -40,19 +83,13 @@ async def test_style_reference_only_informs_visual_treatment(monkeypatch, tmp_pa
     )
 
     result = await image_studio.analyze_visual_style(
-        user_text="Clean ink outlines and warm watercolor",
-        preset_type="style",
-        reference_image_path=str(reference),
+        user_text="",
+        reference_image_paths=[str(ref)],
         db=object(),
     )
 
-    analysis_prompt = adapter.analyze_multimodal.await_args.kwargs["prompt"]
-    assert "style-only" in analysis_prompt
-    assert "must not be copied from the reference" in analysis_prompt
-    assert "background, and composition from the scene prompt" in result["master_prompt"]
-    assert "clean contours" in result["master_prompt"]
-    assert "film grain" in result["negative_prompt"]
-    assert "random noise" in result["negative_prompt"]
+    assert result["name"] == "Anime Cel Style"
+    assert "90s anime cel shading" in result["master_prompt"]
 
 
 @pytest.mark.asyncio
@@ -75,14 +112,15 @@ async def test_generate_preset_test_image_forwards_negative_prompt(monkeypatch, 
     assert generate.await_args.kwargs["size"] == "1792x1024"
 
 
-def test_art_studio_api_schemas_keep_old_payloads_compatible():
-    analysis = StudioAnalyzeRequest(user_text="A watercolor fox")
-    test_generation = StudioTestGenerateRequest(master_prompt="Watercolor")
-
+def test_art_studio_api_schemas_support_multiple_images():
+    analysis = StudioAnalyzeRequest(
+        user_text="",
+        reference_image_urls=["/storage/presets/1.png", "/storage/presets/2.png"],
+    )
+    assert len(analysis.reference_image_urls) == 2
     assert analysis.preset_type == "style"
-    assert test_generation.negative_prompt is None
 
 
-def test_art_studio_api_schemas_reject_unknown_preset_types():
+def test_art_studio_api_schemas_requires_text_or_image():
     with pytest.raises(ValueError):
-        StudioAnalyzeRequest(user_text="A fox", preset_type="animal")
+        StudioAnalyzeRequest(user_text="")

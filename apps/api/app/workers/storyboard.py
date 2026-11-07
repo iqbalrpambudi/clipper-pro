@@ -23,11 +23,13 @@ from app.services.storyboard import resolve_prompt_variables
 log = logging.getLogger(__name__)
 
 
-def compute_scene_group_seed(project_id: str, group_id: Optional[str]) -> Optional[int]:
-    """Compute a deterministic positive 31-bit seed per (project_id, scene_group_id)."""
-    if not group_id:
-        return None
-    val = zlib.crc32(f"{project_id}:{group_id}".encode("utf-8")) & 0x7FFFFFFF
+def compute_item_seed(project_id: str, item_id: str) -> int:
+    """Compute a deterministic positive 31-bit seed per (project_id, item_id).
+
+    Seeds are intentionally different for every storyboard item. Sharing one seed across a scene group
+    made consecutive shots converge on near-identical compositions.
+    """
+    val = zlib.crc32(f"{project_id}:{item_id}".encode("utf-8")) & 0x7FFFFFFF
     return val if val > 0 else 42
 
 
@@ -36,7 +38,7 @@ async def generate_storyboard_images_job(
     project_id: str,
     item_ids: Optional[List[str]] = None,
 ) -> None:
-    """Async background task to generate storyboard illustrations via AI image provider with scene-group continuity."""
+    """Async background task to generate storyboard illustrations via AI image provider (independent text-to-image per shot)."""
     async with SessionLocal() as db:
         proj = await db.get(Project, project_id)
         res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
@@ -46,11 +48,10 @@ async def generate_storyboard_images_job(
         cfg_steps = getattr(cfg, "image_steps", None)
         cfg_scale = getattr(cfg, "image_cfg_scale", None)
         active_preset = await get_active_image_preset(db)
-        target_size = "1366x768" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
+        target_size = "1280x720" if (proj and getattr(proj, "aspect_ratio", "16:9") in ("16:9", "landscape")) else "1024x1024"
         style_prompt = active_preset.master_prompt if active_preset else (cfg.image_system_prompt if cfg else None)
         negative_prompt = getattr(active_preset, "negative_prompt", None) if active_preset else None
 
-        # Pre-index existing ready images across the project so follow-up shots can reference already-generated anchors
         all_stmt = (
             select(StoryboardItem)
             .where(StoryboardItem.project_id == project_id)
@@ -58,15 +59,6 @@ async def generate_storyboard_images_job(
         )
         all_items_res = await db.execute(all_stmt)
         all_project_items = list(all_items_res.scalars().all())
-
-        ready_by_item_id: Dict[str, str] = {}
-        group_anchor_map: Dict[str, tuple[str, str]] = {}
-        for existing in all_project_items:
-            if existing.status == "ready" and existing.file_path and Path(existing.file_path).is_file():
-                ready_by_item_id[existing.id] = existing.file_path
-                grp = (existing.shot_metadata or {}).get("scene_group_id")
-                if grp and grp not in group_anchor_map:
-                    group_anchor_map[grp] = (existing.id, existing.file_path)
 
         if item_ids:
             id_set = set(item_ids)
@@ -98,7 +90,7 @@ async def generate_storyboard_images_job(
             status="progress",
             progress=5,
             stage="starting",
-            message=f"Memulai pembuatan {total_items} ilustrasi dengan kontinuitas latar & karakter...",
+            message=f"Memulai pembuatan {total_items} ilustrasi...",
             data={"total_items": total_items},
         )
 
@@ -123,18 +115,7 @@ async def generate_storyboard_images_job(
 
             try:
                 shot_meta = it.shot_metadata if isinstance(it.shot_metadata, dict) else {}
-                group_id = (shot_meta.get("scene_group_id") or "").strip()
-                ref_item_id = (shot_meta.get("reference_item_id") or "").strip()
-
-                ref_path: Optional[str] = None
-                if ref_item_id and ref_item_id != it.id and ref_item_id in ready_by_item_id:
-                    ref_path = ready_by_item_id[ref_item_id]
-                elif group_id and group_id in group_anchor_map:
-                    anc_id, anc_path = group_anchor_map[group_id]
-                    if anc_id != it.id:
-                        ref_path = anc_path
-
-                group_seed = compute_scene_group_seed(project_id, group_id)
+                item_seed = compute_item_seed(project_id, it.id)
 
                 resolved_prompt = resolve_prompt_variables(
                     it.image_prompt,
@@ -157,8 +138,8 @@ async def generate_storyboard_images_job(
                         style_prompt=style_prompt,
                         negative_prompt=negative_prompt,
                         size=target_size,
-                        reference_image_path=ref_path,
-                        seed=group_seed,
+                        reference_image_path=None,
+                        seed=item_seed,
                         steps=cfg_steps,
                         guidance_scale=cfg_scale,
                     )
@@ -167,9 +148,6 @@ async def generate_storyboard_images_job(
                     it.file_path = f_path
                     it.status = "ready"
                     it.error_message = None
-                    ready_by_item_id[it.id] = f_path
-                    if group_id and group_id not in group_anchor_map:
-                        group_anchor_map[group_id] = (it.id, f_path)
                     success_count += 1
                     completed_count += 1
                     await db.commit()
@@ -201,26 +179,8 @@ async def generate_storyboard_images_job(
                         data={"item_id": it.id, "current": completed_count, "total": total_items},
                     )
 
-        # Group items by scene_group_id so Shot 1 (Establishing/Wide) finishes before Shot 2 (Close-Up) in the same group,
-        # while independent scene groups run concurrently up to `concurrency`!
-        grouped_chains: List[List[StoryboardItem]] = []
-        chain_index_by_group: Dict[str, int] = {}
-        for it in items:
-            grp = ((it.shot_metadata or {}).get("scene_group_id") or "").strip() if isinstance(it.shot_metadata, dict) else ""
-            if grp:
-                if grp not in chain_index_by_group:
-                    chain_index_by_group[grp] = len(grouped_chains)
-                    grouped_chains.append([it])
-                else:
-                    grouped_chains[chain_index_by_group[grp]].append(it)
-            else:
-                grouped_chains.append([it])
-
-        async def _process_chain(chain: List[StoryboardItem]) -> None:
-            for chain_item in chain:
-                await _process_item(chain_item)
-
-        await asyncio.gather(*[_process_chain(ch) for ch in grouped_chains], return_exceptions=True)
+        # Items are independent: no frame-to-frame reference chaining, so every shot renders its own composition.
+        await asyncio.gather(*[_process_item(it) for it in items], return_exceptions=True)
 
         if await is_cancelled(project_id):
             raise TaskCancelledException("Pembuatan gambar ilustrasi dibatalkan oleh pengguna.")

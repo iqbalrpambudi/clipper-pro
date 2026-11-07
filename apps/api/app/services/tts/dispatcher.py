@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.services.cancellation import TaskCancelledException, is_cancelled
 from app.services.tts.audio_utils import (
     _concat_mp3s,
     _generate_silence_mp3,
@@ -29,6 +30,7 @@ async def generate_speech_audio(
     model: str = "gemini-2.5-flash-preview-tts",
     segments: Optional[List[Dict[str, Any]]] = None,
     language: Optional[str] = "id",
+    project_id: Optional[str] = None,
 ) -> float:
     """Entrypoint for TTS audio generation.
 
@@ -51,6 +53,9 @@ async def generate_speech_audio(
     target_lang = (language or "id").strip().lower()
 
     async def _synthesize_block(block_text: str, block_output_path: str) -> float:
+        if project_id and await is_cancelled(project_id):
+            raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
         # 1. ELEVENLABS TTS
         if prov == "elevenlabs":
             try:
@@ -217,6 +222,7 @@ async def generate_speech_audio(
                         pitch=pitch,
                         model=model,
                         language=target_lang,
+                        project_id=project_id,
                     )
 
                 chunks = _split_text_for_tts(block_text, max_chars=750)
@@ -230,12 +236,16 @@ async def generate_speech_audio(
                         pitch=pitch,
                         model=model,
                         language=target_lang,
+                        project_id=project_id,
                     )
 
                 out_p = Path(block_output_path)
                 parts = []
                 try:
                     for i, chunk in enumerate(chunks):
+                        if project_id and await is_cancelled(project_id):
+                            raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
                         part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
                         try:
                             await generate_gemini_tts(
@@ -247,25 +257,26 @@ async def generate_speech_audio(
                                 pitch=pitch,
                                 model=model,
                                 language=target_lang,
+                                project_id=project_id,
                             )
                             parts.append(part_path)
+                        except TaskCancelledException:
+                            raise
                         except Exception as chunk_err:
-                            if parts:
-                                try:
-                                    await _concat_mp3s(parts, block_output_path)
-                                except Exception as concat_err:
-                                    log.warning("Failed to concat partial audio chunks: %s", concat_err)
+                            log.error("Gemini TTS chunk %d/%d failed: %s", i + 1, len(chunks), chunk_err)
                             raise RuntimeError(
-                                f"Sintesis suara {provider.upper()} terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                                f"Sintesis suara GEMINI terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
                             ) from chunk_err
 
                         if i < len(chunks) - 1:
-                            await asyncio.sleep(0.5)
+                            await asyncio.sleep(0.3)
 
                     return await _concat_mp3s(parts, block_output_path)
                 finally:
                     for p in parts:
                         Path(p).unlink(missing_ok=True)
+            except TaskCancelledException:
+                raise
             except Exception as e:
                 log.error("Gemini TTS failed: %s", e)
                 raise
@@ -307,16 +318,16 @@ async def generate_speech_audio(
         silence_file = str(out_p.with_name(f"{out_p.stem}.chap_silence.mp3"))
         try:
             for c_idx, c_block in enumerate(cleaned_chapter_blocks):
+                if project_id and await is_cancelled(project_id):
+                    raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
                 c_path = str(out_p.with_name(f"{out_p.stem}.chap{c_idx:03d}.mp3"))
                 try:
                     await _synthesize_block(c_block, c_path)
                     chapter_files.append(c_path)
+                except TaskCancelledException:
+                    raise
                 except Exception as chap_err:
-                    if chapter_files:
-                        try:
-                            await _concat_mp3s(chapter_files, output_path)
-                        except Exception:
-                            pass
                     raise RuntimeError(
                         f"Sintesis TTS terhenti pada Babak {c_idx + 1}/{len(cleaned_chapter_blocks)}: {chap_err}"
                     ) from chap_err

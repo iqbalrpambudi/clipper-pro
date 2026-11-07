@@ -32,6 +32,7 @@ export interface TaskEvent {
     | "tts_align"
     | "render"
     | "storyboard_images"
+    | "storyboard_generate"
     | "motion_generate";
   status: "queued" | "progress" | "success" | "error";
   progress: number;

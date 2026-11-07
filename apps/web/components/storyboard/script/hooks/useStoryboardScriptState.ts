@@ -56,6 +56,11 @@ export function useStoryboardScriptState(project: Project) {
   const [customInstructions, setCustomInstructions] = useState<string>(
     draft?.customInstructions || ""
   );
+  const [useCharacterBible, setUseCharacterBible] = useState<boolean>(
+    (draft as any)?.useCharacterBible !== undefined
+      ? Boolean((draft as any).useCharacterBible)
+      : (project.world_setting as any)?.use_character_bible !== false
+  );
 
   const handleLanguageSelect = (newLang: string) => {
     setLanguage(newLang);
@@ -103,7 +108,8 @@ export function useStoryboardScriptState(project: Project) {
       selectedScriptPresetId,
       imagesPerSegment,
       customInstructions,
-    });
+      useCharacterBible,
+    } as any);
 
     useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "script", scriptPayload);
   }, [
@@ -116,6 +122,7 @@ export function useStoryboardScriptState(project: Project) {
     selectedScriptPresetId,
     imagesPerSegment,
     customInstructions,
+    useCharacterBible,
     setScriptDraft,
   ]);
 
@@ -478,6 +485,7 @@ export function useStoryboardScriptState(project: Project) {
       preset_id?: string;
       custom_instructions?: string;
       language?: string;
+      use_character_bible?: boolean;
     }) => api.generateStoryboardScript(project.id, data),
     onSuccess: (data) => {
       if (data?.characters) {
@@ -511,6 +519,7 @@ export function useStoryboardScriptState(project: Project) {
     },
     onError: (err: Error) => {
       showToast(err.message || "Gagal generate naskah storyboard", "error");
+      useStudioStore.getState().setActiveTask(null, project.id);
     },
   });
 
@@ -529,6 +538,39 @@ export function useStoryboardScriptState(project: Project) {
       preset_id: selectedPresetId || undefined,
       custom_instructions: customInstructions.trim() || undefined,
       language,
+      use_character_bible: useCharacterBible,
+    });
+  };
+
+  const redirectVisualsMutation = useMutation({
+    mutationFn: (data?: { preset_id?: string; custom_instructions?: string; use_character_bible?: boolean }) =>
+      api.redirectStoryboardVisuals(project.id, data),
+    onSuccess: (data) => {
+      if (data?.storyboard_items) {
+        queryClient.setQueryData<ProjectDetail>(["project", project.id], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            storyboard_items: data.storyboard_items,
+          };
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      showToast(
+        data?.message || `${data?.updated_count || 0} adegan visual berhasil disutradarai ulang!`,
+        "success"
+      );
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Gagal menyutradarai ulang adegan visual", "error");
+    },
+  });
+
+  const handleRedirectVisuals = () => {
+    redirectVisualsMutation.mutate({
+      preset_id: selectedPresetId || undefined,
+      custom_instructions: customInstructions.trim() || undefined,
+      use_character_bible: useCharacterBible,
     });
   };
 
@@ -653,8 +695,12 @@ export function useStoryboardScriptState(project: Project) {
     setImagesPerSegment,
     customInstructions,
     setCustomInstructions,
+    useCharacterBible,
+    setUseCharacterBible,
     generateScriptMutation,
     handleGenerate,
+    redirectVisualsMutation,
+    handleRedirectVisuals,
 
     // Continuity Bible
     bibleTab,

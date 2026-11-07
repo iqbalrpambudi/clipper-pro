@@ -8,10 +8,18 @@ import { Button, Input, Textarea, Badge } from "@/components/ui";
 export const SHOT_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "establishing_wide", label: "Establishing Wide" },
   { value: "wide", label: "Wide" },
+  { value: "full_shot", label: "Full Shot" },
   { value: "medium", label: "Medium" },
+  { value: "two_shot", label: "Two Shot" },
   { value: "over_the_shoulder", label: "Over-the-Shoulder" },
+  { value: "group_shot", label: "Group Shot" },
+  { value: "insert_detail", label: "Insert Detail" },
+  { value: "pov", label: "POV" },
+  { value: "aerial", label: "Aerial" },
+  { value: "silhouette_wide", label: "Silhouette Wide" },
   { value: "medium_closeup", label: "Medium Close-Up" },
   { value: "close_up", label: "Close-Up" },
+  { value: "extreme_closeup", label: "Extreme Close-Up" },
 ];
 
 export function shotTypeLabel(value?: string | null): string {

@@ -144,419 +144,485 @@ NARRATIVE_ARC_DEFAULT_ID = (
 )
 
 # =========================================================================
-# 3. OUTLINE PROMPTS (WITH DEEP STRUCTURED CONTINUITY BIBLE)
+# 3. STORY CONTINUITY EXTRACTION PROMPTS
 # =========================================================================
 
-OUTLINE_SYSTEM_PROMPT_EN_TEMPLATE = (
-    "You are a world-class YouTube Master Storyteller, Cinematography Supervisor & Executive Producer for high-retention 16:9 documentary/storytelling videos "
-    "(in the style of Vox, Kurzgesagt, Johnny Harris, Lemmino, or Veritasium).\n"
-    "Your task is to design a captivating Master Outline in ENGLISH for a long-form YouTube video, "
-    "AND engineer a deep 'Story World & Spatial Continuity Bible' so that characters, micro-set locations, lighting, and shot-to-shot transitions (e.g. Wide Establishing Shot -> Close-Up Shot at the exact same market stall) remain 100% visually consistent.\n\n"
-    "CRITICAL LANGUAGE RULE: Write the entire outline ('title', 'overview', 'chapter_title', 'synopsis', 'opening_hook', 'closing_rehook', 'key_points') in fluent spoken ENGLISH. All visual anchor fields in `characters` and `locations` MUST also be in descriptive ENGLISH.\n\n"
+EXTRACT_CONTINUITY_BIBLE_SYSTEM_PROMPT = """You are an Elite Visual Story Director, Cinematography Continuity Supervisor, and Script Analyst for 16:9 YouTube and 2D comic storytelling production.
+Analyze the provided story script and extract a deeply structured 'Story Continuity Bible' engineered for 100% visual consistency and dynamic panel variety:
+
+1. ALL CHARACTERS & INTERACTING ENTITIES (`characters`):
+   Extract EVERY character who appears, speaks, or interacts (protagonists, antagonists, mentors, companions, merchants/vendors, guards, supporting figures).
+   For each character provide:
+   - `id`: Unique short lowercase slug (e.g. 'malin', 'pedagang_pasar').
+   - `name`: Full character name.
+   - `role`: Narrative role.
+   - `face_head_anchor`: Detailed English close-up anchor (head, face, expression, hair/headwear, collar).
+   - `outfit_body_anchor`: Detailed English wide/full-shot anchor (outfit colors, fabric textures, belt, silhouette, handheld props).
+   - `visual_anchor`: Complete combined English visual description.
+   - `expression_range`: 3-5 typical expressions (e.g. 'intense focus, defiant grin, sorrowful gaze').
+   - `signature_gesture`: 1-2 distinct physical postures or habits.
+   - `silhouette_note`: Body build, height, and recognizable silhouette traits.
+   - `variants`: Distinct age, costume, or transformation stages (`variant_id`, `label`, `face_head_anchor`, `outfit_body_anchor`, `visual_anchor`).
+
+2. RECURRING LOCATIONS & MULTI-VIEW SETS (`locations`):
+   Identify 2 to 6 distinct settings and define fields in ENGLISH so scenes have rich visual variety:
+   - `id`: Short slug (e.g. 'kios_pasar_rempah').
+   - `name`: Specific Location Name.
+   - `environment_anchor`: Wide architectural & spatial layout.
+   - `key_views`: 2-4 distinct viewpoints ([{"view_id": "view_1", "description": "..."}]) for dynamic camera perspectives.
+   - `ambient_life`: Environmental motion, weather, crowds, dust, smoke, animals.
+   - `focal_props`: 2–4 fixed anchor props separated by commas.
+   - `lighting_direction`: Consistent directional light vector and color warmth.
+
+3. WORLD SETTING & ERA (`world_setting`):
+   - `era`: Specific historical period or universe setting.
+   - `time_setting`: Narrative timeline.
+   - `atmosphere`: Visual mood, color palette, and lighting progression.
+
+=== STRICT OUTPUT FORMAT (PURE JSON ONLY) ===
+Return ONLY a valid JSON object matching this schema without markdown fences:
+{
+  "world_setting": {
+    "era": "...",
+    "time_setting": "...",
+    "atmosphere": "..."
+  },
+  "characters": [
+    {
+      "id": "char_slug",
+      "name": "Nama Karakter",
+      "role": "Peran",
+      "face_head_anchor": "English head, face, headwear, and collar traits...",
+      "outfit_body_anchor": "English full attire, colors, fabric, silhouette, and props...",
+      "visual_anchor": "Complete combined English visual description...",
+      "expression_range": "intense focus, grim anger, defiant grin",
+      "signature_gesture": "stands tall with arms folded firmly",
+      "silhouette_note": "lean athletic build with fluttering dark sash",
+      "variants": [
+        {
+          "variant_id": "muda",
+          "label": "Masa Muda",
+          "face_head_anchor": "English close-up head/face/headwear anchor for variant...",
+          "outfit_body_anchor": "English outfit/body anchor for variant...",
+          "visual_anchor": "Combined English visual anchor for variant..."
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc_slug",
+      "name": "Nama Lokasi",
+      "environment_anchor": "Wide architectural description in English...",
+      "key_views": [
+        {"view_id": "wide_exterior", "description": "wide exterior view"},
+        {"view_id": "inner_angle", "description": "closer interior vantage point"}
+      ],
+      "ambient_life": "ambient movement, weather, background life in English...",
+      "focal_props": "prop 1, prop 2, prop 3",
+      "lighting_direction": "Consistent light direction and warmth in English..."
+    }
+  ]
+}"""
+
+
+# =========================================================================
+# 4. SPECIALIZED 3-AGENT PIPELINE PROMPTS
+# =========================================================================
+
+# --- AGENT 1: SCRIPTWRITER AGENT (PURE NARRATIVE STORYTELLING) ---
+
+SCRIPTWRITER_OUTLINE_ID_TEMPLATE = (
+    "Anda adalah Scriptwriter Lead & Narrative Architect kelas dunia untuk video storytelling YouTube ber-retensi tinggi "
+    "(selevel Vox, Johnny Harris, Lemmino, atau Kurzgesagt).\n"
+    "Fokus Anda MURNI pada KEKUATAN NARASI, KEDALAMAN CERITA, dan RITME PENCERITAAN tanpa terganggu urusan teknis kamera atau visual.\n\n"
     "{tone_guidelines}"
-    "{preset_character_guidance}"
-    "=== OUTLINE STRUCTURE GUIDELINES ===\n"
-    "- Target Total Speech Duration: {duration_mins} Minutes (~{target_words} total words).\n"
-    "- Number of Chapters: Exactly {num_chapters} chapters (~{words_per_chapter} words per chapter).\n"
-    "- Every chapter MUST include an `opening_hook` (bridging smoothly from the previous chapter) and a `closing_rehook` (an open loop/cliffhanger pulling viewers into the next chapter, or resonant punchline for the final chapter).\n"
+    "=== STRUKTUR OUTLINE NARASI ===\n"
+    "- Target Total Durasi Bicara: {duration_mins} Menit (~{target_words} kata narasi total).\n"
+    "- Jumlah Babak (Chapters): Tepat {num_chapters} babak (~{words_per_chapter} kata per babak, ~{beats_per_chapter} beat narasi per babak).\n"
+    "- Setiap babak wajib memiliki sinopsis emosional yang kuat, opening_hook, dan closing_rehook penggantung rasa penasaran.\n"
     "{narrative_arc}"
-    "=== DEEP STORY CONTINUITY BIBLE (SHOT-SCALE & SPATIAL CONSISTENCY) ===\n"
-    "1. World Setting (`world_setting`):\n"
-    "   - `era`: Specific historical, contemporary, or futuristic era (e.g. '14th Century Nusantara Maritime Kingdom, pre-modern, no electricity').\n"
-    "   - `time_setting`: Narrative timeline.\n"
-    "   - `atmosphere`: Color palette and overarching cinematic mood.\n"
-    "2. Characters & Interacting Entities (`characters`):\n"
-    "   Identify ALL characters and interacting figures (protagonists, antagonists, mentors, market merchants/vendors, guards, companions). NEVER leave an interacting figure (like a market vendor) unlocked!\n"
-    "   To guarantee 100% consistency when cutting between Wide Shots and Tight Close-Ups, split each character's appearance into:\n"
-    "   - `id`: Short unique slug (e.g. 'malin', 'pedagang_rempah').\n"
-    "   - `name`: Full character name.\n"
-    "   - `role`: Narrative role.\n"
-    "   - `face_head_anchor`: IMMUTABLE head, face, eye/eyebrow expression traits, headwear/hair/hijab/udeng/turban, facial hair, and collar/neckline details visible in a TIGHT CLOSE-UP (respecting the active visual style preset!).\n"
-    "   - `outfit_body_anchor`: IMMUTABLE upper & lower garment colors, fabric textures, belt/sash, footwear, body build, and signature handheld accessories visible in WIDE/MEDIUM shots.\n"
-    "   - `visual_anchor`: Combined full physical + attire description in English.\n"
-    "   - `variants`: Distinct age/costume/form stages if the character changes across the story (each variant MUST include `variant_id`, `label`, `face_head_anchor`, `outfit_body_anchor`, and `visual_anchor`).\n"
-    "3. Key Locations & Micro-Sets (`locations`):\n"
-    "   Define 2–6 recurring micro-set environments. To prevent backgrounds from morphing when the camera cuts from a Wide Shot to a Close-Up Shot in the same place, lock 4 fields per location:\n"
-    "   - `id`: Short unique slug (e.g. 'kios_pasar_rempah').\n"
-    "   - `name`: Specific Location / Micro-Set Name.\n"
-    "   - `environment_anchor`: WIDE architectural & spatial layout in English (exact stall structure, counter material, alley/room layout, roof/awning, ground texture).\n"
-    "   - `closeup_background_anchor`: CLOSE-UP / MEDIUM behind-the-shoulder background anchor in English—describe the exact immediate elements directly behind a character's head/shoulders at this set in shallow depth-of-field/soft focus (e.g. 'softly defocused olive-green canvas stall awning, hanging braided garlic strings, stacked woven spice baskets, and warm teak counter edge directly behind the character').\n"
-    "   - `focal_props`: Comma-separated 2–4 fixed anchor props (e.g. 'brass balance scale, olive canvas awning, hanging garlic braids, dark teak counter').\n"
-    "   - `lighting_direction`: Locked light direction and color temperature (e.g. 'warm golden morning sunlight streaming from screen-left at 45 degrees').\n\n"
-    "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
-    "Return ONLY valid JSON matching this schema:\n"
+    "=== FORMAT KELUARAN (WAJIB JSON MURNI TANPA MARKDOWN FENCES) ===\n"
     "{{\n"
-    '  "title": "Engaging & High-CTR Video Title in English",\n'
-    '  "overview": "Captivating 2-3 sentence overview of the story arc in English",\n'
-    '  "world_setting": {{\n'
-    '    "era": "Historical / Modern / Futuristic Era context",\n'
-    '    "time_setting": "Traditional Past / Modern",\n'
-    '    "atmosphere": "Visual palette and mood"\n'
-    "  }},\n"
-    '  "characters": [\n'
-    "    {{\n"
-    '      "id": "char_id",\n'
-    '      "name": "Character Name",\n'
-    '      "role": "Protagonist",\n'
-    '      "face_head_anchor": "Head, face, headwear, and collar details visible in close-up",\n'
-    '      "outfit_body_anchor": "Full garment colors, layering, belt, silhouette visible in wide/medium shots",\n'
-    '      "visual_anchor": "Complete combined physical and outfit description in English",\n'
-    '      "variants": [\n'
-    "        {{\n"
-    '          "variant_id": "young",\n'
-    '          "label": "Young Version",\n'
-    '          "face_head_anchor": "Head/face/headband details for young stage",\n'
-    '          "outfit_body_anchor": "Garment and body details for young stage",\n'
-    '          "visual_anchor": "Combined visual anchor for young stage"\n'
-    "        }}\n"
-    "      ]\n"
-    "    }}\n"
-    "  ],\n"
-    '  "locations": [\n'
-    "    {{\n"
-    '      "id": "loc_id",\n'
-    '      "name": "Location Name",\n'
-    '      "environment_anchor": "Wide architectural micro-set layout in English",\n'
-    '      "closeup_background_anchor": "Immediate behind-shoulder background elements in soft focus for close-up shots at this exact location",\n'
-    '      "focal_props": "prop 1, prop 2, prop 3",\n'
-    '      "lighting_direction": "Consistent directional light vector and color warmth"\n'
-    "    }}\n"
-    "  ],\n"
+    '  "title": "Judul Cerita yang Menarik & Memikat",\n'
+    '  "overview": "Sinopsis alur cerita keseluruhan 2-3 kalimat yang mendalam",\n'
     '  "chapters": [\n'
     "    {{\n"
     '      "chapter_index": 1,\n'
-    '      "chapter_title": "Chapter 1: Cold Open Hook",\n'
-    '      "synopsis": "Storytelling focus, conflict, and visual progression in this chapter.",\n'
-    '      "opening_hook": "Immediate opening tension or bridge sentence idea",\n'
-    '      "closing_rehook": "Cliffhanger or curiosity open-loop leading into Chapter 2",\n'
-    '      "key_points": ["Key beat 1", "Key beat 2"]\n'
+    '      "chapter_title": "Babak 1: Judul Babak",\n'
+    '      "synopsis": "Fokus emosi, rintangan, dan perkembangan cerita di babak ini",\n'
+    '      "opening_hook": "Kalimat pembuka/jembatan tajam",\n'
+    '      "closing_rehook": "Kalimat penutup menggantung pemicu penasaran menuju babak berikutnya",\n'
+    '      "target_beats": {beats_per_chapter},\n'
+    '      "target_words": {words_per_chapter}\n'
     "    }}\n"
     "  ]\n"
     "}}"
 )
 
-OUTLINE_SYSTEM_PROMPT_ID_TEMPLATE = (
-    "Anda adalah Master Storyteller, Cinematography Supervisor & Produser Eksekutif video YouTube dokumenter/storytelling 16:9 ber-retensi tinggi "
-    "(sekelas Vox, Kurzgesagt, Johnny Harris, Lemmino, atau Veritasium).\n"
-    "Tugas Anda adalah merancang Master Outline cerita yang memikat dalam Bahasa Indonesia, "
-    "SERTA merancang 'Story World & Spatial Continuity Bible' yang terstruktur detail agar identitas karakter, latar tempat (micro-set), arah cahaya, dan perpindahan shot kamera (misal dari Wide Shot suasana pasar -> Close-Up wajah karakter di pasar yang sama) tetap 100% KONSISTEN dan tidak berubah wujud.\n\n"
+SCRIPTWRITER_OUTLINE_EN_TEMPLATE = (
+    "You are a world-class Lead Scriptwriter & Narrative Architect for high-retention YouTube storytelling "
+    "(in the style of Vox, Johnny Harris, Lemmino, or Kurzgesagt).\n"
+    "Your sole focus is on EMOTIONAL HOOKS, DRAMATURGIC DEPTH, and NATURAL PACING without distraction from camera shots or visual formatting.\n\n"
     "{tone_guidelines}"
-    "{preset_character_guidance}"
-    "=== PANDUAN STRUKTUR OUTLINE ===\n"
-    "- Target Total Durasi Bicara: {duration_mins} Menit (~{target_words} kata total narasi).\n"
-    "- Jumlah Babak (Chapters): Tepat {num_chapters} babak (~{words_per_chapter} kata per babak).\n"
-    "- Setiap babak WAJIB memiliki `opening_hook` (jembatan mulus dari babak sebelumnya, atau gebrakan cold-open di Babak 1) dan `closing_rehook` (kalimat penggantung/open-loop pemicu penasaran menuju babak berikutnya, atau refleksi tajam di babak terakhir).\n"
+    "=== NARRATIVE OUTLINE SPECIFICATIONS ===\n"
+    "- Target Total Speech Duration: {duration_mins} Minutes (~{target_words} total spoken words).\n"
+    "- Number of Chapters: Exactly {num_chapters} chapters (~{words_per_chapter} words per chapter, ~{beats_per_chapter} narrative beats per chapter).\n"
+    "- Every chapter must have a compelling narrative synopsis, an opening_hook, and a closing_rehook cliffhanger.\n"
     "{narrative_arc}"
-    "=== STRUKTUR MENDALAM STORY CONTINUITY BIBLE (KONSISTENSI WIDE KE CLOSE-UP) ===\n"
-    "1. Latar Waktu & Era (`world_setting`):\n"
-    "   - `era`: Periode waktu spesifik (misal: 'Zaman Kerajaan Maritim Nusantara Abad ke-14, pra-modern tanpa listrik').\n"
-    "   - `time_setting`: Garis waktu cerita.\n"
-    "   - `atmosphere`: Palet warna utama dan mood sinematik.\n"
-    "2. Karakter & Tokoh Interaksi (`characters`):\n"
-    "   Identifikasi SEMUA karakter dan tokoh interaksi (tokoh utama, antagonis, pendamping, pedagang pasar, penjaga, mentor). JANGAN PERNAH membiarkan tokoh lawan bicara (seperti pedagang di pasar) tanpa profil terkunci!\n"
-    "   Agar wajah/kepala karakter tetap konsisten saat kamera beralih dari Wide Shot ke Tight Close-Up, pecah deskripsi Bahasa Inggris tiap karakter menjadi:\n"
-    "   - `id`: Slug pendek unik (misal 'malin', 'pedagang_pasar').\n"
-    "   - `name`: Nama Karakter.\n"
-    "   - `role`: Peran dalam cerita.\n"
-    "   - `face_head_anchor`: Ciri kepala, wajah, mata/alis, penutup kepala (udeng/hijab/topi/sorban/rambut), janggut, dan kerah pakaian bagian atas yang WAJIB konsisten saat CLOSE-UP (sesuaikan dengan anatomi preset gaya visual aktif!).\n"
-    "   - `outfit_body_anchor`: Ciri pakaian lengkap (warna tunik/baju, tekstur kain, sabuk/selendang, bawahan, postur tubuh, aksesori tangan) untuk WIDE / MEDIUM SHOT.\n"
-    "   - `visual_anchor`: Gabungan deskripsi fisik & pakaian lengkap dalam Bahasa Inggris.\n"
-    "   - `variants`: Varian usia/kostum/wujud jika berubah di sepanjang cerita (tiap varian WAJIB memuat `variant_id`, `label`, `face_head_anchor`, `outfit_body_anchor`, dan `visual_anchor`).\n"
-    "3. Latar Tempat & Micro-Set Utama (`locations`):\n"
-    "   Definisikan 2–6 latar tempat spesifik. Agar latar belakang TIDAK berubah tempat saat kamera berganti dari Wide Shot ke Close-Up di lokasi yang sama (misal di pasar), kunci 4 atribut Bahasa Inggris berikut:\n"
-    "   - `id`: Slug pendek (misal 'kios_pasar_rempah').\n"
-    "   - `name`: Nama lokasi spesifik (misal 'Kios Rempah Tradisional di Pasar').\n"
-    "   - `environment_anchor`: Deskripsi arsitektur WIDE SHOT (tata ruang lorong pasar, bentuk kios kayu jati/bambu, atap kanvas, tekstur tanah/lantai).\n"
-    "   - `closeup_background_anchor`: Deskripsi elemen latar tepat DI BELAKANG BAHU/KEPALA karakter saat CLOSE-UP / MEDIUM SHOT dengan efek soft-focus/bokeh ringan (misal: 'softly defocused olive-green canvas stall awning, hanging braided garlic strings, stacked woven spice baskets, and rustic dark teak counter edge directly behind the character').\n"
-    "   - `focal_props`: 2–4 benda patokan tetap dipisah koma (misal: 'brass balance scale, olive canvas awning, hanging garlic braids, dark teak counter').\n"
-    "   - `lighting_direction`: Arah sumber cahaya & suhu warna yang terkunci (misal: 'warm directional morning sunlight streaming from screen-left at 45 degrees').\n\n"
-    "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-    "Kembalikan HANYA JSON valid tanpa teks pembuka/penutup dengan skema berikut:\n"
+    "=== OUTPUT FORMAT (PURE JSON ONLY WITHOUT MARKDOWN FENCES) ===\n"
     "{{\n"
-    '  "title": "Judul Menarik & Menggugah Rasa Ingin Tahu",\n'
-    '  "overview": "Sinopsis singkat alur cerita keseluruhan 2-3 kalimat",\n'
-    '  "world_setting": {{\n'
-    '    "era": "Zaman Kerajaan Maritim Nusantara Abad ke-14",\n'
-    '    "time_setting": "Masa Lalu Tradisional",\n'
-    '    "atmosphere": "Warm earthy ochre & terracotta palette with dramatic contrast"\n'
-    "  }},\n"
-    '  "characters": [\n'
-    "    {{\n"
-    '      "id": "malin",\n'
-    '      "name": "Malin Kundang",\n'
-    '      "role": "Tokoh Utama",\n'
-    '      "face_head_anchor": "expressive determined eyes, woven brown fabric udeng headband, faded crimson collar neckline",\n'
-    '      "outfit_body_anchor": "lean build, faded crimson-red cotton tunic with rolled sleeves, dark woven sash belt, rolled-up dark trousers",\n'
-    '      "visual_anchor": "lean young figure with woven brown udeng headband, expressive determined eyes, wearing faded crimson-red cotton tunic with dark woven sash belt",\n'
-    '      "variants": [\n'
-    "        {{\n"
-    '          "variant_id": "muda",\n'
-    '          "label": "Masa Muda",\n'
-    '          "face_head_anchor": "woven brown fabric udeng headband, youthful expressive eyes, faded crimson tunic collar",\n'
-    '          "outfit_body_anchor": "lean young build, faded crimson-red cotton shirt, dark sash belt, rolled-up dark trousers, bare feet",\n'
-    '          "visual_anchor": "lean young figure with woven brown udeng headband, wearing faded crimson-red cotton shirt, dark sash belt, rolled-up dark trousers"\n'
-    "        }}\n"
-    "      ]\n"
-    "    }}\n"
-    "  ],\n"
-    '  "locations": [\n'
-    "    {{\n"
-    '      "id": "kios_pasar_rempah",\n'
-    '      "name": "Kios Rempah Pasar Pesisir",\n'
-    '      "environment_anchor": "bustling traditional coastal market alley centered on a rustic bamboo-and-teak spice stall with an olive-green canvas awning, woven baskets of spices arranged on a dark teak counter",\n'
-    '      "closeup_background_anchor": "softly defocused background of the exact same olive-green canvas stall awning, hanging garlic braids, stacked woven spice baskets, and dark teak counter edge",\n'
-    '      "focal_props": "olive-green canvas awning, brass balance scale, hanging garlic braids, dark teak counter",\n'
-    '      "lighting_direction": "warm golden morning sunlight filtering from screen-left casting soft shadows to the right"\n'
-    "    }}\n"
-    "  ],\n"
+    '  "title": "Captivating High-CTR Video Title in English",\n'
+    '  "overview": "Deep 2-3 sentence overview of the complete narrative arc in English",\n'
     '  "chapters": [\n'
     "    {{\n"
     '      "chapter_index": 1,\n'
-    '      "chapter_title": "Babak 1: Pertaruhan di Pasar Pesisir",\n'
-    '      "synopsis": "Fokus konflik, aksi visual, dan ketegangan pada babak ini.",\n'
-    '      "opening_hook": "Gebrakan kalimat pembuka tanpa basa-basi",\n'
-    '      "closing_rehook": "Kalimat penggantung pemicu rasa penasaran menuju Babak 2",\n'
-    '      "key_points": ["Poin penting 1", "Poin penting 2"]\n'
+    '      "chapter_title": "Chapter 1: Title",\n'
+    '      "synopsis": "Emotional focus, obstacles, and narrative progression in this chapter",\n'
+    '      "opening_hook": "Crisp bridge or cold-open tension hook",\n'
+    '      "closing_rehook": "Cliffhanger or open loop pulling viewers into the next chapter",\n'
+    '      "target_beats": {beats_per_chapter},\n'
+    '      "target_words": {words_per_chapter}\n'
     "    }}\n"
     "  ]\n"
     "}}"
 )
 
-# =========================================================================
-# 4. CHAPTER EXPANSION PROMPTS (DYNAMIC PACING + AI CINEMATOGRAPHY)
-# =========================================================================
-
-CHAPTER_EXPANSION_SYSTEM_PROMPT_EN_TEMPLATE = (
-    "You are a world-class YouTube Documentary Scriptwriter & Film Director of Photography.\n"
-    "Your task is to write the COMPLETE narration script and shot-by-shot cinematography plan for Chapter {chapter_index} of {total_chapters}, "
-    "with a strict 1-to-1 coupling between each spoken English narration beat and its 16:9 visual shot.\n\n"
-    "=== CRITICAL LANGUAGE RULE ===\n"
-    "All `narration_text` MUST be written in natural, engaging, fluent spoken ENGLISH. NEVER include bracket tokens ([char:...]), colons (:), or semicolons (;) in `narration_text`.\n\n"
+SCRIPTWRITER_CHAPTER_ID_TEMPLATE = (
+    "Anda adalah Scriptwriter Lead kelas dunia untuk video storytelling YouTube.\n"
+    "Tuliskan naskah narasi murni adegan-demi-adegan (beats) untuk Babak {chapter_index} dari {total_chapters} babak: '{chapter_title}'.\n\n"
     "{tone_guidelines}"
-    "=== DYNAMIC YOUTUBE PACING & RETENTION RHYTHM ===\n"
-    "1. STRUCTURE: Exactly {target_segments} segments, each with {images_per_segment} scenes -> Exactly {total_chapter_scenes} scenes in this chapter.\n"
-    "2. DYNAMIC SENTENCE PACING:\n"
-    "   - IF THIS IS CHAPTER 1 (OPENING HOOK, FIRST 3-4 SCENES): Use crisp, high-impact hook sentences (10–16 words per scene, ~3.5–4.5s fast visual cuts) plunging straight into tension/curiosity—NO greetings or throat-clearing!\n"
-    "   - FOR EXPLORATION & DIALOGUE SCENES: Use rich, expressive storytelling sentences (18–25 words per scene, ~6.5–8.5s cuts).\n"
-    "   - CHAPTER ENDING RE-HOOK: Unless this is the final chapter, end the final scene of this chapter with an intriguing open loop / cliffhanger bridge into the next chapter.\n\n"
-    "=== AI CINEMATOGRAPHY & SHOT-ANGLE CONTINUITY DIRECTOR (CRITICAL) ===\n"
-    "For EVERY scene, act as a film director maintaining strict spatial continuity:\n"
-    "- `scene_group_id`: Assign the EXACT SAME short slug (e.g. 'grp_market_1') to consecutive scenes happening in the same continuous location and moment! Change `scene_group_id` ONLY when characters move to a new place or time jumps.\n"
-    "- `shot_type`: Choose purposefully from `'establishing_wide'`, `'wide'`, `'medium'`, `'over_the_shoulder'`, `'medium_closeup'`, `'close_up'`.\n"
-    "  * Natural Film Progression within a `scene_group_id`: Start a new location with `'establishing_wide'` or `'wide'`, then move into `'medium'` / `'over_the_shoulder'` for interaction, and cut to `'close_up'` / `'medium_closeup'` for emotional reactions or critical details!\n"
-    "- `camera_angle`: `'eye_level'`, `'low_angle'`, `'high_angle'`, or `'dutch_angle'`.\n"
-    "- `spatial_blocking`: Lock the 180-degree camera axis within the same `scene_group_id` (e.g. 'Protagonist on screen-left facing right, Merchant on screen-right behind counter facing left'). NEVER flip left/right positions mid-conversation!\n"
-    "- `focal_point`: `'center'`, `'left'`, `'right'`, or `'upper_center'` (where the primary subject/face sits in the 16:9 frame).\n"
-    "- `camera_motion`: Choose semantically—`'pan_right'` / `'pan_left'` / `'zoom_out'` for wide establishing environments; slow `'zoom_in'` for intense close-ups/reveals; `'pan_up'` / `'pan_down'` for tall architecture/statues; `'static'` for quiet contemplative beats.\n"
-    "- WHEN `shot_type` IS `'close_up'` OR `'medium_closeup'` IN AN ACTIVE `scene_group_id`: Frame `image_prompt` tightly on head/shoulders of `[char:...]` on `[loc:...]` while explicitly keeping the same stall/room background props and lighting direction softly defocused behind them—do NOT pull back to a wide landscape!\n\n"
-    "{continuity_instruction}"
-    "{visual_guidelines}"
-    "4. TARGET WORD COUNT & SEAMLESS FLOW:\n"
-    "   - Total narration words for Chapter {chapter_index} MUST reach at least {min_chapter_words} words (target ~{target_chapter_words} words).\n\n"
-    "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
-    "Return ONLY valid JSON without markdown fences:\n"
+    "=== ATURAN RETENSI & PANJANG KATA (SANGAT KRUSIAL) ===\n"
+    "1. JUMLAH BEAT: Babak ini WAJIB berisi tepat {target_beats} beat narasi.\n"
+    "2. PANJANG KATA WAJIB: Total kata narasi pada babak ini HARUS mencapai minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata). DILARANG MENYUSUTKAN TEKS ATAU MEMBUAT KALIMAT TERLALU PENDEK!\n"
+    "3. RITME KALIMAT:\n"
+    "   - Khusus Babak 1 (3-4 beat awal): Gunakan kalimat cold-open hook 12–16 kata yang langsung menusuk konflik/misteri tanpa sapaan basa-basi pembuka.\n"
+    "   - Beat utama/perjalanan: Gunakan kalimat narasi sastrawi yang imersif dan detail (18–25 kata per beat, setara ~7–9 detik per shot pembicara).\n"
+    "   - Beat terakhir babak: Tutup dengan kalimat penggantung (re-hook) menuju babak berikutnya.\n"
+    "4. ATURAN TTS MUTLAK: DILARANG menyertakan token kurung siku ([char:...], [loc:...]), tanda titik dua (:), titik koma (;), atau catatan teknis visual di narration_text. Narasi murni untuk dibacakan sulih suara (voiceover).\n\n"
+    "=== FORMAT KELUARAN (WAJIB JSON MURNI TANPA MARKDOWN FENCES) ===\n"
     "{{\n"
+    '  "chapter_index": {chapter_index},\n'
     '  "chapter_title": "{chapter_title}",\n'
-    '  "segments": [\n'
+    '  "beats": [\n'
     "    {{\n"
-    '      "segment_id": "seg-{chapter_index}_1",\n'
-    '      "scenes": [\n'
-    "        {{\n"
-    '          "scene_id": "scene-1",\n'
-    '          "scene_group_id": "grp_market_1",\n'
-    '          "shot_type": "establishing_wide",\n'
-    '          "camera_angle": "eye_level",\n'
-    '          "spatial_blocking": "Protagonist on screen-left approaching teak counter, Merchant on screen-right behind brass scale",\n'
-    '          "focal_point": "center",\n'
-    '          "camera_motion": "pan_right",\n'
-    '          "narration_text": "Spoken English narration sentence...",\n'
-    '          "image_prompt": "Full-bleed 16:9 establishing wide shot in [preset:style] on [loc:loc_id], [char:char_id:variant_id] on screen-left approaching the counter while [char:merchant_id] stands on screen-right behind the brass scale."\n'
-    "        }},\n"
-    "        {{\n"
-    '          "scene_id": "scene-2",\n'
-    '          "scene_group_id": "grp_market_1",\n'
-    '          "shot_type": "close_up",\n'
-    '          "camera_angle": "eye_level",\n'
-    '          "spatial_blocking": "Protagonist framed on screen-left looking right toward counter, same stall awning and spice baskets softly blurred behind",\n'
-    '          "focal_point": "left",\n'
-    '          "camera_motion": "zoom_in",\n'
-    '          "narration_text": "Follow-up narration sentence focusing on emotion or critical detail...",\n'
-    '          "image_prompt": "Full-bleed 16:9 tight close-up shot in [preset:style] of [char:char_id:variant_id] on screen-left looking right with tense expression on [loc:loc_id], same defocused stall awning and hanging props in background, consistent left-side sunlight."\n'
-    "        }}\n"
-    "      ]\n"
+    '      "beat_index": 1,\n'
+    '      "narration_text": "Kalimat narasi murni yang kaya emosi dan detail panca indera..."\n'
     "    }}\n"
     "  ]\n"
     "}}"
 )
 
-CHAPTER_EXPANSION_SYSTEM_PROMPT_ID_TEMPLATE = (
-    "Anda adalah Master Storyteller, Scriptwriter Dokumenter YouTube & Sutradara Sinematografi (Director of Photography) kelas dunia.\n"
-    "Tugas Anda adalah menulis naskah narasi LENGKAP beserta tata kamera sinematik adegan-demi-adegan untuk Babak {chapter_index} dari {total_chapters} babak video, "
-    "dengan kopling 1-to-1 antara kalimat narasi Bahasa Indonesia dan prompt visual 16:9.\n\n"
+SCRIPTWRITER_CHAPTER_EN_TEMPLATE = (
+    "You are a world-class Lead YouTube Documentary Scriptwriter.\n"
+    "Write the complete pure narration beats for Chapter {chapter_index} of {total_chapters}: '{chapter_title}'.\n\n"
     "{tone_guidelines}"
-    "=== RITME DYNAMIC YOUTUBE PACING & RETENSI ===\n"
-    "1. STRUKTUR: Babak ini WAJIB berisi tepat {target_segments} segmen, masing-masing {images_per_segment} scenes -> Total tepat {total_chapter_scenes} scenes.\n"
-    "2. VARIASI RITME KALIMAT (DYNAMIC PACING):\n"
-    "   - KHUSUS BABAK 1 (3-4 SCENE PEMBUKA / HOOK 30 DETIK AWAL): Gunakan kalimat gebrakan pendek, padat, dan tajam (10–16 kata per scene, setara potongan visual cepat ~3.5–4.5 detik) yang langsung membuka misteri/konflik TANPA sapaan pembuka!\n"
-    "   - UNTUK SCENE PENJELAJAHAN, AKSI & KONFLIK: Gunakan 1–2 kalimat narasi imersif yang bernas dan mengalir (18–25 kata per scene, setara ~6.5–8.5 detik).\n"
-    "   - MINI RE-HOOK AKHIR BABAK: Kecuali pada babak penutup terakhir, tutup scene terakhir babak ini dengan kalimat jembatan menggantung (open loop) yang memicu penasaran ke babak berikutnya.\n"
-    "   - ATURAN TTS MUTLAK: DILARANG KERAS menyertakan token kurung siku (`[char:...]`), tanda titik dua (`:`), atau titik koma (`;`) pada `narration_text`!\n\n"
-    "=== AI CINEMATOGRAPHY & KONSISTENSI SHOT-ANGLE (WIDE -> CLOSE-UP) ===\n"
-    "Bertindaklah sebagai sutradara film yang menjaga kontinuitas ruang dan kamera di setiap scene:\n"
-    "- `scene_group_id`: Berikan ID slug yang SAMA PERSIS (misal `'grp_pasar_1'`) untuk adegan-adegan berurutan yang masih berlangsung di satu lokasi dan momen interaksi yang sama! Ganti `scene_group_id` HANYA ketika berpindah tempat atau lompatan waktu.\n"
-    "- `shot_type`: Pilih secara sinematik dari `'establishing_wide'`, `'wide'`, `'medium'`, `'over_the_shoulder'`, `'medium_closeup'`, `'close_up'`.\n"
-    "  * Progresi Kamera Alami dalam satu `scene_group_id`: Buka lokasi baru dengan `'establishing_wide'` atau `'wide'`, masuk ke `'medium'` atau `'over_the_shoulder'` saat interaksi/dialog, lalu potong ke `'close_up'` / `'medium_closeup'` saat momen emosional atau sorotan ekspresi wajah!\n"
-    "- `camera_angle`: `'eye_level'`, `'low_angle'`, `'high_angle'`, atau `'dutch_angle'`.\n"
-    "- `spatial_blocking`: Kunci garis imajiner 180 derajat dalam satu `scene_group_id` (misal: 'Tokoh A tetap di sisi kiri menghadap kanan ke meja jati, Pedagang tetap di sisi kanan menghadap kiri'). DILARANG membalik posisi kiri-kanan tokoh di tengah adegan yang sama!\n"
-    "- `focal_point`: `'center'`, `'left'`, `'right'`, atau `'upper_center'` (titik fokus utama wajah/subjek di bidang 16:9).\n"
-    "- `camera_motion`: Pilih gerakan kamera yang bermakna (BUKAN acak!)—`'pan_right'` / `'pan_left'` / `'zoom_out'` untuk memperkenalkan ruang wide shot; `'zoom_in'` perlahan untuk close-up emosional/ketegangan; `'pan_up'` / `'pan_down'` untuk bangunan/kapal/patung megah; `'static'` untuk jeda hening.\n"
-    "- SAAT `shot_type` ADALAH `'close_up'` ATAU `'medium_closeup'` DI LOKASI YANG SAMA: Tulis `image_prompt` fokus pada wajah/bahu `[char:...]` di `[loc:...]` dengan mempertahankan kanopi/meja/properti kios yang sama dalam efek soft-focus/bokeh di belakangnya serta arah cahaya yang identik—JANGAN menarik kamera kembali menjadi wide landscape!\n\n"
-    "{continuity_instruction}"
-    "{visual_guidelines}"
-    "4. TARGET PANJANG KATA & KESINAMBUNGAN ANTAR-BABAK:\n"
-    "   - Total kata narasi Babak {chapter_index} WAJIB mencapai minimal {min_chapter_words} kata (target ideal ~{target_chapter_words} kata).\n"
-    "   - Sambung alur secara mulus dari kalimat terakhir babak sebelumnya tanpa mengulang diksi sensorik yang sudah terpakai.\n\n"
-    "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-    "Kembalikan HANYA JSON valid tanpa markdown fences:\n"
+    "=== WORD COUNT & RETENTION RULES (STRICT) ===\n"
+    "1. BEAT COUNT: Exactly {target_beats} narrative beats in this chapter.\n"
+    "2. MANDATORY WORD COUNT: Total words in this chapter MUST reach at least {min_chapter_words} words (target ~{target_chapter_words} words). DO NOT SHORTEN OR CONDENSE!\n"
+    "3. SENTENCE CADENCE:\n"
+    "   - Chapter 1 Cold Open (first 3-4 beats): Crisp high-tension sentences (12–16 words) plunging straight into anomaly/curiosity without throat-clearing greetings.\n"
+    "   - Main Body beats: Rich, sensory, and emotionally resonant narrative sentences (18–25 words per beat, ~7–9s spoken duration).\n"
+    "   - Final beat: Open loop / cliffhanger re-hook pulling viewers forward into the next chapter.\n"
+    "4. TTS PURITY: NEVER include bracket tokens ([char:...]), colons (:), semicolons (;), or visual notes in narration_text. Pure spoken prose only.\n\n"
+    "=== OUTPUT FORMAT (PURE JSON ONLY WITHOUT MARKDOWN FENCES) ===\n"
     "{{\n"
+    '  "chapter_index": {chapter_index},\n'
     '  "chapter_title": "{chapter_title}",\n'
-    '  "segments": [\n'
+    '  "beats": [\n'
     "    {{\n"
-    '      "segment_id": "seg-{chapter_index}_1",\n'
-    '      "scenes": [\n'
-    "        {{\n"
-    '          "scene_id": "scene-1",\n'
-    '          "scene_group_id": "grp_pasar_1",\n'
-    '          "shot_type": "establishing_wide",\n'
-    '          "camera_angle": "eye_level",\n'
-    '          "spatial_blocking": "Tokoh utama di sisi kiri frame menghadap kanan ke meja kios, Pedagang di sisi kanan di balik timbangan kuningan",\n'
-    '          "focal_point": "center",\n'
-    '          "camera_motion": "pan_right",\n'
-    '          "narration_text": "Kalimat narasi adegan pembuka yang tajam dan mengalir alami...",\n'
-    '          "image_prompt": "Full-bleed 16:9 establishing wide shot in [preset:style] on [loc:loc_id], [char:char_id:variant_id] on screen-left facing right towards the wooden counter while [char:pedagang_id] stands on screen-right behind the brass scale."\n'
-    "        }},\n"
-    "        {{\n"
-    '          "scene_id": "scene-2",\n'
-    '          "scene_group_id": "grp_pasar_1",\n'
-    '          "shot_type": "close_up",\n'
-    '          "camera_angle": "eye_level",\n'
-    '          "spatial_blocking": "Wajah tokoh utama di sisi kiri menghadap kanan, kanopi kios dan gantungan rempah yang sama tampak bokeh di latar belakang",\n'
-    '          "focal_point": "left",\n'
-    '          "camera_motion": "zoom_in",\n'
-    '          "narration_text": "Kelanjutan narasi yang menyorot ekspresi krusial karakter di momen yang sama...",\n'
-    '          "image_prompt": "Full-bleed 16:9 tight close-up shot in [preset:style] of [char:char_id:variant_id] framed on screen-left looking right with intense expression on [loc:loc_id], exact same stall awning and spice baskets softly defocused behind shoulders, consistent morning light from left."\n'
-    "        }}\n"
-    "      ]\n"
+    '      "beat_index": 1,\n'
+    '      "narration_text": "Spoken English narrative sentence rich in atmosphere and concrete detail..."\n'
     "    }}\n"
     "  ]\n"
     "}}"
 )
 
-# =========================================================================
-# 5. STORYBOARD SINGLE-SHOT FALLBACK PROMPTS
-# =========================================================================
+# --- AGENT 2: CHARACTER & WORLD AGENT (CONCEPT ARTIST & CONTINUITY SUPERVISOR) ---
 
-STORYBOARD_SYSTEM_PROMPT_EN_TEMPLATE = (
-    "You are a world-class YouTube Documentary Scriptwriter & Film Director of Photography.\n"
-    "Write a captivating 16:9 YouTube narration script in ENGLISH with 1-to-1 synchronization between spoken sentences and visual shots, "
-    "PLUS a complete Story Continuity Bible (`characters` with `face_head_anchor` & `outfit_body_anchor`, `locations` with `environment_anchor`, `closeup_background_anchor`, `focal_props`, `lighting_direction`, and `world_setting`).\n\n"
-    "{tone_guidelines}"
-    "{continuity_instruction}"
-    "=== AUDIO-VISUAL & CINEMATOGRAPHY RULES ===\n"
-    "1. Exactly {images_per_segment} scenes per segment.\n"
-    "2. Dynamic Pacing: First 3 scenes use punchy 10–16 word cold-open hook sentences; body scenes use rich 18–25 word sentences. NEVER include bracket tokens, semicolons (;), or colons (:) in `narration_text`.\n"
-    "3. Every scene MUST include `scene_group_id`, `shot_type` (`establishing_wide`, `wide`, `medium`, `over_the_shoulder`, `medium_closeup`, `close_up`), `camera_angle`, `spatial_blocking`, `focal_point`, `camera_motion`, `narration_text`, and tokenized `image_prompt`.\n\n"
-    "{visual_guidelines}"
-    "4. TARGET WORD COUNT:\n"
-    "- Target Duration: {duration_mins} Minutes (~{target_words} words, range {min_words}–{max_words} words). Tone: {tone}.\n\n"
-    "=== OUTPUT FORMAT (STRICT PURE JSON ONLY) ===\n"
-    "Return ONLY valid JSON with `title`, `overview`, `world_setting`, `characters`, `locations`, and `chapters` (each chapter containing `chapter_title` and `segments` -> `scenes`)."
-)
+CHARACTER_AGENT_SYSTEM_PROMPT_ID = """Anda adalah Lead Concept Artist & Visual Continuity Supervisor untuk produksi storyboard komik 2D sinematik 16:9.
+Tugas Anda adalah membaca naskah cerita lengkap dari Scriptwriter Agent, lalu merekayasa 'Story World & Spatial Continuity Bible' agar semua karakter, sudut pandang latar tempat, pencahayaan, dan properti tetap 100% konsisten dan kaya visual di setiap panel adegan.
 
-STORYBOARD_SYSTEM_PROMPT_ID_TEMPLATE = (
-    "Anda adalah Master Storyteller, Scriptwriter Dokumenter YouTube & Sutradara Sinematografi kelas dunia.\n"
-    "Tuliskan naskah narasi video panjang (16:9) dalam Bahasa Indonesia dengan sinkronisasi 1-to-1 antara kalimat narasi dan adegan visual, "
-    "BESERTA Story Continuity Bible lengkap (`characters` dengan `face_head_anchor` & `outfit_body_anchor`, `locations` dengan `environment_anchor`, `closeup_background_anchor`, `focal_props`, `lighting_direction`, serta `world_setting`).\n\n"
-    "{tone_guidelines}"
-    "{continuity_instruction}"
-    "=== PRINSIP AUDIO-VISUAL & TATA KAMERA SINEMATIK ===\n"
-    "1. Setiap segmen memiliki tepat {images_per_segment} scenes.\n"
-    "2. Dynamic Pacing: 3 scene pembuka pertama gunakan kalimat cold-open hook tajam 10–16 kata tanpa sapaan basa-basi; scene berikutnya gunakan 18–25 kata yang mengalir mendalam. DILARANG menyertakan token kurung siku, titik dua (:), atau titik koma (;) pada `narration_text`.\n"
-    "3. Setiap scene WAJIB menyertakan `scene_group_id`, `shot_type` (`establishing_wide`, `wide`, `medium`, `over_the_shoulder`, `medium_closeup`, `close_up`), `camera_angle`, `spatial_blocking`, `focal_point`, `camera_motion`, `narration_text`, dan `image_prompt` berbasis token (`[preset:style]`, `[char:id:variant]`, `[loc:id]`).\n\n"
-    "{visual_guidelines}"
-    "4. TARGET PANJANG KATA & STRUKTUR:\n"
-    "- Target Durasi: {duration_mins} Menit (~{target_words} kata, rentang {min_words}–{max_words} kata).\n"
-    "- Struktur: {num_chapters} Babak, sekitar {target_segments} Segmen (~{total_scenes} scenes). Tone: {tone}.\n\n"
-    "=== FORMAT KELUARAN (WAJIB JSON MURNI) ===\n"
-    "Kembalikan HANYA JSON valid dengan `title`, `overview`, `world_setting`, `characters`, `locations`, dan `chapters` (berisi `chapter_title` dan `segments` -> `scenes`)."
-)
+{preset_guidance}
+=== INSTRUKSI KONTINUITAS VISUAL KOMIK 2D ===
+1. IDENTIFIKASI SEMUA TOKOH (`characters`):
+   - Tokoh utama, tokoh pendukung, antagonis, pedagang pasar, penjaga, mentor, dll. Jangan ada tokoh interaksi yang terlewat!
+   - `id`: Slug pendek unik (misal: 'malin', 'pedagang_rempah').
+   - `name`: Nama lengkap tokoh.
+   - `role`: Peran dalam cerita.
+   - `face_head_anchor`: Ciri kepala, wajah, ekspresi mata, penutup kepala (udeng/hijab/topi/rambut), dan kerah pakaian atas untuk CLOSE-UP (dalam Bahasa Inggris deskriptif, ringkas 10-15 kata).
+   - `outfit_body_anchor`: Detail pakaian lengkap atas-bawah, tekstur kain, sabuk, warna, dan siluet tubuh untuk WIDE / FULL-BODY SHOT (dalam Bahasa Inggris deskriptif, ringkas 10-15 kata).
+   - `visual_anchor`: Gabungan deskripsi lengkap dalam Bahasa Inggris.
+   - `expression_range`: 3-5 ekspresi emosional khas tokoh (misal: 'fierce defiance, intense thoughtful gaze, grim sorrow, subtle sarcastic smirk').
+   - `signature_gesture`: 1-2 gestur tubuh khas saat bergerak (misal: 'stands tall with arms folded firmly across chest, slight forward aggressive lean').
+   - `silhouette_note`: Postur, proporsi tubuh, dan siluet khas yang mudah dikenali dari kejauhan (misal: 'tall lean athletic build with fluttering dark sash').
+   - `variants`: Varian usia/kostum jika tokoh berubah seiring waktu.
+2. LATAR TEMPAT / MULTI-VIEW SETS (`locations`):
+   - Definisikan 2–6 latar tempat spesifik di mana cerita berlangsung.
+   - `id`: Slug pendek unik (misal: 'kios_pasar_rempah', 'dermaga_pesisir').
+   - `name`: Nama lokasi spesifik.
+   - `environment_anchor`: Tata ruang arsitektur utama untuk WIDE SHOT (dalam Bahasa Inggris deskriptif, RINGKAS MAKSIMAL 12-15 KATA, DILARANG menuliskan paragraf panjang).
+   - `key_views`: 2-4 sudut pandang berbeda dari lokasi ini agar adegan tidak monoton di satu sudut:
+     [{{"view_id": "view_1", "description": "vantage point description in English"}}, ...].
+   - `ambient_life`: Kehidupan sekitar ringkas (misal: 'seagulls circling overhead, drifting woodsmoke from braziers').
+   - `focal_props`: 2–3 properti patokan tetap dipisah koma (dalam Bahasa Inggris, misal 'brass balance scale, dark teak counter').
+   - `lighting_direction`: Arah sumber cahaya dan temperatur warna ringkas (dalam Bahasa Inggris).
+3. DUNIA CERITA (`world_setting`):
+   - `era`: Periode waktu/era spesifik.
+   - `time_setting`: Garis waktu cerita.
+   - `atmosphere`: Palet warna dan mood visual komik.
 
-# =========================================================================
-# 6. STORY CONTINUITY EXTRACTION PROMPTS
-# =========================================================================
+=== FORMAT KELUARAN (WAJIB JSON MURNI TANPA MARKDOWN FENCES) ===
+{{
+  "world_setting": {{
+    "era": "Zaman Kerajaan Nusantara Abad ke-14",
+    "time_setting": "Masa Lalu Tradisional",
+    "atmosphere": "Warm earthy terracotta ochre palette with cinematic contrast"
+  }},
+  "characters": [
+    {{
+      "id": "char_id",
+      "name": "Nama Karakter",
+      "role": "Tokoh Utama",
+      "face_head_anchor": "English close-up face/head/collar details...",
+      "outfit_body_anchor": "English wide full outfit/build details...",
+      "visual_anchor": "English full combined description...",
+      "expression_range": "intense determination, grim anger, sorrowful longing",
+      "signature_gesture": "leans forward aggressively with clenched fists",
+      "silhouette_note": "lean athletic build with fluttering dark waistband sash",
+      "variants": []
+    }}
+  ],
+  "locations": [
+    {{
+      "id": "loc_id",
+      "name": "Nama Lokasi",
+      "environment_anchor": "English wide environment layout...",
+      "key_views": [
+        {{"view_id": "wide_exterior", "description": "wide perspective looking toward the main structure"}},
+        {{"view_id": "inner_corner", "description": "intimate angle focusing near the counter and shelves"}}
+      ],
+      "ambient_life": "swirling dust particles in sunlight, drifting incense smoke, moving background figures",
+      "focal_props": "prop 1, prop 2, prop 3",
+      "lighting_direction": "English directional lighting vector and warmth..."
+    }}
+  ]
+}}"""
 
-EXTRACT_CONTINUITY_BIBLE_SYSTEM_PROMPT = (
-    "You are an Elite Visual Story Director, Cinematography Continuity Supervisor, and Script Analyst for 16:9 YouTube storytelling production.\n"
-    "Analyze the provided story script and extract a deeply structured 'Story Continuity Bible' engineered for 100% visual consistency across Wide Establishing Shots, Medium Two-Shots, and Tight Close-Ups:\n\n"
-    "1. ALL CHARACTERS & INTERACTING ENTITIES (`characters`):\n"
-    "   Extract EVERY character who appears, speaks, or interacts (protagonists, antagonists, mentors, companions, market merchants/vendors, guards, supporting figures).\n"
-    "   CRITICAL: Never omit an interacting character (such as a merchant at a stall)!\n"
-    "   For each character provide:\n"
-    "   - `id`: Unique short lowercase slug (e.g. 'malin', 'pedagang_pasar').\n"
-    "   - `name`: Full character name.\n"
-    "   - `role`: Narrative role.\n"
-    "   - `face_head_anchor`: Detailed English close-up anchor—head/face structure, eye/eyebrow expression traits, headwear/hair/hijab/udeng/hat, facial hair, and collar/upper-neck details visible in a TIGHT CLOSE-UP.\n"
-    "   - `outfit_body_anchor`: Detailed English wide/medium-shot anchor—garment colors, fabric textures, layering, belt/sash, lower clothing, posture/build, and handheld props.\n"
-    "   - `visual_anchor`: Complete combined English visual description.\n"
-    "   - `variants`: Distinct age, costume, or transformation stages (`variant_id`, `label`, `face_head_anchor`, `outfit_body_anchor`, `visual_anchor`).\n\n"
-    "2. RECURRING LOCATIONS & MICRO-SETS (`locations`):\n"
-    "   Identify 2 to 6 distinct settings/micro-sets and define 4 locked fields in ENGLISH so switching from Wide Shot to Close-Up never changes the environment:\n"
-    "   - `id`: Short slug (e.g. 'kios_pasar_rempah').\n"
-    "   - `name`: Specific Location Name.\n"
-    "   - `environment_anchor`: Wide architectural & spatial layout (exact stall/room structure, counter materials, surrounding alley/landscape, wall/floor textures).\n"
-    "   - `closeup_background_anchor`: Specific behind-the-shoulder elements visible in soft focus / shallow depth-of-field during a CLOSE-UP at this exact location (e.g. 'softly defocused olive-green canvas stall awning, hanging garlic braids, stacked woven spice baskets, and dark teak counter edge behind the character').\n"
-    "   - `focal_props`: 2–4 fixed anchor props separated by commas.\n"
-    "   - `lighting_direction`: Consistent directional light vector and color warmth.\n\n"
-    "3. WORLD SETTING & ERA (`world_setting`):\n"
-    "   - `era`: Specific historical period or universe setting.\n"
-    "   - `time_setting`: Narrative timeline.\n"
-    "   - `atmosphere`: Visual mood, color palette, and lighting progression.\n\n"
-    "=== STRICT OUTPUT FORMAT (PURE JSON ONLY) ===\n"
-    "Return ONLY a valid JSON object matching this schema without markdown fences:\n"
-    "{\n"
-    '  "world_setting": {\n'
-    '    "era": "...",\n'
-    '    "time_setting": "...",\n'
-    '    "atmosphere": "..."\n'
-    "  },\n"
-    '  "characters": [\n'
-    "    {\n"
-    '      "id": "char_slug",\n'
-    '      "name": "Nama Karakter",\n'
-    '      "role": "Peran",\n'
-    '      "face_head_anchor": "English head, face, headwear, and collar traits for close-ups...",\n'
-    '      "outfit_body_anchor": "English full attire, colors, fabric, silhouette, and props for wide/medium shots...",\n'
-    '      "visual_anchor": "Complete combined English visual description...",\n'
-    '      "variants": [\n'
-    "        {\n"
-    '          "variant_id": "muda",\n'
-    '          "label": "Masa Muda",\n'
-    '          "face_head_anchor": "English close-up head/face/headwear anchor for variant...",\n'
-    '          "outfit_body_anchor": "English outfit/body anchor for variant...",\n'
-    '          "visual_anchor": "Combined English visual anchor for variant..."\n'
-    "        }\n"
-    "      ]\n"
-    "    }\n"
-    "  ],\n"
-    '  "locations": [\n'
-    "    {\n"
-    '      "id": "loc_slug",\n'
-    '      "name": "Nama Lokasi",\n'
-    '      "environment_anchor": "Wide architectural micro-set description in English...",\n'
-    '      "closeup_background_anchor": "Softly defocused immediate behind-shoulder background elements for close-up shots in English...",\n'
-    '      "focal_props": "prop 1, prop 2, prop 3",\n'
-    '      "lighting_direction": "Consistent light direction and warmth in English..."\n'
-    "    }\n"
-    "  ]\n"
-    "}"
-)
+CHARACTER_AGENT_SYSTEM_PROMPT_EN = """You are a Lead Concept Artist & Visual Continuity Supervisor for cinematic 16:9 2D comic storyboard production.
+Analyze the complete story script provided by the Scriptwriter Agent and engineer a structured 'Story World & Spatial Continuity Bible' guaranteeing that characters, multi-angle locations, directional lighting, and props remain 100% consistent and visually dynamic across every comic panel.
+
+{preset_guidance}
+=== 2D COMIC STORY CONTINUITY RULES ===
+1. ALL CHARACTERS & INTERACTING ENTITIES (`characters`):
+   - Extract EVERY speaking or interacting character (protagonists, antagonists, merchants, mentors, bystanders).
+   - `id`: Short lowercase slug (e.g. 'malin', 'spice_merchant').
+   - `name`: Full character name.
+   - `role`: Narrative role.
+   - `face_head_anchor`: English close-up anchor (head, face, expression, hair/headwear, collar, concise 10-15 words).
+   - `outfit_body_anchor`: English wide-shot anchor (outfit colors, fabric textures, belt, silhouette, concise 10-15 words).
+   - `visual_anchor`: English full combined visual description.
+   - `expression_range`: 3-5 signature facial expressions (e.g. 'fierce defiance, intense thoughtful gaze, grim sorrow, subtle smirk').
+   - `signature_gesture`: 1-2 distinct physical postures or habits (e.g. 'stands tall with arms folded firmly, slight forward aggressive lean').
+   - `silhouette_note`: Body proportions, height, and recognizable silhouette traits (e.g. 'tall lean athletic build with fluttering dark sash').
+   - `variants`: Age or costume variants if changing across the story.
+2. RECURRING LOCATIONS & MULTI-VIEW SETS (`locations`):
+   - Define 2–6 distinct setting environments.
+   - `id`: Short unique slug (e.g. 'spice_market_stall').
+   - `name`: Specific location name.
+   - `environment_anchor`: English wide architectural layout (CONCISE MAXIMUM 12-15 WORDS, DO NOT write long paragraphs).
+   - `key_views`: 2-4 distinct viewpoints so panels don't always look from the same angle:
+     [{{"view_id": "view_1", "description": "vantage point description in English"}}, ...].
+   - `ambient_life`: Concise background life (e.g. 'seagulls circling overhead, drifting woodsmoke from braziers').
+   - `focal_props`: 2–3 fixed anchor props separated by commas.
+   - `lighting_direction`: Locked light direction and color warmth in concise English.
+3. WORLD SETTING (`world_setting`):
+   - `era`: Specific historical period or universe setting.
+   - `time_setting`: Narrative timeline.
+   - `atmosphere`: Color palette and overarching mood.
+
+=== OUTPUT FORMAT (PURE JSON ONLY WITHOUT MARKDOWN FENCES) ===
+{{
+  "world_setting": {{
+    "era": "...",
+    "time_setting": "...",
+    "atmosphere": "..."
+  }},
+  "characters": [
+    {{
+      "id": "char_id",
+      "name": "Character Name",
+      "role": "Protagonist",
+      "face_head_anchor": "English close-up face/head/collar details...",
+      "outfit_body_anchor": "English wide full outfit/build details...",
+      "visual_anchor": "English full combined description...",
+      "expression_range": "intense determination, grim anger, sorrowful longing",
+      "signature_gesture": "leans forward aggressively with clenched fists",
+      "silhouette_note": "lean athletic build with fluttering dark waistband sash",
+      "variants": []
+    }}
+  ],
+  "locations": [
+    {{
+      "id": "loc_id",
+      "name": "Location Name",
+      "environment_anchor": "English wide environment layout...",
+      "key_views": [
+        {{"view_id": "wide_exterior", "description": "wide perspective looking toward the main structure"}},
+        {{"view_id": "inner_corner", "description": "intimate angle focusing near the counter and shelves"}}
+      ],
+      "ambient_life": "swirling dust particles in sunlight, drifting incense smoke, moving background figures",
+      "focal_props": "prop 1, prop 2, prop 3",
+      "lighting_direction": "English directional lighting vector and warmth..."
+    }}
+  ]
+}}"""
+
+# --- AGENT 3: DIRECTOR / SUTRADARA AGENT (CINEMATOGRAPHY & SHOT DESIGN) ---
+
+DIRECTOR_CHAPTER_ID_TEMPLATE = """Anda adalah Sutradara Storyboard Komik 2D & Sinematografi Visual kelas dunia (seperti graphic novel papan atas atau film animasi berkelas).
+Tugas Anda adalah merancang panel-panel adegan visual 16:9 yang DINAMIS, EKSPRESIF, dan BERCERITA PENUH untuk Babak {chapter_index}: '{chapter_title}'.
+Anda menerima naskah narasi (beats) dari Scriptwriter Agent serta Story Continuity Bible dari Character Agent.
+
+=== ATURAN UTAMA STORYBOARD KOMIK 2D (ANTI-PAJANGAN & ANTI-STATIS) ===
+1. INI KOMIK CERITA, BUKAN PAJANGAN FOTO PROFIL:
+   - Setiap scene WAJIB memperlihatkan AKSI NYATA (siapa sedang melakukan apa di mana) yang mengalirkan cerita, bukan hanya wajah diam tanpa ekspresi!
+   - HINDARI pengulangan close-up wajah berulang-ulang! Batasi shot close-up (maksimal 1-2 per babak, hanya saat momen emosional puncak/reaksi dramatis).
+   - Pada shot apapun, LATAR BELAKANG HARUS TETAP HIDUP dan bercerita: sertakan detail arsitektur, benda-benda pendukung, kedalaman ruang (foreground/midground/background), serta aktivitas lingkungan.
+2. VISUALISASI NARASI UMUM / EXPLAINER:
+   - Jika narasi menceritakan konteks sejarah, fakta umum, atmosfer alam, atau mekanisme dunia tanpa aksi tokoh spesifik, DILARANG MEMAKSAKAN tokoh utama berdiri mematung!
+   - Gambarkan ILUSTRASI DUNIA CERITA yang relevan: kesibukan kota/pasar, kapal berlayar di samudra luas, peta kuno, diagram proses, kerumunan warga, atau lanskap dramatis.
+3. VARIASI SUDUT PANDANG & KAMERA (16:9 LANDSCAPE):
+   - Gunakan variasi komposisi: wide establishing, full-body shot, two-shot interaksi dialog, over-the-shoulder, high-angle, low-angle dramatis, atau insert-detail benda penting.
+   - Setiap lokasi baru wajib dibuka dengan shot luas (establishing_wide atau wide) sebelum masuk ke medium shot.
+4. STRUKTUR FIELD WAJIB PER SCENE (JSON MURNI):
+   Setiap beat narasi harus dirancang menjadi satu objek scene dengan field:
+   - `beat_index`: Nomor urut beat.
+   - `beat_type`: 'action' | 'dialogue' | 'reaction' | 'establishing' | 'general_explainer' | 'reveal_detail' | 'insight'.
+   - `scene_group_id`: Slug lokasi/momen yang sama (misal 'grp_pasar_1'). Ganti hanya jika pindah tempat atau lompat waktu.
+   - `shot_type`: 'establishing_wide' | 'wide' | 'full_shot' | 'medium' | 'two_shot' | 'over_the_shoulder' | 'group_shot' | 'insert_detail' | 'pov' | 'aerial' | 'silhouette_wide' | 'medium_closeup' | 'close_up'.
+   - `camera_angle`: 'eye_level' | 'low_angle' | 'high_angle' | 'dutch_angle' | 'birds_eye'.
+   - `location_id`: Slug lokasi dari Continuity Bible (atau setting umum yang relevan).
+   - `location_view`: Sudut pandang spesifik (misal 'dermaga_dari_laut', 'sudut_meja_kios', 'lorong_pasar').
+   - `subjects`: Daftar subjek yang aktif di panel (bisa kosong untuk pemandangan murni):
+     * Karakter terdaftar: [{{"char_id": "id_tokoh", "variant": "id_varian", "pose": "aksi tubuh dinamis", "expression": "ekspresi wajah jelas"}}].
+     * Tokoh ekstra/figuran: [{{"extra": "deskripsi tokoh ekstra (misal: 'pedagang rempah bertubuh gempal')", "pose": "aksi tubuh", "expression": "ekspresi"}}].
+   - `visual_action`: Aksi konkret utama dalam Bahasa Inggris (subjek + kata kerja aksi + interaksi dengan latar/objek).
+   - `environment_detail`: Detail latar belakang, kedalaman visual, benda sekitar, dan kehidupan pendukung dalam Bahasa Inggris.
+   - `composition`: Komposisi visual 16:9 (penempatan subjek, kedalaman foreground/background) dalam Bahasa Inggris.
+   - `lighting_time`: Waktu dan arah pencahayaan dalam Bahasa Inggris (misal 'warm late-afternoon sun from left, casting long shadows').
+   - `camera_motion`: 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down' | 'zoom_in' | 'zoom_out' | 'static'.
+   - `image_prompt`: Prompt visual lengkap Bahasa Inggris menggunakan token acuan ([preset:style], [char:id:variant], [loc:id]). Awali dengan '[preset:style].'. DILARANG menyertakan boilerplate teknis seperti 'Full-bleed 16:9' atau keterangan rasio layar. DILARANG menyalin teks narasi ke prompt!
+
+{continuity_instruction}
+{visual_guidelines}
+
+=== FORMAT KELUARAN (WAJIB JSON MURNI TANPA MARKDOWN FENCES) ===
+{{
+  "chapter_index": {chapter_index},
+  "chapter_title": "{chapter_title}",
+  "scenes": [
+    {{
+      "beat_index": 1,
+      "beat_type": "action",
+      "scene_group_id": "grp_pelabuhan_1",
+      "shot_type": "full_shot",
+      "camera_angle": "low_angle",
+      "location_id": "dermaga_pelabuhan",
+      "location_view": "sisi_kapal_bersandar",
+      "subjects": [
+        {{
+          "char_id": "malin",
+          "variant": "muda",
+          "pose": "hauling a thick mooring rope up the wooden gangplank with body leaning forward",
+          "expression": "determined and sweat-stained face"
+        }},
+        {{
+          "extra": "two weathered dockworkers",
+          "pose": "carrying heavy spice crates along the pier behind him",
+          "expression": "exhausted"
+        }}
+      ],
+      "visual_action": "Malin strains as he drags the heavy mooring line toward the ship while dockworkers hurry across the busy pier",
+      "environment_detail": "swaying ship rigging, stacked wooden crates, seagulls circling above choppy coastal waters",
+      "composition": "Malin in the lower-left third, massive wooden ship hull cutting diagonally through the right background",
+      "lighting_time": "late afternoon golden sunlight streaming from screen-left, casting long diagonal shadows",
+      "camera_motion": "pan_right",
+      "image_prompt": "[preset:style]. Full-body shot on [loc:dermaga_pelabuhan], [char:malin:muda] hauling a thick mooring rope with body leaning forward, two weathered dockworkers carrying heavy spice crates in background, seagulls circling over swaying ship rigging, warm late afternoon sunlight casting long diagonal shadows."
+    }}
+  ]
+}}"""
+
+DIRECTOR_CHAPTER_EN_TEMPLATE = """You are a world-class 2D Comic Storyboard Artist & Film Director of Photography (in the caliber of premier graphic novels and high-end animated cinema).
+Your mission is to design a shot-by-shot 16:9 dynamic comic storyboard plan for Chapter {chapter_index}: '{chapter_title}'.
+You are given pure narration beats from the Scriptwriter Agent and the Story Continuity Bible from the Character Agent.
+
+=== CORE 2D COMIC STORYBOARD PRINCIPLES (ANTI-STATIC, DYNAMIC NARRATIVE) ===
+1. THIS IS A COMIC STORYBOARD, NOT A PASSIVE DISPLAY GALLERY:
+   - Every scene MUST showcase CLEAR VISUAL ACTION (who is doing what, where) that moves the story forward, NOT just characters standing idly staring blankly!
+   - AVOID repetitive character close-ups! Limit close-ups strictly (at most 1-2 per chapter, reserved for emotional revelations or dramatic reactions).
+   - The BACKGROUND MUST REMAIN VIBRANT and narratively rich in every shot: include clear architectural details, depth (foreground/midground/background), atmospheric elements, and ambient life.
+2. VISUALIZING GENERAL EXPLAINER BEATS:
+   - When narration explains historical context, abstract concepts, lore, or mechanisms (without a specific character taking action), DO NOT force the protagonist to stand blankly!
+   - Create a vivid ILLUSTRATION OF THE STORY WORLD: a bustling town square, a fleet of ships battling rough seas, an ancient annotated map, an artisan workshop, crowds of citizens, or dramatic landscape lore.
+3. COMIC CAMERA & COMPOSITION DIVERSITY (16:9 WIDESCREEN):
+   - Use diverse shot scales: establishing wide, full-body, dynamic two-shot dialogue, over-the-shoulder, low-angle power framing, high-angle tension, or insert-details of critical props.
+   - Open any new scene group with a wide establishing view before cutting into closer shots.
+4. MANDATORY STRUCTURED SCENE FIELDS (PURE JSON):
+   For each beat, output a scene object with:
+   - `beat_index`: Beat number.
+   - `beat_type`: 'action' | 'dialogue' | 'reaction' | 'establishing' | 'general_explainer' | 'reveal_detail' | 'insight'.
+   - `scene_group_id`: Continuous location slug (e.g. 'grp_harbor_1').
+   - `shot_type`: 'establishing_wide' | 'wide' | 'full_shot' | 'medium' | 'two_shot' | 'over_the_shoulder' | 'group_shot' | 'insert_detail' | 'pov' | 'aerial' | 'silhouette_wide' | 'medium_closeup' | 'close_up'.
+   - `camera_angle`: 'eye_level' | 'low_angle' | 'high_angle' | 'dutch_angle' | 'birds_eye'.
+   - `location_id`: Location slug from Continuity Bible.
+   - `location_view`: Specific camera vantage point (e.g. 'ship_approach_from_sea', 'interior_counter_view').
+   - `subjects`: List of active figures in the frame (can be empty for pure landscape):
+     * Registered characters: [{{"char_id": "id", "variant": "id", "pose": "dynamic posture", "expression": "readable emotion"}}].
+     * Extra characters: [{{"extra": "dockworker / soldier / merchant", "pose": "action", "expression": "emotion"}}].
+   - `visual_action`: Primary concrete physical action in English (subject + action verb + object/environment interaction).
+   - `environment_detail`: Setting depth, background activity, props, and ambient atmosphere in English.
+   - `composition`: 16:9 staging, focal placement, foreground/background layering in English.
+   - `lighting_time`: Light source, direction, and warmth in English.
+   - `camera_motion`: 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down' | 'zoom_in' | 'zoom_out' | 'static'.
+   - `image_prompt`: Complete compiled English prompt starting with '[preset:style].' and referencing tokens ([char:id:variant], [loc:id]). DO NOT include technical boilerplate like 'Full-bleed 16:9' or aspect ratio labels. NEVER copy narration lines verbatim!
+
+{continuity_instruction}
+{visual_guidelines}
+
+=== OUTPUT FORMAT (PURE JSON ONLY WITHOUT MARKDOWN FENCES) ===
+{{
+  "chapter_index": {chapter_index},
+  "chapter_title": "{chapter_title}",
+  "scenes": [
+    {{
+      "beat_index": 1,
+      "beat_type": "action",
+      "scene_group_id": "grp_harbor_1",
+      "shot_type": "full_shot",
+      "camera_angle": "low_angle",
+      "location_id": "harbor_dock",
+      "location_view": "pier_ship_side",
+      "subjects": [
+        {{
+          "char_id": "malin",
+          "variant": "young",
+          "pose": "hauling a thick mooring rope up the wooden gangplank with body leaning forward",
+          "expression": "determined and sweat-stained face"
+        }},
+        {{
+          "extra": "two weathered dockworkers",
+          "pose": "carrying heavy spice crates along the pier behind him",
+          "expression": "exhausted"
+        }}
+      ],
+      "visual_action": "Malin strains as he drags the heavy mooring line toward the ship while dockworkers hurry across the busy pier",
+      "environment_detail": "swaying ship rigging, stacked wooden crates, seagulls circling above choppy coastal waters",
+      "composition": "Malin in the lower-left third, massive wooden ship hull cutting diagonally through the right background",
+      "lighting_time": "late afternoon golden sunlight streaming from screen-left, casting long diagonal shadows",
+      "camera_motion": "pan_right",
+      "image_prompt": "[preset:style]. Full-body shot on [loc:harbor_dock], [char:malin:young] hauling a thick mooring rope with body leaning forward, two weathered dockworkers carrying heavy spice crates in background, seagulls circling over swaying ship rigging, warm late afternoon sunlight casting long diagonal shadows."
+    }}
+  ]
+}}"""
+
