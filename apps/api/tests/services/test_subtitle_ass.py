@@ -4,9 +4,10 @@ from app.services.alignment import sequence_anchored_forced_alignment
 from app.services.subtitle_ass import (
     generate_ass_subtitles,
     generate_srt_subtitles,
-    generate_vtt_subtitles,
     hex_to_ass_color,
     ms_to_ass_time,
+    style_to_dict,
+    subtitle_y,
 )
 
 
@@ -32,51 +33,42 @@ def test_hex_to_ass_color_opacity():
     assert hex_to_ass_color("#111111", opacity=0.8) == "&H33111111"
 
 
-def test_generate_ass_subtitles_modes_and_exports():
-    segments = [
-        {
-            "id": "seg-1",
-            "text": "Rahasia luar biasa!",
-            "start_ms": 100,
-            "end_ms": 1800,
-            "words": [
-                {"word": "Rahasia", "start_ms": 100, "end_ms": 700},
-                {"word": "luar", "start_ms": 710, "end_ms": 1200},
-                {"word": "biasa!", "start_ms": 1210, "end_ms": 1800},
-            ],
-        }
-    ]
-
-    # 1. Burst mode (Hormozi)
-    burst_style = {
-        "preset_name": "hormozi_punch",
-        "font_family": "Bebas Neue",
-        "font_size": 68,
-        "primary_color": "#FFFFFF",
-        "highlight_color": "#00FF66",
-        "outline_color": "#000000",
-        "outline_width": 6,
-        "box_color": "#111111",
-        "box_opacity": 0.8,
-        "display_mode": "burst",
-        "burst_word_count": 2,
-        "highlight_animation": "scale",
-        "emoji_enabled": True,
+SEGMENTS = [
+    {
+        "id": "seg-1",
+        "text": "Rahasia luar biasa!",
+        "start_ms": 100,
+        "end_ms": 1800,
+        "words": [
+            {"word": "Rahasia", "start_ms": 100, "end_ms": 700},
+            {"word": "luar", "start_ms": 710, "end_ms": 1200},
+            {"word": "biasa!", "start_ms": 1210, "end_ms": 1800},
+        ],
     }
-    ass_content = generate_ass_subtitles(segments, burst_style, video_width=1080, video_height=1920)
-    assert "[Script Info]" in ass_content
-    assert "PlayResX: 1080" in ass_content
-    assert "PlayResY: 1920" in ass_content
-    assert "Dialogue:" in ass_content
-    assert "\\t(" in ass_content or "\\fscx" in ass_content
+]
 
-    # 2. SRT export
-    srt_content = generate_srt_subtitles(segments)
-    assert "1\n00:00:00,100 --> 00:00:01,800\nRahasia luar biasa!" in srt_content
 
-    # 3. VTT export
-    vtt_content = generate_vtt_subtitles(segments)
-    assert "WEBVTT\n\n1\n00:00:00.100 --> 00:00:01.800\nRahasia luar biasa!" in vtt_content
+def test_ass_burst_groups_highlight_and_srt():
+    ass = generate_ass_subtitles(SEGMENTS, {"burst_word_count": 2, "highlight_color": "#00FF66"})
+    dialogues = [l for l in ass.splitlines() if l.startswith("Dialogue:")]
+    assert len(dialogues) == 3  # one event per spoken word
+    assert "RAHASIA" in dialogues[0] and "LUAR" in dialogues[0] and "BIASA" not in dialogues[0]
+    assert "\\c&H0066FF00}" in dialogues[0] and "\\fscx110" in dialogues[0]
+    assert "Style: KaraokeDefault,Montserrat,90," in ass
+
+    plain = generate_ass_subtitles(SEGMENTS, {"highlight_animation": "none"})
+    assert "\\fscx" not in plain
+
+    assert "1\n00:00:00,100 --> 00:00:01,800\nRahasia luar biasa!" in generate_srt_subtitles(SEGMENTS)
+
+
+def test_style_defaults_and_safe_y():
+    assert style_to_dict(None)["offset_y"] == 260
+    assert style_to_dict({"font_size": 70, "offset_y": None})["font_size"] == 70
+    assert subtitle_y(style_to_dict(None)) == (2, 1440)
+    # old "Bawah" preset saved offset -120 -> y 1820, under the Shorts buttons; clamp keeps it visible
+    assert subtitle_y({"position": "bottom", "offset_y": -120}) == (2, 1497)
+    assert subtitle_y({"position": "center", "offset_y": 0}) == (5, 960)
 
 
 def test_sequence_anchored_forced_alignment():
@@ -135,87 +127,25 @@ def test_sequence_anchored_forced_alignment_with_offset():
     assert aligned[1]["end_ms"] == 5600
 
 
-def test_ass_subtitles_pos_and_scale_factor():
-    segments = [
-        {
-            "id": "seg-pos",
-            "text": "Posisi Presisi",
-            "start_ms": 100,
-            "end_ms": 1500,
-            "words": [
-                {"word": "Posisi", "start_ms": 100, "end_ms": 700},
-                {"word": "Presisi", "start_ms": 700, "end_ms": 1500},
-            ],
-        }
-    ]
-
-    custom_style = {
-        "display_mode": "burst",
-        "burst_word_count": 2,
-        "position": "bottom",
-        "position_x_offset": 50,
-        "position_y_offset": 80,
-        "font_family": "Montserrat",
-        "font_size": 48,
-        "primary_color": "#FFFFFF",
-        "highlight_color": "#FFCC00",
-        "outline_color": "#000000",
-        "outline_width": 3,
-        "highlight_animation": "scale",
-        "highlight_scale_factor": 1.4,
-    }
-
-    ass_content = generate_ass_subtitles(segments, custom_style, video_width=1080, video_height=1920)
-    assert "\\pos(" in ass_content
-    assert "\\fscx140\\fscy140" in ass_content
-
-    # Center-left position check
-    style_center_left = dict(custom_style)
-    style_center_left["position"] = "center_left"
-    style_center_left["position_x_offset"] = 25
-    style_center_left["position_y_offset"] = 45
-
-    ass_center = generate_ass_subtitles(segments, style_center_left, video_width=1080, video_height=1920)
-    assert "Dialogue:" in ass_center
-    assert "\\pos(" in ass_center
-
-
-def test_ass_font_metric_compensation():
-    segments = [
-        {
-            "id": "seg-test",
-            "text": "Bebas Test",
-            "start_ms": 0,
-            "end_ms": 1000,
-            "words": [
-                {"word": "Bebas", "start_ms": 0, "end_ms": 500},
-                {"word": "Test", "start_ms": 500, "end_ms": 1000},
-            ],
-        }
-    ]
-
-    bebas_style = {
-        "font_family": "Bebas Neue",
-        "font_size": 60,
-        "primary_color": "#FFFFFF",
-        "highlight_color": "#FF0000",
-        "outline_color": "#000000",
-        "outline_width": 4,
-        "display_mode": "full",
-        "position": "bottom",
-        "position_y_offset": 80,
-    }
-
-    ass_bebas = generate_ass_subtitles(segments, bebas_style, video_width=1080, video_height=1920)
-    assert "Style: Default,Bebas Neue,60" in ass_bebas
-
-    montserrat_style = dict(bebas_style)
-    montserrat_style["font_family"] = "Montserrat"
-    ass_montserrat = generate_ass_subtitles(segments, montserrat_style, video_width=1080, video_height=1920)
-    assert "Style: Default,Montserrat,60" in ass_montserrat
-
-
 @pytest.mark.asyncio
 async def test_alignment_empty_segments_safe():
     res = sequence_anchored_forced_alignment([], [], total_duration_ms=1000)
     assert res == []
+
+
+@pytest.mark.asyncio
+async def test_render_ass_endpoint_uses_unsaved_style(async_client):
+    res = await async_client.post(
+        "/api/v1/projects/any/subtitles/render-ass",
+        json={"style": {"highlight_color": "#00FF66", "position": "center", "offset_y": 0}, "segments": SEGMENTS},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["line_count"] == 3
+    assert "\\an5\\pos(540,960)" in body["ass_content"]
+
+    bad = await async_client.post(
+        "/api/v1/projects/any/subtitles/render-ass",
+        json={"style": {"highlight_color": "red"}, "segments": []},
+    )
+    assert bad.status_code == 422

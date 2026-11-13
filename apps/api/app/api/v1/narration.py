@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.models.narration import Narration, NarrationTemplate
-from app.models.project import Project, Scene
+from app.models.project import Project, Scene, SourceVideo
 from app.schemas.narration import (
     NarrationGenerateRequest,
     NarrationResponse,
@@ -14,7 +14,6 @@ from app.schemas.narration import (
 from app.services.ai_adapters.factory import get_active_llm_adapter
 from app.services.narrative import (
     DEFAULT_TEMPLATES,
-    LEGACY_TEMPLATE_ALIASES,
     generate_narration_script,
     split_into_sentence_segments,
 )
@@ -32,79 +31,57 @@ async def generate_narration(
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
-    # Fetch template with legacy ID alias resolution
-    target_tpl_id = LEGACY_TEMPLATE_ALIASES.get(payload.template_id, payload.template_id)
-    template = await db.get(NarrationTemplate, target_tpl_id)
-    if not template and target_tpl_id != payload.template_id:
-        template = await db.get(NarrationTemplate, payload.template_id)
-
-    category = "recap"
-    if not template:
-        # Fallback to default matching target_tpl_id or first
-        t_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == target_tpl_id), None)
-        if not t_data:
-            t_data = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
-        sys_prompt = t_data["system_prompt"]
-        usr_template = t_data["user_prompt_template"]
-        category = t_data.get("category", "recap")
+    template = await db.get(NarrationTemplate, payload.template_id)
+    if template:
+        style, tone = template.system_prompt, template.default_tone or "informatif"
     else:
-        sys_prompt = template.system_prompt
-        usr_template = template.user_prompt_template
-        category = template.category or "recap"
+        t = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
+        style, tone = t["system_prompt"], t["default_tone"]
 
-    # Fetch scenes summary for context
     scenes_res = await db.execute(
         select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
-    scenes = scenes_res.scalars().all()
-    scenes_summary = [
+    scenes = [
         {
-            "duration": s.duration,
+            "id": s.id,
             "start_time": s.start_time,
+            "end_time": s.end_time,
+            "duration": s.duration,
             "description": s.description,
             "tags": s.tags,
-            "transcript": s.transcript,
             "analysis": s.analysis,
+            "shot_info": s.shot_info,
         }
-        for s in scenes
+        for s in scenes_res.scalars().all()
     ]
 
+    # Source video titles (YouTube downloads keep the title as filename) tell the model what the video is about
+    names_res = await db.execute(select(SourceVideo.filename).where(SourceVideo.project_id == project_id))
+    source_names = list(dict.fromkeys(n.rsplit(".", 1)[0] for n in names_res.scalars().all() if n))
+
     adapter = await get_active_llm_adapter(db)
-
-    lang = payload.language or proj.language or "id"
-    proj.language = lang
-
+    lang = proj.language or "id"
     try:
-        script_text = await generate_narration_script(
+        script_text, segments = await generate_narration_script(
             adapter=adapter,
-            system_prompt=sys_prompt,
-            user_prompt_template=usr_template,
-            topic=payload.topic or ("Interesting facts about this video" if lang == "en" else "Fakta unik seputar materi video"),
-            tone=payload.tone,
+            style=style,
+            tone=tone,
+            topic=payload.topic or "",
+            source_title=" | ".join(filter(None, [proj.name, *source_names])),
+            scenes=scenes,
             target_duration=payload.target_duration,
-            scenes_summary=scenes_summary,
-            custom_prompt=payload.custom_prompt,
-            category=category,
             language=lang,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal generate naskah dari AI: {str(e)}")
-
-    segments = split_into_sentence_segments(script_text)
-
-    proj = await db.get(Project, project_id)
-    if proj:
-        proj.language = lang
-        if payload.topic and payload.topic.strip():
-            proj.name = payload.topic.strip()
-            proj.youtube_metadata = {}
-        db.add(proj)
 
     narration = Narration(
         project_id=project_id,
         template_id=payload.template_id,
         topic=payload.topic,
-        tone=payload.tone,
+        tone=tone,
         target_duration=payload.target_duration,
         raw_text=script_text,
         language=lang,
@@ -163,7 +140,13 @@ async def update_narration(
         if payload.segments:
             narration.segments = payload.segments
         else:
-            narration.segments = split_into_sentence_segments(payload.raw_text)
+            new_segs = split_into_sentence_segments(payload.raw_text)
+            old_segs = narration.segments or []
+            if len(new_segs) == len(old_segs):
+                for new, old in zip(new_segs, old_segs):
+                    if old.get("scene_id"):
+                        new["scene_id"] = old["scene_id"]
+            narration.segments = new_segs
 
     await db.commit()
     await db.refresh(narration)

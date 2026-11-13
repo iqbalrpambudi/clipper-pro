@@ -87,6 +87,7 @@ def build_visual_shot_windows(
 
         seg_spans.append({
             "seg_id": seg.get("id", f"seg-{i+1}"),
+            "scene_id": seg.get("scene_id"),
             "text": seg.get("text", ""),
             "start_sec": span_start,
             "end_sec": span_end,
@@ -111,12 +112,13 @@ def build_visual_shot_windows(
                     "duration": round(flush_end - snap_to_frame(w_start), 4),
                     "text": " ".join(s["text"] for s in curr_spans),
                     "primary_segment_id": curr_spans[0]["seg_id"],
+                    "scene_id": curr_spans[0].get("scene_id"),
                 })
                 w_start = flush_end
                 curr_spans = []
 
             # Divide long span into balanced chunks between min_dur and max_dur
-            num_chunks = max(2, int(round(dur / 3.2)))
+            num_chunks = max(2, int(round(dur / ((min_dur + max_dur) / 2))))
             chunk_len = dur / num_chunks
             c_start = span["start_sec"]
             for c_idx in range(num_chunks):
@@ -127,10 +129,31 @@ def build_visual_shot_windows(
                     "duration": round(c_end - c_start, 4),
                     "text": span["text"],
                     "primary_segment_id": span["seg_id"],
+                    "scene_id": span.get("scene_id") if c_idx == 0 else None,
                 })
                 c_start = c_end
             w_start = span["end_sec"]
             continue
+
+        # New tag: give it its own shot, but only if the open window already clears the 3 s
+        # clip floor; shorter ones merge forward (keep first tag) instead of flashing.
+        if (
+            curr_spans
+            and span.get("scene_id")
+            and span["scene_id"] != curr_spans[0].get("scene_id")
+            and curr_spans[-1]["end_sec"] - w_start >= min(3.0, min_dur)
+        ):
+            flush_end = snap_to_frame(curr_spans[-1]["end_sec"])
+            windows.append({
+                "start_sec": snap_to_frame(w_start),
+                "end_sec": flush_end,
+                "duration": round(flush_end - snap_to_frame(w_start), 4),
+                "text": " ".join(s["text"] for s in curr_spans),
+                "primary_segment_id": curr_spans[0]["seg_id"],
+                "scene_id": curr_spans[0].get("scene_id"),
+            })
+            w_start = flush_end
+            curr_spans = []
 
         curr_spans.append(span)
         accum_dur = round(span["end_sec"] - w_start, 4)
@@ -142,6 +165,7 @@ def build_visual_shot_windows(
                 "duration": round(span["end_sec"] - w_start, 4),
                 "text": " ".join(s["text"] for s in curr_spans),
                 "primary_segment_id": curr_spans[0]["seg_id"],
+                "scene_id": curr_spans[0].get("scene_id"),
             })
             w_start = span["end_sec"]
             curr_spans = []
@@ -160,6 +184,7 @@ def build_visual_shot_windows(
                 "duration": round(trailing_end - w_start, 4),
                 "text": " ".join(s["text"] for s in curr_spans),
                 "primary_segment_id": curr_spans[0]["seg_id"],
+                "scene_id": curr_spans[0].get("scene_id"),
             })
 
     # Guarantee strict mathematical continuity between all adjacent windows
@@ -212,11 +237,53 @@ def _get_scene_usable_range(
     return s_start, s_end, s_dur, is_montage
 
 
+def _run_end(
+    scene: Dict[str, Any],
+    scenes: List[Dict[str, Any]],
+    safe_start: float,
+    need: float,
+) -> float:
+    """Latest source time a clip starting at safe_start may run to, playing through
+    the following contiguous non-montage scenes of the same source until `need` is covered."""
+    _, end, _, _ = _get_scene_usable_range(scene, need)
+    following = sorted(
+        (
+            sc for sc in scenes
+            if sc.get("source_video_id") == scene.get("source_video_id")
+            and float(sc.get("start_time", 0.0)) >= float(scene.get("end_time", 0.0)) - 0.05
+        ),
+        key=lambda sc: float(sc.get("start_time", 0.0)),
+    )
+    prev_end = float(scene.get("end_time", end))
+    for sc in following:
+        if end - safe_start >= need:
+            break
+        if float(sc.get("start_time", 0.0)) - prev_end > 0.2 or (sc.get("shot_info") or {}).get("montage"):
+            break
+        prev_end = float(sc.get("end_time", prev_end))
+        end = round(prev_end - 0.15, 3)
+    return end
+
+
+def _absorb(prev: Dict[str, Any], c: Dict[str, Any]) -> None:
+    prev["timeline_end"] = snap_to_frame(c.get("timeline_end", prev["timeline_end"]))
+    if c.get("text") and c["text"] not in prev.get("text", ""):
+        prev["text"] = f"{prev.get('text', '')} {c['text']}".strip()
+    # Extend the source slice (up to its safe end) instead of slowing the clip down.
+    new_target = round(prev["timeline_end"] - prev["timeline_start"], 3)
+    safe_end = float(prev.get("_safe_end") or prev.get("clip_end", 0.0))
+    prev["clip_end"] = snap_to_frame(min(safe_end, float(prev["clip_start"]) + new_target * float(prev.get("speed") or 1.0)))
+    src_dur = round(float(prev.get("clip_end", 0.0)) - float(prev.get("clip_start", 0.0)), 3)
+    if src_dur > 0 and new_target > 0:
+        # Real ratio: renderer stretches source to the slot anyway.
+        prev["speed"] = min(1.12, round(src_dur / new_target, 3))
+
+
 def verify_and_heal_timeline_clips(
     clips: List[Dict[str, Any]],
-    min_clip_dur: float = 1.8,
+    min_clip_dur: float = 3.0,
 ) -> List[Dict[str, Any]]:
-    """Safety guard (Layer 3): Guarantees timeline never has flash cuts (< 1.8s).
+    """Safety guard (Layer 3): Guarantees timeline never has flash cuts (< min_clip_dur).
 
     If any clip on timeline is shorter than min_clip_dur, it is safely merged
     into its neighbor, and strict timestamp continuity is preserved.
@@ -228,35 +295,23 @@ def verify_and_heal_timeline_clips(
         c = clips[0]
         c["timeline_start"] = 0.0
         c["timeline_end"] = snap_to_frame(c["timeline_end"])
+        c.pop("_safe_end", None)
         return [c]
 
-    # Pass 1: Merge any micro-clips shorter than min_clip_dur into neighbor
+    # Pass 1: Merge any micro-clips shorter than min_clip_dur into the preceding clip
     merged: List[Dict[str, Any]] = []
     for c in clips:
         c_dur = round(float(c.get("timeline_end", 0.0)) - float(c.get("timeline_start", 0.0)), 3)
         if c_dur < min_clip_dur and merged:
-            # Merge into preceding clip
-            prev = merged[-1]
-            prev["timeline_end"] = snap_to_frame(c.get("timeline_end", prev["timeline_end"]))
-            if c.get("text") and c["text"] not in prev.get("text", ""):
-                prev["text"] = f"{prev.get('text', '')} {c['text']}".strip()
-            # If preceding clip was using speed stretch, adjust slightly
-            new_target = round(prev["timeline_end"] - prev["timeline_start"], 3)
-            src_dur = round(float(prev.get("clip_end", 0.0)) - float(prev.get("clip_start", 0.0)), 3)
-            if src_dur > 0 and new_target > 0:
-                prev["speed"] = max(0.68, min(1.0, round(src_dur / new_target, 3)))
+            _absorb(merged[-1], c)
         else:
             merged.append(dict(c))
 
-    # If first clip ended up < min_clip_dur and there's a second clip, merge with second
+    # First clip still short: it keeps its scene (the hook) and absorbs the second
     if len(merged) > 1:
         first_dur = round(float(merged[0]["timeline_end"]) - float(merged[0]["timeline_start"]), 3)
         if first_dur < min_clip_dur:
-            second = merged[1]
-            second["timeline_start"] = merged[0]["timeline_start"]
-            if merged[0].get("text") and merged[0]["text"] not in second.get("text", ""):
-                second["text"] = f"{merged[0]['text']} {second.get('text', '')}".strip()
-            merged.pop(0)
+            _absorb(merged[0], merged.pop(1))
 
     # Pass 2: Ensure strict mathematical continuity across timeline
     if merged:
@@ -266,7 +321,79 @@ def verify_and_heal_timeline_clips(
             merged[k]["timeline_end"] = boundary
             merged[k + 1]["timeline_start"] = boundary
 
+    for c in merged:
+        c.pop("_safe_end", None)
     return merged
+
+
+SATISFYING_ACTION_KEYWORDS = {
+    "percikan", "laser", "potong", "memotong", "leleh", "meleleh", "cair", "presisi",
+    "mesin", "api", "tekan", "menekan", "hancur", "poles", "memoles", "kilau", "berkilau",
+    "transformasi", "rakit", "merakit", "bor", "mengebor", "tempa", "menempa", "karat",
+    "sparks", "molten", "press", "cutting", "forging", "cnc", "grinding", "polishing",
+    "satisfying", "hydraulic", "welding", "las", "mengelas", "ukir", "mengukir",
+}
+
+STATIC_BORING_KEYWORDS = {
+    "kamera statis", "layar kosong", "layar hitam", "berbicara", "wawancara", "duduk diam",
+    "talking head", "static shot", "blank screen",
+}
+
+
+def _calc_heatmap_boost(scene: Dict[str, Any]) -> float:
+    """Compute YouTube 'Most Replayed' heatmap multiplier [1.0 -> 1.35] for a scene's time range."""
+    heatmap = scene.get("heatmap_data")
+    if not heatmap or not isinstance(heatmap, list):
+        return 1.0
+
+    sc_start = float(scene.get("start_time", 0.0))
+    sc_end = float(scene.get("end_time", sc_start + float(scene.get("duration", 3.0))))
+    overlapping_vals: List[float] = []
+
+    for bucket in heatmap:
+        if not isinstance(bucket, dict):
+            continue
+        b_start = float(bucket.get("start_time", 0.0) or 0.0)
+        b_end = float(bucket.get("end_time", b_start) or b_start)
+        b_val = float(bucket.get("value", 0.0) or 0.0)
+        if b_end > sc_start and b_start < sc_end:
+            overlapping_vals.append(max(0.0, min(1.0, b_val)))
+
+    if not overlapping_vals:
+        return 1.0
+
+    peak_val = max(overlapping_vals)
+    avg_val = sum(overlapping_vals) / len(overlapping_vals)
+    combined = 0.65 * peak_val + 0.35 * avg_val
+    return round(1.0 + 0.35 * combined, 4)
+
+
+def _calc_visual_satisfaction_boost(scene: Dict[str, Any]) -> float:
+    """Evaluate visual dopamine & kinetic satisfaction score [0.55 -> 1.30] from Vision AI + action tags."""
+    analysis = scene.get("analysis") if isinstance(scene.get("analysis"), dict) else {}
+    raw_vs = analysis.get("visual_satisfaction")
+    base_vs = 0.65
+    if raw_vs is not None:
+        try:
+            base_vs = max(0.0, min(1.0, float(raw_vs)))
+        except (TypeError, ValueError):
+            base_vs = 0.65
+
+    desc_and_tags = (
+        f"{scene.get('description', '')} {' '.join(scene.get('tags') or [])} "
+        f"{analysis.get('action', '')} {' '.join(analysis.get('objects') or [])}"
+    ).lower()
+
+    if any(bad in desc_and_tags for bad in STATIC_BORING_KEYWORDS):
+        base_vs = max(0.15, base_vs - 0.30)
+
+    tokens = set(re.findall(r"\w+", desc_and_tags))
+    sat_hits = len(tokens & SATISFYING_ACTION_KEYWORDS)
+    if sat_hits > 0:
+        base_vs = min(1.0, base_vs + min(0.25, sat_hits * 0.08))
+
+    # Map [0.0, 1.0] -> [0.55, 1.30]
+    return round(0.55 + 0.75 * base_vs, 4)
 
 
 async def match_scenes_to_segments(
@@ -276,15 +403,18 @@ async def match_scenes_to_segments(
     default_bg_fill: Optional[Dict[str, Any]] = None,
     total_audio_duration_sec: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
-    """Match narration segments to scenes with anti-flash visual pacing and anti-copyright limits."""
+    """Match narration segments to scenes with strict chronological progression,
+    YouTube Heatmap + Vision Satisfaction scoring, and snappy anti-slow-mo pacing.
+    """
     if not scenes or not segments:
         return []
 
-    # 1. Build continuous, balanced visual shot windows (Anti-Flash Scene & Pacing Smoothing)
+    # 1. Shot windows of 2-3.5 s: a ~4.5 s spoken line gets its tagged shot plus one follow-up cut,
+    #    the pace of process shorts (reference channel cuts every ~2-3 s).
     windows = build_visual_shot_windows(
         segments,
         min_dur=2.0,
-        max_dur=4.5,
+        max_dur=3.5,
         total_audio_duration_sec=total_audio_duration_sec,
     )
     if not windows:
@@ -299,20 +429,37 @@ async def match_scenes_to_segments(
     clips: List[Dict[str, Any]] = []
     recent_scene_ids: List[str] = []
     global_used_ids = set()
+    scene_by_id = {sc["id"]: sc for sc in scenes}
+    reserved_ids = {w["scene_id"] for w in windows if w.get("scene_id")}
 
     total_video_dur = max((sc.get("end_time", 0.0) for sc in scenes), default=1.0)
     total_audio_dur = total_audio_duration_sec or (windows[-1]["end_sec"] if windows else 1.0)
+    last_selected_progress = 0.0
+    enforce_strict_chrono = len(scenes) > 4
 
     for i, win in enumerate(windows):
         win_emb = window_embeddings[i]
         start_sec = win["start_sec"]
         end_sec = win["end_sec"]
-        target_duration = max(round(end_sec - start_sec, 2), 1.8)
+        target_duration = max(round(end_sec - start_sec, 2), 2.0)
         p_win = (start_sec + end_sec) / (2.0 * max(total_audio_dur, 1.0))
 
-        # 3. Score all candidate scenes with Hybrid Search + Recency + Chrono Flow + Duration Fit
+        # 2b. Script already named the scene for this sentence: trust it when the shot is long enough.
+        tagged = scene_by_id.get(win.get("scene_id") or "")
+        if tagged is not None:
+            _, _, tagged_dur, tagged_montage = _get_scene_usable_range(tagged, target_duration)
+            if tagged_montage or tagged_dur < 2.0:
+                tagged = None
+
+        # 3. Score all candidate scenes with Hybrid Search + Heatmap + Vision Satisfaction + Strict Chrono Flow
+        # Follow-up cuts never take a shot the script wrote another line for; with no free
+        # scene left the previous clip simply plays on.
+        candidates = scenes if tagged is not None else [sc for sc in scenes if sc["id"] not in reserved_ids]
+        if not candidates and clips:
+            _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]})
+            continue
         scored_scenes = []
-        for sc in scenes:
+        for sc in candidates or scenes:
             sc_emb = sc.get("embedding")
             sim = 0.5
             if sc_emb is not None and win_emb is not None:
@@ -323,67 +470,91 @@ async def match_scenes_to_segments(
             lex = _calc_lexical_overlap(win["text"], sc_text)
             relevance = 0.65 * sim + 0.35 * min(1.0, lex * 2.0)
 
-            # Recency penalty: strong deterrent against repeating the same shot back-to-back
+            # Recency penalty: never reuse a scene when the media pool has plenty of scenes
             if recent_scene_ids and sc["id"] == recent_scene_ids[-1]:
-                recency_penalty = 0.12  # Strict: never duplicate immediately consecutive scene
-            elif len(recent_scene_ids) >= 2 and sc["id"] == recent_scene_ids[-2]:
-                recency_penalty = 0.45
-            elif len(recent_scene_ids) >= 3 and sc["id"] == recent_scene_ids[-3]:
-                recency_penalty = 0.75
+                recency_penalty = 0.01  # Never duplicate immediately consecutive scene
             elif sc["id"] in global_used_ids:
-                recency_penalty = 0.90  # Mild penalty to prefer fresh unshown footage
+                recency_penalty = 0.03 if len(scenes) >= len(windows) * 2 else 0.35
+            elif len(recent_scene_ids) >= 2 and sc["id"] == recent_scene_ids[-2]:
+                recency_penalty = 0.25
             else:
                 recency_penalty = 1.0
 
             # Anti-Flash & Anti-Micro-Cut Duration Fit (Layer 2)
-            # Evaluate against single contiguous usable shot duration (NOT whole merged scene)
             _, _, usable_dur, is_montage = _get_scene_usable_range(sc, target_duration)
             ratio = usable_dur / target_duration
 
-            if is_montage or usable_dur < 1.5:
+            if is_montage or usable_dur < 2.0:
                 dur_fit = 0.05  # Severe penalty: montage / micro-cuts almost never selected
-            elif usable_dur < 1.8:
-                dur_fit = 0.20  # Strong penalty for marginal length
-            elif usable_dur >= target_duration + 0.5:
-                dur_fit = 1.15  # Generous headroom: centers smoothly without touching boundaries
+            elif usable_dur >= target_duration * 1.08:
+                dur_fit = 1.18  # Ideal headroom for crisp 1.06x micro speed-up
             elif usable_dur >= target_duration:
-                dur_fit = 1.05  # Perfect fit
-            elif ratio >= 0.75:
-                dur_fit = 0.92  # Gentle smooth stretch (speed 0.75x - 0.95x)
-            elif ratio >= 0.60:
-                dur_fit = 0.60  # Moderate stretch
+                dur_fit = 1.08  # Perfect 1.0x fit
+            elif ratio >= 0.88:
+                dur_fit = 0.90  # Minimal stretch (>= 0.92x)
             else:
-                dur_fit = 0.25  # Severe stretch required
+                dur_fit = 0.35  # Too short unless split with a second shot
 
-            # Narrative Chronological Arc Affinity: gentle alignment with story progress
+            # Strict Forward-Only Chronological Corridor (0% -> 100% physical process progression)
             p_sc = sc.get("start_time", 0.0) / max(total_video_dur, 1.0)
             dist = abs(p_win - p_sc)
-            if p_win < 0.15 and p_sc < 0.20:
-                chrono_bonus = 1.15  # Hook / Opening alignment
-            elif p_win > 0.85 and p_sc > 0.80:
-                chrono_bonus = 1.15  # Climax / Ending alignment
-            else:
-                chrono_bonus = 1.0 + 0.10 * max(0.0, 1.0 - dist * 1.5)
+            min_p = last_selected_progress
+            max_p = min(1.0, max(min_p + 0.14, p_win + 0.15))
 
-            score = relevance * recency_penalty * dur_fit * chrono_bonus
+            if enforce_strict_chrono and p_sc < (min_p - 0.005):
+                # Hard deterrent against jumping backward in the physical restoration/manufacturing process
+                chrono_bonus = 0.04
+            elif enforce_strict_chrono and p_sc > max_p:
+                # Hard deterrent against jumping prematurely to mid/late stages (e.g. laser engraving at 0:03)
+                chrono_bonus = 0.06
+            else:
+                # Reward scenes tightly aligned with current chronological phase [p_win]
+                corridor_bonus = max(0.0, 1.0 - dist * 2.5)
+                if p_win < 0.15 and 0.03 <= p_sc <= 0.20:
+                    chrono_bonus = 1.25 + 0.20 * corridor_bonus
+                elif p_win > 0.82 and p_sc >= 0.78:
+                    chrono_bonus = 1.30 + 0.20 * corridor_bonus  # Big Reveal alignment
+                else:
+                    chrono_bonus = 1.05 + 0.30 * corridor_bonus
+
+            # YouTube Most Replayed Heatmap + Vision AI Satisfaction Score
+            heatmap_boost = _calc_heatmap_boost(sc)
+            satisfaction_boost = _calc_visual_satisfaction_boost(sc)
+
+            score = (
+                relevance
+                * recency_penalty
+                * dur_fit
+                * chrono_bonus
+                * heatmap_boost
+                * satisfaction_boost
+            )
             scored_scenes.append((score, sc))
 
         scored_scenes.sort(key=lambda x: x[0], reverse=True)
+        if tagged is not None:
+            scored_scenes = [(10.0, tagged)] + [p for p in scored_scenes if p[1]["id"] != tagged["id"]]
         best_scene = scored_scenes[0][1]
         recent_scene_ids.append(best_scene["id"])
         global_used_ids.add(best_scene["id"])
+        best_p_sc = best_scene.get("start_time", 0.0) / max(total_video_dur, 1.0)
+        if best_p_sc > last_selected_progress:
+            # Advance monotonic progress (capped gently to p_win + 0.18 so one outlier doesn't skip the whole video)
+            last_selected_progress = min(best_p_sc, p_win + 0.18)
 
         # Usable range within best_scene that is guaranteed to have NO internal cuts
         safe_scene_start, safe_scene_end, safe_available_dur, _ = _get_scene_usable_range(
             best_scene, target_duration
         )
 
-        # Metode A: Center-Weighted Slice Extraction (Safe shot cukup panjang untuk window narasi)
+        # Metode A: Center-Weighted Slice Extraction + Crisp Micro Speed-Up (1.06x when headroom allows)
         if safe_available_dur >= target_duration:
-            slack = max(0.0, safe_available_dur - target_duration)
+            snappy_speed = 1.06 if safe_available_dur >= round(target_duration * 1.06, 3) else 1.0
+            source_slice_dur = min(safe_available_dur, round(target_duration * snappy_speed, 3))
+            slack = max(0.0, safe_available_dur - source_slice_dur)
             center_offset = round(slack / 2.0, 3)
             clip_start = round(safe_scene_start + center_offset, 3)
-            clip_end = min(round(clip_start + target_duration, 3), safe_scene_end)
+            clip_end = min(round(clip_start + source_slice_dur, 3), safe_scene_end)
             clips.append({
                 "id": str(uuid.uuid4()),
                 "segment_id": win["primary_segment_id"],
@@ -393,78 +564,16 @@ async def match_scenes_to_segments(
                 "timeline_end": snap_to_frame(end_sec),
                 "clip_start": snap_to_frame(clip_start),
                 "clip_end": snap_to_frame(clip_end),
-                "speed": 1.0,
+                "speed": snappy_speed,
                 "text": win["text"],
                 "thumbnail_url": best_scene.get("thumbnail_url"),
-                "background_fill_override": None,
+                "_safe_end": safe_scene_end,
             })
         else:
-            # Safe shot lebih pendek dari window narasi:
-            # Hanya bagi menjadi 2 scene jika window narasi panjang (>= 4.4s) DAN kedua potongan >= 2.0s.
-            should_split = (
-                target_duration >= 4.4
-                and len(scored_scenes) >= 2
-                and safe_available_dur >= 2.0
-            )
-
-            if should_split:
-                half_time = round(target_duration / 2.0, 2)
-                second_scene = scored_scenes[1][1]
-                s2_safe_start, s2_safe_end, s2_safe_dur, _ = _get_scene_usable_range(
-                    second_scene, half_time
-                )
-
-                if s2_safe_dur >= 2.0:
-                    # Clip 1 (strictly inside best_scene's safe shot)
-                    s1_slack = max(0.0, safe_available_dur - half_time)
-                    s1_offset = round(s1_slack / 2.0, 3)
-                    c1_start = round(safe_scene_start + s1_offset, 3)
-                    c1_end = min(round(c1_start + half_time, 3), safe_scene_end)
-                    mid_timeline = snap_to_frame(start_sec + half_time)
-
-                    clips.append({
-                        "id": str(uuid.uuid4()),
-                        "segment_id": win["primary_segment_id"],
-                        "scene_id": best_scene["id"],
-                        "source_video_id": best_scene["source_video_id"],
-                        "timeline_start": snap_to_frame(start_sec),
-                        "timeline_end": mid_timeline,
-                        "clip_start": snap_to_frame(c1_start),
-                        "clip_end": snap_to_frame(c1_end),
-                        "speed": 1.0,
-                        "text": win["text"],
-                        "thumbnail_url": best_scene.get("thumbnail_url"),
-                        "background_fill_override": None,
-                    })
-
-                    # Clip 2 (strictly inside second_scene's safe shot)
-                    s2_dur_needed = round(end_sec - mid_timeline, 2)
-                    s2_slack = max(0.0, s2_safe_dur - s2_dur_needed)
-                    s2_offset = round(s2_slack / 2.0, 3)
-                    c2_start = round(s2_safe_start + s2_offset, 3)
-                    c2_end = min(round(c2_start + s2_dur_needed, 3), s2_safe_end)
-
-                    clips.append({
-                        "id": str(uuid.uuid4()),
-                        "segment_id": win["primary_segment_id"],
-                        "scene_id": second_scene["id"],
-                        "source_video_id": second_scene["source_video_id"],
-                        "timeline_start": mid_timeline,
-                        "timeline_end": snap_to_frame(end_sec),
-                        "clip_start": snap_to_frame(c2_start),
-                        "clip_end": snap_to_frame(c2_end),
-                        "speed": 1.0,
-                        "text": win["text"],
-                        "thumbnail_url": second_scene.get("thumbnail_url"),
-                        "background_fill_override": None,
-                    })
-                    used_scene_ids = global_used_ids
-                    used_scene_ids.add(second_scene["id"])
-                    continue
-
-            # Default: Single continuous shot dengan Smart Speed Stretch
-            # Strictly stays within [safe_scene_start, safe_scene_end] - NEVER crosses internal cut!
-            exact_speed = round(safe_available_dur / target_duration, 3)
+            # Scene shorter than the slot: keep playing the source into the next scene(s)
+            # instead of stretching a short slice into slow-mo.
+            run_end = _run_end(best_scene, scenes, safe_scene_start, target_duration)
+            clip_end = min(round(safe_scene_start + target_duration, 3), run_end)
             clips.append({
                 "id": str(uuid.uuid4()),
                 "segment_id": win["primary_segment_id"],
@@ -473,13 +582,13 @@ async def match_scenes_to_segments(
                 "timeline_start": snap_to_frame(start_sec),
                 "timeline_end": snap_to_frame(end_sec),
                 "clip_start": snap_to_frame(safe_scene_start),
-                "clip_end": snap_to_frame(safe_scene_end),
-                "speed": max(0.68, min(0.98, exact_speed)),
+                "clip_end": snap_to_frame(clip_end),
+                "speed": min(1.0, round((clip_end - safe_scene_start) / target_duration, 3)),
                 "text": win["text"],
                 "thumbnail_url": best_scene.get("thumbnail_url"),
-                "background_fill_override": None,
+                "_safe_end": run_end,
             })
 
-    # Layer 3: Post-match verification guard ensuring no timeline clip < 1.8s
-    healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=1.8)
+    # Layer 3: Post-match verification guard ensuring no timeline clip < 2.0s
+    healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0)
     return healed_clips

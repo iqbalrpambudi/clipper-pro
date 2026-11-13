@@ -2,27 +2,43 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.narrative import (
-    build_master_scriptwriting_directive,
+    build_script_prompt,
     generate_narration_script,
+    line_count_for,
+    parse_script_lines,
+    pick_story_shots,
     split_into_sentence_segments,
 )
-from app.services.storyboard import (
-    build_scriptwriter_chapter_prompt,
-    build_scriptwriter_outline_prompt,
-)
-from app.services.tts import AVAILABLE_VOICES
 
 
-def test_split_into_sentence_segments():
+def _scene(i, start, dur=5.0, montage=False, desc=None):
+    return {
+        "id": f"sc{i}",
+        "start_time": start,
+        "end_time": start + dur,
+        "duration": dur,
+        "description": desc or f"tangan mengaduk adonan {i}",
+        "tags": [],
+        "analysis": {},
+        "shot_info": {"usable_ranges": [] if montage else [[start + 0.1, start + dur - 0.1]], "montage": montage},
+    }
+
+
+def test_split_flat_text_by_sentence():
     text = "Ini adalah fakta pertama yang unik! Apakah kamu pernah mendengarnya? Jangan lupa tinggalkan komentar."
     segs = split_into_sentence_segments(text)
-    assert len(segs) == 3
-    assert segs[0]["text"] == "Ini adalah fakta pertama yang unik!"
-    assert segs[1]["text"] == "Apakah kamu pernah mendengarnya?"
-    assert segs[2]["text"] == "Jangan lupa tinggalkan komentar."
+    assert [s["text"] for s in segs] == [
+        "Ini adalah fakta pertama yang unik!",
+        "Apakah kamu pernah mendengarnya?",
+        "Jangan lupa tinggalkan komentar.",
+    ]
+
+
+def test_split_line_script_one_segment_per_line():
+    segs = split_into_sentence_segments("1. Kalimat satu. Masih satu baris.\n2. Kalimat dua di sini.")
+    assert [s["text"] for s in segs] == ["Kalimat satu. Masih satu baris.", "Kalimat dua di sini."]
 
 
 def test_openai_adapter_sse_and_json_parsing():
@@ -36,146 +52,70 @@ def test_openai_adapter_sse_and_json_parsing():
     assert chunk_done == "Halo"
 
 
-def test_build_master_scriptwriting_directive_includes_parameters():
-    directive = build_master_scriptwriting_directive(
-        topic="5 Fakta Menakjubkan Tentang Luar Angkasa",
-        tone="dramatis",
-        word_count=180,
-        language="id",
-    )
-    assert "5 Fakta Menakjubkan Tentang Luar Angkasa" in directive
-    assert "dramatis" in directive.lower()
-    assert "180" in directive
-    assert "Bahasa: BAHASA INDONESIA" in directive
+def test_pick_story_shots_spreads_over_video_and_skips_montage():
+    scenes = [_scene(i, i * 5.0, montage=(i % 4 == 0)) for i in range(40)]
+    shots = pick_story_shots(scenes, 6)
+    assert len(shots) == 6
+    starts = [s["start_time"] for s in shots]
+    assert starts == sorted(starts)
+    assert starts[0] < 40 and starts[-1] > 160  # covers start and end of the process
+    assert not any(s["shot_info"]["montage"] for s in shots)
+
+
+def test_line_count_follows_duration():
+    assert line_count_for(55) == 12
+    assert line_count_for(30) == 7
+
+
+def test_prompt_lists_every_shot_and_rules():
+    shots = [_scene(i, i * 5.0) for i in range(5)]
+    system, user = build_script_prompt("Gaya: santai.", "santai", "", "Kimchi day", shots, 25, "id")
+    assert "tepat 5 baris" in system and "Gaya: santai." in system
+    assert "Kimchi day" in user and "3. [00:10]" in user
+    # Story structure, not per-shot captions
+    assert "satu cerita utuh" in system and "PERAN" in system and "Inti:" in system
+    assert "-> PEMBUKA" in user and "-> HASIL" in user and user.count("-> PENUTUP") == 1
+
+
+def test_parse_drops_inti_brief():
+    raw = "Inti: petani mengubur sawi supaya kimchi awet.\n1. Kenapa sawi ini dikubur?\n2. Ini adalah cara menyimpan kimchi."
+    assert parse_script_lines(raw) == ["Kenapa sawi ini dikubur?", "Ini adalah cara menyimpan kimchi."]
+    assert parse_script_lines("**Inti:** pokoknya begitu.\nKenapa sawi dikubur? Supaya awet sampai musim semi.") == [
+        "Kenapa sawi dikubur?",
+        "Supaya awet sampai musim semi.",
+    ]
+
+
+def test_parse_numbered_lines_and_strip_junk():
+    raw = "Tentu, ini naskahnya:\n1. **Kenapa** sawi ini dikubur (close up)?\n2) [Musik] Garam menarik air: sawi jadi lentur.\n3. Hasilnya renyah 😋 dan asam."
+    assert parse_script_lines(raw) == [
+        "Kenapa sawi ini dikubur?",
+        "Garam menarik air, sawi jadi lentur.",
+        "Hasilnya renyah dan asam.",
+    ]
+
+
+def test_parse_falls_back_to_sentences_for_paragraph():
+    assert len(parse_script_lines("Kalimat pertama ada di sini. Kalimat kedua juga di sini.")) == 2
 
 
 @pytest.mark.asyncio
-async def test_generate_narration_script_injects_parameters_into_master_prompt():
-    mock_adapter = AsyncMock()
-    mock_adapter.generate_chat.return_value = (
-        "Tahukah kamu bahwa luar angkasa sangat sunyi? Tidak ada udara untuk merambatkan suara."
-    )
-
-    script = await generate_narration_script(
-        adapter=mock_adapter,
-        system_prompt="Anda adalah narator profesional.",
-        user_prompt_template="Topik: {topic}\nTone: {tone}\nDurasi: {target_duration}\nKata: {word_count}\n{scene_context}",
-        topic="Keheningan Luar Angkasa",
-        tone="misterius",
-        target_duration=45,
-        language="id",
-    )
-    assert "luar angkasa" in script.lower()
-    mock_adapter.generate_chat.assert_called_once()
-    call_prompt = mock_adapter.generate_chat.call_args[1].get("prompt") or mock_adapter.generate_chat.call_args[0][0]
-    assert "Keheningan Luar Angkasa" in call_prompt
-    assert "misterius" in call_prompt.lower()
-
-
-def test_multilingual_script_and_storyboard_directives():
-    # 1. Test short-form narrative directive in EN vs ID
-    en_directive = build_master_scriptwriting_directive(
-        topic="Secrets of the deep ocean",
-        tone="dramatis",
-        word_count=150,
-        language="en",
-    )
-    assert "Language: ENGLISH ONLY" in en_directive
-    assert "Secrets of the deep ocean" in en_directive
-
-    id_directive = build_master_scriptwriting_directive(
-        topic="Misteri segitiga bermuda",
-        tone="misterius",
-        word_count=150,
-        language="id",
-    )
-    assert "Bahasa: BAHASA INDONESIA" in id_directive
-    assert "Misteri segitiga bermuda" in id_directive
-
-    # 2. Test scriptwriter outline prompt in EN
-    sys_en, usr_en = build_scriptwriter_outline_prompt(
-        topic="The Rise and Fall of the Roman Empire",
-        duration_mins=10,
-        tone="edukatif",
-        num_chapters=5,
-        language="en",
-    )
-    assert "Lead Scriptwriter" in sys_en
-    assert "The Rise and Fall of the Roman Empire" in usr_en
-
-    # 3. Test scriptwriter chapter prompt in EN
-    exp_sys, exp_usr = build_scriptwriter_chapter_prompt(
-        video_title="The Rise and Fall of the Roman Empire",
-        video_overview="An in-depth historical documentary",
-        chapter_index=1,
-        total_chapters=5,
-        chapter_title="Chapter 1: The Foundations of Rome",
-        chapter_synopsis="From the mythical twins Romulus and Remus to the Senate",
-        opening_hook="In the hills of central Italy...",
-        closing_rehook="The empire was about to expand...",
-        target_beats=10,
-        target_chapter_words=450,
-        tone="edukatif",
-        language="en",
-    )
-    assert "Lead YouTube Documentary Scriptwriter" in exp_sys
-    assert "The Foundations of Rome" in exp_usr
-
-    # 4. Test voice list multilingual flags
-    en_voices = [v for v in AVAILABLE_VOICES if "en" in (v.languages or [v.language])]
-    id_voices = [v for v in AVAILABLE_VOICES if "id" in (v.languages or [v.language])]
-    assert len(en_voices) > 0, "Should have English-compatible voices"
-    assert len(id_voices) > 0, "Should have Indonesian-compatible voices"
-    assert any(v.id == "en-US-JennyNeural" for v in en_voices)
-    assert any(v.id == "id-ID-ArdiNeural" for v in id_voices)
-
-    # 5. Test Project schemas default and language values
-    proj_default = ProjectCreate(name="Default Project")
-    assert proj_default.language == "id"
-
-    proj_en = ProjectCreate(name="English Doc", language="en")
-    assert proj_en.language == "en"
-
-    proj_up = ProjectUpdate(language="en")
-    assert proj_up.language == "en"
+async def test_generate_maps_line_k_to_shot_k():
+    scenes = [_scene(i, i * 5.0) for i in range(30)]
+    adapter = AsyncMock()
+    adapter.generate_chat.return_value = "\n".join(f"{k}. Baris nomor {k} tentang proses ini." for k in range(1, 8))
+    raw, segs = await generate_narration_script(adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30)
+    shots = pick_story_shots(scenes, 7)
+    assert raw.count("\n") == 6
+    assert [s["scene_id"] for s in segs] == [s["id"] for s in shots]
+    adapter.generate_chat.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_recap_cinematic_preset_and_anti_stiffness_rules():
-    from app.prompts.narrative import DEFAULT_TEMPLATES
-    recap_tpl = next((t for t in DEFAULT_TEMPLATES if t["id"] == "recap_cinematic"), None)
-    assert recap_tpl is not None
-    sys_prompt = recap_tpl["system_prompt"]
-
-    # Verify anti-stiffness & camera direction prohibitions
-    assert "DILARANG KERAS MENYEBUT ISTILAH KAMERA" in sys_prompt
-    assert "close-up" in sys_prompt.lower()
-    assert "layar menghitam" in sys_prompt.lower()
-    assert "HINDARI DESKRIPSI VISUAL HARFIAH" in sys_prompt
-    assert "HINDARI REPETISI KATA" in sys_prompt
-
-    # Verify stage direction stripping in generate_narration_script
-    mock_adapter = AsyncMock()
-    mock_adapter.generate_chat.return_value = (
-        "Tentu! Ini naskahnya:\n"
-        "[Musik Tegang Memuncak]\n"
-        "Anak itu tahu ada bahaya mengintai dari sudut ruangan.\n"
-        "(Close up mata melebar)\n"
-        "Bahkan saat makan malam, sunyi mencekam terasa menekan dadanya."
-    )
-
-    clean_script = await generate_narration_script(
-        adapter=mock_adapter,
-        system_prompt=sys_prompt,
-        user_prompt_template=recap_tpl["user_prompt_template"],
-        topic="Misteri Rumah Tua",
-        tone="dramatis",
-        target_duration=30,
-        language="id",
-    )
-
-    assert "Tentu!" not in clean_script
-    assert "[Musik Tegang Memuncak]" not in clean_script
-    assert "(Close up mata melebar)" not in clean_script
-    assert "Anak itu tahu ada bahaya mengintai" in clean_script
-    assert "sunyi mencekam terasa menekan" in clean_script
+async def test_generate_retries_once_on_bad_format_then_fails():
+    scenes = [_scene(i, i * 5.0) for i in range(30)]
+    adapter = AsyncMock()
+    adapter.generate_chat.return_value = "Oke."
+    with pytest.raises(ValueError):
+        await generate_narration_script(adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30)
+    assert adapter.generate_chat.call_count == 2

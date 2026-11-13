@@ -178,16 +178,77 @@ async def run_ffmpeg_with_timeout(cmd: List[str], timeout_seconds: float = 30.0)
     return rc, out_str, ""
 
 
+async def _probe_has_audio(file_path: str) -> bool:
+    """Check via ffprobe whether the media file contains at least one audio stream."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(file_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8.0)
+        return b"audio" in (stdout or b"").lower()
+    except Exception:
+        return False
+
 
 def _build_watermark_filter(
-    watermark: Dict[str, Any],
-    temp_dir: Path,
-    video_w: int,
-    video_h: int,
+    watermark: Optional[Dict[str, Any]] = None,
+    temp_dir: Optional[Path] = None,
+    video_w: int = 1080,
+    video_h: int = 1920,
+    *,
+    watermark_path: Optional[str] = None,
+    position: str = "bottom_right",
+    opacity: float = 0.8,
+    scale: float = 0.15,
+    video_width: Optional[int] = None,
+    video_height: Optional[int] = None,
 ) -> Optional[str]:
     """Build an FFmpeg drawtext or movie overlay filter string for watermark overlay."""
+    if video_width is not None:
+        video_w = int(video_width)
+    if video_height is not None:
+        video_h = int(video_height)
+
+    # Support image watermark path kwargs (used by image watermark builder & unit tests)
+    if watermark_path:
+        esc_wm = _escape_filter_path(str(watermark_path))
+        pos_norm = str(position or "bottom_right").lower().replace("-", "_")
+        pad_x = max(8, int(round(24 * (video_w / 1080.0))))
+        pad_y = max(8, int(round(24 * (video_h / 1920.0))))
+        if pos_norm == "top_left":
+            overlay_xy = f"{pad_x}:{pad_y}"
+        elif pos_norm == "top_right":
+            overlay_xy = f"W-w-{pad_x}:{pad_y}"
+        elif pos_norm == "bottom_left":
+            overlay_xy = f"{pad_x}:H-h-{pad_y}"
+        elif pos_norm == "center":
+            overlay_xy = "(W-w)/2:(H-h)/2"
+        else:
+            overlay_xy = f"W-w-{pad_x}:H-h-{pad_y}"
+        clamped_op = max(0.05, min(1.0, float(opacity)))
+        clamped_sc = max(0.05, min(1.0, float(scale)))
+        wm_w = max(16, int(round(video_w * clamped_sc)))
+        return (
+            f"movie='{esc_wm}',format=rgba,"
+            f"colorchannelmixer=aa={clamped_op:.2f},"
+            f"scale={wm_w}:-1[wm];[in][wm]overlay={overlay_xy}"
+        )
+
     if not watermark or not watermark.get("enabled"):
         return None
+    if temp_dir is None:
+        temp_dir = Path(tempfile.gettempdir())
 
     scale = video_w / 1080.0
     base_ox = float(watermark.get("offset_x", 30) or 30)
@@ -336,10 +397,18 @@ async def render_timeline_video(
 
     bg_mode = (background_fill or {}).get("mode", "blur")
     bg_color = (background_fill or {}).get("color", "black")
-    custom_zoom = float((background_fill or {}).get("zoom", 1.0) or 1.0)
+    raw_zoom = (background_fill or {}).get("zoom")
+    if raw_zoom is None or (aspect_ratio == "9:16" and bg_mode == "blur" and float(raw_zoom or 1.0) == 1.0):
+        # Cinema-Vertical 4:5 / 3:4 Sweet-Spot default zoom (1.45x) for 9:16 vertical videos
+        custom_zoom = 1.45 if (aspect_ratio == "9:16" and bg_mode == "blur") else 1.0
+    else:
+        custom_zoom = float(raw_zoom or 1.0)
     anti_copyright = (background_fill or {}).get("anti_copyright", True)
     dynamic_zoom = (background_fill or {}).get("dynamic_zoom", True) if anti_copyright else False
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
+    enable_source_asmr = bool((background_fill or {}).get("source_asmr", True))
+    enable_curiosity_bgm = bool((background_fill or {}).get("curiosity_bgm", True))
+    crop_source_subs = bool((background_fill or {}).get("crop_source_subs", aspect_ratio == "9:16"))
 
     # Check target audio duration if audio provided
     audio_dur = 0.0
@@ -347,6 +416,7 @@ async def render_timeline_video(
         audio_dur = await get_audio_duration(audio_path)
 
     temp_dir = Path(tempfile.mkdtemp(prefix="cliper_render_"))
+    audio_stream_cache: Dict[str, bool] = {}
 
     try:
         if progress_callback:
@@ -395,7 +465,7 @@ async def render_timeline_video(
             actual_read_frames = min(read_frames, source_max_frames)
             safe_read_duration = frame_to_sec(actual_read_frames)
 
-            # Transformative post-processing filters (Ken Burns Dynamic Zoom & Micro Color Grade)
+            # Transformative post-processing filters (Ken Burns Dynamic Zoom & OLED Micro Color Grade)
             post_filters = []
             if dynamic_zoom:
                 # Alternate zoom in and subtle zoom out / gentle pan per clip
@@ -409,13 +479,15 @@ async def render_timeline_video(
                     )
 
             if color_grading:
-                post_filters.append("eq=contrast=1.03:saturation=1.04:brightness=0.01")
+                post_filters.append("eq=contrast=1.05:saturation=1.08:brightness=0.01")
 
             post_chain = ("," + ",".join(post_filters)) if post_filters else ""
 
             # Speed adjustment & trim to ensure zero bleed into next scene
             speed_prefix = ""
-            if 0.5 <= clip_speed <= 2.0 and abs(clip_speed - 1.0) > 0.02:
+            # Stretch whenever the read differs from the slot by more than a frame (speed or a source
+            # shorter than the slot, e.g. last clip extended to the audio), so the chunk fills its slot.
+            if abs(actual_read_frames - target_out_frames) > 1:
                 pts_factor = round(target_out_dur / safe_read_duration, 4)
                 speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts={pts_factor}*PTS[v_speed];"
                 in_label = "[v_speed]"
@@ -429,7 +501,7 @@ async def render_timeline_video(
             fg_w = fg_w if fg_w % 2 == 0 else fg_w + 1
             fg_h = fg_h if fg_h % 2 == 0 else fg_h + 1
 
-            # Video layout filter: cover (fullscreen 9:16), blur with zoom, or solid color with zoom
+            # Video layout filter: cover (fullscreen 9:16), darkened ambient blur with Cinema-Vertical zoom, or solid color
             if bg_mode == "cover":
                 vf_filter = (
                     f"{speed_prefix}"
@@ -438,11 +510,12 @@ async def render_timeline_video(
                     f"setsar=1,fps=30{post_chain}"
                 )
             elif bg_mode == "blur":
+                fg_crop_prefix = "crop=iw:trunc(ih*0.82/2)*2:0:0," if crop_source_subs else ""
                 vf_filter = (
                     f"{speed_prefix}"
                     f"{in_label}split[bg_in][fg_in];"
-                    f"[bg_in]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=25:5[bg];"
-                    f"[fg_in]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
+                    f"[bg_in]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=28:6,eq=brightness=-0.08:saturation=0.85[bg];"
+                    f"[fg_in]{fg_crop_prefix}scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
                     f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=30{post_chain}"
                 )
             else:
@@ -458,6 +531,31 @@ async def render_timeline_video(
             # never starve the decoder before trim filter finishes its exact safe_read_duration.
             demux_read_dur = safe_read_duration + 0.30
 
+            # Probe whether source video has an audio stream (cached per source file)
+            if src_file not in audio_stream_cache:
+                audio_stream_cache[src_file] = await _probe_has_audio(src_file)
+            has_src_audio = audio_stream_cache[src_file] and enable_source_asmr
+
+            if has_src_audio:
+                tempo_part = (
+                    f",atempo={max(0.5, min(2.0, clip_speed)):.4f}"
+                    if (0.5 <= clip_speed <= 2.0 and abs(clip_speed - 1.0) > 0.02)
+                    else ""
+                )
+                af_part = (
+                    f"[0:a]atrim=duration={safe_read_duration:.4f},asetpts=PTS-STARTPTS{tempo_part},"
+                    f"aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+                    f"highpass=f=140,lowpass=f=7500,volume=0.16,"
+                    f"apad=whole_dur={target_out_dur:.4f},atrim=duration={target_out_dur:.4f}[a_out]"
+                )
+            else:
+                af_part = (
+                    f"anullsrc=channel_layout=stereo:sample_rate=44100,"
+                    f"aformat=sample_fmts=fltp:channel_layouts=stereo,"
+                    f"atrim=duration={target_out_dur:.4f}[a_out]"
+                )
+
+            chunk_fc = f"{vf_filter}[v_out];{af_part}"
             cut_cmd = [
                 "ffmpeg",
                 "-y",
@@ -469,7 +567,11 @@ async def render_timeline_video(
                 "-i",
                 src_file,
                 "-filter_complex",
-                vf_filter,
+                chunk_fc,
+                "-map",
+                "[v_out]",
+                "-map",
+                "[a_out]",
                 "-t",
                 f"{target_out_dur:.4f}",
                 "-fps_mode",
@@ -480,11 +582,24 @@ async def render_timeline_video(
                 "ultrafast",
                 "-crf",
                 "23",
-                "-an",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
                 str(chunk_out),
             ]
 
             ret, stderr = await _run_ffmpeg(cut_cmd, proc_key=proc_key, timeout=120.0)
+            if ret != 0 and has_src_audio:
+                # Fallback to silent audio stream if source audio packet had a demux/decode glitch
+                fallback_af = (
+                    f"anullsrc=channel_layout=stereo:sample_rate=44100,"
+                    f"aformat=sample_fmts=fltp:channel_layouts=stereo,"
+                    f"atrim=duration={target_out_dur:.4f}[a_out]"
+                )
+                cut_cmd[cut_cmd.index(chunk_fc)] = f"{vf_filter}[v_out];{fallback_af}"
+                ret, stderr = await _run_ffmpeg(cut_cmd, proc_key=proc_key, timeout=120.0)
+
             if ret != 0:
                 if await is_cancelled(project_id, job_id=job_id):
                     raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
@@ -551,12 +666,13 @@ async def render_timeline_video(
             log.error("Concat failed: %s", err_msg)
             raise RuntimeError(f"FFmpeg concat error: {err_msg}")
 
-        # Step 3: Mix audio and burn in ASS subtitles
+        # Step 3: 3-Layer Smart Audio Mix (TTS + Source ASMR + Curiosity BGM + Sidechain Ducking) & ASS Subtitles
         if progress_callback:
-            await progress_callback(70, "Menyematkan subtitle karaoke & audio narasi...")
+            await progress_callback(70, "Menyematkan subtitle karaoke & 3-layer smart audio mix...")
 
         final_inputs = ["-i", str(concatenated_video)]
         filter_chains = []
+        ass_only_chains = []
 
         # Video filter: add watermark overlay if enabled
         if watermark and watermark.get("enabled"):
@@ -570,45 +686,94 @@ async def render_timeline_video(
             fonts_dir = Path(__file__).resolve().parent.parent / "fonts"
             if fonts_dir.exists():
                 esc_fonts = _escape_filter_path(str(fonts_dir))
-                filter_chains.append(f"ass='{esc_ass}':fontsdir='{esc_fonts}'")
+                ass_filter_str = f"ass='{esc_ass}':fontsdir='{esc_fonts}'"
             else:
-                filter_chains.append(f"ass='{esc_ass}'")
+                ass_filter_str = f"ass='{esc_ass}'"
+            filter_chains.append(ass_filter_str)
+            ass_only_chains.append(ass_filter_str)
 
-        if filter_chains:
-            vf_arg = [",".join(filter_chains)]
-        else:
-            vf_arg = []
-
-        cmd_final = ["ffmpeg", "-y"]
-        cmd_final.extend(final_inputs)
-
-        # Audio input
-        if audio_path and Path(audio_path).exists():
-            cmd_final.extend(["-i", audio_path])
-            audio_args = ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest"]
-        else:
-            audio_args = ["-c:a", "copy"]
-
-        if vf_arg:
-            cmd_final.extend(["-vf", vf_arg[0]])
+        vf_str = ",".join(filter_chains) if filter_chains else ""
+        ass_only_vf_str = ",".join(ass_only_chains) if ass_only_chains else ""
 
         preset = "ultrafast" if is_preview else "veryfast"
         crf = "28" if is_preview else "21"
 
-        cmd_final.extend([
-            "-c:v",
-            "libx264",
-            "-preset",
-            preset,
-            "-crf",
-            crf,
-            "-pix_fmt",
-            "yuv420p",
-            "-movflags",
-            "+faststart",
-        ])
-        cmd_final.extend(audio_args)
-        cmd_final.append(str(out_p))
+        cmd_final = ["ffmpeg", "-y"]
+        cmd_final.extend(final_inputs)
+
+        has_tts_audio = bool(audio_path and Path(audio_path).exists())
+        use_3layer_mix = has_tts_audio and (enable_source_asmr or enable_curiosity_bgm)
+
+        if use_3layer_mix:
+            cmd_final.extend(["-i", str(audio_path)])
+            bgm_dur = max(audio_dur + 2.0, 15.0)
+            asmr_vol = "1.0" if enable_source_asmr else "0.0"
+            bgm_vol = "1.0" if enable_curiosity_bgm else "0.0"
+
+            fc_parts = []
+            if vf_str:
+                fc_parts.append(f"[0:v]{vf_str}[v_final]")
+                v_map = "[v_final]"
+            else:
+                v_map = "0:v:0"
+
+            fc_parts.extend([
+                "[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=2[vo_sc][vo_out]",
+                f"[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={asmr_vol}[asmr]",
+                f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
+                "[asmr][bgm]amix=inputs=2:duration=first:dropout_transition=0,volume=2.0[bed_raw]",
+                "[bed_raw][vo_sc]sidechaincompress=threshold=0.035:ratio=5:attack=15:release=260:makeup=1.0[bed_ducked]",
+                "[vo_out][bed_ducked]amix=inputs=2:duration=first:dropout_transition=0:weights='1.0 0.85',volume=1.85,alimiter=limit=0.95:attack=5:release=50[a_final]",
+            ])
+
+            cmd_final.extend([
+                "-filter_complex",
+                ";".join(fc_parts),
+                "-map",
+                v_map,
+                "-map",
+                "[a_final]",
+                "-c:v",
+                "libx264",
+                "-preset",
+                preset,
+                "-crf",
+                crf,
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-shortest",
+                str(out_p),
+            ])
+        else:
+            if has_tts_audio:
+                cmd_final.extend(["-i", str(audio_path)])
+                audio_args = ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+            else:
+                audio_args = ["-c:a", "copy"]
+
+            if vf_str:
+                cmd_final.extend(["-vf", vf_str])
+
+            cmd_final.extend([
+                "-c:v",
+                "libx264",
+                "-preset",
+                preset,
+                "-crf",
+                crf,
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+            ])
+            cmd_final.extend(audio_args)
+            cmd_final.append(str(out_p))
 
         log.info("Running final ffmpeg cmd: %s", " ".join(cmd_final))
 
@@ -626,6 +791,102 @@ async def render_timeline_video(
             total_duration_sec=audio_dur,
             progress_msg_prefix="Merender kompilasi video final",
         )
+
+        if ret_final != 0 and not await is_cancelled(project_id, job_id=job_id):
+            err_primary = stderr_final.decode(errors="replace")
+            # If the host FFmpeg binary was compiled without libass or libfreetype (drawtext/ass),
+            # preserve the 3-Layer Smart Audio Mix while stripping the unsupported video text filter.
+            if use_3layer_mix and vf_str and ("ass" in err_primary or "drawtext" in err_primary or "filterchain" in err_primary):
+                log.warning(
+                    "Host FFmpeg lacks ass/drawtext filter; retrying 3-layer audio mix without text filter..."
+                )
+                fc_audio_only = [
+                    "[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=2[vo_sc][vo_out]",
+                    f"[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={asmr_vol}[asmr]",
+                    f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
+                    "[asmr][bgm]amix=inputs=2:duration=first:dropout_transition=0,volume=2.0[bed_raw]",
+                    "[bed_raw][vo_sc]sidechaincompress=threshold=0.035:ratio=5:attack=15:release=260:makeup=1.0[bed_ducked]",
+                    "[vo_out][bed_ducked]amix=inputs=2:duration=first:dropout_transition=0:weights='1.0 0.85',volume=1.85,alimiter=limit=0.95:attack=5:release=50[a_final]",
+                ]
+                cmd_3layer_nofilter = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(concatenated_video),
+                    "-i",
+                    str(audio_path),
+                    "-filter_complex",
+                    ";".join(fc_audio_only),
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "[a_final]",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    preset,
+                    "-crf",
+                    crf,
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-shortest",
+                    str(out_p),
+                ]
+                ret_final, stderr_final = await _run_ffmpeg(
+                    cmd_3layer_nofilter,
+                    proc_key=proc_key,
+                    timeout=1800.0,
+                    progress_callback=progress_callback,
+                    heartbeat_callback=heartbeat_callback,
+                    start_pct=75,
+                    end_pct=98,
+                    total_duration_sec=audio_dur,
+                    progress_msg_prefix="Merender kompilasi video final",
+                )
+
+        if ret_final != 0 and not await is_cancelled(project_id, job_id=job_id):
+            # Final fallback to single-track audio without video text filters
+            log.warning(
+                "Retrying with resilient single-track fallback (last rc=%d)...",
+                ret_final,
+            )
+            cmd_fallback = ["ffmpeg", "-y", "-i", str(concatenated_video)]
+            if has_tts_audio:
+                cmd_fallback.extend(["-i", str(audio_path)])
+                fb_audio_args = ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+            else:
+                fb_audio_args = ["-c:a", "copy"]
+            cmd_fallback.extend([
+                "-c:v",
+                "libx264",
+                "-preset",
+                preset,
+                "-crf",
+                crf,
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+            ])
+            cmd_fallback.extend(fb_audio_args)
+            cmd_fallback.append(str(out_p))
+            ret_final, stderr_final = await _run_ffmpeg(
+                cmd_fallback,
+                proc_key=proc_key,
+                timeout=1800.0,
+                progress_callback=progress_callback,
+                heartbeat_callback=heartbeat_callback,
+                start_pct=75,
+                end_pct=98,
+                total_duration_sec=audio_dur,
+                progress_msg_prefix="Merender kompilasi video final",
+            )
 
         if ret_final != 0:
             if await is_cancelled(project_id, job_id=job_id):

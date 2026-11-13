@@ -11,7 +11,6 @@ from app.core.events import publish_project_event
 from app.core.storage import storage
 from app.models.narration import AudioTrack, Narration
 from app.models.project import Project, RenderJob, SourceVideo
-from app.models.storyboard import StoryboardItem
 from app.models.timeline import SubtitleStyle, Timeline
 from app.services.cancellation import (
     TaskCancelledException,
@@ -20,8 +19,7 @@ from app.services.cancellation import (
     kill_all_matching_processes,
 )
 from app.services.renderer import render_timeline_video
-from app.services.storyboard_renderer import render_storyboard_video
-from app.services.subtitle_ass import generate_ass_subtitles
+from app.services.subtitle_ass import generate_ass_subtitles, style_to_dict
 
 log = logging.getLogger(__name__)
 
@@ -76,62 +74,20 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         )
         narration = n_res.scalars().first()
 
-        # Fetch subtitle style (use YouTube Documentary Clean 16:9 defaults for long_storyboard when unconfigured)
         sub_res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project.id))
-        style = sub_res.scalar_one_or_none()
-        is_storyboard = project.project_type == "long_storyboard"
-        style_dict = {
-            "preset_name": style.preset_name if style else ("youtube_documentary" if is_storyboard else "viral_tiktok"),
-            "font_family": style.font_family if style else ("Inter" if is_storyboard else "Poppins"),
-            "font_size": style.font_size if style else (36 if is_storyboard else 56),
-            "font_weight": style.font_weight if style else ("SemiBold" if is_storyboard else "Bold"),
-            "primary_color": style.primary_color if style else ("#F8FAFC" if is_storyboard else "#FFFFFF"),
-            "highlight_color": style.highlight_color if style else ("#FDE047" if is_storyboard else "#FFE600"),
-            "outline_color": style.outline_color if style else ("#0F172A" if is_storyboard else "#000000"),
-            "outline_width": style.outline_width if style else (2 if is_storyboard else 4),
-            "box_color": style.box_color if style else ("#0F172A" if is_storyboard else "#000000"),
-            "box_opacity": style.box_opacity if (style and style.box_opacity is not None) else (0.65 if is_storyboard else 0.0),
-            "position": style.position if style else "bottom",
-            "offset_y": style.offset_y if (style and style.offset_y is not None) else (-24 if is_storyboard else 0),
-            "offset_x": style.offset_x if (style and style.offset_x is not None) else 0,
-            "display_mode": style.display_mode if style else ("full_sentence" if is_storyboard else "per_word"),
-            "burst_word_count": style.burst_word_count if style else 2,
-            "highlight_animation": style.highlight_animation if style else "color",
-            "scale_factor": style.scale_factor if (style and style.scale_factor is not None) else 1.0,
-            "text_case": (
-                getattr(style, "text_case", None)
-                if (style and getattr(style, "text_case", None))
-                else ("sentence" if is_storyboard else "uppercase")
-            ),
-            "emoji_enabled": style.emoji_enabled if (style and style.emoji_enabled is not None) else (False if is_storyboard else True),
-            "enabled": (
-                style.enabled
-                if (style and getattr(style, "enabled", None) is not None)
-                else True
-            ),
-        }
+        style_dict = style_to_dict(sub_res.scalar_one_or_none())
 
         subtitles_enabled = style_dict.get("enabled", True)
-        if project.project_type != "long_storyboard":
-            t_check = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
-            tl = t_check.scalar_one_or_none()
-            if tl and tl.has_subtitles is False:
-                subtitles_enabled = False
+        t_check = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
+        tl = t_check.scalar_one_or_none()
+        if tl and tl.has_subtitles is False:
+            subtitles_enabled = False
+        if tl and tl.has_audio is False:
+            audio_path = None  # user removed the narration track in the timeline
 
         ass_file_path = None
         if subtitles_enabled and narration and narration.segments:
-            play_res_x, play_res_y = 1080, 1920
-            if project.aspect_ratio == "16:9":
-                play_res_x, play_res_y = 1920, 1080
-            elif project.aspect_ratio == "1:1":
-                play_res_x, play_res_y = 1080, 1080
-
-            ass_content = generate_ass_subtitles(
-                narration.segments,
-                style_dict,
-                play_res_x=play_res_x,
-                play_res_y=play_res_y,
-            )
+            ass_content = generate_ass_subtitles(narration.segments, style_dict)
             ass_file = renders_dir / f"subtitles_{job.id}.ass"
             with open(ass_file, "w", encoding="utf-8") as f:
                 f.write(ass_content)
@@ -191,88 +147,35 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                     )
 
         async def _do_render() -> str:
-            if project.project_type == "long_storyboard":
-                # Fetch storyboard items
-                sb_res = await db.execute(
-                    select(StoryboardItem)
-                    .where(StoryboardItem.project_id == project.id)
-                    .order_by(StoryboardItem.order_index.asc())
-                )
-                sb_items = sb_res.scalars().all()
-                valid_items = []
-                for it in sb_items:
-                    if not it.file_path:
-                        continue
-                    p = Path(it.file_path)
-                    if not p.exists():
-                        p = storage.to_absolute_path(it.file_path)
-                    if p and p.exists():
-                        valid_items.append((it, str(p)))
+            # Short video mode: Fetch timeline and source videos
+            t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
+            timeline = t_res.scalar_one_or_none()
+            if not timeline or not timeline.clips:
+                raise RuntimeError("Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu.")
 
-                if not valid_items:
-                    raise RuntimeError("Belum ada gambar adegan storyboard yang siap dirender. Silakan generate gambar terlebih dahulu.")
+            # Fetch source videos map
+            v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
+            source_videos_map = {v.id: v.file_path for v in v_res.scalars().all() if v.file_path}
 
-                items_data = [
-                    {
-                        "id": it.id,
-                        "file_path": resolved_path,
-                        "start_time": it.start_time,
-                        "end_time": it.end_time,
-                        "duration": it.duration or 4.0,
-                        "motion_effect": it.motion_effect or "zoom_in",
-                        "shot_metadata": it.shot_metadata or {},
-                        "script_text": it.script_text,
-                    }
-                    for it, resolved_path in valid_items
-                ]
+            if await is_cancelled(project.id, job_id=render_job_id):
+                raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
 
-                if await is_cancelled(project.id, job_id=render_job_id):
-                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
-
-                return await render_storyboard_video(
-                    items=items_data,
-                    audio_path=audio_path,
-                    ass_subtitle_path=ass_file_path,
-                    output_path=str(out_file),
-                    aspect_ratio=project.aspect_ratio or "16:9",
-                    resolution=project.resolution or "1080p",
-                    watermark=project.watermark,
-                    is_preview=(job.render_type == "preview"),
-                    progress_callback=_progress,
-                    heartbeat_callback=_heartbeat,
-                    project_id=project.id,
-                    job_id=render_job_id,
-                )
-            else:
-                # Short video mode: Fetch timeline and source videos
-                t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
-                timeline = t_res.scalar_one_or_none()
-                if not timeline or not timeline.clips:
-                    raise RuntimeError("Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu.")
-
-                # Fetch source videos map
-                v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
-                source_videos_map = {v.id: v.file_path for v in v_res.scalars().all() if v.file_path}
-
-                if await is_cancelled(project.id, job_id=render_job_id):
-                    raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
-
-                return await render_timeline_video(
-                    clips=timeline.clips,
-                    source_videos_map=source_videos_map,
-                    audio_path=audio_path,
-                    ass_subtitle_path=ass_file_path,
-                    output_path=str(out_file),
-                    aspect_ratio=project.aspect_ratio,
-                    resolution=project.resolution,
-                    background_fill=project.background_fill,
-                    watermark=project.watermark,
-                    is_preview=(job.render_type == "preview"),
-                    progress_callback=_progress,
-                    heartbeat_callback=_heartbeat,
-                    project_id=project.id,
-                    job_id=render_job_id,
-                )
+            return await render_timeline_video(
+                clips=timeline.clips,
+                source_videos_map=source_videos_map,
+                audio_path=audio_path,
+                ass_subtitle_path=ass_file_path,
+                output_path=str(out_file),
+                aspect_ratio=project.aspect_ratio,
+                resolution=project.resolution,
+                background_fill=project.background_fill,
+                watermark=project.watermark,
+                is_preview=(job.render_type == "preview"),
+                progress_callback=_progress,
+                heartbeat_callback=_heartbeat,
+                project_id=project.id,
+                job_id=render_job_id,
+            )
 
         try:
             render_task = asyncio.create_task(_do_render())

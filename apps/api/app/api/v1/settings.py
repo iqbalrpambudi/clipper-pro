@@ -16,14 +16,11 @@ from app.schemas.config import (
     ModelConfigUpdate,
     TestConnectionRequest,
     TestConnectionResponse,
-    TestImageConnectionRequest,
-    TestImageConnectionResponse,
     TestTtsConnectionRequest,
     TestTtsConnectionResponse,
 )
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
-from app.services.image_gen import test_image_connection
 from app.services.tts import test_tts_connection
 
 log = logging.getLogger("cliper-pro.settings")
@@ -47,11 +44,6 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
             api_key_encrypted=encrypt_secret(settings.AI_API_KEY) if settings.AI_API_KEY else None,
             tts_provider=settings.TTS_PROVIDER,
             tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None,
-            image_base_url=settings.IMAGE_BASE_URL,
-            image_model=settings.IMAGE_MODEL,
-            image_api_key_encrypted=encrypt_secret(settings.IMAGE_API_KEY) if settings.IMAGE_API_KEY else None,
-            image_system_prompt=settings.IMAGE_SYSTEM_PROMPT,
-            image_concurrency=settings.IMAGE_CONCURRENCY,
         )
         db.add(cfg)
         await db.commit()
@@ -60,11 +52,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
     raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-    raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
-    raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
-    img_prov = getattr(cfg, "image_provider", "runware") or "runware"
-    default_img_model = "runware:400@2" if img_prov == "runware" else "dall-e-3"
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -80,18 +68,6 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
         elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
-        runware_api_key_masked=mask_secret(raw_runware_key),
-        has_runware_api_key=bool(raw_runware_key),
-        runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
-        image_provider=img_prov,
-        image_base_url=cfg.image_base_url,
-        image_model=cfg.image_model or default_img_model,
-        image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
-        image_steps=getattr(cfg, "image_steps", 5) or 5,
-        image_cfg_scale=getattr(cfg, "image_cfg_scale", 3.5) if getattr(cfg, "image_cfg_scale", None) is not None else 3.5,
-        image_api_key_masked=mask_secret(raw_image_key),
-        has_image_api_key=bool(raw_image_key),
-        image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
         is_active=cfg.is_active,
     )
 
@@ -124,26 +100,6 @@ async def save_model_configuration(
         cfg.elevenlabs_api_key_encrypted = encrypt_secret(payload.elevenlabs_api_key.strip())
     if payload.elevenlabs_model is not None:
         cfg.elevenlabs_model = payload.elevenlabs_model
-    if payload.runware_api_key is not None and payload.runware_api_key.strip():
-        cfg.runware_api_key_encrypted = encrypt_secret(payload.runware_api_key.strip())
-    if payload.runware_tts_model is not None:
-        cfg.runware_tts_model = payload.runware_tts_model
-    if payload.image_provider is not None:
-        cfg.image_provider = payload.image_provider
-    if payload.image_base_url is not None:
-        cfg.image_base_url = payload.image_base_url
-    if payload.image_model is not None:
-        cfg.image_model = payload.image_model
-    if payload.image_concurrency is not None:
-        cfg.image_concurrency = max(1, min(4, payload.image_concurrency))
-    if payload.image_steps is not None:
-        cfg.image_steps = max(1, min(50, payload.image_steps))
-    if payload.image_cfg_scale is not None:
-        cfg.image_cfg_scale = max(1.0, min(20.0, payload.image_cfg_scale))
-    if payload.image_api_key is not None and payload.image_api_key.strip():
-        cfg.image_api_key_encrypted = encrypt_secret(payload.image_api_key.strip())
-    if payload.image_system_prompt is not None:
-        cfg.image_system_prompt = payload.image_system_prompt
 
     await db.commit()
     await db.refresh(cfg)
@@ -151,11 +107,7 @@ async def save_model_configuration(
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
     raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-    raw_runware_key = decrypt_secret(cfg.runware_api_key_encrypted) if getattr(cfg, "runware_api_key_encrypted", None) else ""
-    raw_image_key = decrypt_secret(cfg.image_api_key_encrypted) if cfg.image_api_key_encrypted else ""
 
-    img_prov = getattr(cfg, "image_provider", "runware") or "runware"
-    default_img_model = "runware:400@2" if img_prov == "runware" else "dall-e-3"
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -171,18 +123,6 @@ async def save_model_configuration(
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
         elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
-        runware_api_key_masked=mask_secret(raw_runware_key),
-        has_runware_api_key=bool(raw_runware_key),
-        runware_tts_model=getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") or "fishaudio:s2.1@pro",
-        image_provider=img_prov,
-        image_base_url=cfg.image_base_url,
-        image_model=cfg.image_model or default_img_model,
-        image_concurrency=getattr(cfg, "image_concurrency", 2) or 2,
-        image_steps=getattr(cfg, "image_steps", 5) or 5,
-        image_cfg_scale=getattr(cfg, "image_cfg_scale", 3.5) if getattr(cfg, "image_cfg_scale", None) is not None else 3.5,
-        image_api_key_masked=mask_secret(raw_image_key),
-        has_image_api_key=bool(raw_image_key),
-        image_system_prompt=cfg.image_system_prompt or settings.IMAGE_SYSTEM_PROMPT,
         is_active=cfg.is_active,
     )
 
@@ -251,57 +191,6 @@ async def test_model_connection(
         )
 
 
-@router.post("/test-image-connection", response_model=TestImageConnectionResponse)
-async def test_image_model_connection(
-    payload: TestImageConnectionRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    provider = payload.provider
-    api_key = payload.api_key
-    base_url = payload.base_url
-    image_model = payload.image_model
-
-    res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
-    cfg = res.scalar_one_or_none()
-
-    if not provider and cfg:
-        provider = getattr(cfg, "image_provider", "runware") or "runware"
-    elif not provider:
-        provider = "runware" if (image_model and image_model.startswith("runware:")) else "custom"
-
-    if provider == "runware":
-        base_url = "https://api.runware.ai/v1"
-        if not api_key and cfg:
-            api_key = decrypt_secret(cfg.runware_api_key_encrypted) if cfg.runware_api_key_encrypted else None
-        if not image_model:
-            image_model = "runware:400@2"
-    else:
-        if not base_url and cfg:
-            base_url = cfg.image_base_url
-        if not api_key and cfg and cfg.image_api_key_encrypted:
-            api_key = decrypt_secret(cfg.image_api_key_encrypted)
-        if not image_model and cfg:
-            image_model = cfg.image_model or "dall-e-3"
-
-    steps = payload.steps or (getattr(cfg, "image_steps", None) if cfg else None)
-    cfg_scale = payload.cfg_scale or (getattr(cfg, "image_cfg_scale", None) if cfg else None)
-
-    result = await test_image_connection(
-        base_url=base_url,
-        api_key=api_key,
-        model=image_model,
-        provider=provider,
-        steps=steps,
-        cfg_scale=cfg_scale,
-    )
-    return TestImageConnectionResponse(
-        success=result["success"],
-        image_model_status=result["image_model_status"],
-        latency_ms=result["latency_ms"],
-        message=result["message"],
-    )
-
-
 @router.post("/test-tts-connection", response_model=TestTtsConnectionResponse)
 async def test_tts_model_connection(
     payload: TestTtsConnectionRequest,
@@ -318,11 +207,6 @@ async def test_tts_model_connection(
         if cfg:
             if provider == "elevenlabs" and cfg.elevenlabs_api_key_encrypted:
                 api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
-            elif provider == "runware":
-                if getattr(cfg, "runware_api_key_encrypted", None):
-                    api_key = decrypt_secret(cfg.runware_api_key_encrypted)
-                elif cfg.image_api_key_encrypted:
-                    api_key = decrypt_secret(cfg.image_api_key_encrypted)
             elif provider == "gemini":
                 if cfg.tts_api_key_encrypted:
                     api_key = decrypt_secret(cfg.tts_api_key_encrypted)
@@ -332,11 +216,7 @@ async def test_tts_model_connection(
             if not model:
                 if provider == "elevenlabs":
                     model = getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
-                elif provider == "runware":
-                    model = getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro")
-                elif provider == "gemini":
-                    model = cfg.tts_provider
-
+    
     res = await test_tts_connection(
         provider=provider,
         api_key=api_key,
@@ -357,68 +237,23 @@ _MODELS_CACHE_TTL: float = 300.0  # 5 minutes
 @router.get("/models")
 async def list_available_models(
     base_url: str = "",
-    category: str = "llm",
     x_api_key: str = Header("", alias="X-Api-Key"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Fetch list of available models from OpenAI-compatible endpoint, InferHub, or OpenRouter.
-    The key travels in the X-Api-Key header so it never lands in access logs.
-    If category == "image", prioritizes image models and falls back to image config.
-    """
+    """Fetch model ids from an OpenAI-compatible endpoint. Key travels in X-Api-Key header."""
     target_url = base_url.strip()
     target_key = x_api_key.strip()
 
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
-
-    if not target_url and cfg:
-        if category == "image":
-            target_url = cfg.image_base_url or ""
-            if not target_key and cfg.image_api_key_encrypted:
-                target_key = decrypt_secret(cfg.image_api_key_encrypted)
-        else:
+    if cfg:
+        if not target_url:
             target_url = cfg.base_url or ""
-            if not target_key and cfg.api_key_encrypted:
-                target_key = decrypt_secret(cfg.api_key_encrypted)
-    elif target_url and not target_key and cfg:
-        # If user passed base_url matching DB without re-entering encrypted key
-        if category == "image" and cfg.image_api_key_encrypted:
-            target_key = decrypt_secret(cfg.image_api_key_encrypted)
-        elif category != "image" and cfg.api_key_encrypted:
+        if not target_key and cfg.api_key_encrypted:
             target_key = decrypt_secret(cfg.api_key_encrypted)
 
     if not target_url:
-        if category == "image":
-            return {
-                "models": [
-                    "inferhub/cb/gemini-2.5-flash-image",
-                    "inferhub/cb/gemini-3.0-pro-image",
-                    "inferhub/gemini-2.5-flash-image",
-                    "runware:400@2",
-                    "runware:100@1",
-                    "dall-e-3",
-                    "flux-schnell",
-                ],
-                "image_models": [
-                    "inferhub/cb/gemini-2.5-flash-image",
-                    "inferhub/cb/gemini-3.0-pro-image",
-                    "inferhub/gemini-2.5-flash-image",
-                    "runware:400@2",
-                    "runware:100@1",
-                    "dall-e-3",
-                    "flux-schnell",
-                ],
-            }
-        return {
-            "models": [
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-                "gpt-4o",
-                "gpt-4o-mini",
-                "claude-3-5-sonnet-20241022",
-            ]
-        }
+        return {"models": ["gemini-2.0-flash", "gemini-1.5-flash", "gpt-4o", "gpt-4o-mini"]}
 
     raw_url = target_url.rstrip("/")
     raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
@@ -429,7 +264,7 @@ async def list_available_models(
     if target_key:
         headers["Authorization"] = f"Bearer {target_key}"
 
-    cache_key = f"{raw_url}::{target_key}::{category}"
+    cache_key = f"{raw_url}::{target_key}"
     now = time.time()
     if cache_key in _MODELS_CACHE:
         cached_time, cached_result = _MODELS_CACHE[cache_key]
@@ -441,35 +276,11 @@ async def list_available_models(
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{raw_url}/models", headers=headers)
             if resp.status_code == 200:
-                data = resp.json()
-                raw_models = data.get("data", [])
-                image_models = []
-                other_models = []
-                for m in raw_models:
-                    if isinstance(m, dict) and "id" in m:
-                        mid = m["id"]
-                        caps = m.get("capabilities") or {}
-                        # If endpoint explicitly specifies imageOutput capability, strictly respect it
-                        if "imageOutput" in caps:
-                            is_img = bool(caps.get("imageOutput"))
-                        else:
-                            is_img = any(k in mid.lower() for k in ("image", "flux", "dall", "recraft", "midjourney", "diffusion", "paint", "draw"))
-
-                        if is_img:
-                            image_models.append(mid)
-                        else:
-                            other_models.append(mid)
-
-                if category == "image":
-                    sorted_models = image_models + other_models
-                else:
-                    sorted_models = [m["id"] for m in raw_models if isinstance(m, dict) and "id" in m]
-
-                res_data = {"models": sorted_models, "image_models": image_models}
+                models = [m["id"] for m in resp.json().get("data", []) if isinstance(m, dict) and "id" in m]
+                res_data = {"models": models}
                 _MODELS_CACHE[cache_key] = (now, res_data)
                 return res_data
     except Exception as e:
         log.warning("Failed to fetch models from %s: %s", raw_url, e)
 
-    return {"models": [], "image_models": []}
-
+    return {"models": []}

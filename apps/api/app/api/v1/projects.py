@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.core.db import get_db
 from app.core.storage import storage
 from app.models.project import Project, Scene, SourceVideo
-from app.models.storyboard import StoryboardItem
 from app.models.timeline import SubtitleStyle, Timeline
+from app.services.subtitle_ass import style_to_dict
 from app.schemas.project import (
     ProjectCreate,
     ProjectDetailResponse,
@@ -30,11 +30,9 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
             Project,
             func.count(func.distinct(SourceVideo.id)).label("video_count"),
             func.count(func.distinct(Scene.id)).label("scene_count"),
-            func.count(func.distinct(StoryboardItem.id)).label("storyboard_count"),
         )
         .outerjoin(SourceVideo, Project.id == SourceVideo.project_id)
         .outerjoin(Scene, Project.id == Scene.project_id)
-        .outerjoin(StoryboardItem, Project.id == StoryboardItem.project_id)
         .group_by(Project.id)
         .order_by(Project.created_at.desc())
     )
@@ -42,19 +40,17 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     rows = res.all()
 
     output = []
-    for proj, v_count, s_count, sb_count in rows:
+    for proj, v_count, s_count in rows:
         resp = ProjectResponse.model_validate(proj)
         resp.source_video_count = v_count
         resp.scene_count = s_count
-        resp.storyboard_count = sb_count
         output.append(resp)
     return output
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_db)):
-    # If long storyboard mode, default aspect ratio to 16:9 if user left it 9:16
-    aspect = "16:9" if payload.project_type == "long_storyboard" and payload.aspect_ratio == "9:16" else payload.aspect_ratio
+    aspect = payload.aspect_ratio
     world_cfg = payload.world_setting or {}
     proj = Project(
         name=payload.name,
@@ -71,24 +67,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
     await db.flush()
 
     # Create default subtitle style
-    sub_style = SubtitleStyle(
-        project_id=proj.id,
-        preset_name="viral_tiktok",
-        font_family="Poppins",
-        font_size=56,
-        font_weight="Bold",
-        primary_color="#FFFFFF",
-        highlight_color="#FFE600",
-        outline_color="#000000",
-        outline_width=4,
-        position="bottom",
-        display_mode="per_word",
-        burst_word_count=2,
-        highlight_animation="color",
-        scale_factor=1.0,
-        emoji_enabled=True,
-        enabled=True,
-    )
+    sub_style = SubtitleStyle(project_id=proj.id)
     db.add(sub_style)
 
     # Create empty timeline
@@ -113,7 +92,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             selectinload(Project.timeline),
             selectinload(Project.subtitle_style),
             selectinload(Project.render_jobs),
-            selectinload(Project.storyboard_items),
         )
     )
     res = await db.execute(stmt)
@@ -138,7 +116,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         updated_at=proj.updated_at,
         source_video_count=len(proj.source_videos),
         scene_count=len(proj.scenes),
-        storyboard_count=len(proj.storyboard_items),
         youtube_metadata=proj.youtube_metadata or {},
         characters=proj.characters or [],
         locations=proj.locations or [],
@@ -255,31 +232,12 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             "id": proj.timeline.id,
             "clips": clips,
             "total_duration": proj.timeline.total_duration,
+            "has_audio": proj.timeline.has_audio is not False,
+            "has_subtitles": proj.timeline.has_subtitles is not False,
         }
 
     if proj.subtitle_style:
-        resp.subtitle_style = {
-            "id": proj.subtitle_style.id,
-            "preset_name": proj.subtitle_style.preset_name,
-            "font_family": proj.subtitle_style.font_family,
-            "font_size": proj.subtitle_style.font_size,
-            "font_weight": proj.subtitle_style.font_weight,
-            "primary_color": proj.subtitle_style.primary_color,
-            "highlight_color": proj.subtitle_style.highlight_color,
-            "outline_color": proj.subtitle_style.outline_color,
-            "outline_width": proj.subtitle_style.outline_width,
-            "box_color": proj.subtitle_style.box_color,
-            "box_opacity": proj.subtitle_style.box_opacity,
-            "position": proj.subtitle_style.position,
-            "offset_y": proj.subtitle_style.offset_y,
-            "offset_x": proj.subtitle_style.offset_x,
-            "display_mode": proj.subtitle_style.display_mode,
-            "burst_word_count": proj.subtitle_style.burst_word_count,
-            "highlight_animation": proj.subtitle_style.highlight_animation,
-            "scale_factor": proj.subtitle_style.scale_factor if proj.subtitle_style.scale_factor is not None else 1.5,
-            "emoji_enabled": proj.subtitle_style.emoji_enabled,
-            "enabled": getattr(proj.subtitle_style, "enabled", True) if getattr(proj.subtitle_style, "enabled", True) is not None else True,
-        }
+        resp.subtitle_style = {"id": proj.subtitle_style.id, **style_to_dict(proj.subtitle_style)}
 
     resp.render_jobs = [
         RenderJobResponse(
@@ -297,31 +255,6 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             completed_at=j.completed_at,
         )
         for j in proj.render_jobs
-    ]
-
-    resp.storyboard_items = [
-        {
-            "id": it.id,
-            "project_id": it.project_id,
-            "chapter_title": it.chapter_title,
-            "segment_id": it.segment_id,
-            "order_index": it.order_index,
-            "script_text": it.script_text,
-            "image_prompt": it.image_prompt,
-            "image_url": (
-                f"{storage.to_relative_url(it.file_path)}?v={int(it.updated_at.timestamp())}"
-                if (storage.to_relative_url(it.file_path) and it.updated_at)
-                else storage.to_relative_url(it.file_path)
-            ),
-            "motion_effect": it.motion_effect,
-            "start_time": it.start_time,
-            "end_time": it.end_time,
-            "duration": it.duration,
-            "status": it.status,
-            "error_message": it.error_message,
-            "created_at": it.created_at,
-        }
-        for it in sorted(proj.storyboard_items, key=lambda x: x.order_index)
     ]
 
     return resp

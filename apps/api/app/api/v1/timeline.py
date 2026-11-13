@@ -40,6 +40,11 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
     if not scenes:
         raise HTTPException(status_code=400, detail="Belum ada scene terdeteksi di Media Pool")
 
+    # Fetch source videos for heatmap data & URL mapping
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    all_source_videos = v_res.scalars().all()
+    heatmap_map = {v.id: v.heatmap_data for v in all_source_videos if v.heatmap_data}
+
     scenes_data = [
         {
             "id": s.id,
@@ -50,6 +55,8 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
             "thumbnail_url": storage.to_relative_url(s.thumbnail_path),
             "description": s.description,
             "tags": s.tags,
+            "analysis": s.analysis,
+            "heatmap_data": heatmap_map.get(s.source_video_id),
             "transcript": s.transcript,
             "shot_info": s.shot_info,
             "embedding": s.embedding,
