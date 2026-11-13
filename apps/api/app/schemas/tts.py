@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class VoiceInfo(BaseModel):
     id: str
     name: str
-    provider: str  # gemini | edge | elevenlabs | runware
+    provider: str  # gemini | elevenlabs
     gender: str
     sample_text: str
     sample_audio_url: Optional[str] = None

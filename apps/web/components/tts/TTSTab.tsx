@@ -20,7 +20,6 @@ export interface TTSTabProps {
     audio?: AudioTrack | null;
     audio_track?: AudioTrack | null;
   };
-  /** Replaces the default page header (used by the storyboard shell). */
   header?: React.ReactNode;
   /** Label + target for the "next step" button under the alignment list. */
   nextLabel?: string;
@@ -60,37 +59,17 @@ export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TT
               setProvider={state.setProvider}
               selectedVoice={state.selectedVoice}
               setSelectedVoice={state.setSelectedVoice}
-              geminiModel={state.geminiModel}
-              setGeminiModel={state.setGeminiModel}
-              elevenlabsModel={state.elevenlabsModel}
-              setElevenlabsModel={state.setElevenlabsModel}
-              runwareModel={state.runwareModel}
-              setRunwareModel={state.setRunwareModel}
-              selectedModelObj={state.selectedModelObj}
               elevenLabsCustomVoices={state.elevenLabsCustomVoices}
               isSyncingElevenLabs={state.isSyncingElevenLabs}
               handleSyncElevenLabsVoices={state.handleSyncElevenLabsVoices}
               customVoiceInput={state.customVoiceInput}
               setCustomVoiceInput={state.setCustomVoiceInput}
               syncError={state.syncError}
-              runwareCustomVoiceInput={state.runwareCustomVoiceInput}
-              setRunwareCustomVoiceInput={state.setRunwareCustomVoiceInput}
-              projectLanguage={state.projectLanguage}
-              isEnProject={state.isEnProject}
               filteredVoices={state.filteredVoices}
               sampleAudioPlaying={state.sampleAudioPlaying}
               loadingSampleVoiceId={state.loadingSampleVoiceId}
               playVoiceSample={state.playVoiceSample}
               showToast={state.showToast}
-              voicePresets={state.voicePresets}
-              selectedVoicePresetId={state.selectedVoicePresetId}
-              handleLoadVoicePreset={state.handleLoadVoicePreset}
-              handleSaveVoicePreset={state.handleSaveVoicePreset}
-              handleDeleteVoicePreset={state.handleDeleteVoicePreset}
-              showSaveVoiceModal={state.showSaveVoiceModal}
-              setShowSaveVoiceModal={state.setShowSaveVoiceModal}
-              newVoicePresetName={state.newVoicePresetName}
-              setNewVoicePresetName={state.setNewVoicePresetName}
             />
 
             <AudioParametersPanel

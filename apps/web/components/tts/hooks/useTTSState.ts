@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { useEditorConfigStore } from "@/lib/editorConfigStore";
-import { presetStorage, VoicePreset } from "@/lib/presetStorage";
 import { Project, ProjectDetail, Narration, AudioTrack, SentenceSegment, VoiceInfo } from "@/types";
-import { GEMINI_TTS_MODELS, ELEVENLABS_TTS_MODELS, RUNWARE_TTS_MODELS } from "../constants";
+import { TTS_MODEL } from "../constants";
 
 export interface UseTTSStateProps {
   project: Project & {
@@ -26,18 +24,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const audio = project.audio || project.audio_track;
 
   const initialProvider = draft?.provider || audio?.provider || "gemini";
-  const initialVoice =
-    draft?.voice || audio?.voice || (initialProvider === "edge" ? "id-ID-GadisNeural" : "Puck");
-  const initialGeminiModel =
-    draft?.geminiModel ||
-    (audio?.provider === "gemini" && audio?.model) ||
-    "gemini-2.5-flash-preview-tts";
-  const initialElevenlabsModel =
-    draft?.elevenlabsModel ||
-    (audio?.provider === "elevenlabs" && audio?.model) ||
-    "eleven_multilingual_v2";
-  const initialRunwareModel =
-    draft?.runwareModel || (audio?.provider === "runware" && audio?.model) || "fishaudio:s2.1@pro";
+  const initialVoice = draft?.voice || audio?.voice || "Puck";
   const parseRate = (val: string | number | undefined | null) => {
     if (typeof val === "number") return val;
     if (!val) return 0;
@@ -48,60 +35,23 @@ export function useTTSState({ project }: UseTTSStateProps) {
 
   const [selectedVoice, setSelectedVoice] = useState(initialVoice);
   const [provider, setProvider] = useState(initialProvider);
-  const [geminiModel, setGeminiModel] = useState(initialGeminiModel);
-  const [elevenlabsModel, setElevenlabsModel] = useState(initialElevenlabsModel);
-  const [runwareModel, setRunwareModel] = useState(initialRunwareModel);
   const [rate, setRate] = useState<number>(initialRate);
   const [pitch, setPitch] = useState<number>(initialPitch);
-  const [selectedVoicePresetId, setSelectedVoicePresetId] = useState<string>(
-    draft?.selectedVoicePresetId || ""
-  );
 
-  // Sync draft & editorConfigStore whenever user changes voice settings
+  // Keep the voice draft while switching tabs
   useEffect(() => {
     const voicePayload = {
       provider,
       voice: selectedVoice,
-      model:
-        provider === "gemini"
-          ? geminiModel
-          : provider === "elevenlabs"
-            ? elevenlabsModel
-            : runwareModel,
+      model: TTS_MODEL[provider],
       rate,
       pitch,
       customVoiceInput: draft?.customVoiceInput || "",
-      runwareCustomVoiceInput: draft?.runwareCustomVoiceInput || "",
-      selectedVoicePresetId,
+      selectedVoicePresetId: "",
     };
 
-    setVoiceDraft(project.id, {
-      ...voicePayload,
-      geminiModel,
-      elevenlabsModel,
-      runwareModel,
-    });
-
-    if (project.project_type === "long_storyboard") {
-      useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "voice", voicePayload);
-    } else {
-      useEditorConfigStore.getState().setShortsStepConfig(project.id, "tts", voicePayload);
-    }
-  }, [
-    project.id,
-    project.project_type,
-    provider,
-    selectedVoice,
-    geminiModel,
-    elevenlabsModel,
-    runwareModel,
-    rate,
-    pitch,
-    selectedVoicePresetId,
-    draft?.customVoiceInput,
-    draft?.runwareCustomVoiceInput,
-    setVoiceDraft,
-  ]);
+    setVoiceDraft(project.id, voicePayload);
+  }, [project.id, provider, selectedVoice, rate, pitch, draft?.customVoiceInput, setVoiceDraft]);
 
 
   // Fetch active config to sync saved tts_provider & models
@@ -120,30 +70,11 @@ export function useTTSState({ project }: UseTTSStateProps) {
     if (!appConfig) return;
     hasInitializedConfigRef.current = true;
 
-    if (appConfig.tts_provider) {
-      if (appConfig.tts_provider === "elevenlabs") {
-        setProvider("elevenlabs");
-        setSelectedVoice("Adam");
-      } else if (appConfig.tts_provider === "runware") {
-        setProvider("runware");
-        setSelectedVoice("fishaudio:s2.1@pro");
-      } else if (appConfig.tts_provider === "edge") {
-        setProvider("edge");
-        setSelectedVoice("id-ID-GadisNeural");
-      } else if (appConfig.tts_provider.startsWith("gemini-")) {
-        setGeminiModel(appConfig.tts_provider);
-      }
+    if (appConfig.tts_provider === "elevenlabs") {
+      setProvider("elevenlabs");
+      setSelectedVoice("Adam");
     }
-    if (appConfig.elevenlabs_model) setElevenlabsModel(appConfig.elevenlabs_model);
-    if (appConfig.runware_tts_model) setRunwareModel(appConfig.runware_tts_model);
   }, [appConfig, draft, audio?.provider]);
-
-  const selectedModelObj =
-    provider === "gemini"
-      ? GEMINI_TTS_MODELS.find((m) => m.id === geminiModel) || GEMINI_TTS_MODELS[0]
-      : provider === "elevenlabs"
-        ? ELEVENLABS_TTS_MODELS.find((m) => m.id === elevenlabsModel) || ELEVENLABS_TTS_MODELS[0]
-        : RUNWARE_TTS_MODELS.find((m) => m.id === runwareModel) || RUNWARE_TTS_MODELS[0];
 
   // Sample voice audio state
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
@@ -298,13 +229,9 @@ export function useTTSState({ project }: UseTTSStateProps) {
   useEffect(() => {
     const isEn = projectLanguage === "en";
     if (isEn) {
-      if (selectedVoice.startsWith("id-")) {
-        setSelectedVoice(provider === "edge" ? "en-US-JennyNeural" : "Puck");
-      }
+      if (selectedVoice.startsWith("id-")) setSelectedVoice("Puck");
     } else {
-      if (selectedVoice.startsWith("en-")) {
-        setSelectedVoice(provider === "edge" ? "id-ID-ArdiNeural" : "Puck");
-      }
+      if (selectedVoice.startsWith("en-")) setSelectedVoice("Puck");
     }
   }, [projectLanguage, provider, selectedVoice]);
 
@@ -313,17 +240,12 @@ export function useTTSState({ project }: UseTTSStateProps) {
       setIsGeneratingTTS(true);
       setGenerationProgress(10);
       setGenerationElapsed(0);
-      let activeModel: string | undefined = undefined;
-      if (provider === "gemini") activeModel = geminiModel;
-      else if (provider === "elevenlabs") activeModel = elevenlabsModel;
-      else if (provider === "runware") activeModel = runwareModel;
-
       return api.generateTTS(project.id, {
         provider,
         voice: selectedVoice,
         rate: `${rate >= 0 ? "+" : ""}${rate}%`,
         pitch: `${pitch >= 0 ? "+" : ""}${pitch}Hz`,
-        model: activeModel,
+        model: TTS_MODEL[provider],
         language: projectLanguage,
       });
     },
@@ -446,11 +368,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
     setSampleAudioPlaying(voiceId);
     setLoadingSampleVoiceId(voiceId);
 
-    let modelParam = "";
-    if (provider === "gemini") modelParam = `&model=${encodeURIComponent(geminiModel)}`;
-    else if (provider === "elevenlabs")
-      modelParam = `&model=${encodeURIComponent(elevenlabsModel)}`;
-    else if (provider === "runware") modelParam = `&model=${encodeURIComponent(runwareModel)}`;
+    const modelParam = `&model=${encodeURIComponent(TTS_MODEL[provider] || "")}`;
 
     const sampleUrl = `/api/v1/tts/sample?provider=${encodeURIComponent(provider)}&voice=${encodeURIComponent(voiceId)}${modelParam}&language=${encodeURIComponent(projectLanguage)}&t=${Date.now()}`;
     player.src = sampleUrl;
@@ -522,75 +440,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
   const [customVoiceInput, setCustomVoiceInput] = useState<string>(draft?.customVoiceInput || "");
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Runware custom voice / speaker ID input
-  const [runwareCustomVoiceInput, setRunwareCustomVoiceInput] = useState<string>(
-    draft?.runwareCustomVoiceInput || ""
-  );
-
-  // Voice presets (shared by short & storyboard studios)
-  const [voicePresets, setVoicePresets] = useState<VoicePreset[]>([]);
-  const [showSaveVoiceModal, setShowSaveVoiceModal] = useState(false);
-  const [newVoicePresetName, setNewVoicePresetName] = useState("");
-
-  useEffect(() => {
-    setVoicePresets(presetStorage.getVoicePresets());
-  }, []);
-
-  const handleLoadVoicePreset = (presetId: string) => {
-    setSelectedVoicePresetId(presetId);
-    const found = voicePresets.find((p) => p.id === presetId);
-    if (!found) return;
-    setProvider(found.provider);
-    setSelectedVoice(found.voice);
-    if (found.provider === "gemini") setGeminiModel(found.model);
-    else if (found.provider === "elevenlabs") setElevenlabsModel(found.model);
-    else if (found.provider === "runware") setRunwareModel(found.model);
-    if (found.customVoiceInput) setCustomVoiceInput(found.customVoiceInput);
-    if (found.runwareCustomVoiceInput) setRunwareCustomVoiceInput(found.runwareCustomVoiceInput);
-    setRate(found.rate ?? 0);
-    setPitch(found.pitch ?? 0);
-    showToast(`Preset suara "${found.name}" berhasil dimuat!`, "success");
-  };
-
-  const handleSaveVoicePreset = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newVoicePresetName.trim()) {
-      showToast("Nama preset suara tidak boleh kosong", "error");
-      return;
-    }
-    const model =
-      provider === "gemini"
-        ? geminiModel
-        : provider === "elevenlabs"
-          ? elevenlabsModel
-          : provider === "runware"
-            ? runwareModel
-            : "edge";
-
-    const saved = presetStorage.saveVoicePreset({
-      name: newVoicePresetName.trim(),
-      provider,
-      model,
-      voice: selectedVoice,
-      customVoiceInput: customVoiceInput || undefined,
-      runwareCustomVoiceInput: runwareCustomVoiceInput || undefined,
-      rate,
-      pitch,
-    });
-    setVoicePresets(presetStorage.getVoicePresets());
-    setSelectedVoicePresetId(saved.id);
-    setNewVoicePresetName("");
-    setShowSaveVoiceModal(false);
-    showToast(`Preset suara "${saved.name}" berhasil disimpan!`, "success");
-  };
-
-  const handleDeleteVoicePreset = (id: string, name: string) => {
-    presetStorage.deleteVoicePreset(id);
-    setVoicePresets(presetStorage.getVoicePresets());
-    if (selectedVoicePresetId === id) setSelectedVoicePresetId("");
-    showToast(`Preset suara "${name}" dihapus`, "info");
-  };
-
   const handleSyncElevenLabsVoices = async () => {
     setIsSyncingElevenLabs(true);
     setSyncError(null);
@@ -632,13 +481,8 @@ export function useTTSState({ project }: UseTTSStateProps) {
 
   const isEnProject = projectLanguage === "en";
   const filteredVoices = rawVoicesList.filter((v) => {
-    if (isEnProject) {
-      if (v.provider === "edge") return v.id.startsWith("en-");
-      return !v.id.startsWith("id-") && !v.id.startsWith("ja-");
-    } else {
-      if (v.provider === "edge") return v.id.startsWith("id-");
-      return !v.id.startsWith("en-") && !v.id.startsWith("ja-");
-    }
+    if (isEnProject) return !v.id.startsWith("id-") && !v.id.startsWith("ja-");
+    return !v.id.startsWith("en-") && !v.id.startsWith("ja-");
   });
 
   return {
@@ -653,28 +497,11 @@ export function useTTSState({ project }: UseTTSStateProps) {
     setProvider,
     selectedVoice,
     setSelectedVoice,
-    geminiModel,
-    setGeminiModel,
-    elevenlabsModel,
-    setElevenlabsModel,
-    runwareModel,
-    setRunwareModel,
-    selectedModelObj,
     // Tuning params
     rate,
     setRate,
     pitch,
     setPitch,
-    // Voice presets
-    voicePresets,
-    selectedVoicePresetId,
-    showSaveVoiceModal,
-    setShowSaveVoiceModal,
-    newVoicePresetName,
-    setNewVoicePresetName,
-    handleLoadVoicePreset,
-    handleSaveVoicePreset,
-    handleDeleteVoicePreset,
     // Voices list & filtering
     voices,
     filteredVoices,
@@ -712,9 +539,6 @@ export function useTTSState({ project }: UseTTSStateProps) {
     setCustomVoiceInput,
     syncError,
     handleSyncElevenLabsVoices,
-    // Runware custom voice input
-    runwareCustomVoiceInput,
-    setRunwareCustomVoiceInput,
     // Realignment & Timing
     offsetMs,
     isEditTimingMode,

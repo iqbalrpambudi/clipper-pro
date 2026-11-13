@@ -4,10 +4,8 @@ from typing import Optional
 
 from app.core.config import get_settings
 from app.services.tts.constants import AVAILABLE_VOICES
-from app.services.tts.providers.edge import generate_edge_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
 from app.services.tts.providers.gemini import generate_gemini_tts
-from app.services.tts.providers.runware import generate_runware_tts
 
 
 async def get_or_generate_voice_sample(
@@ -26,7 +24,7 @@ async def get_or_generate_voice_sample(
 
     clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
     clean_voice = re.sub(r"[^\w\-]", "", voice)
-    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs", "runware") else ""
+    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs") else ""
     target_lang = (language or ("en" if voice.startswith("en-") else "id")).strip().lower()
     suffix = f"_{clean_model}" if clean_model else ""
     sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}_{target_lang}.mp3"
@@ -59,15 +57,6 @@ async def get_or_generate_voice_sample(
             model=model or "eleven_multilingual_v2",
             language=target_lang,
         )
-    elif clean_prov == "runware":
-        await generate_runware_tts(
-            sample_text,
-            str(sample_path),
-            api_key=api_key,
-            voice=voice,
-            model=model or "fishaudio:s2.1@pro",
-            language=target_lang,
-        )
     elif clean_prov == "gemini":
         await generate_gemini_tts(
             sample_text,
@@ -78,12 +67,6 @@ async def get_or_generate_voice_sample(
             pitch="+0Hz",
             model=model,
             language=target_lang,
-        )
-    else:
-        await generate_edge_tts(
-            sample_text,
-            str(sample_path),
-            voice=voice,
         )
 
     return sample_path

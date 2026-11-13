@@ -10,12 +10,8 @@ def estimate_tts_cost(text: str, provider: str = "gemini") -> CostEstimateRespon
     prov = provider.lower()
     if prov == "elevenlabs":
         rate_per_char = 0.00025  # ~ $0.25 - $0.30 per 1,000 characters
-    elif prov == "runware":
-        rate_per_char = 0.00005  # ~ $0.05 per 1,000 characters
-    elif prov == "gemini":
-        rate_per_char = 0.000004  # ~ $4 per 1M characters ($0.004 per 1k)
     else:
-        rate_per_char = 0.0  # Edge-TTS is free
+        rate_per_char = 0.000004  # gemini ~ $4 per 1M characters
 
     est_cost = round(char_count * rate_per_char, 4)
 

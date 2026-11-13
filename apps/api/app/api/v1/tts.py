@@ -119,15 +119,6 @@ async def get_voice_sample(
             api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
         if not api_key:
             api_key = getattr(settings, "ELEVENLABS_API_KEY", "") or ""
-    elif clean_prov == "runware":
-        tts_model = model or (getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") if cfg else "fishaudio:s2.1@pro")
-        if cfg:
-            if getattr(cfg, "runware_api_key_encrypted", None):
-                api_key = decrypt_secret(cfg.runware_api_key_encrypted)
-            elif cfg.image_api_key_encrypted:
-                api_key = decrypt_secret(cfg.image_api_key_encrypted)
-        if not api_key:
-            api_key = getattr(settings, "IMAGE_API_KEY", "") or ""
     elif clean_prov == "gemini":
         tts_model = model or "gemini-2.5-flash-preview-tts"
         if cfg:
@@ -140,7 +131,7 @@ async def get_voice_sample(
         if not api_key:
             api_key = getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
     else:
-        tts_model = model or "edge"
+        raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
     try:
         sample_path = await get_or_generate_voice_sample(
@@ -194,14 +185,8 @@ async def trigger_tts_generation(
         voice = "Puck"
     elif provider == "elevenlabs":
         voice = "Adam"
-    elif provider == "runware":
-        voice = "fishaudio:s2.1@pro"
     else:
-        voice = "en-US-JennyNeural" if target_lang == "en" else "id-ID-GadisNeural"
-
-    # If edge provider is selected for English narration but an ID voice was left, auto-switch to English voice
-    if provider == "edge" and target_lang == "en" and voice.startswith("id-"):
-        voice = "en-US-JennyNeural"
+        raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
     # Estimate cost
     cost_est = estimate_tts_cost(narration.raw_text, provider)

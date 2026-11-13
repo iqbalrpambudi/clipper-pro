@@ -12,7 +12,7 @@ async def test_tts_connection(
     model: Optional[str] = None,
     voice: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Test connection and credentials for TTS provider (Gemini, ElevenLabs, Runware, Edge)."""
+    """Test connection and credentials for TTS provider (Gemini, ElevenLabs)."""
     clean_prov = provider.lower().strip()
     start_time = time.time()
     try:
@@ -50,48 +50,6 @@ async def test_tts_connection(
                         "latency_ms": latency,
                         "message": f"Koneksi ElevenLabs gagal: {r.text[:200]}",
                     }
-        elif clean_prov == "runware":
-            key = (api_key or "").strip()
-            if not key:
-                settings = get_settings()
-                key = (settings.IMAGE_API_KEY or "").strip()
-            if not key:
-                return {
-                    "success": False,
-                    "provider_status": "Missing API Key",
-                    "latency_ms": 0,
-                    "message": "Runware API Key belum diisi.",
-                }
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.post(
-                    "https://api.runware.ai/v1",
-                    json=[{"taskType": "authentication", "apiKey": key}],
-                    headers={"Content-Type": "application/json"},
-                )
-                latency = int((time.time() - start_time) * 1000)
-                if r.status_code == 200:
-                    res_json = r.json()
-                    errors = res_json.get("errors", [])
-                    if errors:
-                        return {
-                            "success": False,
-                            "provider_status": "Auth Error",
-                            "latency_ms": latency,
-                            "message": f"Autentikasi Runware gagal: {errors[0].get('message')}",
-                        }
-                    return {
-                        "success": True,
-                        "provider_status": "Connected (Runware TTS)",
-                        "latency_ms": latency,
-                        "message": "Koneksi Runware API berhasil terhubung!",
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "provider_status": f"HTTP {r.status_code}",
-                        "latency_ms": latency,
-                        "message": f"Koneksi Runware gagal: {r.text[:200]}",
-                    }
         elif clean_prov == "gemini":
             key = (api_key or "").strip()
             if not key:
@@ -122,13 +80,8 @@ async def test_tts_connection(
                         "latency_ms": latency,
                         "message": f"Gagal validasi model Gemini TTS: {r.text[:200]}",
                     }
-        else:  # edge
-            return {
-                "success": True,
-                "provider_status": "Ready (Edge-TTS)",
-                "latency_ms": 10,
-                "message": "Edge-TTS Natural Indonesian siap digunakan (Gratis).",
-            }
+        else:
+            return {"success": False, "provider_status": "Unknown", "latency_ms": 0, "message": f"Provider TTS tidak dikenal: {provider}"}
     except Exception as e:
         latency = int((time.time() - start_time) * 1000)
         return {

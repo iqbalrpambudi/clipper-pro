@@ -13,7 +13,6 @@ from app.services.tts import (
 )
 from app.services.tts.audio_utils import _split_text_for_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
-from app.services.tts.providers.runware import generate_runware_tts
 
 
 def test_estimate_tts_cost():
@@ -97,15 +96,6 @@ def test_tts_generate_request_accepts_model():
     assert req.model == "gemini-2.5-flash-preview-tts"
 
 
-def test_edge_tts_normalization():
-    from app.services.tts.providers.edge import normalize_edge_text
-
-    raw = "Ini teks dengan *markdown* dan _formatting_ & simbol > 100!"
-    norm = normalize_edge_text(raw)
-    assert "*" not in norm
-    assert "_" not in norm
-    assert ">" not in norm
-
 
 @pytest.mark.asyncio
 async def test_generate_speech_audio_empty_text():
@@ -115,37 +105,23 @@ async def test_generate_speech_audio_empty_text():
 
 @pytest.mark.asyncio
 async def test_generate_speech_audio_provider_error_propagates_without_fallback():
-    edge_called = False
-
-    async def fake_edge(text, voice, output_path, speed_ratio=1.0):
-        nonlocal edge_called
-        edge_called = True
-        Path(output_path).touch()
-
     with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota error")):
-        with patch("app.services.tts.dispatcher.generate_edge_tts", side_effect=fake_edge):
-            with pytest.raises(RuntimeError, match="Gemini quota error"):
-                await generate_speech_audio(
-                    text="Halo dunia",
-                    voice="Puck",
-                    output_path="/tmp/test_fb.mp3",
-                    provider="gemini",
-                    api_key="valid-key",
-                )
-    assert edge_called is False
+        with pytest.raises(RuntimeError, match="Gemini quota error"):
+            await generate_speech_audio(
+                text="Halo dunia",
+                voice="Puck",
+                output_path="/tmp/test_fb.mp3",
+                provider="gemini",
+                api_key="valid-key",
+            )
 
-def test_elevenlabs_and_runware_voices_exist():
-    el_voices = [v for v in AVAILABLE_VOICES if v.provider == "elevenlabs"]
-    rw_voices = [v for v in AVAILABLE_VOICES if v.provider == "runware"]
-    assert len(el_voices) > 0
-    assert len(rw_voices) > 0
+def test_only_gemini_and_elevenlabs_voices():
+    assert {v.provider for v in AVAILABLE_VOICES} == {"gemini", "elevenlabs"}
 
 
 def test_tts_cost_estimates_all_providers():
     gemini_est = estimate_tts_cost("Test 1234", provider="gemini")
-    edge_est = estimate_tts_cost("Test 1234", provider="edge")
     el_est = estimate_tts_cost("Test 1234", provider="elevenlabs")
-    assert edge_est.estimated_cost_usd == 0.0
     assert el_est.estimated_cost_usd > gemini_est.estimated_cost_usd
 
 
@@ -181,22 +157,6 @@ async def test_elevenlabs_character_limit_blocks_fallback(monkeypatch):
         )
 
 
-@pytest.mark.asyncio
-async def test_runware_tts_missing_key_throws_error():
-    with pytest.raises(ValueError, match="RUNWARE_API_KEY"):
-        await generate_runware_tts(text="Halo", voice="fishaudio:s2.1@pro", output_path="/tmp/rw.mp3", api_key="")
-
-
-@pytest.mark.asyncio
-async def test_test_tts_connection_edge_and_missing_keys():
-    # Edge needs no api key
-    ok, msg = await test_tts_connection(provider="edge")
-    assert ok is True
-
-    # Elevenlabs without key fails
-    ok_el, msg_el = await test_tts_connection(provider="elevenlabs", api_key="")
-    assert ok_el is False
-    assert "tidak ditemukan" in msg_el
 
 
 @pytest.mark.asyncio

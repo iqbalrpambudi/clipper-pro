@@ -18,7 +18,6 @@ from app.services.cancellation import (
     is_cancelled,
 )
 from app.services.matching import match_scenes_to_segments
-from app.services.storyboard import sync_storyboard_timing_from_alignment
 from app.services.tts import estimate_tts_cost, generate_speech_audio, get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ async def generate_tts_and_align_job(
         await db.commit()
 
         clean_prov = provider.lower().strip()
-        display_target = f"{model or voice}" if clean_prov in ("gemini", "elevenlabs", "runware") else voice
+        display_target = f"{model or voice}" if clean_prov in ("gemini", "elevenlabs") else voice
         await publish_project_event(
             project_id,
             task_type="tts_align",
@@ -72,13 +71,6 @@ async def generate_tts_and_align_job(
                 tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
                 if cfg and cfg.elevenlabs_api_key_encrypted:
                     api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
-            elif clean_prov == "runware":
-                tts_model = model or (getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") if cfg else "fishaudio:s2.1@pro")
-                if cfg:
-                    if getattr(cfg, "runware_api_key_encrypted", None):
-                        api_key = decrypt_secret(cfg.runware_api_key_encrypted)
-                    elif cfg.image_api_key_encrypted:
-                        api_key = decrypt_secret(cfg.image_api_key_encrypted)
             elif clean_prov == "gemini":
                 tts_model = model or "gemini-2.5-flash-preview-tts"
                 if cfg:
@@ -89,7 +81,7 @@ async def generate_tts_and_align_job(
                     if not model and cfg.tts_provider and cfg.tts_provider.startswith("gemini-"):
                         tts_model = cfg.tts_provider
             else:
-                tts_model = model or "edge"
+                raise ValueError(f"Provider TTS tidak dikenal: {provider}")
 
             # Step 1: TTS generation with per-segment chunking to prevent silent segment 2
             duration = await generate_speech_audio(
@@ -225,12 +217,6 @@ async def generate_tts_and_align_job(
                     await db.commit()
                 except Exception as scene_err:
                     log.warning("Scene matching after TTS failed (non-fatal): %s", scene_err)
-
-            # Auto-sync storyboard item timing if this project has storyboard items
-            try:
-                await sync_storyboard_timing_from_alignment(db, project_id, aligned_segments)
-            except Exception as sb_err:
-                log.warning("Auto sync storyboard timing after TTS failed (non-fatal): %s", sb_err)
 
             await publish_project_event(
                 project_id,

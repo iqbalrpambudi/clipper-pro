@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,12 +12,24 @@ from app.services.tts.audio_utils import (
     _split_text_for_tts,
 )
 from app.services.tts.exceptions import ElevenLabsCharacterLimitError
-from app.services.tts.providers.edge import generate_edge_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
 from app.services.tts.providers.gemini import generate_gemini_tts
-from app.services.tts.providers.runware import generate_runware_tts
 
 log = logging.getLogger(__name__)
+
+def clean_narration_for_tts(text: str) -> str:
+    """Strip bracket tags and colons/semicolons so TTS never stumbles."""
+    if not text or not isinstance(text, str):
+        return ""
+    cleaned = re.sub(r"\[.*?\]", "", text)
+    cleaned = re.sub(r"(\d+):(\d+)", r"\1.\2", cleaned)
+    cleaned = re.sub(r"\s*;\s*", ", ", cleaned)
+    cleaned = re.sub(r"\s*:\s*", ", ", cleaned)
+    cleaned = re.sub(r",(\s*,)+", ",", cleaned)
+    cleaned = re.sub(r",\s*([.!?])", r"\1", cleaned)
+    cleaned = re.sub(r",\s*$", ".", cleaned)
+    return " ".join(cleaned.split())
+
 
 
 async def generate_speech_audio(
@@ -27,18 +40,16 @@ async def generate_speech_audio(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     api_key: Optional[str] = None,
-    model: str = "gemini-2.5-flash-preview-tts",
+    model: Optional[str] = None,
     segments: Optional[List[Dict[str, Any]]] = None,
     language: Optional[str] = "id",
     project_id: Optional[str] = None,
 ) -> float:
     """Entrypoint for TTS audio generation.
 
-    Supports Gemini, ElevenLabs, Runware, and Edge-TTS.
+    Supports Gemini and ElevenLabs.
     - ElevenLabs: Industry benchmark for zero tone drift. Handles single-pass generation up to 40,000 chars.
-    - Runware TTS: Ultra-fast & cost-effective (Fish Audio / Qwen3 TTS). Single-pass up to 1,200 chars.
     - Gemini TTS: High-fidelity multimodal audio. Single-pass extended up to 2,200 chars (~2.5 mins) to prevent intonation drift.
-    - Edge-TTS: Free neural speech provider.
 
     Provider errors propagate to the caller so the user sees the failure; there is
     no automatic fallback to another provider.
@@ -47,7 +58,6 @@ async def generate_speech_audio(
     if not clean_text:
         raise ValueError("Teks narasi tidak boleh kosong.")
 
-    from app.services.storyboard import clean_narration_for_tts
     clean_text = clean_narration_for_tts(clean_text)
     prov = provider.lower().strip()
     target_lang = (language or "id").strip().lower()
@@ -144,71 +154,6 @@ async def generate_speech_audio(
                 log.error("ElevenLabs TTS failed: %s", e)
                 raise
 
-        # 2. RUNWARE TTS
-        elif prov == "runware":
-            try:
-                if len(block_text) <= 1200:
-                    return await generate_runware_tts(
-                        block_text,
-                        block_output_path,
-                        api_key=api_key,
-                        model=model or "fishaudio:s2.1@pro",
-                        voice=voice,
-                        rate=rate,
-                        pitch=pitch,
-                        language=target_lang,
-                    )
-
-                chunks = _split_text_for_tts(block_text, max_chars=900)
-                if len(chunks) == 1:
-                    return await generate_runware_tts(
-                        chunks[0],
-                        block_output_path,
-                        api_key=api_key,
-                        model=model or "fishaudio:s2.1@pro",
-                        voice=voice,
-                        rate=rate,
-                        pitch=pitch,
-                        language=target_lang,
-                    )
-
-                out_p = Path(block_output_path)
-                parts = []
-                try:
-                    for i, chunk in enumerate(chunks):
-                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
-                        try:
-                            await generate_runware_tts(
-                                chunk,
-                                part_path,
-                                api_key=api_key,
-                                model=model or "fishaudio:s2.1@pro",
-                                voice=voice,
-                                rate=rate,
-                                pitch=pitch,
-                                language=target_lang,
-                            )
-                            parts.append(part_path)
-                        except Exception as chunk_err:
-                            if parts:
-                                try:
-                                    await _concat_mp3s(parts, block_output_path)
-                                except Exception:
-                                    pass
-                            raise RuntimeError(
-                                f"Sintesis Runware TTS terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
-                            ) from chunk_err
-                        if i < len(chunks) - 1:
-                            await asyncio.sleep(0.3)
-
-                    return await _concat_mp3s(parts, block_output_path)
-                finally:
-                    for p in parts:
-                        Path(p).unlink(missing_ok=True)
-            except Exception as e:
-                log.error("Runware TTS failed: %s", e)
-                raise
-
         # 3. GEMINI TTS
         elif prov == "gemini":
             try:
@@ -281,24 +226,8 @@ async def generate_speech_audio(
                 log.error("Gemini TTS failed: %s", e)
                 raise
 
-        # 4. EDGE-TTS
         else:
-            try:
-                edge_v = voice
-                if target_lang == "en" and (edge_v in ("id-ID-GadisNeural", "id-ID-ArdiNeural", "default") or not edge_v.startswith("en-")):
-                    edge_v = "en-US-JennyNeural"
-                elif target_lang != "en" and edge_v.startswith("en-") and edge_v in ("en-US-JennyNeural", "default"):
-                    edge_v = "id-ID-GadisNeural"
-                return await generate_edge_tts(
-                    block_text,
-                    block_output_path,
-                    voice=edge_v,
-                    rate=rate,
-                    pitch=pitch,
-                )
-            except Exception as e:
-                log.error("Edge-TTS synthesis failed: %s", e)
-                raise
+            raise ValueError(f"TTS provider tidak dikenal: {prov}")
 
     # Multi-chapter YouTube breathing pause (~1.2s silence between distinct chapters)
     raw_chapter_blocks = _group_segments_by_chapter(segments)

@@ -85,13 +85,21 @@ async def generate_gemini_tts(
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent?key={key}"
 
+    # Gemini TTS renders the whole clip before replying: ~55 s audio often takes 30-90 s.
+    resp = None
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, json=payload)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=15.0)) as client:
+            for attempt in (1, 2):
+                try:
+                    resp = await client.post(url, json=payload)
+                    break
+                except httpx.TimeoutException as te:
+                    log.warning("Gemini TTS timeout (attempt %d/2): %s", attempt, te)
+                    if attempt == 2 or (project_id and await is_cancelled(project_id)):
+                        raise
     except httpx.TimeoutException as te:
-        log.error("Gemini TTS request timeout (25s): %s", te)
         raise RuntimeError(
-            f"Koneksi ke Gemini TTS ({clean_model}) timeout (25 detik). Server Gemini tidak merespons tepat waktu."
+            f"Gemini TTS ({clean_model}) timeout 2x (120 detik). Server Gemini lambat, coba lagi atau pakai ElevenLabs."
         ) from te
     except httpx.RequestError as re:
         log.error("Gemini TTS network request error: %s", re)

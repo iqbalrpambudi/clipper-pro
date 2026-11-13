@@ -25,8 +25,14 @@ async def get_audio_duration(file_path: str) -> float:
         return 0.0
 
 
-def _build_audio_filter(rate: str = "+0%", pitch: str = "+0Hz", base_sample_rate: int = 24000) -> str:
-    """Build FFmpeg audio filter string for rate (speed/tempo) and pitch adjustments."""
+def _build_audio_filter(
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+    base_sample_rate: int = 24000,
+    tighten_silence: bool = True,
+    broadcast_eq: bool = True,
+) -> str:
+    """Build FFmpeg audio filter string for rate (speed/tempo), pitch, silence-tightening, and broadcast vocal EQ."""
     def parse_rate(s: Optional[str]) -> float:
         if not s:
             return 1.0
@@ -68,6 +74,13 @@ def _build_audio_filter(rate: str = "+0%", pitch: str = "+0Hz", base_sample_rate
     pitch_factor = parse_pitch(pitch)
 
     filters = []
+    if tighten_silence:
+        # Trim dead-air pauses > 0.18s between sentences so voiceover pacing feels snappy & creator-grade
+        filters.append(
+            "silenceremove=start_periods=1:start_duration=0.05:start_threshold=-42dB:"
+            "stop_periods=-1:stop_duration=0.18:stop_threshold=-42dB"
+        )
+
     if abs(pitch_factor - 1.0) > 0.001:
         new_sr = int(base_sample_rate * pitch_factor)
         filters.append(f"asetrate={new_sr}")
@@ -87,6 +100,11 @@ def _build_audio_filter(rate: str = "+0%", pitch: str = "+0Hz", base_sample_rate
 
     if abs(pitch_factor - 1.0) > 0.001:
         filters.append(f"aresample={base_sample_rate}")
+
+    if broadcast_eq:
+        # Clean sub-bass rumble and boost vocal clarity/articulation around 3.2kHz
+        filters.append("highpass=f=75")
+        filters.append("equalizer=f=3200:t=q:w=1.2:g=2.0")
 
     return ",".join(filters)
 
