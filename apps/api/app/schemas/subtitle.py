@@ -10,7 +10,7 @@ FontFamily = Literal["Montserrat", "Poppins", "Bebas Neue", "BebasNeue", "Inter"
 class SubtitleStyleIn(BaseModel):
     preset_name: str = Field("pop_kuning", max_length=50)
     enabled: bool = True
-    font_family: FontFamily = "Montserrat"
+    font_family: FontFamily = "Poppins"
     font_size: int = Field(58, ge=20, le=140)
     highlight_color: str = Field("#FFE600", pattern=_HEX_COLOR)
     position: Literal["bottom", "center"] = "bottom"

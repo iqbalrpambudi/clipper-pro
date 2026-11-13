@@ -53,7 +53,7 @@ class SubtitleStyle(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False)
-    font_family: Mapped[str] = mapped_column(String(100), default="Montserrat")
+    font_family: Mapped[str] = mapped_column(String(100), default="Poppins")
     font_size: Mapped[int] = mapped_column(Integer, default=58)
     font_weight: Mapped[str] = mapped_column(String(20), default="Bold")
     primary_color: Mapped[str] = mapped_column(String(20), default="#FFFFFF")

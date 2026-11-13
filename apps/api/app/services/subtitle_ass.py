@@ -56,7 +56,7 @@ def ms_to_srt_time(ms: int) -> str:
 STYLE_DEFAULTS: Dict[str, Any] = {
     "enabled": True,
     "preset_name": "pop_kuning",
-    "font_family": "Montserrat",
+    "font_family": "Poppins",
     "font_size": 58,
     "highlight_color": "#FFE600",
     "position": "bottom",  # bottom | center
