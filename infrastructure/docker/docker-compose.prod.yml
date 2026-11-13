@@ -22,14 +22,10 @@ services:
       context: ../../apps/web
       target: prod
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        VITE_API_URL: ${VITE_API_URL:-}
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-3030}:3030"
-    environment:
-      NODE_ENV: production
-      INTERNAL_API_URL: http://api:8080
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     depends_on:
       api:
         condition: service_started
