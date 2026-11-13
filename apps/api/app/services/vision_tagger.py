@@ -10,21 +10,25 @@ log = logging.getLogger(__name__)
 # (diinject dari DB karena akurat), relationship dihitung rule-based.
 VISION_PROMPT = (
     "Analisis frame video ini secara terstruktur dalam Bahasa Indonesia. Berikan:\n"
-    "- description: ringkasan visual 2 kalimat; sebutkan warna dominan, gerakan kamera/subjek, "
-    "dan mood adegan (tegang/hangat/melankolis dll) supaya mudah dicocokkan dengan narasi\n"
+    "- description: ringkasan visual 2 kalimat; sebutkan aksi fisik utama, detail proses/tekstur, gerakan kamera/subjek, "
+    "dan mood adegan supaya mudah dicocokkan dengan narasi\n"
     "- characters: daftar orang/karakter/hewan yang terlihat (nama/deskripsi singkat, kosongkan jika tidak ada)\n"
-    "- action: aksi/aktivitas utama yang sedang terjadi (frasa singkat)\n"
+    "- action: aksi/aktivitas fisik utama yang sedang terjadi (frasa singkat)\n"
     "- location: tempat/latar scene\n"
-    "- objects: objek penting yang terlihat\n"
-    "- state: suasana/keadaan (emosi, waktu, cuaca, kondisi)\n"
+    "- objects: objek/mesin/alat penting yang terlihat\n"
+    "- state: suasana/keadaan (emosi, waktu, suhu/kondisi fisik)\n"
+    "- visual_satisfaction: angka 0.0-1.0 seberapa satisfying/dinamis visual ini untuk YouTube Shorts "
+    "(0.85-1.0 = aksi presisi tinggi, percikan, pemotongan, transformasi jelas, close-up detail mekanis; "
+    "0.5-0.8 = proses kerja aktif; 0.1-0.3 = gambar statis kosong, talking-head membosankan, atau blur)\n"
+    "- focal_point: posisi objek utama di layar ('center', 'left', atau 'right')\n"
     "- confidence: angka 0.0-1.0 seberapa yakin analisis ini akurat\n"
-    "- tags: 5-8 kata kunci relevan, termasuk warna dominan, gerakan, dan mood\n"
-    'Contoh format JSON: {"description": "Pria berbaju hitam menyeduh kopi di meja bar kayu. '
-    'Cahaya kuning hangat dari lampu gantung, kamera statis, suasana santai.", '
-    '"characters": ["pria berbaju hitam"], "action": "menyeduh kopi", '
-    '"location": "kafe", "objects": ["cangkir", "mesin espresso"], '
-    '"state": "siang, santai", "confidence": 0.85, '
-    '"tags": ["kopi", "barista", "kafe", "kuning hangat", "kamera statis", "santai"]}'
+    "- tags: 5-8 kata kunci relevan, termasuk aksi fisik, alat, dan mood\n"
+    'Contoh format JSON: {"description": "Mesin laser presisi memotong pelat baja tebal dengan percikan api terang. '
+    'Kamera fokus dekat pada garis potong yang rapi dan berkilau.", '
+    '"characters": [], "action": "memotong pelat baja dengan laser", '
+    '"location": "bengkel pabrik", "objects": ["mesin CNC laser", "pelat baja"], '
+    '"state": "intens, presisi tinggi", "visual_satisfaction": 0.92, "focal_point": "center", "confidence": 0.9, '
+    '"tags": ["laser", "baja", "percikan api", "presisi", "satisfying", "pabrik"]}'
 )
 
 
@@ -46,12 +50,24 @@ def parse_scene_analysis(raw: Dict[str, Any]) -> Dict[str, Any]:
         confidence = 0.5
     confidence = max(0.0, min(1.0, confidence))
 
+    try:
+        visual_satisfaction = float(raw.get("visual_satisfaction", 0.65))
+    except (TypeError, ValueError):
+        visual_satisfaction = 0.65
+    visual_satisfaction = max(0.0, min(1.0, visual_satisfaction))
+
+    focal_point = str(raw.get("focal_point") or "center").strip().lower()
+    if focal_point not in ("center", "left", "right"):
+        focal_point = "center"
+
     return {
         "characters": _str_list(raw.get("characters")),
         "action": str(raw.get("action") or "").strip(),
         "location": str(raw.get("location") or "").strip(),
         "objects": _str_list(raw.get("objects")),
         "state": str(raw.get("state") or "").strip(),
+        "visual_satisfaction": round(visual_satisfaction, 2),
+        "focal_point": focal_point,
         "confidence": round(confidence, 2),
     }
 
@@ -63,6 +79,8 @@ def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
         "location": "",
         "objects": list(tags or []),
         "state": "",
+        "visual_satisfaction": 0.6,
+        "focal_point": "center",
         "confidence": 0.3,
     }
 

@@ -11,11 +11,8 @@ import {
   Loader2,
   CheckCircle2,
   Play,
-  RefreshCw,
   Mic,
   MessageSquare,
-  Wrench,
-  MoreVertical,
   StopCircle,
   Scissors,
   Zap,
@@ -37,7 +34,6 @@ import {
   useYTInfo,
   useRetagScenes,
   useTranscribeScenes,
-  useRepairThumbnails,
 } from "@/hooks/useMediaPool";
 import {
   Button,
@@ -50,11 +46,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@/components/ui";
 import { Toolbar, Dropzone, EmptyState } from "@/components/fragments";
 
@@ -73,6 +64,12 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const [isYTOpen, setIsYTOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState(savedMedia.ytUrl || "");
   const [ytInfo, setYtInfo] = useState<YTInfoResponse | null>(null);
+  const [ytStart, setYtStart] = useState("");
+  const [ytEnd, setYtEnd] = useState("");
+  const ytTrim = {
+    start_sec: ytStart.trim() ? Number(ytStart) : undefined,
+    end_sec: ytEnd.trim() ? Number(ytEnd) : undefined,
+  };
 
   useEffect(() => {
     setShortsStepConfig(project.id, "mediaPool", { ytUrl });
@@ -121,13 +118,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const inspectYTMutation = useYTInfo(project.id);
   const retagMutation = useRetagScenes(project.id);
   const transcribeMutation = useTranscribeScenes(project.id);
-  const repairThumbnailsMutation = useRepairThumbnails(project.id);
   const deleteMutation = useDeleteMedia(project.id);
   const cancelMediaMutation = useCancelMedia(project.id);
   const downloadYTMutation = useDownloadYT(project.id);
   const uploadMediaMutation = useUploadMedia(project.id);
-
-  const brokenCount = Object.keys(brokenThumbnails).length;
 
   const untaggedCount = project.scenes.filter(
     (s) => !s.description || s.description === "Cuplikan video aksi/aktivitas"
@@ -211,9 +205,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
     e.preventDefault();
     if (!ytUrl.trim()) return;
     setYtInfo(null);
-    inspectYTMutation.mutate(ytUrl.trim(), {
-      onSuccess: (info) => setYtInfo(info),
-    });
+    inspectYTMutation.mutate(
+      { url: ytUrl.trim(), trim: ytTrim },
+      { onSuccess: (info) => setYtInfo(info) }
+    );
   };
 
   const handleRetag = (mode: "quick" | "force") => {
@@ -243,7 +238,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const handleDownloadYT = async (formatId: string) => {
     setDownloadingFormatId(formatId);
     downloadYTMutation.mutate(
-      { url: ytUrl.trim(), formatId, title: ytInfo?.title },
+      { url: ytUrl.trim(), formatId, title: ytInfo?.title, trim: ytTrim },
       {
         onSettled: () => setDownloadingFormatId(null),
         onSuccess: () => {
@@ -282,7 +277,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             className="gap-1.5"
           >
             <Youtube className="h-4 w-4 text-[#A9472C]" />
-            <span>Impor YouTube</span>
+            <span>Impor dari URL</span>
           </Button>
         }
       />
@@ -304,7 +299,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
           <EmptyState
             icon={Film}
             title="Belum Ada Video di Media Pool"
-            description="Upload materi video mentah atau impor dari YouTube di atas untuk memulai deteksi visual AI."
+            description="Upload video mentah atau impor dari URL (YouTube, Bilibili, Douyin, TikTok, VK) di atas untuk memulai deteksi visual AI."
             action={
               <Button
                 variant="workspace-primary"
@@ -313,7 +308,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 className="gap-1.5"
               >
                 <Youtube className="w-4 h-4 text-[#A9472C]" />
-                <span>Impor dari YouTube</span>
+                <span>Impor dari URL</span>
               </Button>
             }
           />
@@ -648,48 +643,6 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                   )}
                 </Button>
 
-                {/* More Options Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 border-border px-2">
-                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent appearance="workspace" align="end" className="w-48">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Tagging ulang seluruh ${project.scenes.length} scene dari awal menggunakan vision model ${
-                              modelConfig?.vision_model || "aktif"
-                            }?`
-                          )
-                        ) {
-                          handleRetag("force");
-                        }
-                      }}
-                      disabled={retagMutation.isPending || project.scenes.length === 0}
-                      className="gap-2 text-xs cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>Force Tagging (Semua)</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setBrokenThumbnails({});
-                        repairThumbnailsMutation.mutate();
-                      }}
-                      disabled={repairThumbnailsMutation.isPending}
-                      className="gap-2 text-xs cursor-pointer text-[#8A6A2F] focus:text-[#8A6A2F]"
-                    >
-                      <Wrench className="w-3.5 h-3.5" />
-                      <span>Perbaiki Thumbnail {brokenCount > 0 ? `(${brokenCount})` : ""}</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             }
           />
@@ -886,10 +839,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             <DialogHeader>
               <div className="flex items-center gap-2">
                 <Youtube className="w-5 h-5 text-[#A9472C]" />
-                <DialogTitle>Impor Video dari YouTube</DialogTitle>
+                <DialogTitle>Impor Video dari URL</DialogTitle>
               </div>
               <DialogDescription>
-                Masukkan URL video YouTube untuk memeriksa dan memilih resolusi download.
+                Tempel URL video (YouTube, Bilibili, Douyin, TikTok, VK, Rutube) untuk memeriksa dan memilih resolusi.
               </DialogDescription>
             </DialogHeader>
 
@@ -897,7 +850,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
               <Input
                 type="url"
                 required
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder="https://www.youtube.com/watch?v=... atau https://www.bilibili.com/video/..."
                 value={ytUrl}
                 onChange={(e) => setYtUrl(e.target.value)}
                 className="flex-1"
@@ -920,6 +873,26 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                 )}
               </Button>
             </form>
+            <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+              <span className="shrink-0">Potong (detik, opsional):</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="mulai"
+                value={ytStart}
+                onChange={(e) => setYtStart(e.target.value)}
+                className="h-8 w-24 text-xs"
+              />
+              <span>–</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="selesai"
+                value={ytEnd}
+                onChange={(e) => setYtEnd(e.target.value)}
+                className="h-8 w-24 text-xs"
+              />
+            </div>
 
             {/* Inspect Result */}
             {ytInfo && (

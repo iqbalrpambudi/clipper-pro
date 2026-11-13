@@ -72,6 +72,8 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 progress_callback=_progress,
                 project_id=video.project_id,
                 video_id=video.id,
+                start_sec=video.trim_start,
+                end_sec=video.trim_end,
             )
 
             if await is_cancelled(video.project_id, video_id=video_id):

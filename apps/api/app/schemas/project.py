@@ -40,7 +40,7 @@ ProjectWatermarkUpdate = WatermarkSchema
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
-    project_type: str = "short_video"  # short_video | long_storyboard
+    project_type: str = "short_video"  
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
     language: str = "id"  # id | en
@@ -141,7 +141,6 @@ class ProjectResponse(ProjectBase):
     updated_at: datetime
     source_video_count: int = 0
     scene_count: int = 0
-    storyboard_count: int = 0
     youtube_metadata: Optional[Dict[str, Any]] = None
     characters: Optional[List[Dict[str, Any]]] = None
     locations: Optional[List[Dict[str, Any]]] = None
@@ -156,4 +155,3 @@ class ProjectDetailResponse(ProjectResponse):
     timeline: Optional[Dict[str, Any]] = None
     subtitle_style: Optional[Dict[str, Any]] = None
     render_jobs: List[RenderJobResponse] = []
-    storyboard_items: List[Dict[str, Any]] = []

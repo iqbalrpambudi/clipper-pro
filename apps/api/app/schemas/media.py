@@ -34,6 +34,8 @@ class YTDownloadRequest(BaseModel):
     format_id: Optional[str] = None
     selected_resolution: Optional[str] = None
     title: Optional[str] = None
+    start_sec: Optional[float] = None  # trim window for long sources
+    end_sec: Optional[float] = None
 
     @field_validator("url")
     @classmethod

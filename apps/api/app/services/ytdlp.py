@@ -157,8 +157,11 @@ async def download_video(
     progress_callback: Optional[Callable[[int], Any]] = None,
     project_id: Optional[str] = None,
     video_id: Optional[str] = None,
+    start_sec: Optional[float] = None,
+    end_sec: Optional[float] = None,
 ) -> str:
-    """Download video with yt-dlp, track stdout progress, and support instant cancellation."""
+    """Download video with yt-dlp, track stdout progress, and support instant cancellation.
+    start_sec/end_sec download only that section (long sources)."""
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
@@ -182,8 +185,12 @@ async def download_video(
         "mp4",
         "-o",
         str(out_p),
-        url,
     ]
+    if start_sec is not None or end_sec is not None:
+        a = int(start_sec or 0)
+        b = f"{int(end_sec)}" if end_sec else "inf"
+        cmd += ["--download-sections", f"*{a}-{b}", "--force-keyframes-at-cuts"]
+    cmd.append(url)
 
     proc_key = f"video:{video_id}" if video_id else f"download:{out_p.stem}"
     log.info("Running download cmd: %s (key=%s)", " ".join(cmd), proc_key)

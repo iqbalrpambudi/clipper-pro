@@ -46,11 +46,11 @@ export function VideoDiscoveryDialog({
   const queryClient = useQueryClient();
 
   // State
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("farming");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("factory");
   const [customQuery, setCustomQuery] = useState<string>("");
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
   const [excludeAi, setExcludeAi] = useState<boolean>(true);
-  const [defaultResolution, setDefaultResolution] = useState<string>("720p");
+  const [defaultResolution, setDefaultResolution] = useState<string>("1080p");
   const [cardResolutions, setCardResolutions] = useState<Record<string, string>>({});
   const [importingVideoId, setImportingVideoId] = useState<string | null>(null);
 
@@ -73,9 +73,9 @@ export function VideoDiscoveryDialog({
         preset_id: params.presetId,
         custom_query: params.customQuery,
         exclude_ai: params.excludeAi,
-        min_duration: 300,
-        max_duration: 1800,
-        min_views: 20000,
+        min_duration: 120,
+        max_duration: 1200,
+        min_views: 30000,
         limit: 9,
       }),
   });

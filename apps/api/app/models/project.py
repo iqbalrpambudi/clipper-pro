@@ -15,10 +15,13 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, processing, ready, rendering, completed, failed
-    project_type: Mapped[str] = mapped_column(String(50), default="short_video")  # short_video | long_storyboard
+    project_type: Mapped[str] = mapped_column(String(50), default="short_video")  
     aspect_ratio: Mapped[str] = mapped_column(String(20), default="9:16")  # 9:16, 1:1, 16:9
     resolution: Mapped[str] = mapped_column(String(20), default="1080p")  # 1080p, 720p
-    background_fill: Mapped[dict] = mapped_column(JSON, default=lambda: {"mode": "blur", "color": "#000000"})
+    background_fill: Mapped[dict] = mapped_column(
+        JSON,
+        default=lambda: {"mode": "blur", "color": "#000000", "zoom": 1.45, "source_asmr": True, "curiosity_bgm": True},
+    )
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
@@ -36,7 +39,6 @@ class Project(Base):
     timeline: Mapped[Optional["Timeline"]] = relationship("Timeline", back_populates="project", uselist=False, cascade="all, delete-orphan")
     subtitle_style: Mapped[Optional["SubtitleStyle"]] = relationship("SubtitleStyle", back_populates="project", uselist=False, cascade="all, delete-orphan")
     render_jobs: Mapped[List["RenderJob"]] = relationship("RenderJob", back_populates="project", cascade="all, delete-orphan")
-    storyboard_items: Mapped[List["StoryboardItem"]] = relationship("StoryboardItem", back_populates="project", cascade="all, delete-orphan", order_by="StoryboardItem.order_index")
 
 
 class SourceVideo(Base):
@@ -49,6 +51,8 @@ class SourceVideo(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     youtube_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     selected_resolution: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    trim_start: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    trim_end: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     duration: Mapped[float] = mapped_column(Float, default=0.0)
     width: Mapped[int] = mapped_column(Integer, default=0)
     height: Mapped[int] = mapped_column(Integer, default=0)

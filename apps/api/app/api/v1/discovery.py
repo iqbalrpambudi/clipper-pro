@@ -83,23 +83,7 @@ async def import_discovered_video(
     await db.flush()
 
     # 2. Tambahkan default Subtitle Style
-    sub_style = SubtitleStyle(
-        project_id=proj.id,
-        preset_name="viral_tiktok",
-        font_family="Poppins",
-        font_size=56,
-        font_weight="Bold",
-        primary_color="#FFFFFF",
-        highlight_color="#FFE600",
-        outline_color="#000000",
-        outline_width=4,
-        position="bottom",
-        display_mode="per_word",
-        burst_word_count=2,
-        highlight_animation="color",
-        scale_factor=1.0,
-        emoji_enabled=True,
-    )
+    sub_style = SubtitleStyle(project_id=proj.id)
     db.add(sub_style)
 
     # 3. Tambahkan default Timeline kosong

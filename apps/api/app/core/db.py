@@ -66,29 +66,16 @@ async def init_db() -> None:
     def _ensure_incremental_columns(sync_conn) -> None:
         inspector = inspect(sync_conn)
         table_names = set(inspector.get_table_names())
-        if "storyboard_items" in table_names:
-            sb_cols = {c["name"] for c in inspector.get_columns("storyboard_items")}
-            if "shot_metadata" not in sb_cols:
-                sync_conn.execute(text("ALTER TABLE storyboard_items ADD COLUMN shot_metadata JSON"))
+        if "source_videos" in table_names:
+            sv_cols = {c["name"] for c in inspector.get_columns("source_videos")}
+            for col in ("trim_start", "trim_end"):
+                if col not in sv_cols:
+                    sync_conn.execute(text(f"ALTER TABLE source_videos ADD COLUMN {col} FLOAT"))
         if "subtitle_styles" in table_names:
             sub_cols = {c["name"] for c in inspector.get_columns("subtitle_styles")}
             if "text_case" not in sub_cols:
                 sync_conn.execute(
                     text("ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'")
-                )
-        if "model_configs" in table_names:
-            mc_cols = {c["name"] for c in inspector.get_columns("model_configs")}
-            if "image_provider" not in mc_cols:
-                sync_conn.execute(
-                    text("ALTER TABLE model_configs ADD COLUMN image_provider VARCHAR(50) DEFAULT 'runware'")
-                )
-            if "image_steps" not in mc_cols:
-                sync_conn.execute(
-                    text("ALTER TABLE model_configs ADD COLUMN image_steps INTEGER DEFAULT 5")
-                )
-            if "image_cfg_scale" not in mc_cols:
-                sync_conn.execute(
-                    text("ALTER TABLE model_configs ADD COLUMN image_cfg_scale FLOAT DEFAULT 3.5")
                 )
 
     async with engine.begin() as conn:

@@ -355,12 +355,12 @@ def pick_sharpest(candidates: List[str], final_path: str) -> str:
 # cut-nya dicatat di `shot_info` agar matching tidak pernah mengiris melewatinya.
 # ─────────────────────────────────────────────────────────────────────────────
 SHOT_INFO_VERSION = 1
-FLASH_MIN_SEC = 1.5          # shot < ini = flash, tidak boleh tampil sendiri di timeline
+FLASH_MIN_SEC = 2.5          # shot < ini = flash, tidak boleh tampil sendiri di timeline
 MONTAGE_MIN_SEC = 3.0        # rangkaian flash >= ini jadi scene sendiri (tanpa usable range)
 CUT_HEAD_MARGIN = 0.12       # jarak aman setelah cut (≈ 3-4 frame)
 CUT_TAIL_MARGIN = 0.15       # jarak aman sebelum cut
 SOFT_EDGE_MARGIN = 0.05      # margin batas non-cut (awal/akhir video, titik silence)
-MIN_USABLE_RANGE_SEC = 1.0
+MIN_USABLE_RANGE_SEC = 2.0
 DETECT_MIN_SHOT_SEC = 0.25   # min_scene_len detektor (anti double-trigger flash frame)
 CUT_DEDUP_FRAMES = 2         # cut dari detektor berbeda yang berjarak <= N frame = cut yang sama
 

@@ -68,8 +68,17 @@ export function useDownloadYT(projectId: string) {
   const { showToast } = useStudioStore();
 
   return useMutation({
-    mutationFn: ({ url, formatId, title }: { url: string; formatId: string; title?: string }) =>
-      api.downloadYT(projectId, url, formatId, title),
+    mutationFn: ({
+      url,
+      formatId,
+      title,
+      trim,
+    }: {
+      url: string;
+      formatId: string;
+      title?: string;
+      trim?: { start_sec?: number; end_sec?: number };
+    }) => api.downloadYT(projectId, url, formatId, title, trim),
     onSuccess: (newVid: SourceVideo) => {
       if (newVid) {
         queryClient.setQueryData<ProjectDetail>(["project", projectId], (old) => {
@@ -129,7 +138,8 @@ export function useYTInfo(projectId: string) {
   const { showToast } = useStudioStore();
 
   return useMutation({
-    mutationFn: (url: string) => api.getYTInfo(projectId, url),
+    mutationFn: ({ url, trim }: { url: string; trim?: { start_sec?: number; end_sec?: number } }) =>
+      api.getYTInfo(projectId, url, trim),
     onError: (err: Error) => {
       showToast(err.message || "Gagal menginspeksi video YouTube", "error");
     },

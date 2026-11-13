@@ -17,47 +17,31 @@ from app.schemas.discovery import (
 
 log = logging.getLogger(__name__)
 
-# Preset Kategori Video Sumber Unggulan
+# Preset Kategori Video Sumber Unggulan — 3 Pilar Utama "Satisfying Curiosity Storyteller"
 PRESET_CATEGORIES: List[PresetCategory] = [
     PresetCategory(
         id="farming",
-        title="Pertanian Modern & Panen Raya",
-        description="Teknologi panen padi/gandum masif, smart farming, dan greenhouse sayuran modern.",
-        badge="🌾 Agrikultur Modern",
-        search_query="modern farming machinery rice harvest documentary",
+        title="Pertanian & Panen Tradisional",
+        description="Proses tanam, panen, dan olah hasil bumi di desa: ubi, teratai, kurma, padi, tanpa talking head.",
+        badge="🌾 Pertanian",
+        search_query="traditional farming harvest process village no talking",
         icon_name="Sprout",
     ),
     PresetCategory(
-        id="construction",
-        title="Konstruksi Jalan & Alat Berat",
-        description="Proses pengaspalan jalan, perataan aspal, dan mesin konstruksi infrastruktur mega.",
-        badge="🚜 Alat Berat & Jalan",
-        search_query="road construction asphalt paving machinery technology process",
-        icon_name="HardHat",
+        id="food",
+        title="Proses Pembuatan Makanan Tradisional",
+        description="Ikan asin, gula aren, mi tarik, tahu: proses satisfying dari bahan mentah sampai jadi.",
+        badge="🍲 Makanan",
+        search_query="traditional food making process village factory satisfying",
+        icon_name="Sparkles",
     ),
     PresetCategory(
-        id="factory",
-        title="Pabrik & Manufaktur Industri",
-        description="Lini perakitan otomatis, conveyor belt modern, dan proses manufaktur massal.",
-        badge="⚙️ Pabrik Otomatis",
-        search_query="modern factory production line mass manufacturing process",
-        icon_name="Factory",
-    ),
-    PresetCategory(
-        id="craftsmanship",
-        title="Kerajinan & Craftsmanship Presisi",
-        description="Woodworking memuaskan, restorasi mesin klasik, dan fabrikasi logam presisi tinggi.",
-        badge="🔨 Craft & Restorasi",
-        search_query="satisfying craftsmanship woodworking metal fabrication process",
+        id="craft",
+        title="Kerajinan & Teknik Unik Desa",
+        description="Bata, kayu, bambu, bulu angsa: cara kerja unik yang memancing pertanyaan 'kenapa'.",
+        badge="🔨 Kerajinan",
+        search_query="traditional craft process village unique technique how it is made",
         icon_name="Hammer",
-    ),
-    PresetCategory(
-        id="mining_mega",
-        title="Mega Proyek & Mesin Tambang",
-        description="Ekskavator raksasa, mesin bor terowongan TBM, dan mega mesin tambang modern.",
-        badge="⛰️ Mega Proyek",
-        search_query="giant mining machinery tunnel boring machine mega construction",
-        icon_name="Mountain",
     ),
 ]
 

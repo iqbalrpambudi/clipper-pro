@@ -4,7 +4,6 @@ from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.prompts.image import DEFAULT_IMAGE_SYSTEM_PROMPT
 
 
 class Settings(BaseSettings):
@@ -18,7 +17,7 @@ class Settings(BaseSettings):
     STORAGE_PATH: str = "./storage"
 
     MAX_UPLOAD_SIZE: int = 2147483648  # 2GB
-    MAX_SOURCE_DURATION_MINS: int = 30
+    MAX_SOURCE_DURATION_MINS: int = 60
 
     CORS_ORIGINS: str = "http://localhost:3030,http://127.0.0.1:3030,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080"
     ENCRYPTION_KEY: str = "dGhpcy1pcy1hLTMyLWJ5dGUtc2VjcmV0LWtleS1mb3ItZGI="
@@ -33,19 +32,7 @@ class Settings(BaseSettings):
     GEMINI_TTS_VOICE: str = "Puck"
     ELEVENLABS_API_KEY: str = ""
     ELEVENLABS_MODEL: str = "eleven_multilingual_v2"
-    RUNWARE_TTS_MODEL: str = "fishaudio:s2.1@pro"
 
-    IMAGE_PROVIDER: str = "runware"
-    IMAGE_BASE_URL: str = "https://api.openai.com/v1"
-    IMAGE_API_KEY: str = ""
-    IMAGE_MODEL: str = "runware:400@2"
-    IMAGE_CONCURRENCY: int = 2
-    IMAGE_STEPS: int = 5
-    IMAGE_CFG_SCALE: float = 3.5
-    # img2img strength used ONLY when a reference image is explicitly supplied (e.g. Image Studio).
-    # Storyboard shots no longer chain previous frames as references (it froze composition & background).
-    STORYBOARD_REFERENCE_STRENGTH: float = 0.30
-    IMAGE_SYSTEM_PROMPT: str = DEFAULT_IMAGE_SYSTEM_PROMPT
 
     @property
     def cors_origin_list(self) -> List[str]:

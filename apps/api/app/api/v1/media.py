@@ -189,7 +189,10 @@ async def fetch_youtube_info(
         # Validation duration check
         settings = get_settings()
         max_sec = settings.MAX_SOURCE_DURATION_MINS * 60
-        if info.duration > max_sec:
+        effective = info.duration
+        if payload.start_sec is not None or payload.end_sec is not None:
+            effective = (payload.end_sec or info.duration) - (payload.start_sec or 0)
+        if effective > max_sec:
             raise HTTPException(
                 status_code=400,
                 detail=f"Durasi video ({info.duration_str}) melebihi batas maksimal {settings.MAX_SOURCE_DURATION_MINS} menit",
@@ -223,6 +226,8 @@ async def trigger_youtube_download(
         filename=initial_filename,
         youtube_url=payload.url,
         selected_resolution=payload.format_id,
+        trim_start=payload.start_sec,
+        trim_end=payload.end_sec,
         status="downloading",
         progress=5,
     )
