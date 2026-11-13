@@ -6,15 +6,12 @@ import {
   SlidersHorizontal,
   Subtitles,
   Maximize2,
-  Stamp,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { TimelineMediaPool } from "./TimelineMediaPool";
 import { ClipInspector } from "./ClipInspector";
 import { SubtitleCustomizePanel } from "../subtitles/SubtitleCustomizePanel";
+import { toSubtitleStyle } from "../subtitles/constants";
 import { VideoLayoutCustomizePanel } from "./VideoLayoutCustomizePanel";
-import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import {
   Project,
   Timeline,
@@ -23,21 +20,16 @@ import {
   AudioTrack,
   Narration,
   SourceVideo,
-  WatermarkConfig,
   BackgroundFill,
   SubtitleStyle,
 } from "@/types";
 import { SceneMap } from "@/lib/timeline/editOps";
 
-export type SideTab = "pool" | "inspector" | "subtitles" | "layout" | "watermark";
+export type SideTab = "pool" | "inspector" | "subtitles" | "layout";
 
 interface TimelineSideDrawerProps {
   activeSideTab: SideTab;
   setActiveSideTab: (tab: SideTab) => void;
-  isDrawerCollapsed: boolean;
-  setIsDrawerCollapsed: (collapsed: boolean) => void;
-  drawerWidth?: number;
-  isVertical: boolean;
   selectedClipIndex: number | null;
   project: Project & {
     timeline?: Timeline | null;
@@ -64,8 +56,6 @@ interface TimelineSideDrawerProps {
   handleSplit: () => void;
   handleDeleteSelectedClip: () => void;
   handleSwapNeighbor: (dir: -1 | 1) => void;
-  handleCenterClip: () => void;
-  handleFillScene: () => void;
   handlePreviewSelectedClipSource: () => void;
   toggleLoop: () => void;
   setPreviewData: (data: {
@@ -79,22 +69,14 @@ interface TimelineSideDrawerProps {
   } | null) => void;
   setLiveAspectRatio: (ratio: string) => void;
   setLiveBackgroundFill: (fill: BackgroundFill | null) => void;
-  setLiveWatermark: (wm: WatermarkConfig | null) => void;
-  liveWatermark?: WatermarkConfig | null;
-  onWatermarkChange?: (wm: WatermarkConfig) => void;
-  setLiveSubtitleStyle: (style: SubtitleStyle | null) => void;
   liveSubtitleStyle?: SubtitleStyle | null;
-  onSubtitleChange?: (style: SubtitleStyle, immediate?: boolean) => void;
+  onSubtitleChange: (style: SubtitleStyle, immediate?: boolean) => void;
   seekTo: (t: number) => void;
 }
 
 export function TimelineSideDrawer({
   activeSideTab,
   setActiveSideTab,
-  isDrawerCollapsed,
-  setIsDrawerCollapsed,
-  drawerWidth = 380,
-  isVertical,
   selectedClipIndex,
   project,
   usedSceneMap,
@@ -115,37 +97,24 @@ export function TimelineSideDrawer({
   handleSplit,
   handleDeleteSelectedClip,
   handleSwapNeighbor,
-  handleCenterClip,
-  handleFillScene,
   handlePreviewSelectedClipSource,
   toggleLoop,
   setPreviewData,
   setLiveAspectRatio,
   setLiveBackgroundFill,
-  setLiveWatermark,
-  liveWatermark,
-  onWatermarkChange,
-  setLiveSubtitleStyle,
   liveSubtitleStyle,
   onSubtitleChange,
-  seekTo,
 }: TimelineSideDrawerProps) {
   const selectedClip = selectedClipIndex !== null ? clips[selectedClipIndex] || null : null;
   const selectedScene = selectedClip ? sceneMap.get(selectedClip.scene_id) : undefined;
 
-  const handleTabClick = (tab: SideTab) => {
-    setActiveSideTab(tab);
-    if (!isVertical) {
-      setIsDrawerCollapsed(false);
-    }
-  };
+  const handleTabClick = setActiveSideTab;
 
   const renderActiveContent = () => {
     if (activeSideTab === "pool") {
       return (
         <TimelineMediaPool
           scenes={project.scenes || []}
-          sourceVideos={project.source_videos || []}
           usedSceneMap={usedSceneMap}
           selectedClipNumber={selectedClipIndex !== null ? selectedClipIndex + 1 : null}
           selectedSceneId={selectedClip?.scene_id || null}
@@ -198,8 +167,6 @@ export function TimelineSideDrawer({
           onSplit={handleSplit}
           onDelete={handleDeleteSelectedClip}
           onMove={handleSwapNeighbor}
-          onCenter={handleCenterClip}
-          onFillScene={handleFillScene}
           onPreviewSource={handlePreviewSelectedClipSource}
           onToggleLoop={toggleLoop}
         />
@@ -218,41 +185,11 @@ export function TimelineSideDrawer({
       );
     }
 
-    if (activeSideTab === "watermark") {
-      return (
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <WatermarkCustomizePanel
-            project={{
-              ...project,
-              watermark: liveWatermark || project.watermark,
-            }}
-            onWatermarkChange={(wm) => {
-              if (onWatermarkChange) {
-                onWatermarkChange(wm);
-              } else {
-                setLiveWatermark(wm);
-              }
-            }}
-          />
-        </div>
-      );
-    }
-
     return (
       <SubtitleCustomizePanel
-        project={{
-          ...project,
-          subtitle_style: liveSubtitleStyle || project.subtitle_style,
-        }}
-        currentTime={time}
-        onSeek={seekTo}
-        onStyleChange={(style) => {
-          if (onSubtitleChange) {
-            onSubtitleChange(style);
-          } else {
-            setLiveSubtitleStyle(style);
-          }
-        }}
+        projectId={project.id}
+        style={toSubtitleStyle(liveSubtitleStyle || project.subtitle_style)}
+        onChange={onSubtitleChange}
       />
     );
   };
@@ -266,7 +203,7 @@ export function TimelineSideDrawer({
             type="button"
             onClick={() => handleTabClick("pool")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "pool" && (isVertical || !isDrawerCollapsed)
+              activeSideTab === "pool"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
@@ -279,7 +216,7 @@ export function TimelineSideDrawer({
             type="button"
             onClick={() => handleTabClick("inspector")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
-              activeSideTab === "inspector" && (isVertical || !isDrawerCollapsed)
+              activeSideTab === "inspector"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
@@ -295,7 +232,7 @@ export function TimelineSideDrawer({
             type="button"
             onClick={() => handleTabClick("subtitles")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "subtitles" && (isVertical || !isDrawerCollapsed)
+              activeSideTab === "subtitles"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
@@ -308,7 +245,7 @@ export function TimelineSideDrawer({
             type="button"
             onClick={() => handleTabClick("layout")}
             className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "layout" && (isVertical || !isDrawerCollapsed)
+              activeSideTab === "layout"
                 ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
@@ -317,52 +254,13 @@ export function TimelineSideDrawer({
             <Maximize2 className="w-4 h-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => handleTabClick("watermark")}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "watermark" && (isVertical || !isDrawerCollapsed)
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-            title="Watermark Video (Teks & Posisi)"
-          >
-            <Stamp className="w-4 h-4" />
-          </button>
         </div>
-
-        {/* Collapse toggle (only in horizontal mode) */}
-        {!isVertical && (
-          <button
-            type="button"
-            onClick={() => setIsDrawerCollapsed(!isDrawerCollapsed)}
-            className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition"
-            title={isDrawerCollapsed ? "Buka panel drawer" : "Tutup panel drawer"}
-          >
-            {isDrawerCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
-        )}
       </div>
 
       {/* Drawer Content */}
-      {isVertical ? (
-        <div className="flex-1 min-w-0 bg-surface-secondary flex flex-col overflow-hidden">
-          {renderActiveContent()}
-        </div>
-      ) : (
-        <div
-          style={{ width: isDrawerCollapsed ? 0 : drawerWidth }}
-          className={`shrink-0 border-r border-surface-border bg-surface-secondary flex flex-col overflow-hidden transition-[width] duration-75 ${
-            isDrawerCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        >
-          {renderActiveContent()}
-        </div>
-      )}
+      <div className="flex-1 min-w-0 bg-surface-secondary flex flex-col overflow-hidden">
+        {renderActiveContent()}
+      </div>
     </>
   );
 }

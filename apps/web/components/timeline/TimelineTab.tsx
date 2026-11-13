@@ -8,6 +8,7 @@ import { TimelineHeader } from "./TimelineHeader";
 import { TimelineSideDrawer } from "./TimelineSideDrawer";
 import { ClearTimelineModal } from "./ClearTimelineModal";
 import { useTimelineState, TimelineProjectData } from "./hooks/useTimelineState";
+import { useAssPreview } from "@/hooks/useAssPreview";
 
 interface TimelineTabProps {
   project: TimelineProjectData;
@@ -37,11 +38,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
     toggleLoop,
     activeSideTab,
     setActiveSideTab,
-    isDrawerCollapsed,
-    setIsDrawerCollapsed,
-    drawerWidth,
     tracksHeight,
-    setIsResizingDrawer,
     setIsResizingTracks,
     liveAspectRatio,
     setLiveAspectRatio,
@@ -49,15 +46,11 @@ export function TimelineTab({ project }: TimelineTabProps) {
     setLiveBackgroundFill,
     verticalPreviewWidth,
     setIsResizingVerticalPreview,
-    isVertical,
     liveSubtitleStyle,
-    setLiveSubtitleStyle,
     handleSubtitleChange,
     handleCustomSubtitlePositionChange,
     handleSubtitleDragEnd,
     liveWatermark,
-    setLiveWatermark,
-    handleWatermarkChange,
     handleCustomWatermarkPositionChange,
     handleWatermarkDragEnd,
     isAudioAttached,
@@ -65,8 +58,6 @@ export function TimelineTab({ project }: TimelineTabProps) {
     attachedSegments,
     totalDuration,
     seekTo,
-    stepFrames,
-    jumpCut,
     peaks,
     previewData,
     setPreviewData,
@@ -76,13 +67,9 @@ export function TimelineTab({ project }: TimelineTabProps) {
     saveTimelineMutation,
     isClearConfirmOpen,
     setIsClearConfirmOpen,
-    clearScope,
-    setClearScope,
     clearTimelineMutation,
     readdNarrationMutation,
     handleReaddAll,
-    handleReaddAudio,
-    handleReaddSubtitles,
     canSplit,
     handleSplit,
     handleDeleteSelectedClip,
@@ -96,16 +83,18 @@ export function TimelineTab({ project }: TimelineTabProps) {
     handleAppendScene,
     handleSetClipDuration,
     handleSetClipSpeed,
-    handleCenterClip,
-    handleFillScene,
     handleSwapNeighbor,
     handlePreviewSelectedClipSource,
     setActiveTab,
-    handleApplyStudioPreset,
   } = useTimelineState(project);
+  const subtitleAss = useAssPreview(
+    project.id,
+    isSubtitlesAttached ? liveSubtitleStyle : null,
+    attachedSegments
+  );
 
   const isWatermarkDraggable = Boolean(
-    liveWatermark?.enabled && (liveWatermark.position === "custom" || activeSideTab === "watermark")
+    liveWatermark?.enabled && liveWatermark.position === "custom"
   );
 
   return (
@@ -119,180 +108,41 @@ export function TimelineTab({ project }: TimelineTabProps) {
         isAudioAttached={isAudioAttached}
         isSubtitlesAttached={isSubtitlesAttached}
         isReadding={readdNarrationMutation.isPending}
+        onReaddAll={handleReaddAll}
         isAutoMatching={isAutoMatching}
         matchElapsed={matchElapsed}
-        onReaddAll={handleReaddAll}
-        onOpenClearModal={() => {
-          setClearScope("all");
-          setIsClearConfirmOpen(true);
+        onOpenClearModal={() => setIsClearConfirmOpen(true)}
+        onAutoMatch={() => {
+          // Auto-match replaces every clip and the server reload clears undo
+          if (
+            clips.length &&
+            !window.confirm("Auto-Match akan mengganti semua klip di timeline. Lanjutkan?")
+          )
+            return;
+          autoMatchMutation.mutate();
         }}
-        onAutoMatch={() => autoMatchMutation.mutate()}
-        onRender={() => {
+        onRender={async () => {
+          // Render reads the saved timeline, so wait for the save (error toast comes from the mutation)
           if (isDirty) {
-            saveTimelineMutation.mutate({});
+            try {
+              await saveTimelineMutation.mutateAsync({ clips });
+            } catch {
+              return;
+            }
           }
           setActiveTab("render");
         }}
-        liveSubtitleStyle={liveSubtitleStyle}
-        liveWatermark={liveWatermark}
-        liveAspectRatio={liveAspectRatio}
-        liveBackgroundFill={liveBackgroundFill}
-        onApplyStudioPreset={handleApplyStudioPreset}
       />
 
       {/* Main Studio Body: Zero-Scroll NLE Layout */}
-      {isVertical ? (
-        /* Vertical Layout: Left area (Rail + Panel on top, Tracks on bottom) & Right area (Full-height Preview) */
-        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
-          {/* Left Column: Editor controls & Tracks */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="flex-1 min-h-0 flex flex-row overflow-hidden border-b border-surface-border/70">
-              <TimelineSideDrawer
-                activeSideTab={activeSideTab}
-                setActiveSideTab={setActiveSideTab}
-                isDrawerCollapsed={isDrawerCollapsed}
-                setIsDrawerCollapsed={setIsDrawerCollapsed}
-                drawerWidth={drawerWidth}
-                isVertical={true}
-                selectedClipIndex={selectedClipIndex}
-                project={project}
-                usedSceneMap={usedSceneMap}
-                totalDuration={totalDuration}
-                clips={clips}
-                sceneMap={sceneMap}
-                time={time}
-                canSplit={canSplit}
-                loopRange={loopRange}
-                beginGesture={beginGesture}
-                cancelIfUnchanged={cancelIfUnchanged}
-                setClips={setClips}
-                handleReplaceSelectedClip={handleReplaceSelectedClip}
-                handleInsertAtPlayhead={handleInsertAtPlayhead}
-                handleAppendScene={handleAppendScene}
-                handleSetClipDuration={handleSetClipDuration}
-                handleSetClipSpeed={handleSetClipSpeed}
-                handleSplit={handleSplit}
-                handleDeleteSelectedClip={handleDeleteSelectedClip}
-                handleSwapNeighbor={handleSwapNeighbor}
-                handleCenterClip={handleCenterClip}
-                handleFillScene={handleFillScene}
-                handlePreviewSelectedClipSource={handlePreviewSelectedClipSource}
-                toggleLoop={toggleLoop}
-                setPreviewData={setPreviewData}
-                setLiveAspectRatio={setLiveAspectRatio}
-                setLiveBackgroundFill={setLiveBackgroundFill}
-                setLiveWatermark={setLiveWatermark}
-                liveWatermark={liveWatermark}
-                onWatermarkChange={handleWatermarkChange}
-                setLiveSubtitleStyle={setLiveSubtitleStyle}
-                liveSubtitleStyle={liveSubtitleStyle}
-                onSubtitleChange={handleSubtitleChange}
-                seekTo={seekTo}
-              />
-            </div>
-
-            {/* Resizer Handle: Tracks Height */}
-            <div
-              onMouseDown={() => setIsResizingTracks(true)}
-              className="group z-10 flex h-1.5 shrink-0 cursor-row-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
-              title="Drag to resize tracks"
-            >
-              <div className="h-[1px] w-12 bg-surface-border group-hover:bg-primary" />
-            </div>
-
-            {/* Lower row: Multi-Track Timeline */}
-            <div
-              style={{ height: tracksHeight }}
-              className="shrink-0 flex flex-col bg-surface-secondary overflow-hidden transition-[height] duration-75"
-            >
-              <TimelineTracks
-                clips={clips}
-                segments={attachedSegments}
-                peaks={isAudioAttached ? peaks : null}
-                audioDuration={isAudioAttached ? project.audio?.duration || totalDuration : 0}
-                voice={project.audio?.voice}
-                duration={totalDuration}
-                time={time}
-                isPlaying={isPlaying}
-                selectedIndex={selectedClipIndex}
-                loopRange={loopRange}
-                hasAudio={isAudioAttached}
-                hasSubtitles={isSubtitlesAttached}
-                onSelect={handleSelectClip}
-                onSeek={seekTo}
-                getEdgeRange={getEdgeRange}
-                onEdgeDragStart={handleEdgeDragStart}
-                onEdgeDrag={handleEdgeDrag}
-                onEdgeDragEnd={handleEdgeDragEnd}
-                onDropScene={handleDropScene}
-                onEditSubtitles={() => setActiveSideTab("subtitles")}
-                onReaddAudio={handleReaddAudio}
-                onReaddSubtitles={handleReaddSubtitles}
-                onReaddAll={handleReaddAll}
-              />
-            </div>
-          </div>
-
-          {/* Resizer Handle: Vertical Preview Column Width */}
-          <div
-            onMouseDown={() => setIsResizingVerticalPreview(true)}
-            className="group z-10 flex w-1.5 shrink-0 cursor-col-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
-            title="Drag to resize preview monitor"
-          >
-            <div className="w-[1px] h-12 bg-surface-border group-hover:bg-primary" />
-          </div>
-
-          {/* Right Column: Full-Height Vertical Program Monitor */}
-          <div
-            style={{ width: verticalPreviewWidth }}
-            className="shrink-0 flex flex-col p-2 bg-surface-secondary border-l border-surface-border/70 overflow-hidden"
-          >
-            <TimelineMonitor
-              clips={clips}
-              audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
-              duration={totalDuration}
-              segments={attachedSegments}
-              aspectRatio={liveAspectRatio}
-              backgroundFill={liveBackgroundFill}
-              bgMode={liveBackgroundFill?.mode || "blur"}
-              subtitleStyle={liveSubtitleStyle}
-              watermark={liveWatermark}
-              isWatermarkDraggable={isWatermarkDraggable}
-              onUpdateWatermarkPosition={handleCustomWatermarkPositionChange}
-              onWatermarkDragEnd={handleWatermarkDragEnd}
-              time={time}
-              seekRequest={seekRequest}
-              isPlaying={isPlaying}
-              loopRange={loopRange}
-              onPlayingChange={setIsPlaying}
-              onTimeChange={handleTimeChange}
-              onSeek={seekTo}
-              onStep={stepFrames}
-              onJumpCut={jumpCut}
-              onToggleLoop={toggleLoop}
-              canLoop={clips.length > 0}
-              onUndo={undo}
-              onRedo={redo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onSplit={handleSplit}
-              canSplit={canSplit}
-              onUpdateSubtitlePosition={handleCustomSubtitlePositionChange}
-              onSubtitleDragEnd={handleSubtitleDragEnd}
-            />
-          </div>
-        </div>
-      ) : (
-        /* Horizontal Layout: Upper Section (Rail + Drawer + Center Monitor) & Lower Section (Full-width Tracks) */
+      {/* Left: drawer + tracks. Right: full-height 9:16 monitor */}
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        {/* Left Column: Editor controls & Tracks */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 flex flex-row border-b border-surface-border/70 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-row overflow-hidden border-b border-surface-border/70">
             <TimelineSideDrawer
               activeSideTab={activeSideTab}
               setActiveSideTab={setActiveSideTab}
-              isDrawerCollapsed={isDrawerCollapsed}
-              setIsDrawerCollapsed={setIsDrawerCollapsed}
-              drawerWidth={drawerWidth}
-              isVertical={false}
               selectedClipIndex={selectedClipIndex}
               project={project}
               usedSceneMap={usedSceneMap}
@@ -313,69 +163,15 @@ export function TimelineTab({ project }: TimelineTabProps) {
               handleSplit={handleSplit}
               handleDeleteSelectedClip={handleDeleteSelectedClip}
               handleSwapNeighbor={handleSwapNeighbor}
-              handleCenterClip={handleCenterClip}
-              handleFillScene={handleFillScene}
               handlePreviewSelectedClipSource={handlePreviewSelectedClipSource}
               toggleLoop={toggleLoop}
               setPreviewData={setPreviewData}
               setLiveAspectRatio={setLiveAspectRatio}
               setLiveBackgroundFill={setLiveBackgroundFill}
-              setLiveWatermark={setLiveWatermark}
-              liveWatermark={liveWatermark}
-              onWatermarkChange={handleWatermarkChange}
-              setLiveSubtitleStyle={setLiveSubtitleStyle}
               liveSubtitleStyle={liveSubtitleStyle}
               onSubtitleChange={handleSubtitleChange}
               seekTo={seekTo}
             />
-
-            {/* Resizer Handle: Drawer Width */}
-            {!isDrawerCollapsed && (
-              <div
-                onMouseDown={() => setIsResizingDrawer(true)}
-                className="group z-10 flex w-1.5 shrink-0 cursor-col-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
-                title="Drag to resize panel"
-              >
-                <div className="w-[1px] h-8 bg-surface-border group-hover:bg-primary" />
-              </div>
-            )}
-
-            {/* Right Main Area: Program Monitor */}
-            <div className="flex-1 min-h-0 flex flex-col p-2 bg-surface-secondary overflow-hidden">
-              <TimelineMonitor
-                clips={clips}
-                audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
-                duration={totalDuration}
-                segments={attachedSegments}
-                aspectRatio={liveAspectRatio}
-                backgroundFill={liveBackgroundFill}
-                bgMode={liveBackgroundFill?.mode || "blur"}
-                subtitleStyle={liveSubtitleStyle}
-                watermark={liveWatermark}
-                isWatermarkDraggable={isWatermarkDraggable}
-                onUpdateWatermarkPosition={handleCustomWatermarkPositionChange}
-                onWatermarkDragEnd={handleWatermarkDragEnd}
-                time={time}
-                seekRequest={seekRequest}
-                isPlaying={isPlaying}
-                loopRange={loopRange}
-                onPlayingChange={setIsPlaying}
-                onTimeChange={handleTimeChange}
-                onSeek={seekTo}
-                onStep={stepFrames}
-                onJumpCut={jumpCut}
-                onToggleLoop={toggleLoop}
-                canLoop={clips.length > 0}
-                onUndo={undo}
-                onRedo={redo}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onSplit={handleSplit}
-                canSplit={canSplit}
-                onUpdateSubtitlePosition={handleCustomSubtitlePositionChange}
-                onSubtitleDragEnd={handleSubtitleDragEnd}
-              />
-            </div>
           </div>
 
           {/* Resizer Handle: Tracks Height */}
@@ -387,7 +183,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
             <div className="h-[1px] w-12 bg-surface-border group-hover:bg-primary" />
           </div>
 
-          {/* Lower Section: Full-Width Multi-Track Timeline */}
+          {/* Lower row: Multi-Track Timeline */}
           <div
             style={{ height: tracksHeight }}
             className="shrink-0 flex flex-col bg-surface-secondary overflow-hidden transition-[height] duration-75"
@@ -412,17 +208,58 @@ export function TimelineTab({ project }: TimelineTabProps) {
               onEdgeDrag={handleEdgeDrag}
               onEdgeDragEnd={handleEdgeDragEnd}
               onDropScene={handleDropScene}
-              onEditSubtitles={() => {
-                setActiveSideTab("subtitles");
-                setIsDrawerCollapsed(false);
-              }}
-              onReaddAudio={handleReaddAudio}
-              onReaddSubtitles={handleReaddSubtitles}
-              onReaddAll={handleReaddAll}
+              onEditSubtitles={() => setActiveSideTab("subtitles")}
             />
           </div>
         </div>
-      )}
+
+        {/* Resizer Handle: Vertical Preview Column Width */}
+        <div
+          onMouseDown={() => setIsResizingVerticalPreview(true)}
+          className="group z-10 flex w-1.5 shrink-0 cursor-col-resize select-none items-center justify-center bg-transparent transition hover:bg-primary/20 active:bg-primary"
+          title="Drag to resize preview monitor"
+        >
+          <div className="w-[1px] h-12 bg-surface-border group-hover:bg-primary" />
+        </div>
+
+        {/* Right Column: Full-Height Vertical Program Monitor */}
+        <div
+          style={{ width: verticalPreviewWidth }}
+          className="shrink-0 flex flex-col p-2 bg-surface-secondary border-l border-surface-border/70 overflow-hidden"
+        >
+          <TimelineMonitor
+            clips={clips}
+            audioUrl={isAudioAttached ? project.audio?.audio_url : undefined}
+            duration={totalDuration}
+            subtitleAss={subtitleAss}
+            aspectRatio={liveAspectRatio}
+            backgroundFill={liveBackgroundFill}
+            bgMode={liveBackgroundFill?.mode || "blur"}
+            subtitleStyle={liveSubtitleStyle}
+            watermark={liveWatermark}
+            isWatermarkDraggable={isWatermarkDraggable}
+            onUpdateWatermarkPosition={handleCustomWatermarkPositionChange}
+            onWatermarkDragEnd={handleWatermarkDragEnd}
+            time={time}
+            seekRequest={seekRequest}
+            isPlaying={isPlaying}
+            loopRange={loopRange}
+            onPlayingChange={setIsPlaying}
+            onTimeChange={handleTimeChange}
+            onSeek={seekTo}
+            onToggleLoop={toggleLoop}
+            canLoop={clips.length > 0}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onSplit={handleSplit}
+            canSplit={canSplit}
+            onUpdateSubtitlePosition={handleCustomSubtitlePositionChange}
+            onSubtitleDragEnd={handleSubtitleDragEnd}
+          />
+        </div>
+      </div>
 
       {/* Single Scene Preview Modal */}
       {previewData && (
@@ -443,9 +280,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
       <ClearTimelineModal
         isOpen={isClearConfirmOpen}
         onClose={() => setIsClearConfirmOpen(false)}
-        clearScope={clearScope}
-        onScopeChange={setClearScope}
-        onConfirm={() => clearTimelineMutation.mutate(clearScope)}
+        onConfirm={() => clearTimelineMutation.mutate()}
         isPending={clearTimelineMutation.isPending}
       />
     </div>

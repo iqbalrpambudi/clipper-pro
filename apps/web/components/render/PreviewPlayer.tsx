@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+
+const EMPTY_SEGMENTS: never[] = [];
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat } from "lucide-react";
 import {
   Project,
@@ -10,7 +12,8 @@ import {
   SubtitleStyle,
   JassubInstance,
 } from "@/types";
-import { generateAssSubtitles } from "@/lib/assGenerator";
+import { useAssPreview, EMPTY_ASS } from "@/hooks/useAssPreview";
+import { toSubtitleStyle } from "@/components/subtitles/constants";
 import {
   COMPOSITION_FPS,
   calculateKenBurnsZoom,
@@ -34,8 +37,6 @@ interface PreviewPlayerProps {
     audio?: AudioTrack | null;
     subtitle_style?: SubtitleStyle | null;
   };
-  onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
-  onSubtitleDragEnd?: () => void;
   onUpdateWatermarkPosition?: (pos: { custom_x: number; custom_y: number }) => void;
   onWatermarkDragEnd?: () => void;
   isWatermarkDraggable?: boolean;
@@ -44,8 +45,6 @@ interface PreviewPlayerProps {
 
 export function PreviewPlayer({
   project,
-  onUpdateSubtitlePosition,
-  onSubtitleDragEnd,
   onUpdateWatermarkPosition,
   onWatermarkDragEnd,
   isWatermarkDraggable,
@@ -81,24 +80,11 @@ export function PreviewPlayer({
   }, [isLooping]);
   const [frameWidth, setFrameWidth] = useState(320);
   const [isJassubReady, setIsJassubReady] = useState(false);
-  const [isDraggingSubtitle, setIsDraggingSubtitle] = useState(false);
-
-  // Dragging state for subtitle position
-  const dragStartPos = useRef<{
-    x: number;
-    y: number;
-    initialOffsetX: number;
-    initialOffsetY: number;
-  }>({
-    x: 0,
-    y: 0,
-    initialOffsetX: 0,
-    initialOffsetY: 0,
-  });
-
   const clips = project.timeline?.clips || [];
-  const subtitleStyle = project.subtitle_style;
-  const segments = project.narration?.segments || [];
+  const subtitleStyle = useMemo(() => toSubtitleStyle(project.subtitle_style), [project.subtitle_style]);
+  const subtitleAss = useAssPreview(project.id, subtitleStyle, project.narration?.segments || EMPTY_SEGMENTS);
+  const subtitleAssRef = useRef(subtitleAss);
+  subtitleAssRef.current = subtitleAss;
 
   // Canonical canvas resolution matching project aspect ratio
   const canvasWidth = project.aspect_ratio === "16:9" ? 1920 : 1080;
@@ -119,103 +105,6 @@ export function PreviewPlayer({
     ro.observe(frameRef.current);
     return () => ro.disconnect();
   }, [project.aspect_ratio, frameRef.current]);
-
-  // Active Segment & Active Word Calculation (with micro-pause buffer & fallback preview)
-  const curMs = currentTimeSec * 1000;
-  const activeSegmentIndex = segments.findIndex((s, idx) => {
-    const nextSeg = segments[idx + 1];
-    const maxEnd = nextSeg ? Math.min(s.end_ms + 250, nextSeg.start_ms) : s.end_ms + 350;
-    return curMs >= s.start_ms && curMs <= maxEnd;
-  });
-  const activeSegment = activeSegmentIndex !== -1 ? segments[activeSegmentIndex] : null;
-  const displaySegment =
-    activeSegment ||
-    segments[0] ||
-    (subtitleStyle?.enabled !== false
-      ? {
-          id: "preview-default",
-          start_ms: 0,
-          end_ms: 2000,
-          text: "PREVIEW SUBTITLE",
-          words: [
-            { word: "PREVIEW", start_ms: 0, end_ms: 1000 },
-            { word: "SUBTITLE", start_ms: 1000, end_ms: 2000 },
-          ],
-        }
-      : null);
-
-  const segWords = displaySegment?.words || [];
-  let activeWordIndex = -1;
-
-  if (segWords.length > 0) {
-    activeWordIndex = segWords.findIndex((w, idx) => {
-      const nextW = segWords[idx + 1];
-      const maxWEnd = nextW ? Math.min(w.end_ms + 200, nextW.start_ms) : w.end_ms + 250;
-      return curMs >= w.start_ms && curMs <= maxWEnd;
-    });
-
-    // If in tiny pause within segment, stick to most recent word
-    if (
-      activeWordIndex === -1 &&
-      curMs >= segWords[0].start_ms &&
-      curMs <= segWords[segWords.length - 1].end_ms + 300
-    ) {
-      for (let i = segWords.length - 1; i >= 0; i--) {
-        if (curMs >= segWords[i].start_ms) {
-          activeWordIndex = i;
-          break;
-        }
-      }
-    }
-    if (activeWordIndex === -1) {
-      activeWordIndex = 0;
-    }
-  }
-
-  // Burst Mode Calculation
-  const isHighlightEnabled = subtitleStyle?.highlight_animation !== "none";
-  const burstCount = Math.max(2, subtitleStyle?.burst_word_count || 2);
-  let activeBurstGroup: {
-    word: string;
-    start_ms: number;
-    end_ms: number;
-    isActive: boolean;
-    cleanWord: string;
-  }[] = [];
-
-  if (segWords.length > 0) {
-    for (let i = 0; i < segWords.length; i += burstCount) {
-      const group = segWords.slice(i, i + burstCount);
-      const gStart = group[0].start_ms;
-      const gEnd = group[group.length - 1].end_ms;
-      const nextSlice = segWords.slice(i + burstCount, i + burstCount + 1);
-      const maxGEnd =
-        nextSlice.length > 0 ? Math.min(gEnd + 350, nextSlice[0].start_ms) : gEnd + 350;
-
-      if (curMs >= gStart && curMs <= maxGEnd) {
-        activeBurstGroup = group.map((item, localIdx) => {
-          const globalIdx = i + localIdx;
-          const clean = item.word.toLowerCase().replace(/[^\w]/g, "");
-          return {
-            ...item,
-            cleanWord: clean,
-            isActive: isHighlightEnabled && globalIdx === activeWordIndex,
-          };
-        });
-        break;
-      }
-    }
-    if (activeBurstGroup.length === 0) {
-      activeBurstGroup = segWords.slice(0, burstCount).map((item, localIdx) => {
-        const clean = item.word.toLowerCase().replace(/[^\w]/g, "");
-        return {
-          ...item,
-          cleanWord: clean,
-          isActive: isHighlightEnabled && localIdx === 0,
-        };
-      });
-    }
-  }
 
   // Update total duration when project updates
   useEffect(() => {
@@ -828,18 +717,11 @@ export function PreviewPlayer({
         canvasEl.style.pointerEvents = "none";
         canvasContainerRef.current.appendChild(canvasEl);
 
-        const initialAss = generateAssSubtitles(
-          segments,
-          subtitleStyle || {},
-          canvasWidth,
-          canvasHeight
-        );
-
         const baseUrl = window.location.origin;
 
         const instance = new JASSUB({
           canvas: canvasEl,
-          subContent: initialAss,
+          subContent: subtitleAssRef.current || EMPTY_ASS,
           workerUrl: `${baseUrl}/jassub/jassub-worker.js`,
           wasmUrl: `${baseUrl}/jassub/jassub-worker.wasm`,
           modernWasmUrl: `${baseUrl}/jassub/jassub-worker-modern.wasm`,
@@ -908,7 +790,7 @@ export function PreviewPlayer({
     let isCancelled = false;
     const updateTrack = async () => {
       try {
-        const newAss = generateAssSubtitles(segments, subtitleStyle || {}, canvasWidth, canvasHeight);
+        const newAss = subtitleAss || EMPTY_ASS;
         if (jassubRef.current?.renderer?.setTrack) {
           await jassubRef.current.renderer.setTrack(newAss);
         }
@@ -932,7 +814,7 @@ export function PreviewPlayer({
     return () => {
       isCancelled = true;
     };
-  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight]);
+  }, [subtitleAss, isJassubReady, canvasWidth, canvasHeight]);
 
   // Listen for video decoder seeked/loaded events to redraw canvas when paused
   useEffect(() => {
@@ -1063,86 +945,6 @@ export function PreviewPlayer({
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  // 100% WYSIWYG Scale Ratios: Reference matching canvas dimensions
-  const scale = frameWidth / canvasWidth;
-  const aspectMultiplier = canvasHeight / canvasWidth;
-  const frameHeight = frameWidth * aspectMultiplier;
-  const scaleY = frameHeight / canvasHeight;
-
-  const fontBaseSize = subtitleStyle?.font_size || 56;
-  const scaledFontSize = Math.max(6, Number((fontBaseSize * scale).toFixed(2)));
-  const scaledOutlineWidth = Math.max(
-    0.5,
-    Number(((subtitleStyle?.outline_width ?? 4) * scale).toFixed(2))
-  );
-
-  const offsetY = subtitleStyle?.offset_y || 0;
-  const offsetX = subtitleStyle?.offset_x || 0;
-  const scaledOffsetY = Math.round(offsetY * scaleY);
-  const scaledOffsetX = Math.round(offsetX * scale);
-
-  const boxOpacity = subtitleStyle?.box_opacity ?? 0.0;
-  const boxBgColor =
-    boxOpacity > 0.05
-      ? hexToRgba(subtitleStyle?.box_color || "#000000", boxOpacity)
-      : "transparent";
-
-  // Drag position handlers
-  const getSubtitleTranslateY = (
-    pos: string | undefined,
-    offsetPx: number
-  ): string => {
-    if (pos === "center") {
-      if (offsetPx === 0) return "-50%";
-      return offsetPx > 0 ? `calc(-50% + ${offsetPx}px)` : `calc(-50% - ${Math.abs(offsetPx)}px)`;
-    }
-    if (pos === "bottom" || !pos) {
-      return `${-offsetPx}px`;
-    }
-    return `${offsetPx}px`;
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!onUpdateSubtitlePosition) return;
-    setIsDraggingSubtitle(true);
-    dragStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      initialOffsetX: subtitleStyle?.offset_x || 0,
-      initialOffsetY: subtitleStyle?.offset_y || 0,
-    };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingSubtitle || !onUpdateSubtitlePosition) return;
-    const deltaX = e.clientX - dragStartPos.current.x;
-    const deltaY = e.clientY - dragStartPos.current.y;
-
-    const newAssDeltaX = Math.round(deltaX / scale);
-    const isBottom = subtitleStyle?.position === "bottom" || !subtitleStyle?.position;
-    const ySign = isBottom ? -1 : 1;
-    const newAssDeltaY = Math.round((deltaY * ySign) / scaleY);
-
-    onUpdateSubtitlePosition({
-      offset_x: dragStartPos.current.initialOffsetX + newAssDeltaX,
-      offset_y: dragStartPos.current.initialOffsetY + newAssDeltaY,
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (isDraggingSubtitle) {
-      setIsDraggingSubtitle(false);
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {}
-      onSubtitleDragEnd?.();
-    }
-  };
-
-  const isScaleAnim = subtitleStyle?.highlight_animation === "scale";
-  const zoomScale = isScaleAnim ? (subtitleStyle?.scale_factor ?? 1.15) : 1.0;
-
   // Aspect ratio responsive frame wrapper styling
   const aspectClass = compact
     ? project.aspect_ratio === "16:9"
@@ -1229,162 +1031,6 @@ export function PreviewPlayer({
         {clips.length === 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center p-4 text-center text-xs text-white/60">
             Belum ada video di timeline
-          </div>
-        )}
-
-        {/* Interactive Drag Handle for Subtitle Positioning */}
-        {onUpdateSubtitlePosition && (
-          <div
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            className="absolute left-4 right-4 z-30 flex justify-center text-center select-none cursor-move group"
-            style={{
-              top:
-                subtitleStyle?.position === "top"
-                  ? "9.375%"
-                  : subtitleStyle?.position === "center"
-                    ? "50%"
-                    : undefined,
-              bottom:
-                subtitleStyle?.position === "bottom" || !subtitleStyle?.position
-                  ? "11.45%"
-                  : undefined,
-              transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
-            }}
-          >
-            <div className="pointer-events-auto flex h-14 w-full max-w-[280px] items-center justify-center rounded-xl border border-dashed border-transparent transition-all group-hover:border-primary/50 cursor-move" />
-          </div>
-        )}
-
-        {/* Fallback CSS Subtitle Overlay (active only before WASM is initialized) */}
-        {!isJassubReady && (
-          <div
-            className="absolute left-0 right-0 z-20 px-3 flex justify-center text-center select-none pointer-events-none"
-            style={{
-              top:
-                subtitleStyle?.position === "top"
-                  ? "9.375%"
-                  : subtitleStyle?.position === "center"
-                    ? "50%"
-                    : undefined,
-              bottom:
-                subtitleStyle?.position === "bottom" || !subtitleStyle?.position
-                  ? "11.45%"
-                  : undefined,
-              transform: `translate(${scaledOffsetX}px, ${getSubtitleTranslateY(subtitleStyle?.position, scaledOffsetY)})`,
-            }}
-          >
-            {/* 1. Burst Mode (Hormozi 2-3 words group) */}
-            {subtitleStyle?.display_mode === "burst" ? (
-              activeBurstGroup.length > 0 ? (
-                <div
-                  style={{
-                    fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
-                    fontSize: `${scaledFontSize}px`,
-                    fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                    color: subtitleStyle?.primary_color || "#FFFFFF",
-                    WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                    paintOrder: "stroke fill",
-                    backgroundColor: boxBgColor,
-                    padding: boxOpacity > 0.05 ? "3px 8px" : "0",
-                    borderRadius: "6px",
-                  }}
-                  className="uppercase tracking-wide inline-flex items-center justify-center flex-wrap"
-                >
-                  {activeBurstGroup.map((w, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        color: w.isActive
-                          ? subtitleStyle?.highlight_color || "#00FF66"
-                          : subtitleStyle?.primary_color || "#FFFFFF",
-                        transform: w.isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
-                        transformOrigin: "center bottom",
-                        transition:
-                          "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), color 80ms ease-out",
-                      }}
-                      className="mx-1 inline-block"
-                    >
-                      {w.word.toUpperCase()}
-                    </span>
-                  ))}
-                </div>
-              ) : null
-            ) : subtitleStyle?.display_mode === "per_word" ? (
-              /* 2. Per-word Mode */
-              activeWordIndex !== -1 && segWords[activeWordIndex] ? (
-                (() => {
-                  const currentW = segWords[activeWordIndex];
-                  return (
-                    <div
-                      style={{
-                        fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
-                        fontSize: `${scaledFontSize}px`,
-                        fontWeight:
-                          subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                        color: isHighlightEnabled
-                          ? subtitleStyle?.highlight_color || "#FFE600"
-                          : subtitleStyle?.primary_color || "#FFFFFF",
-                        WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#000000"}`,
-                        paintOrder: "stroke fill",
-                        backgroundColor: boxBgColor,
-                        padding: boxOpacity > 0.05 ? "3px 8px" : "0",
-                        borderRadius: "6px",
-                        transform:
-                          isHighlightEnabled && isScaleAnim ? `scale(${zoomScale})` : "none",
-                        transformOrigin: "center bottom",
-                        transition: "transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      }}
-                      className="uppercase tracking-wider inline-block"
-                    >
-                      {currentW.word.toUpperCase()}
-                    </div>
-                  );
-                })()
-              ) : null
-            ) : displaySegment ? (
-              /* 3. Full Sentence Mode (Classic Karaoke) */
-              <div
-                style={{
-                  fontFamily: `"${subtitleStyle?.font_family || "Montserrat"}", sans-serif`,
-                  fontSize: `${scaledFontSize}px`,
-                  fontWeight: subtitleStyle?.font_weight?.toLowerCase() === "bold" ? 800 : 500,
-                  color: subtitleStyle?.primary_color || "#EEEEEE",
-                  WebkitTextStroke: `${scaledOutlineWidth}px ${subtitleStyle?.outline_color || "#0F172A"}`,
-                  paintOrder: "stroke fill",
-                  backgroundColor: boxBgColor,
-                  padding: boxOpacity > 0.05 ? "3px 8px" : "0",
-                  borderRadius: "6px",
-                }}
-                className="uppercase tracking-wide leading-snug flex flex-wrap justify-center"
-              >
-                {segWords.length > 0 ? (
-                  segWords.map((w, idx) => {
-                    const isActive = isHighlightEnabled && idx === activeWordIndex;
-                    return (
-                      <span
-                        key={idx}
-                        style={{
-                          color: isActive
-                            ? subtitleStyle?.highlight_color || "#38BDF8"
-                            : subtitleStyle?.primary_color || "#EEEEEE",
-                          transform: isActive && isScaleAnim ? `scale(${zoomScale})` : "scale(1.0)",
-                          transformOrigin: "center bottom",
-                          transition:
-                            "color 80ms ease-out, transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        }}
-                        className="mx-0.5 inline-block"
-                      >
-                        {w.word.toUpperCase()}
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span>{displaySegment.text.toUpperCase()}</span>
-                )}
-              </div>
-            ) : null}
           </div>
         )}
 

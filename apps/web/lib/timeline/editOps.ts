@@ -11,7 +11,8 @@ import { Scene, TimelineClip } from "@/types";
 import { snapToFrame } from "./frameMath";
 
 export const MIN_CLIP = 0.5;
-export const MIN_SPEED = 0.5;
+// Below ~0.9x slow-mo is visible; growing a clip runs into the next scene instead (see clipBounds).
+export const MIN_SPEED = 0.9;
 export const MAX_SPEED = 2.0;
 export const FRAME = 1 / 30;
 
@@ -49,6 +50,22 @@ export function sceneSafeBounds(scene: Scene): Bounds {
   return { start, end };
 }
 
+/** End of the source a clip may play to: through following contiguous, non-montage scenes
+ * of the same video (mirrors backend matching._run_end). */
+function runEnd(scene: Scene, scenes: SceneMap): number {
+  const following = [...scenes.values()]
+    .filter((sc) => sc.source_video_id === scene.source_video_id && sc.start_time >= scene.end_time - 0.05)
+    .sort((a, b) => a.start_time - b.start_time);
+  let prevEnd = scene.end_time;
+  let end = sceneSafeBounds(scene).end;
+  for (const sc of following) {
+    if (sc.start_time - prevEnd > 0.2 || sc.shot_info?.montage) break;
+    prevEnd = sc.end_time;
+    end = r3(prevEnd - 0.15);
+  }
+  return end;
+}
+
 export function clipBounds(clip: TimelineClip, scenes: SceneMap): Bounds {
   const scene = scenes.get(clip.scene_id);
   if (scene) {
@@ -56,11 +73,18 @@ export function clipBounds(clip: TimelineClip, scenes: SceneMap): Bounds {
     // Never shrink below what the clip already uses (legacy clips may use the raw edge)
     return {
       start: Math.min(safe.start, clip.clip_start),
-      end: Math.max(safe.end, clip.clip_end),
+      end: Math.max(runEnd(scene, scenes), clip.clip_end),
     };
   }
   return { start: clip.clip_start, end: clip.clip_end };
 }
+
+/** Compare key for "did the user change clips": only edited fields, so a server echo with
+ * extra/null keys does not count as a change. */
+export const clipsKey = (clips: TimelineClip[]) =>
+  JSON.stringify(
+    clips.map((c) => [c.id, c.scene_id, c.source_video_id, c.timeline_start, c.timeline_end, c.clip_start, c.clip_end, c.speed, c.text ?? null])
+  );
 
 /** Longest timeline duration the clip's source can fill at MIN_SPEED. */
 export function maxTimelineDur(clip: TimelineClip, scenes: SceneMap): number {
@@ -363,13 +387,6 @@ export function canUseSpeed(clip: TimelineClip, speed: number, scenes: SceneMap)
 
 export function setClipSpeed(clip: TimelineClip, speed: number, scenes: SceneMap): TimelineClip {
   return fitSource(clip, clipBounds(clip, scenes), "center", speed);
-}
-
-/** Use the whole safe scene range, deriving speed (clamped) from the slot duration. */
-export function fillWholeScene(clip: TimelineClip, scenes: SceneMap): TimelineClip {
-  const b = clipBounds(clip, scenes);
-  const speed = (b.end - b.start) / Math.max(FRAME, tlDur(clip));
-  return fitSource({ ...clip, clip_start: b.start }, b, "start", speed);
 }
 
 /** Validate clip list for render; returns human-readable issues per clip index. */

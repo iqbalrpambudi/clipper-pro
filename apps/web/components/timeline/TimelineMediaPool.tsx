@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useMemo, useState, useRef, useEffect } from "react";
+import React, { memo, useMemo, useState } from "react";
 import {
   Search,
   Film,
@@ -11,26 +11,13 @@ import {
   ListPlus,
   GripVertical,
   X,
-  SlidersHorizontal,
 } from "lucide-react";
-import { Scene, SourceVideo } from "@/types";
+import { Scene } from "@/types";
 import { SCENE_DRAG_MIME } from "./timelineFormat";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
-
-type Filter = "all" | "used" | "available";
-type Sort = "order" | "longest" | "shortest";
 
 interface TimelineMediaPoolProps {
   scenes: Scene[];
-  sourceVideos: SourceVideo[];
   usedSceneMap: Map<string, number[]>;
   selectedClipNumber: number | null;
   selectedSceneId: string | null;
@@ -44,7 +31,6 @@ interface TimelineMediaPoolProps {
 /** Scene browser: search, filter, group by source; scenes are draggable onto the timeline. */
 export const TimelineMediaPool = memo(function TimelineMediaPool({
   scenes,
-  sourceVideos,
   usedSceneMap,
   selectedClipNumber,
   selectedSceneId,
@@ -55,42 +41,10 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
   onPreview,
 }: TimelineMediaPoolProps) {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [videoId, setVideoId] = useState<string>("all");
-  const [sort, setSort] = useState<Sort>("order");
   const [broken, setBroken] = useState<Record<string, boolean>>({});
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filterPopoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isFilterOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    };
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, [isFilterOpen]);
-
-  const videoName = useMemo(() => {
-    const map = new Map<string, string>();
-    sourceVideos.forEach((v) => map.set(v.id, v.filename || `Video #${v.id.slice(0, 4)}`));
-    return map;
-  }, [sourceVideos]);
 
   const list = useMemo(() => {
     let out = scenes.slice();
-
-    if (videoId !== "all") {
-      out = out.filter((s) => s.source_video_id === videoId);
-    }
-
-    if (filter === "used") {
-      out = out.filter((s) => (usedSceneMap.get(s.id) || []).length > 0);
-    } else if (filter === "available") {
-      out = out.filter((s) => (usedSceneMap.get(s.id) || []).length === 0);
-    }
 
     const q = query.trim().toLowerCase();
     if (q) {
@@ -102,30 +56,10 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
       });
     }
 
-    if (sort === "longest") {
-      out.sort((a, b) => b.duration - a.duration);
-    } else if (sort === "shortest") {
-      out.sort((a, b) => a.duration - b.duration);
-    } else {
-      out.sort((a, b) => a.scene_index - b.scene_index);
-    }
+    out.sort((a, b) => a.scene_index - b.scene_index);
 
     return out;
-  }, [scenes, videoId, filter, query, sort, usedSceneMap]);
-
-  const usedCount = useMemo(() => {
-    let n = 0;
-    scenes.forEach((s) => {
-      if ((usedSceneMap.get(s.id) || []).length > 0) n++;
-    });
-    return n;
-  }, [scenes, usedSceneMap]);
-
-  const pills: { id: Filter; label: string; count: number }[] = [
-    { id: "all", label: "Semua", count: scenes.length },
-    { id: "used", label: "Terpakai", count: usedCount },
-    { id: "available", label: "Tersedia", count: scenes.length - usedCount },
-  ];
+  }, [scenes, query]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-surface-border bg-card">
@@ -164,97 +98,6 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
             )}
           </div>
 
-          <div className="relative" ref={filterPopoverRef}>
-            <Button
-              type="button"
-              variant={
-                filter !== "all" || sort !== "order" || videoId !== "all" ? "supabase" : "outline"
-              }
-              size="icon"
-              onClick={() => setIsFilterOpen((o) => !o)}
-              className="h-7 w-7"
-              title="Opsi filter dan sortir"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-            </Button>
-
-            {isFilterOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1.5 w-64 space-y-3 rounded-xl border border-surface-border bg-card p-3 shadow-xl">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                    Status Scene
-                  </div>
-                  <div className="workspace-filter-pills flex items-center gap-1">
-                    {pills.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setFilter(p.id)}
-                        className={`rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                          filter === p.id
-                            ? "workspace-filter-active"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {p.label} ({p.count})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {sourceVideos.length > 1 && (
-                  <div>
-                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                      Video Sumber
-                    </div>
-                    <Select value={videoId} onValueChange={setVideoId}>
-                      <SelectTrigger className="h-7 w-full text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent appearance="workspace">
-                        <SelectItem value="all" className="text-xs">Semua video</SelectItem>
-                        {sourceVideos.map((v) => (
-                          <SelectItem key={v.id} value={v.id} className="text-xs">
-                            {videoName.get(v.id)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                    Urutan
-                  </div>
-                  <Select value={sort} onValueChange={(val) => setSort(val as Sort)}>
-                    <SelectTrigger className="h-7 w-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent appearance="workspace">
-                      <SelectItem value="order" className="text-xs">Urutan asli (scene index)</SelectItem>
-                      <SelectItem value="longest" className="text-xs">Durasi terpanjang</SelectItem>
-                      <SelectItem value="shortest" className="text-xs">Durasi terpendek</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex justify-end border-t border-border pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilter("all");
-                      setSort("order");
-                      setVideoId("all");
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Reset Filter
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

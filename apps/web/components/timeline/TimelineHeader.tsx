@@ -4,9 +4,6 @@ import React from "react";
 import { Film, Sparkles, Loader2, Trash2, ArrowRight, CheckCircle2, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SubtitleStyle, WatermarkConfig, BackgroundFill } from "@/types";
-import { TimelineStudioPreset } from "@/lib/presetStorage";
-import { TimelineStudioPresetControls } from "./TimelineStudioPresetControls";
 
 interface TimelineHeaderProps {
   clipsCount: number;
@@ -22,11 +19,6 @@ interface TimelineHeaderProps {
   onOpenClearModal: () => void;
   onAutoMatch: () => void;
   onRender: () => void;
-  liveSubtitleStyle?: SubtitleStyle | null;
-  liveWatermark?: WatermarkConfig | null;
-  liveAspectRatio?: string;
-  liveBackgroundFill?: BackgroundFill | null;
-  onApplyStudioPreset?: (preset: TimelineStudioPreset) => void;
 }
 
 export function TimelineHeader({
@@ -43,11 +35,6 @@ export function TimelineHeader({
   onOpenClearModal,
   onAutoMatch,
   onRender,
-  liveSubtitleStyle,
-  liveWatermark,
-  liveAspectRatio,
-  liveBackgroundFill,
-  onApplyStudioPreset,
 }: TimelineHeaderProps) {
   return (
     <>
@@ -90,17 +77,6 @@ export function TimelineHeader({
             <strong className="text-foreground font-mono">{Math.round(totalDuration)}s</strong>
           </span>
 
-          {/* Divider */}
-          <div className="h-4 w-[1px] bg-border shrink-0 hidden md:block" />
-
-          {/* Studio Preset Selector & Save Button */}
-          <TimelineStudioPresetControls
-            currentSubtitleStyle={liveSubtitleStyle}
-            currentWatermark={liveWatermark}
-            currentAspectRatio={liveAspectRatio}
-            currentBackgroundFill={liveBackgroundFill}
-            onApplyPreset={onApplyStudioPreset}
-          />
         </div>
 
         <div className="flex items-center gap-2">

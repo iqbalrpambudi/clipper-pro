@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Maximize2, Scan, ZoomIn, Smartphone, Monitor, Square, Info } from "lucide-react";
+import { Maximize2, Scan, ZoomIn, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, BackgroundFill } from "@/types";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 type LayoutPreset = "cover" | "fit" | "custom";
@@ -78,37 +77,13 @@ export function VideoLayoutCustomizePanel({
     const nextFill = {
       mode: nextMode,
       zoom: nextZoom,
-      color: "#000000",
+      color: project.background_fill?.color || "#000000",
       anti_copyright: project.background_fill?.anti_copyright ?? true,
       dynamic_zoom: project.background_fill?.dynamic_zoom ?? true,
       color_grading: project.background_fill?.color_grading ?? true,
     };
     onLayoutChange?.(nextAspect, nextFill);
     return nextFill;
-  };
-
-  const handleAspectRatioChange = (newRatio: string) => {
-    setAspectRatio(newRatio);
-    let nextMode: "cover" | "blur" | "black" = "cover";
-    let nextZoom = 1.0;
-
-    if (activePreset === "cover") {
-      nextMode = "cover";
-      nextZoom = 1.0;
-    } else if (activePreset === "fit") {
-      nextMode = isBlur ? "blur" : "black";
-      nextZoom = 1.0;
-    } else {
-      nextMode = isBlur ? "blur" : "black";
-      nextZoom = customZoom;
-    }
-
-    const fill = notifyChange(newRatio, nextMode, nextZoom);
-    updateProjectMutation.mutate({
-      aspect_ratio: newRatio,
-      background_fill: fill,
-    });
-    showToast(`Rasio kanvas diubah ke ${newRatio}`, "info");
   };
 
   const handlePresetSelect = (preset: LayoutPreset) => {
@@ -228,81 +203,6 @@ export function VideoLayoutCustomizePanel({
 
       {/* Scrollable Body */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-4 no-scrollbar">
-        {/* Section 1: Rasio Kanvas Proyek */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <span>Rasio Kanvas Proyek</span>
-            </label>
-            <span className="text-xs text-muted-foreground font-mono">
-              {aspectRatio === "9:16"
-                ? "1080 × 1920"
-                : aspectRatio === "16:9"
-                  ? "1920 × 1080"
-                  : "1080 × 1080"}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {/* 9:16 Vertikal */}
-            <button
-              type="button"
-              onClick={() => handleAspectRatioChange("9:16")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
-                aspectRatio === "9:16"
-                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
-            >
-              <Smartphone
-                className={`w-4 h-4 ${aspectRatio === "9:16" ? "text-primary" : "text-muted-foreground"}`}
-              />
-              <div className="text-center">
-                <div className="text-xs font-semibold">9:16</div>
-                <div className="text-xs text-muted-foreground leading-tight">TikTok/Reels</div>
-              </div>
-            </button>
-
-            {/* 16:9 Horizontal */}
-            <button
-              type="button"
-              onClick={() => handleAspectRatioChange("16:9")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
-                aspectRatio === "16:9"
-                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
-            >
-              <Monitor
-                className={`w-4 h-4 ${aspectRatio === "16:9" ? "text-primary" : "text-muted-foreground"}`}
-              />
-              <div className="text-center">
-                <div className="text-xs font-semibold">16:9</div>
-                <div className="text-xs text-muted-foreground leading-tight">Landscape</div>
-              </div>
-            </button>
-
-            {/* 1:1 Persegi */}
-            <button
-              type="button"
-              onClick={() => handleAspectRatioChange("1:1")}
-              className={`p-2.5 rounded-lg border text-left flex flex-col items-center justify-center gap-1.5 transition ${
-                aspectRatio === "1:1"
-                  ? "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
-            >
-              <Square
-                className={`w-4 h-4 ${aspectRatio === "1:1" ? "text-primary" : "text-muted-foreground"}`}
-              />
-              <div className="text-center">
-                <div className="text-xs font-semibold">1:1</div>
-                <div className="text-xs text-muted-foreground leading-tight">Square Feed</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         {/* Section 2: Preset Mode Tampilan Video (3 Preset) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -451,27 +351,6 @@ export function VideoLayoutCustomizePanel({
               </div>
             </div>
 
-            {/* Quick Preset Pills */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              {[
-                { label: "100%", val: 1.0 },
-                { label: "125%", val: 1.25 },
-                { label: "140% (Optimal)", val: 1.4 },
-                { label: "175%", val: 1.75 },
-                { label: "200%", val: 2.0 },
-              ].map((p) => (
-                <Button
-                  key={p.label}
-                  type="button"
-                  variant={Math.abs(customZoom - p.val) < 0.03 ? "supabase" : "outline"}
-                  size="xs"
-                  onClick={() => handleZoomSliderChange(p.val)}
-                  className="text-xs h-6 px-2"
-                >
-                  {p.label}
-                </Button>
-              ))}
-            </div>
           </div>
         )}
 

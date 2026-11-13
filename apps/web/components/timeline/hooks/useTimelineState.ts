@@ -6,7 +6,7 @@ import { useHistoryState } from "@/hooks/useHistoryState";
 import { useAudioPeaks } from "@/hooks/useAudioPeaks";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
-import { useEditorConfigStore } from "@/lib/editorConfigStore";
+import { toSubtitleStyle } from "@/components/subtitles/constants";
 import {
   Project,
   Timeline,
@@ -20,7 +20,6 @@ import {
   SentenceSegment,
   SubtitleStyle,
 } from "@/types";
-import { TimelineStudioPreset } from "@/lib/presetStorage";
 import {
   SceneMap,
   appendScene,
@@ -28,7 +27,6 @@ import {
   cutPoints,
   deleteClip,
   edgeRange,
-  fillWholeScene,
   insertSceneAt,
   replaceScene,
   rollEdge,
@@ -36,6 +34,7 @@ import {
   splitAt,
   swapWithNeighbor,
   timelineEnd,
+  clipsKey,
 } from "@/lib/timeline/editOps";
 import { SceneDropTarget } from "../TimelineTracks";
 import { SeekRequest } from "../TimelineMonitor";
@@ -69,20 +68,28 @@ export function useTimelineState(project: TimelineProjectData) {
     canRedo,
   } = useHistoryState<TimelineClip[]>(initialClips);
 
-  // Sync server updates only if there are no local unsaved edits
-  const serverClipsKey = useRef(JSON.stringify(initialClips));
-  useEffect(() => {
-    const key = JSON.stringify(project.timeline?.clips || []);
-    if (key !== serverClipsKey.current) {
-      serverClipsKey.current = key;
-      resetClips(project.timeline?.clips || []);
-    }
-  }, [project.timeline?.clips, resetClips]);
+  const clipsRef = useRef(clips);
+  clipsRef.current = clips;
 
-  // Is dirty state
-  const isDirty = useMemo(() => {
-    return JSON.stringify(clips) !== serverClipsKey.current;
-  }, [clips]);
+  // Key of the clips last saved to / loaded from the server. Ref for the sync effect, state for isDirty.
+  const serverClipsKey = useRef(clipsKey(initialClips));
+  const [savedKey, setSavedKey] = useState(serverClipsKey.current);
+  const markSaved = useCallback((key: string) => {
+    serverClipsKey.current = key;
+    setSavedKey(key);
+  }, []);
+
+  // Adopt clips the server changed (auto-match, re-add); our own save echo has the same key and is ignored
+  useEffect(() => {
+    const server = project.timeline?.clips || [];
+    const key = clipsKey(server);
+    if (key !== serverClipsKey.current) {
+      markSaved(key);
+      resetClips(server);
+    }
+  }, [project.timeline?.clips, resetClips, markSaved]);
+
+  const isDirty = useMemo(() => clipsKey(clips) !== savedKey, [clips, savedKey]);
 
   // Scene lookup maps
   const sceneMap: SceneMap = useMemo(() => {
@@ -120,12 +127,9 @@ export function useTimelineState(project: TimelineProjectData) {
 
   // Left sidebar & drawer state
   const [activeSideTab, setActiveSideTab] = useState<SideTab>("pool");
-  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
 
   // Resizable panel dimensions
-  const [drawerWidth, setDrawerWidth] = useState<number>(380);
   const [tracksHeight, setTracksHeight] = useState<number>(230);
-  const [isResizingDrawer, setIsResizingDrawer] = useState(false);
   const [isResizingTracks, setIsResizingTracks] = useState(false);
 
   // Live aspect ratio and background fill states
@@ -146,106 +150,42 @@ export function useTimelineState(project: TimelineProjectData) {
   const [verticalPreviewWidth, setVerticalPreviewWidth] = useState<number>(440);
   const [isResizingVerticalPreview, setIsResizingVerticalPreview] = useState(false);
 
-  const isVertical = liveAspectRatio !== "16:9";
-
-  // Active subtitle style preview state with persistence & autosave
-  const [liveSubtitleStyle, setLiveSubtitleStyle] = useState<SubtitleStyle | null>(
-    project.subtitle_style || null
+  // Subtitle style: one normalised copy, saved debounced (sliders/drag) or immediately (clicks).
+  const [liveSubtitleStyle, setLiveSubtitleStyle] = useState<SubtitleStyle>(() =>
+    toSubtitleStyle(project.subtitle_style)
   );
-  const liveSubtitleStyleRef = useRef<SubtitleStyle | null>(liveSubtitleStyle);
+  const liveSubtitleStyleRef = useRef<SubtitleStyle>(liveSubtitleStyle);
   liveSubtitleStyleRef.current = liveSubtitleStyle;
-
   const subtitleAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync when project.subtitle_style from server changes (only if different to prevent clobbering mid-edit)
+  // Adopt server changes only when nothing is waiting to be saved
   useEffect(() => {
-    if (project.subtitle_style) {
-      if (JSON.stringify(project.subtitle_style) !== JSON.stringify(liveSubtitleStyleRef.current)) {
-        setLiveSubtitleStyle(project.subtitle_style);
-      }
-    }
+    if (!subtitleAutosaveTimerRef.current) setLiveSubtitleStyle(toSubtitleStyle(project.subtitle_style));
   }, [project.subtitle_style]);
 
   const handleSubtitleChange = useCallback(
     (newStyle: SubtitleStyle, immediate = false) => {
       setLiveSubtitleStyle(newStyle);
       liveSubtitleStyleRef.current = newStyle;
-
-      // Optimistically update React Query cache so other tabs/components have the new state immediately
-      queryClient.setQueryData<Project>(["project", project.id], (old) => {
-        if (!old) return old;
-        return { ...old, subtitle_style: newStyle };
-      });
-
-      // Sync to EditorConfigStore single source of truth
-      const subPayload = {
-        enabled: newStyle.enabled !== false,
-        style: newStyle,
-        position: (newStyle.position as any) || "bottom",
-        customOffset: { x: newStyle.offset_x ?? 0, y: newStyle.offset_y ?? 0 },
-      };
-      if (project.project_type === "long_storyboard") {
-        useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "subtitle", subPayload, false);
-      } else {
-        useEditorConfigStore.getState().setShortsStepConfig(project.id, "subtitle", subPayload, false);
-      }
-
-      if (subtitleAutosaveTimerRef.current) {
-
-        clearTimeout(subtitleAutosaveTimerRef.current);
+      queryClient.setQueryData<Project>(["project", project.id], (old) =>
+        old ? { ...old, subtitle_style: newStyle } : old
+      );
+      if (subtitleAutosaveTimerRef.current) clearTimeout(subtitleAutosaveTimerRef.current);
+      const save = () => {
         subtitleAutosaveTimerRef.current = null;
-      }
-
-      const saveToServer = async (styleToSave: SubtitleStyle) => {
-        try {
-          await api.updateSubtitleStyle(project.id, styleToSave);
-        } catch (err) {
-          console.error("Autosave subtitle style failed:", err);
-        }
+        api.updateSubtitleStyle(project.id, newStyle).catch((err) => {
+          showToast(err.message || "Gagal menyimpan subtitle", "error");
+        });
       };
-
-      if (immediate) {
-        saveToServer(newStyle);
-      } else {
-        subtitleAutosaveTimerRef.current = setTimeout(() => {
-          saveToServer(newStyle);
-        }, 500);
-      }
+      if (immediate) save();
+      else subtitleAutosaveTimerRef.current = setTimeout(save, 500);
     },
-    [project.id, queryClient]
+    [project.id, queryClient, showToast]
   );
 
   const handleCustomSubtitlePositionChange = useCallback(
-    (pos: { offset_x: number; offset_y: number }) => {
-      const base: SubtitleStyle = liveSubtitleStyleRef.current || project.subtitle_style || {
-        enabled: true,
-        preset_name: "custom",
-        font_family: "Poppins",
-        font_size: 56,
-        font_weight: "Bold",
-        primary_color: "#FFFFFF",
-        highlight_color: "#FFE600",
-        outline_color: "#000000",
-        outline_width: 5,
-        box_color: "#000000",
-        box_opacity: 0.0,
-        position: "bottom",
-        offset_y: -120,
-        offset_x: 0,
-        display_mode: "per_word",
-        burst_word_count: 2,
-        highlight_animation: "color",
-        scale_factor: 1.0,
-        emoji_enabled: false,
-      };
-      const updated: SubtitleStyle = {
-        ...base,
-        offset_x: pos.offset_x,
-        offset_y: pos.offset_y,
-      };
-      handleSubtitleChange(updated, false);
-    },
-    [project.subtitle_style, handleSubtitleChange]
+    (offsetY: number) => handleSubtitleChange({ ...liveSubtitleStyleRef.current, offset_y: offsetY }, false),
+    [handleSubtitleChange]
   );
 
   const handleSubtitleDragEnd = useCallback(() => {
@@ -293,23 +233,7 @@ export function useTimelineState(project: TimelineProjectData) {
         return { ...old, watermark: newWm };
       });
 
-      // Sync to EditorConfigStore single source of truth
-      const wmPayload = {
-        ...newWm,
-        customOffset: {
-          x: newWm.custom_x ?? newWm.offset_x ?? 0,
-          y: newWm.custom_y ?? newWm.offset_y ?? 0,
-        },
-      };
-
-      if (project.project_type === "long_storyboard") {
-        useEditorConfigStore.getState().setStoryboardStepConfig(project.id, "watermark", wmPayload, false);
-      } else {
-        useEditorConfigStore.getState().setShortsStepConfig(project.id, "watermark", wmPayload, false);
-      }
-
       if (watermarkAutosaveTimerRef.current) {
-
         clearTimeout(watermarkAutosaveTimerRef.current);
         watermarkAutosaveTimerRef.current = null;
       }
@@ -397,7 +321,6 @@ export function useTimelineState(project: TimelineProjectData) {
     setSelectedClipIndex(idx);
     if (idx !== null) {
       setActiveSideTab("inspector");
-      setIsDrawerCollapsed(false);
     }
   }, []);
 
@@ -519,15 +442,16 @@ export function useTimelineState(project: TimelineProjectData) {
   });
 
   const saveTimelineMutation = useMutation({
-    mutationFn: (_opts?: { manual?: boolean }) =>
+    mutationFn: (vars: { clips: TimelineClip[]; manual?: boolean }) =>
       api.updateTimeline(project.id, {
-        clips,
+        clips: vars.clips,
         total_duration: totalDuration,
         has_audio: isAudioAttached,
         has_subtitles: isSubtitlesAttached,
       }),
     onSuccess: (_data, variables) => {
-      serverClipsKey.current = JSON.stringify(clips);
+      // Mark what was sent, not the current clips: edits made while saving stay dirty
+      markSaved(clipsKey(variables.clips));
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       if (variables?.manual) {
         showToast("Susunan timeline berhasil disimpan!", "success");
@@ -548,41 +472,41 @@ export function useTimelineState(project: TimelineProjectData) {
     if (!isDirty) return;
 
     const timer = setTimeout(() => {
-      saveTimelineMutation.mutate({});
+      saveTimelineMutation.mutate({ clips });
     }, 1000);
 
     return () => clearTimeout(timer);
   }, [clips, isDirty]);
 
+  // Flush unsaved clip edits on unmount (e.g. switching tabs before the debounce fires)
+  const flushRef = useRef(() => {});
+  flushRef.current = () => {
+    if (clipsKey(clipsRef.current) === serverClipsKey.current) return;
+    api
+      .updateTimeline(project.id, {
+        clips: clipsRef.current,
+        total_duration: totalDuration,
+        has_audio: isAudioAttached,
+        has_subtitles: isSubtitlesAttached,
+      })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["project", project.id] }))
+      .catch(() => {});
+  };
+  useEffect(() => () => flushRef.current(), []);
+
   // Clear timeline modal state & mutation
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
-  const [clearScope, setClearScope] = useState<"all" | "video_only">("all");
-
   const clearTimelineMutation = useMutation({
-    mutationFn: (scope: "all" | "video_only" = clearScope) =>
-      api.clearTimeline(project.id, {
-        clear_audio: scope === "all",
-        clear_subtitles: scope === "all",
-      }),
-    onSuccess: (_data, variables) => {
-      const scope = variables || clearScope;
+    mutationFn: () => api.clearTimeline(project.id, { clear_audio: false, clear_subtitles: false }),
+    onSuccess: () => {
       setClips([]);
       setSelectedClipIndex(null);
-      if (scope === "all") {
-        setIsAudioAttached(false);
-        setIsSubtitlesAttached(false);
-      }
       setTime(0);
       setSeekRequest((prev) => ({ t: 0, id: prev.id + 1 }));
       setIsClearConfirmOpen(false);
-      serverClipsKey.current = JSON.stringify([]);
+      markSaved(clipsKey([]));
       queryClient.invalidateQueries({ queryKey: ["project", project.id] });
-      showToast(
-        scope === "all"
-          ? "Seluruh track timeline berhasil dikosongkan!"
-          : "Klip video berhasil dikosongkan!",
-        "info"
-      );
+      showToast("Klip video dikosongkan", "info");
     },
     onError: (err: Error) => {
       showToast(err.message || "Gagal mengosongkan timeline", "error");
@@ -609,23 +533,11 @@ export function useTimelineState(project: TimelineProjectData) {
     readdNarrationMutation.mutate({ readd_audio: true, readd_subtitles: true });
   }, [readdNarrationMutation]);
 
-  const handleReaddAudio = useCallback(() => {
-    readdNarrationMutation.mutate({ readd_audio: true, readd_subtitles: false });
-  }, [readdNarrationMutation]);
-
-  const handleReaddSubtitles = useCallback(() => {
-    readdNarrationMutation.mutate({ readd_audio: false, readd_subtitles: true });
-  }, [readdNarrationMutation]);
-
   // Resize window mouse handlers
   useEffect(() => {
-    if (!isResizingDrawer && !isResizingTracks && !isResizingVerticalPreview) return;
+    if (!isResizingTracks && !isResizingVerticalPreview) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (isResizingDrawer) {
-        const newWidth = Math.max(280, Math.min(900, e.clientX - 48));
-        setDrawerWidth(newWidth);
-      }
       if (isResizingTracks) {
         const windowHeight = window.innerHeight;
         const newHeight = Math.max(160, Math.min(480, windowHeight - e.clientY));
@@ -639,7 +551,6 @@ export function useTimelineState(project: TimelineProjectData) {
     };
 
     const handleMouseUp = () => {
-      setIsResizingDrawer(false);
       setIsResizingTracks(false);
       setIsResizingVerticalPreview(false);
     };
@@ -650,7 +561,7 @@ export function useTimelineState(project: TimelineProjectData) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizingDrawer, isResizingTracks, isResizingVerticalPreview]);
+  }, [isResizingTracks, isResizingVerticalPreview]);
 
   // Split clip at playhead
   const canSplit = useMemo(() => canSplitAt(clips, time) !== -1, [clips, time]);
@@ -808,26 +719,6 @@ export function useTimelineState(project: TimelineProjectData) {
     [clips, selectedClipIndex, sceneMap, setClips, showToast]
   );
 
-  const handleCenterClip = useCallback(() => {
-    if (selectedClipIndex === null || !clips[selectedClipIndex]) return;
-    const c = clips[selectedClipIndex];
-    const sc = sceneMap.get(c.scene_id);
-    if (!sc) return;
-    const next = replaceScene(clips, selectedClipIndex, sc);
-    setClips(next);
-    showToast("Bagian scene dipusatkan (center-weighted)", "success");
-  }, [clips, selectedClipIndex, sceneMap, setClips, showToast]);
-
-  const handleFillScene = useCallback(() => {
-    if (selectedClipIndex === null || !clips[selectedClipIndex]) return;
-    const c = clips[selectedClipIndex];
-    const updated = fillWholeScene(c, sceneMap);
-    const out = [...clips];
-    out[selectedClipIndex] = updated;
-    setClips(out);
-    showToast(`Klip disetel menggunakan keseluruhan scene (${updated.speed}x)`, "success");
-  }, [clips, selectedClipIndex, sceneMap, setClips, showToast]);
-
   const handleSwapNeighbor = useCallback(
     (dir: -1 | 1) => {
       if (selectedClipIndex === null) return;
@@ -857,14 +748,10 @@ export function useTimelineState(project: TimelineProjectData) {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Form fields and sliders own their keys; a focused button owns Space/Enter
       const target = e.target as HTMLElement;
-      if (
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
+      if (target?.isContentEditable || target?.closest?.("input, textarea, select, [role=slider]")) return;
+      if (target?.tagName === "BUTTON" && (e.code === "Space" || e.key === "Enter")) return;
 
       // Undo / Redo
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
@@ -884,7 +771,7 @@ export function useTimelineState(project: TimelineProjectData) {
       // Save (Ctrl/Cmd + S)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveTimelineMutation.mutate({ manual: true });
+        saveTimelineMutation.mutate({ clips: clipsRef.current, manual: true });
         return;
       }
 
@@ -954,51 +841,6 @@ export function useTimelineState(project: TimelineProjectData) {
     jumpCut,
   ]);
 
-  const handleApplyStudioPreset = useCallback(
-    async (preset: TimelineStudioPreset) => {
-      try {
-        if (preset.subtitle) {
-          handleSubtitleChange(preset.subtitle, true);
-        }
-        if (preset.watermark) {
-          handleWatermarkChange(preset.watermark, true);
-        }
-        if (preset.aspectRatio) {
-          setLiveAspectRatio(preset.aspectRatio);
-        }
-        if (preset.backgroundFill) {
-          setLiveBackgroundFill(preset.backgroundFill);
-        }
-
-        await api.updateProject(project.id, {
-          aspect_ratio: preset.aspectRatio,
-          background_fill: preset.backgroundFill,
-          watermark: preset.watermark,
-        });
-
-        if (preset.subtitle) {
-          await api.updateSubtitleStyle(project.id, preset.subtitle);
-        }
-
-        queryClient.setQueryData<Project>(["project", project.id], (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            aspect_ratio: preset.aspectRatio,
-            background_fill: preset.backgroundFill,
-            watermark: preset.watermark,
-            subtitle_style: preset.subtitle,
-          };
-        });
-
-        showToast(`Preset "${preset.name}" berhasil diterapkan!`, "success");
-      } catch (err: any) {
-        showToast(err.message || "Gagal menerapkan preset studio", "error");
-      }
-    },
-    [project.id, handleSubtitleChange, handleWatermarkChange, queryClient, showToast]
-  );
-
   return {
     clips,
     setClips,
@@ -1023,11 +865,7 @@ export function useTimelineState(project: TimelineProjectData) {
     toggleLoop,
     activeSideTab,
     setActiveSideTab,
-    isDrawerCollapsed,
-    setIsDrawerCollapsed,
-    drawerWidth,
     tracksHeight,
-    setIsResizingDrawer,
     setIsResizingTracks,
     liveAspectRatio,
     setLiveAspectRatio,
@@ -1035,7 +873,6 @@ export function useTimelineState(project: TimelineProjectData) {
     setLiveBackgroundFill,
     verticalPreviewWidth,
     setIsResizingVerticalPreview,
-    isVertical,
     liveSubtitleStyle,
     setLiveSubtitleStyle,
     handleSubtitleChange,
@@ -1051,8 +888,6 @@ export function useTimelineState(project: TimelineProjectData) {
     attachedSegments,
     totalDuration,
     seekTo,
-    stepFrames,
-    jumpCut,
     peaks,
     previewData,
     setPreviewData,
@@ -1062,13 +897,9 @@ export function useTimelineState(project: TimelineProjectData) {
     saveTimelineMutation,
     isClearConfirmOpen,
     setIsClearConfirmOpen,
-    clearScope,
-    setClearScope,
     clearTimelineMutation,
     readdNarrationMutation,
     handleReaddAll,
-    handleReaddAudio,
-    handleReaddSubtitles,
     canSplit,
     handleSplit,
     handleDeleteSelectedClip,
@@ -1082,11 +913,8 @@ export function useTimelineState(project: TimelineProjectData) {
     handleAppendScene,
     handleSetClipDuration,
     handleSetClipSpeed,
-    handleCenterClip,
-    handleFillScene,
     handleSwapNeighbor,
     handlePreviewSelectedClipSource,
     setActiveTab,
-    handleApplyStudioPreset,
   };
 }

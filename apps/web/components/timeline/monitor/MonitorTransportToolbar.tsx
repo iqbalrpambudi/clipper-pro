@@ -4,17 +4,12 @@ import React from "react";
 import {
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
-  ChevronLeft,
-  ChevronRight,
   Volume2,
   VolumeX,
   Repeat,
   Scissors,
   RotateCcw,
   RotateCw,
-  Maximize2,
 } from "lucide-react";
 import { formatTimecode } from "../timelineFormat";
 import { TimelineClip } from "@/types";
@@ -32,14 +27,9 @@ interface MonitorTransportToolbarProps {
   canRedo?: boolean;
   canSplit?: boolean;
   aspectRatio: string;
-  previewQuality: "540p" | "720p" | "1080p";
   onPlayingChange: (playing: boolean) => void;
-  onStep: (frames: number) => void;
-  onJumpCut: (dir: -1 | 1) => void;
   onToggleLoop: () => void;
   onToggleMute: () => void;
-  onToggleFullscreen: () => void;
-  onCyclePreviewQuality: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   onSplit?: () => void;
@@ -58,14 +48,9 @@ export function MonitorTransportToolbar({
   canRedo = false,
   canSplit = false,
   aspectRatio,
-  previewQuality,
   onPlayingChange,
-  onStep,
-  onJumpCut,
   onToggleLoop,
   onToggleMute,
-  onToggleFullscreen,
-  onCyclePreviewQuality,
   onUndo,
   onRedo,
   onSplit,
@@ -106,13 +91,6 @@ export function MonitorTransportToolbar({
           </span>
         )}
 
-        <TransportBtn title="Cut sebelumnya (↑)" onClick={() => onJumpCut(-1)}>
-          <SkipBack className="w-3.5 h-3.5" />
-        </TransportBtn>
-        <TransportBtn title="Mundur 1 frame (←)" onClick={() => onStep(-1)}>
-          <ChevronLeft className="w-4 h-4" />
-        </TransportBtn>
-
         <button
           type="button"
           onClick={() => onPlayingChange(!isPlaying)}
@@ -128,20 +106,13 @@ export function MonitorTransportToolbar({
           )}
         </button>
 
-        <TransportBtn title="Maju 1 frame (→)" onClick={() => onStep(1)}>
-          <ChevronRight className="w-4 h-4" />
-        </TransportBtn>
-        <TransportBtn title="Cut berikutnya (↓)" onClick={() => onJumpCut(1)}>
-          <SkipForward className="w-3.5 h-3.5" />
-        </TransportBtn>
-
         <div className="font-mono text-xs text-foreground tabular-nums ml-2 hidden sm:inline">
           <span className="text-primary font-bold">{formatTimecode(time)}</span>
           <span className="text-muted-foreground"> / {formatTimecode(duration)}</span>
         </div>
       </div>
 
-      {/* Right actions: Loop, Mute, Resolution, Aspect Ratio, Fullscreen */}
+      {/* Right actions: Loop, Mute, Aspect Ratio */}
       <div className="flex items-center gap-1">
         <TransportBtn
           title="Loop klip terpilih (L)"
@@ -163,26 +134,9 @@ export function MonitorTransportToolbar({
           )}
         </TransportBtn>
 
-        {/* Preview Resolution Quality Selector */}
-        <button
-          type="button"
-          onClick={onCyclePreviewQuality}
-          className="px-2 py-0.5 rounded-lg bg-background border border-border hover:border-primary/50 text-xs font-mono font-semibold transition flex items-center gap-1 text-foreground hover:text-primary cursor-pointer"
-          title="Klik untuk mengganti resolusi canvas preview (540p Cepat & Lancar / 720p / 1080p Penuh)"
-        >
-          <span className="text-primary font-bold">{previewQuality}</span>
-          <span className="text-xs text-muted-foreground uppercase font-sans">
-            {previewQuality === "540p" ? "Smooth" : previewQuality === "720p" ? "HD" : "Full"}
-          </span>
-        </button>
-
         <span className="px-2 py-0.5 rounded-lg bg-background border border-border text-xs font-mono text-muted-foreground font-semibold hidden md:inline">
           {aspectRatio}
         </span>
-
-        <TransportBtn title="Layar Penuh" onClick={onToggleFullscreen}>
-          <Maximize2 className="w-3.5 h-3.5" />
-        </TransportBtn>
       </div>
     </div>
   );

@@ -7,8 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Play,
-  Maximize2,
-  Expand,
   Gauge,
   Timer,
   MoveHorizontal,
@@ -28,7 +26,7 @@ import {
 } from "@/lib/timeline/editOps";
 import { Button } from "@/components/ui/button";
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const SPEEDS = [1, 1.25, 1.5];
 
 interface ClipInspectorProps {
   clip: TimelineClip | null;
@@ -48,8 +46,6 @@ interface ClipInspectorProps {
   onSplit: () => void;
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
-  onCenter: () => void;
-  onFillScene: () => void;
   onPreviewSource: () => void;
   onToggleLoop: () => void;
 }
@@ -77,8 +73,6 @@ function SelectedInspector({
   onSplit,
   onDelete,
   onMove,
-  onCenter,
-  onFillScene,
   onPreviewSource,
   onToggleLoop,
 }: ClipInspectorProps & { clip: TimelineClip; index: number }) {
@@ -239,7 +233,6 @@ function SelectedInspector({
         >
           <div className="flex items-center gap-1">
             <StepBtn onClick={() => onSetDuration(dur - 0.5)}>-0.5</StepBtn>
-            <StepBtn onClick={() => onSetDuration(dur - 1 / 30)}>-1f</StepBtn>
             <input
               value={durDraft}
               onChange={(e) => setDurDraft(e.target.value)}
@@ -248,7 +241,6 @@ function SelectedInspector({
               className="h-7 min-w-0 flex-1 rounded-lg border border-input bg-control-background text-center font-mono text-xs text-foreground transition focus:border-primary focus:outline-none"
               aria-label="Durasi klip (detik)"
             />
-            <StepBtn onClick={() => onSetDuration(dur + 1 / 30)}>+1f</StepBtn>
             <StepBtn onClick={() => onSetDuration(dur + 0.5)}>+0.5</StepBtn>
           </div>
         </Section>
@@ -301,14 +293,6 @@ function SelectedInspector({
               In {clip.clip_start.toFixed(2)} • Out {clip.clip_end.toFixed(2)}
             </span>
             <span>{bounds.end.toFixed(2)}s</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-2">
-            <ActionBtn onClick={onCenter} icon={<Maximize2 className="w-3.5 h-3.5 text-primary" />}>
-              Pusatkan
-            </ActionBtn>
-            <ActionBtn onClick={onFillScene} icon={<Expand className="w-3.5 h-3.5 text-primary" />}>
-              Full scene
-            </ActionBtn>
           </div>
         </Section>
 

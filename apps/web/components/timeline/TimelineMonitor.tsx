@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Film } from "lucide-react";
 import {
-  SentenceSegment,
   TimelineClip,
   SubtitleStyle,
   WatermarkConfig,
@@ -11,22 +10,14 @@ import {
   BackgroundFill,
 } from "@/types";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
-import { generateAssSubtitles } from "@/lib/assGenerator";
+import { EMPTY_ASS } from "@/hooks/useAssPreview";
 import {
   COMPOSITION_FPS,
   calculateKenBurnsZoom,
   COLOR_GRADING_CANVAS_FILTER,
 } from "@/lib/timeline/frameMath";
 import { MonitorTransportToolbar } from "./monitor/MonitorTransportToolbar";
-import { FallbackSubtitleOverlay } from "./monitor/FallbackSubtitleOverlay";
-
-export function hexToRgba(hex: string, alpha: number = 1.0): string {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.substring(0, 2), 16) || 0;
-  const g = parseInt(clean.substring(2, 4), 16) || 0;
-  const b = parseInt(clean.substring(4, 6), 16) || 0;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { SubtitleDragHandle } from "./monitor/SubtitleDragHandle";
 
 export interface SeekRequest {
   t: number;
@@ -37,7 +28,7 @@ interface TimelineMonitorProps {
   clips: TimelineClip[];
   audioUrl?: string | null;
   duration: number;
-  segments: SentenceSegment[];
+  subtitleAss: string;
   subtitleStyle?: SubtitleStyle | null;
   aspectRatio: string;
   backgroundFill?: Partial<BackgroundFill> | null;
@@ -49,8 +40,6 @@ interface TimelineMonitorProps {
   onPlayingChange: (playing: boolean) => void;
   onTimeChange: (t: number) => void;
   onSeek: (t: number) => void;
-  onStep: (frames: number) => void;
-  onJumpCut: (dir: -1 | 1) => void;
   onToggleLoop: () => void;
   canLoop: boolean;
   onUndo?: () => void;
@@ -63,7 +52,7 @@ interface TimelineMonitorProps {
   isWatermarkDraggable?: boolean;
   onUpdateWatermarkPosition?: (pos: { custom_x: number; custom_y: number }) => void;
   onWatermarkDragEnd?: () => void;
-  onUpdateSubtitlePosition?: (pos: { offset_x: number; offset_y: number }) => void;
+  onUpdateSubtitlePosition?: (offsetY: number) => void;
   onSubtitleDragEnd?: () => void;
 }
 
@@ -71,7 +60,7 @@ export function TimelineMonitor({
   clips,
   audioUrl,
   duration,
-  segments,
+  subtitleAss,
   subtitleStyle,
   watermark,
   isWatermarkDraggable = false,
@@ -89,8 +78,6 @@ export function TimelineMonitor({
   onPlayingChange,
   onTimeChange,
   onSeek,
-  onStep,
-  onJumpCut,
   onToggleLoop,
   canLoop,
   onUndo,
@@ -123,11 +110,8 @@ export function TimelineMonitor({
   const currentTimeRef = useRef(time);
   currentTimeRef.current = time;
 
-  const subtitleStyleRef = useRef(subtitleStyle);
-  subtitleStyleRef.current = subtitleStyle;
-
-  const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
+  const subtitleAssRef = useRef(subtitleAss);
+  subtitleAssRef.current = subtitleAss;
 
   const playingRef = useRef(isPlaying);
   playingRef.current = isPlaying;
@@ -135,27 +119,14 @@ export function TimelineMonitor({
   const cbRef = useRef({ onTimeChange, onPlayingChange });
   cbRef.current = { onTimeChange, onPlayingChange };
 
-  // Preview resolution quality (default 540p for ultra-smooth 60fps playback)
-  const [previewQuality, setPreviewQuality] = useState<"540p" | "720p" | "1080p">("540p");
-
-  const { canvasWidth, canvasHeight } = useMemo(() => {
-    if (previewQuality === "1080p") {
-      return {
-        canvasWidth: aspectRatio === "16:9" ? 1920 : 1080,
-        canvasHeight: aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920,
-      };
-    }
-    if (previewQuality === "720p") {
-      return {
-        canvasWidth: aspectRatio === "16:9" ? 1280 : 720,
-        canvasHeight: aspectRatio === "16:9" ? 720 : aspectRatio === "1:1" ? 720 : 1280,
-      };
-    }
-    return {
-      canvasWidth: aspectRatio === "16:9" ? 960 : 540,
-      canvasHeight: aspectRatio === "16:9" ? 540 : aspectRatio === "1:1" ? 540 : 960,
-    };
-  }, [previewQuality, aspectRatio]);
+  // Fixed 720p preview canvas
+  const { canvasWidth, canvasHeight } = useMemo(
+    () => ({
+      canvasWidth: aspectRatio === "16:9" ? 1280 : 720,
+      canvasHeight: aspectRatio === "16:9" ? 720 : aspectRatio === "1:1" ? 720 : 1280,
+    }),
+    [aspectRatio]
+  );
 
   // Measure actual preview container width & height
   useEffect(() => {
@@ -778,20 +749,11 @@ export function TimelineMonitor({
         canvasEl.style.pointerEvents = "none";
         canvasContainerRef.current.appendChild(canvasEl);
 
-        const refResX = aspectRatio === "16:9" ? 1920 : 1080;
-        const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-        const initialAss = generateAssSubtitles(
-          segmentsRef.current,
-          subtitleStyleRef.current || {},
-          refResX,
-          refResY
-        );
-
         const baseUrl = window.location.origin;
 
         const instance = new JASSUB({
           canvas: canvasEl,
-          subContent: initialAss,
+          subContent: subtitleAssRef.current || EMPTY_ASS,
           workerUrl: `${baseUrl}/jassub/jassub-worker.js`,
           wasmUrl: `${baseUrl}/jassub/jassub-worker.wasm`,
           modernWasmUrl: `${baseUrl}/jassub/jassub-worker-modern.wasm`,
@@ -852,12 +814,7 @@ export function TimelineMonitor({
   // Update JASSUB track live when subtitleStyle or segments change
   useEffect(() => {
     if (!jassubRef.current || !isJassubReady) return;
-    const refResX = aspectRatio === "16:9" ? 1920 : 1080;
-    const refResY = aspectRatio === "16:9" ? 1080 : aspectRatio === "1:1" ? 1080 : 1920;
-    const newAss =
-      subtitleStyle?.enabled !== false
-        ? generateAssSubtitles(segments, subtitleStyle || {}, refResX, refResY)
-        : "";
+    const newAss = subtitleAss || EMPTY_ASS;
 
     let isCancelled = false;
     const updateTrack = async () => {
@@ -885,16 +842,7 @@ export function TimelineMonitor({
     return () => {
       isCancelled = true;
     };
-  }, [subtitleStyle, segments, isJassubReady, canvasWidth, canvasHeight, aspectRatio]);
-
-  const handleToggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      containerRef.current.requestFullscreen().catch(() => {});
-    }
-  };
+  }, [subtitleAss, isJassubReady, canvasWidth, canvasHeight]);
 
   const ratio = aspectRatio === "16:9" ? "16 / 9" : aspectRatio === "1:1" ? "1 / 1" : "9 / 16";
   const activeClipIdx = clips.findIndex((c) => time >= c.timeline_start && time < c.timeline_end);
@@ -997,17 +945,14 @@ export function TimelineMonitor({
             onDragEnd={onWatermarkDragEnd}
           />
 
-          {/* Fallback CSS Subtitle Overlay */}
-          <FallbackSubtitleOverlay
-            isJassubReady={isJassubReady}
-            subtitleStyle={subtitleStyle}
-            segments={segments}
-            time={time}
-            frameDimensions={frameDimensions}
-            aspectRatio={aspectRatio}
-            onUpdateSubtitlePosition={onUpdateSubtitlePosition}
-            onSubtitleDragEnd={onSubtitleDragEnd}
-          />
+          {onUpdateSubtitlePosition && subtitleStyle && (
+            <SubtitleDragHandle
+              style={subtitleStyle}
+              frameHeight={frameDimensions.height}
+              onChange={onUpdateSubtitlePosition}
+              onDragEnd={onSubtitleDragEnd}
+            />
+          )}
 
           {/* Empty timeline state */}
           {clips.length === 0 && (
@@ -1025,12 +970,6 @@ export function TimelineMonitor({
                   ? ` • ${activeClip.speed}x`
                   : ""}
               </span>
-              {!isPlaying && (
-                <span className="px-1.5 py-0.5 rounded bg-black/80 text-primary border border-primary/30 text-xs font-mono font-bold shadow backdrop-blur-xs">
-                  F{Math.round(Math.max(0, time - activeClip.timeline_start) * 30)}/
-                  {Math.round((activeClip.timeline_end - activeClip.timeline_start) * 30)}
-                </span>
-              )}
             </div>
           )}
         </div>
@@ -1064,18 +1003,9 @@ export function TimelineMonitor({
         canRedo={canRedo}
         canSplit={canSplit}
         aspectRatio={aspectRatio}
-        previewQuality={previewQuality}
         onPlayingChange={onPlayingChange}
-        onStep={onStep}
-        onJumpCut={onJumpCut}
         onToggleLoop={onToggleLoop}
         onToggleMute={() => setIsMuted((m) => !m)}
-        onToggleFullscreen={handleToggleFullscreen}
-        onCyclePreviewQuality={() =>
-          setPreviewQuality((prev) =>
-            prev === "540p" ? "720p" : prev === "720p" ? "1080p" : "540p"
-          )
-        }
         onUndo={onUndo}
         onRedo={onRedo}
         onSplit={onSplit}

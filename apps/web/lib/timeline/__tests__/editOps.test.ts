@@ -6,6 +6,9 @@ import {
   splitAt,
   deleteClip,
   setClipSpeed,
+  rollEdge,
+  clipsKey,
+  MIN_SPEED,
   SceneMap,
 } from "../editOps";
 import type { TimelineClip, Scene } from "../../../types";
@@ -157,5 +160,55 @@ describe("editOps", () => {
 
     const updated = setClipSpeed(clip, 1.5, scenes);
     expect(updated.speed).toBe(1.5);
+  });
+
+  const mkScene = (id: string, start: number, end: number): Scene => ({
+    id,
+    project_id: "p1",
+    source_video_id: "v1",
+    start_time: start,
+    end_time: end,
+    duration: end - start,
+    scene_index: 0,
+    tags: [],
+    status: "ready",
+    created_at: "",
+  });
+
+  it("grows a clip past its scene into the next contiguous scene at speed 1", () => {
+    const scenes: SceneMap = new Map([
+      ["s1", mkScene("s1", 0, 3)],
+      ["s2", mkScene("s2", 3, 10)],
+    ]);
+    const clip: TimelineClip = {
+      id: "c1", scene_id: "s1", source_video_id: "v1",
+      timeline_start: 0, timeline_end: 2.5, clip_start: 0, clip_end: 2.5, speed: 1,
+    };
+    const [grown] = rollEdge([clip], 0, 6, scenes);
+    expect(grown.timeline_end).toBe(6);
+    expect(grown.speed).toBe(1);
+    expect(grown.clip_end).toBe(6);
+  });
+
+  it("never slows a clip below MIN_SPEED", () => {
+    const scenes: SceneMap = new Map([["s1", mkScene("s1", 0, 3)]]);
+    const clip: TimelineClip = {
+      id: "c1", scene_id: "s1", source_video_id: "v1",
+      timeline_start: 0, timeline_end: 2.5, clip_start: 0, clip_end: 2.5, speed: 1,
+    };
+    const [grown] = rollEdge([clip], 0, 20, scenes);
+    expect(MIN_SPEED).toBe(0.9);
+    expect(grown.speed).toBeGreaterThanOrEqual(MIN_SPEED);
+    expect(grown.timeline_end).toBeLessThan(3.5);
+  });
+
+  it("clipsKey ignores server-only and null keys", () => {
+    const base: TimelineClip = {
+      id: "c1", scene_id: "s1", source_video_id: "v1",
+      timeline_start: 0, timeline_end: 2, clip_start: 0, clip_end: 2, speed: 1,
+    };
+    const echo = { ...base, transition: null, thumbnail_url: "x.jpg", segment_id: null };
+    expect(clipsKey([echo])).toBe(clipsKey([base]));
+    expect(clipsKey([{ ...base, clip_end: 2.1 }])).not.toBe(clipsKey([base]));
   });
 });

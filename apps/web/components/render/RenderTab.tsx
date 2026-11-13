@@ -37,13 +37,6 @@ import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
 
 interface RenderTabProps {
   project: Project & {
@@ -67,10 +60,6 @@ export function RenderTab({ project }: RenderTabProps) {
   const queryClient = useQueryClient();
   const { showToast, activeTask, setActiveTask } = useStudioStore();
 
-  const [resolution, setResolution] = useState(project.resolution || "1080p");
-  const [antiCopyright, setAntiCopyright] = useState(
-    project.background_fill?.anti_copyright ?? true
-  );
   const [dynamicZoom, setDynamicZoom] = useState(project.background_fill?.dynamic_zoom ?? true);
   const [colorGrading, setColorGrading] = useState(project.background_fill?.color_grading ?? true);
 
@@ -122,7 +111,7 @@ export function RenderTab({ project }: RenderTabProps) {
   });
 
   const renderFinalMutation = useMutation({
-    mutationFn: () => api.renderFinal(project.id, { resolution }),
+    mutationFn: () => api.renderFinal(project.id, { resolution: project.resolution }),
     onSuccess: async () => {
       await refetchJobs();
       await queryClient.refetchQueries({ queryKey: ["project", project.id] });
@@ -187,24 +176,18 @@ export function RenderTab({ project }: RenderTabProps) {
   });
 
   const updateAntiCopyrightSettings = (
-    updates: Partial<{
-      anti_copyright: boolean;
-      dynamic_zoom: boolean;
-      color_grading: boolean;
-    }>
+    updates: Partial<{ dynamic_zoom: boolean; color_grading: boolean }>
   ) => {
-    const newAnti = updates.anti_copyright !== undefined ? updates.anti_copyright : antiCopyright;
     const newZoom = updates.dynamic_zoom !== undefined ? updates.dynamic_zoom : dynamicZoom;
     const newColor = updates.color_grading !== undefined ? updates.color_grading : colorGrading;
 
-    setAntiCopyright(newAnti);
     setDynamicZoom(newZoom);
     setColorGrading(newColor);
 
     updateProjectMutation.mutate({
       background_fill: {
         ...(project.background_fill || { mode: "blur", zoom: 1.0, color: "#000000" }),
-        anti_copyright: newAnti,
+        anti_copyright: true,
         dynamic_zoom: newZoom,
         color_grading: newColor,
       },
@@ -216,14 +199,13 @@ export function RenderTab({ project }: RenderTabProps) {
       ...project,
       background_fill: {
         ...(project.background_fill || { mode: "blur", zoom: 1.0, color: "#000000" }),
-        anti_copyright: antiCopyright,
+        anti_copyright: true,
         dynamic_zoom: dynamicZoom,
         color_grading: colorGrading,
       },
       watermark: liveWatermark,
-      resolution,
     };
-  }, [project, antiCopyright, dynamicZoom, colorGrading, liveWatermark, resolution]);
+  }, [project, dynamicZoom, colorGrading, liveWatermark]);
 
   return (
     <div>
@@ -295,34 +277,12 @@ export function RenderTab({ project }: RenderTabProps) {
             {/* Render Settings Panel */}
             <SectionPanel
               title="Pengaturan Rendering Final"
-              description="Konfigurasi resolusi dan proteksi video sebelum render"
+              description="Proteksi video dan watermark sebelum render"
               icon={<Sliders className="w-4 h-4 text-primary" />}
               className="!border-surface-border !bg-card"
               headerClassName="!border-surface-border !bg-card"
             >
               <div className="space-y-4">
-                {/* Resolusi Video Output */}
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">
-                    Resolusi Video Output
-                  </label>
-                  <Select
-                    value={resolution}
-                    onValueChange={(val) => {
-                      setResolution(val);
-                      updateProjectMutation.mutate({ resolution: val });
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent appearance="workspace">
-                      <SelectItem value="1080p" className="text-xs">1080x1920 (Full HD Vertical)</SelectItem>
-                      <SelectItem value="720p" className="text-xs">720x1280 (HD Fast Export)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* Proteksi Hak Cipta & Transformative Editing (Anti-Copyright) */}
                 <div className="space-y-3 rounded-xl border border-primary/20 bg-background p-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">

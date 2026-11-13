@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Film,
   Volume2,
   Subtitles,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
   AlertTriangle,
   Gauge,
-  Magnet,
   ArrowRight,
 } from "lucide-react";
 import { SentenceSegment, TimelineClip } from "@/types";
@@ -41,9 +37,6 @@ interface TimelineTracksProps {
   onEdgeDragEnd: () => void;
   onDropScene: (sceneId: string, target: SceneDropTarget) => void;
   onEditSubtitles: () => void;
-  onReaddAudio?: () => void;
-  onReaddSubtitles?: () => void;
-  onReaddAll?: () => void;
 }
 
 const HEADER_W = 84;
@@ -77,15 +70,10 @@ export function TimelineTracks({
   onEdgeDragEnd,
   onDropScene,
   onEditSubtitles,
-  onReaddAudio,
-  onReaddSubtitles,
-  onReaddAll,
 }: TimelineTracksProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [pps, setPps] = useState<number | null>(null);
   const [viewportW, setViewportW] = useState(800);
-  const [snapEnabled, setSnapEnabled] = useState(true);
   const [snapLine, setSnapLine] = useState<number | null>(null);
   const [dragEdge, setDragEdge] = useState<number | null>(null);
   const [dropHover, setDropHover] = useState<{
@@ -100,11 +88,8 @@ export function TimelineTracks({
   );
 
   const safeDuration = Math.max(1, duration);
-  const fitPps = useCallback(
-    () => Math.min(MAX_PPS, Math.max(MIN_PPS, (viewportW - 48) / safeDuration)),
-    [viewportW, safeDuration]
-  );
-  const scale = pps ?? fitPps();
+  // Always fit the whole short in view; no zoom
+  const scale = Math.min(MAX_PPS, Math.max(MIN_PPS, (viewportW - 48) / safeDuration));
   const contentW = Math.max(viewportW, safeDuration * scale + 160);
   const x = (t: number) => t * scale;
 
@@ -117,50 +102,6 @@ export function TimelineTracks({
     setViewportW(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-
-  const zoomTo = useCallback(
-    (next: number, anchorClientX?: number) => {
-      const el = scrollRef.current;
-      const clamped = Math.min(MAX_PPS, Math.max(MIN_PPS, next));
-      if (!el) {
-        setPps(clamped);
-        return;
-      }
-      const rect = el.getBoundingClientRect();
-      const anchorX = anchorClientX !== undefined ? anchorClientX - rect.left : el.clientWidth / 2;
-      const anchorT = (el.scrollLeft + anchorX) / scale;
-      setPps(clamped);
-      requestAnimationFrame(() => {
-        el.scrollLeft = Math.max(0, anchorT * clamped - anchorX);
-      });
-    },
-    [scale]
-  );
-
-  // Ctrl/Cmd + wheel zoom anchored on the cursor
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      zoomTo(scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX);
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [scale, zoomTo]);
-
-  // +/- keyboard zoom
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey) return;
-      if (e.key === "=" || e.key === "+") zoomTo(scale * 1.25);
-      else if (e.key === "-" || e.key === "_") zoomTo(scale / 1.25);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [scale, zoomTo]);
 
   // Keep the playhead visible during playback (optimized to eliminate layout thrashing)
   const lastScrollCheckTime = useRef(0);
@@ -278,7 +219,7 @@ export function TimelineTracks({
     if (!d) return;
     let t = d.orig + (e.clientX - d.startX) / scale;
     let snapped: number | null = null;
-    if (snapEnabled && !e.altKey) {
+    if (!e.altKey) {
       const tol = SNAP_PX / scale;
       let best = tol;
       for (const p of [...snapPoints, time]) {
@@ -351,65 +292,9 @@ export function TimelineTracks({
             <Film className="w-3.5 h-3.5 text-primary" /> Tracks
           </span>
           <span className="text-xs text-muted-foreground hidden lg:inline">
-            Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret
+            Alt saat seret = tanpa snap • Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret
             scene untuk ganti
           </span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSnapEnabled((s) => !s)}
-            className={`h-6 px-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition border ${
-              snapEnabled
-                ? "bg-primary/20 text-primary border-primary/40"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-            title="Snap ke batas kata narasi & cut (Alt = bebas)"
-            id="timeline-snap-toggle"
-          >
-            <Magnet className="w-3 h-3" /> Snap
-          </button>
-
-          <div className="mx-1 h-4 w-px bg-border" />
-
-          <button
-            type="button"
-            onClick={() => zoomTo(scale / 1.25)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
-            title="Zoom out (-)"
-          >
-            <ZoomOut className="w-3 h-3" />
-          </button>
-          <input
-            type="range"
-            min={Math.log(MIN_PPS)}
-            max={Math.log(MAX_PPS)}
-            step={0.01}
-            value={Math.log(scale)}
-            onChange={(e) => zoomTo(Math.exp(parseFloat(e.target.value)))}
-            className="h-1 w-20 cursor-pointer bg-muted accent-primary"
-            aria-label="Zoom timeline"
-          />
-          <button
-            type="button"
-            onClick={() => zoomTo(scale * 1.25)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
-            title="Zoom in (+)"
-          >
-            <ZoomIn className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPps(null);
-              if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-            }}
-            className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-surface-hover hover:text-foreground"
-            title="Fit seluruh timeline di layar"
-          >
-            <Maximize className="w-3 h-3" /> Fit
-          </button>
         </div>
       </div>
 
@@ -446,15 +331,6 @@ export function TimelineTracks({
                 <span>Edit</span>
                 <ArrowRight className="w-2.5 h-2.5" />
               </button>
-            ) : onReaddSubtitles ? (
-              <button
-                type="button"
-                onClick={onReaddSubtitles}
-                className="text-xs text-primary hover:underline font-semibold"
-                title="Tambahkan subtitle kembali ke timeline"
-              >
-                + Re-add
-              </button>
             ) : (
               <span className="text-xs text-muted-foreground">Kosong</span>
             )}
@@ -477,16 +353,6 @@ export function TimelineTracks({
               <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <Volume2 className="w-3.5 h-3.5 text-primary" /> A1
               </span>
-              {(audioDuration <= 0 || !hasAudio) && onReaddAudio ? (
-                <button
-                  type="button"
-                  onClick={onReaddAudio}
-                  className="text-xs text-primary hover:underline font-semibold"
-                  title="Tambahkan audio kembali ke timeline"
-                >
-                  + Re-add
-                </button>
-              ) : null}
             </div>
             <span className="text-xs text-muted-foreground truncate">
               {hasAudio && audioDuration > 0 ? voice || "Narasi" : "Kosong"}
@@ -564,18 +430,6 @@ export function TimelineTracks({
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Subtitle dinonaktifkan atau kosong</span>
-                  {onReaddSubtitles && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReaddSubtitles();
-                      }}
-                      className="px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold cursor-pointer"
-                    >
-                      + Tambah Subtitle
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -601,18 +455,6 @@ export function TimelineTracks({
                   style={{ maxWidth: Math.max(320, viewportW - 24) }}
                 >
                   <span>Seret scene dari Media Pool ke sini untuk mulai menyusun timeline</span>
-                  {(!hasAudio || !hasSubtitles) && onReaddAll && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReaddAll();
-                      }}
-                      className="px-2.5 py-1 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 font-semibold text-xs cursor-pointer"
-                    >
-                      + Re-add Audio & Subtitle
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -788,18 +630,6 @@ export function TimelineTracks({
                   style={{ maxWidth: Math.max(320, viewportW - 16) }}
                 >
                   <span>Track Audio narasi dinonaktifkan atau belum ada</span>
-                  {onReaddAudio && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReaddAudio();
-                      }}
-                      className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 font-semibold cursor-pointer"
-                    >
-                      + Tambah Audio
-                    </button>
-                  )}
                 </div>
               )}
             </div>

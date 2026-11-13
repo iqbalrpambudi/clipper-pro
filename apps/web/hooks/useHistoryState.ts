@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 const MAX_HISTORY = 100;
 
@@ -16,8 +16,6 @@ interface HistoryState<T> {
  */
 export function useHistoryState<T>(initial: T) {
   const [state, setState] = useState<HistoryState<T>>({ past: [], present: initial, future: [] });
-  const presentRef = useRef(initial);
-  presentRef.current = state.present;
 
   const set = useCallback((next: T | ((prev: T) => T), record: boolean = true) => {
     setState((s) => {
@@ -69,7 +67,6 @@ export function useHistoryState<T>(initial: T) {
 
   return {
     value: state.present,
-    presentRef,
     set,
     begin,
     cancelIfUnchanged,
