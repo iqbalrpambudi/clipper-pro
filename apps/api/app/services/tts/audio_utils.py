@@ -29,7 +29,7 @@ def _build_audio_filter(
     rate: str = "+0%",
     pitch: str = "+0Hz",
     base_sample_rate: int = 24000,
-    tighten_silence: bool = True,
+    tighten_silence: bool = False,
     broadcast_eq: bool = True,
 ) -> str:
     """Build FFmpeg audio filter string for rate (speed/tempo), pitch, silence-tightening, and broadcast vocal EQ."""
