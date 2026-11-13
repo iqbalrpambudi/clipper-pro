@@ -9,13 +9,11 @@ export interface BackgroundFill {
   color_grading?: boolean;
 }
 
-export type ProjectType = "short_video" | "long_storyboard";
-
 export interface Project {
   id: string;
   name: string;
   description?: string | null;
-  project_type?: ProjectType;
+  project_type?: string;
   status: string;
   aspect_ratio: string;
   resolution: string;
@@ -25,13 +23,7 @@ export interface Project {
   updated_at: string;
   source_video_count?: number;
   scene_count?: number;
-  storyboard_count?: number;
-  storyboard_items?: StoryboardItem[];
   subtitle_style?: SubtitleStyle | null;
-  youtube_metadata?: YouTubeMetadata | null;
-  characters?: StoryboardCharacter[] | null;
-  locations?: StoryboardLocation[] | null;
-  world_setting?: StoryboardWorldSetting | null;
   language?: string;
   source_videos?: SourceVideo[];
   scenes?: Scene[];
@@ -52,87 +44,6 @@ export interface ProjectDetail extends Project {
   render_jobs?: RenderJob[];
 }
 
-export interface StoryboardCharacterVariant {
-  variant_id: string;
-  label: string;
-  visual_anchor: string;
-  face_head_anchor?: string;
-  outfit_body_anchor?: string;
-  expression_range?: string;
-  signature_gesture?: string;
-  silhouette_note?: string;
-}
-
-export interface StoryboardCharacter {
-  id?: string;
-  name: string;
-  role?: string;
-  visual_anchor: string;
-  face_head_anchor?: string;
-  outfit_body_anchor?: string;
-  expression_range?: string;
-  signature_gesture?: string;
-  silhouette_note?: string;
-  variants?: StoryboardCharacterVariant[];
-}
-
-export interface StoryboardLocationKeyView {
-  view_id: string;
-  description: string;
-}
-
-export interface StoryboardLocation {
-  id: string;
-  name: string;
-  environment_anchor: string;
-  closeup_background_anchor?: string;
-  focal_props?: string;
-  lighting_direction?: string;
-  key_views?: StoryboardLocationKeyView[];
-  ambient_life?: string;
-  image_url?: string;
-  file_path?: string;
-}
-
-export interface StoryboardWorldSetting {
-  era?: string;
-  time_setting?: string;
-  atmosphere?: string;
-}
-
-export interface NarrationDimensionScore {
-  score: number;
-  label: string;
-  status: "excellent" | "good" | "needs_improvement";
-  feedback: string;
-}
-
-export interface NarrationSegmentImprovement {
-  segment_id: string;
-  segment_index: number;
-  chapter_title?: string;
-  original_text: string;
-  improved_text: string;
-  change_summary: string;
-  original_visual_prompt?: string;
-  improved_visual_prompt?: string;
-}
-
-export interface StoryboardNarrationAnalysisResponse {
-  overall_score: number;
-  grade: string;
-  summary: string;
-  hook_score: NarrationDimensionScore;
-  retention_pacing_score: NarrationDimensionScore;
-  emotional_storytelling_score: NarrationDimensionScore;
-  clarity_delivery_score: NarrationDimensionScore;
-  call_to_action_score: NarrationDimensionScore;
-  strengths: string[];
-  weaknesses: string[];
-  actionable_recommendations: string[];
-  has_improvements: boolean;
-  improved_segments: NarrationSegmentImprovement[];
-}
 
 export interface WatermarkConfig {
   enabled: boolean;
@@ -227,6 +138,7 @@ export interface SentenceSegment {
   end_ms: number;
   words: WordTimestamp[];
   chapter?: string | null;
+  scene_id?: string; // shot this line was written for
 }
 
 export interface Narration {
@@ -284,43 +196,18 @@ export interface Timeline {
   has_subtitles?: boolean;
 }
 
+// Mirrors STYLE_DEFAULTS in apps/api/app/services/subtitle_ass.py (the only ASS generator).
 export interface SubtitleStyle {
   id?: string;
-  project_id?: string | null;
-  enabled?: boolean;
+  enabled: boolean;
   preset_name: string;
-  description?: string | null;
-  is_preset?: boolean;
   font_family: string;
   font_size: number;
-  font_weight: string;
-  primary_color: string;
   highlight_color: string;
-  outline_color: string;
-  outline_width: number;
-  box_color: string;
-  box_opacity: number;
-  position: "top" | "center" | "bottom";
+  position: "bottom" | "center";
   offset_y: number;
-  offset_x: number;
-  display_mode: "per_word" | "full_sentence" | "burst";
-  burst_word_count: number;
-  highlight_animation: "scale" | "color" | "box" | "none";
-  scale_factor?: number;
-  emoji_enabled: boolean;
-  text_case?: "sentence" | "uppercase";
-}
-
-export interface SubtitleStyleUpdateRequest extends Partial<SubtitleStyle> {
-  save_as_preset?: boolean;
-  new_preset_name?: string;
-}
-
-export interface SubtitlePreset extends SubtitleStyle {
-  id: string;
-  name: string;
-  description?: string | null;
-  is_builtin: boolean;
+  burst_word_count: 1 | 2 | 3;
+  highlight_animation: "scale" | "none";
 }
 
 export interface RenderJob {
@@ -342,12 +229,8 @@ export interface NarrationTemplate {
   id: string;
   name: string;
   description?: string | null;
-  category: string;
-  sub_category?: string | null;
   system_prompt: string;
-  user_prompt_template: string;
   default_tone: string;
-  default_voice: string;
   is_builtin: boolean;
 }
 
@@ -377,206 +260,9 @@ export interface ModelConfig {
   elevenlabs_api_key_masked?: string | null;
   has_elevenlabs_api_key?: boolean;
   elevenlabs_model?: string;
-  runware_api_key_masked?: string | null;
-  has_runware_api_key?: boolean;
-  runware_tts_model?: string;
-  image_provider?: string;
-  image_base_url?: string | null;
-  image_model?: string;
-  image_concurrency?: number;
-  image_steps?: number;
-  image_cfg_scale?: number;
-  image_api_key_masked?: string | null;
-  has_image_api_key?: boolean;
-  image_system_prompt?: string | null;
   is_active: boolean;
 }
 
-export type StoryboardMotionEffect =
-  | "zoom_in"
-  | "zoom_out"
-  | "pan_left"
-  | "pan_right"
-  | "pan_up"
-  | "pan_down"
-  | "static";
-
-export interface StoryboardShotSubject {
-  char_id?: string;
-  variant?: string;
-  extra?: string;
-  pose?: string;
-  expression?: string;
-}
-
-export interface StoryboardShotMetadata {
-  scene_group_id?: string;
-  shot_type?: string;
-  camera_angle?: string;
-  camera_motion?: string;
-  spatial_blocking?: string;
-  focal_point?: string;
-  location_id?: string;
-  location_view?: string;
-  beat_type?: string;
-  visual_action?: string;
-  environment_detail?: string;
-  composition?: string;
-  lighting_time?: string;
-  subjects?: StoryboardShotSubject[];
-  reference_item_id?: string;
-  [key: string]: unknown;
-}
-
-export interface StoryboardItem {
-  id: string;
-  project_id: string;
-  narration_id?: string | null;
-  chapter_title?: string | null;
-  segment_id: string;
-  order_index: number;
-  script_text: string;
-  image_prompt: string;
-  resolved_prompt?: string | null;
-  shot_metadata?: StoryboardShotMetadata | null;
-  image_url?: string | null;
-  motion_effect: StoryboardMotionEffect;
-  start_time: number;
-  end_time: number;
-  duration: number;
-  status: "pending" | "generating" | "ready" | "failed";
-  error_message?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StyleAttributes {
-  medium?: string;
-  linework?: string;
-  palette?: string[];
-  lighting?: string;
-  character_style?: string;
-  composition?: string;
-  [key: string]: unknown;
-}
-
-export interface ImagePreset {
-  id: string;
-  name: string;
-  description?: string | null;
-  category: string;
-  preset_type: "style" | "character" | "combined";
-  master_prompt: string;
-  negative_prompt?: string | null;
-  reference_image_url?: string | null;
-  preview_image_url?: string | null;
-  user_text_input?: string | null;
-  style_attributes?: StyleAttributes | null;
-  is_builtin: boolean;
-  is_active: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface StudioAnalysisResult {
-  name: string;
-  category: string;
-  preset_type: "style" | "character" | "combined";
-  description: string;
-  master_prompt: string;
-  negative_prompt: string;
-  style_attributes: StyleAttributes;
-}
-
-export interface YouTubeThumbnailHistory {
-  id: string;
-  url: string;
-  file_path?: string;
-  prompt: string;
-  created_at: string;
-}
-
-export interface ThumbnailTextLayer {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  fontSize: number;
-  fontFamily: string;
-  fill: string;
-  align?: "left" | "center" | "right";
-  fontStyle?: "normal" | "bold" | "italic" | "900";
-  rotation: number;
-  scaleX?: number;
-  scaleY?: number;
-  // Stroke / Outline
-  strokeEnabled?: boolean;
-  stroke?: string;
-  strokeWidth?: number;
-  // Background box / highlight pill
-  bgEnabled?: boolean;
-  bgFill?: string;
-  bgPaddingX?: number;
-  bgPaddingY?: number;
-  bgCornerRadius?: number;
-  bgOpacity?: number;
-  // Shadow / 3D pop / glow
-  shadowEnabled?: boolean;
-  shadowColor?: string;
-  shadowBlur?: number;
-  shadowOffsetX?: number;
-  shadowOffsetY?: number;
-  shadowOpacity?: number;
-}
-
-export interface ThumbnailPreset {
-  id: string;
-  name: string;
-  desc?: string;
-  previewColor?: string;
-  isCustom?: boolean;
-  layers: Array<Omit<ThumbnailTextLayer, "id" | "x" | "y"> & { x?: number; y?: number }>;
-}
-
-export interface ThumbnailOverlayConfig {
-  enabled: boolean;
-  line1: string;
-  line2: string;
-  color1: string;
-  color2: string;
-  position: "top-left" | "bottom-left" | "top-right" | "bottom-right" | "center" | "custom";
-  pos_x?: number; // 0 to 100 (%)
-  pos_y?: number; // 0 to 100 (%)
-  text_align?: "left" | "center" | "right";
-  font_family?: string;
-  font_size: number;
-  rotation: number;
-  outline_spread?: number;
-  outline_blur?: number;
-  outline_color?: string;
-  outline_enabled?: boolean;
-  blur_enabled?: boolean;
-  shadow_style?: "subtle" | "3d_pop" | "glow" | "none";
-  style_preset?: "minimal" | "modern" | "viral" | "comic" | "custom";
-  // Multi-layer text support via react-konva
-  layers?: ThumbnailTextLayer[];
-  custom_presets?: ThumbnailPreset[];
-}
-
-export interface YouTubeMetadata {
-  title?: string;
-  title_options?: string[];
-  description?: string;
-  tags?: string[];
-  thumbnail_prompt?: string;
-  thumbnail_concept?: string;
-  thumbnail_url?: string;
-  thumbnail_history?: YouTubeThumbnailHistory[];
-  thumbnail_hook_line1?: string;
-  thumbnail_hook_line2?: string;
-  thumbnail_overlay?: ThumbnailOverlayConfig;
-  updated_at?: string;
-}
 
 export interface YTFormatOption {
   format_id: string;

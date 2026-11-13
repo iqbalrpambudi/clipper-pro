@@ -1,17 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Cpu, FileText, Palette } from "lucide-react";
+import { Cpu, FileText } from "lucide-react";
 import { FilterPills } from "@/components/ui";
 import { WorkspaceShell } from "@/components/layout";
 import { ModelsConfigTab } from "./_components/ModelsConfigTab";
 import { PromptTemplatesTab } from "./_components/PromptTemplatesTab";
-import { SubtitlePresetsTab } from "./_components/SubtitlePresetsTab";
 
 export default function SettingsPage() {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<
-    "models" | "prompts" | "subtitles"
-  >("models");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"models" | "prompts">("models");
 
   return (
     <WorkspaceShell activePage="settings">
@@ -20,7 +17,7 @@ export default function SettingsPage() {
           <p className="workspace-page-eyebrow">Preferensi workspace</p>
           <h1 className="workspace-page-title">Pengaturan &amp; preset</h1>
           <p className="workspace-page-description">
-            Atur model AI, gaya naskah, dan preset tampilan subtitle untuk proses produksi Anda.
+            Atur model AI, API key, dan gaya naskah untuk proses produksi Anda.
           </p>
         </header>
 
@@ -30,7 +27,6 @@ export default function SettingsPage() {
           items={[
             { id: "models", label: "Model AI & API Keys", icon: Cpu },
             { id: "prompts", label: "Prompt AI & Preset Naskah", icon: FileText },
-            { id: "subtitles", label: "Preset Gaya Subtitle", icon: Palette },
           ]}
         />
 
@@ -42,7 +38,6 @@ export default function SettingsPage() {
         >
           {activeSettingsTab === "models" && <ModelsConfigTab />}
           {activeSettingsTab === "prompts" && <PromptTemplatesTab />}
-          {activeSettingsTab === "subtitles" && <SubtitlePresetsTab />}
         </section>
       </div>
     </WorkspaceShell>

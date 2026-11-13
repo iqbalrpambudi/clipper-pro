@@ -7,15 +7,7 @@ export type StudioTab =
   | "tts"
   | "timeline"
   | "subtitles"
-  | "render"
-  | "storyboard_script"
-  | "storyboard_voice"
-  | "storyboard_images"
-  | "storyboard_timeline"
-  | "storyboard_watermark"
-  | "storyboard_render"
-  | "storyboard_publishing"
-  | "storyboard_youtube";
+  | "render";
 
 export interface TaskEvent {
   project_id: string;
@@ -26,9 +18,7 @@ export interface TaskEvent {
     | "scene_transcribe"
     | "narration_generate"
     | "tts_align"
-    | "render"
-    | "storyboard_images"
-    | "storyboard_generate";
+    | "render";
   status: "queued" | "progress" | "success" | "error";
   progress: number;
   stage: string;
@@ -38,54 +28,7 @@ export interface TaskEvent {
   timestamp?: string;
 }
 
-const SHORT_TABS: StudioTab[] = ["media", "narration", "tts", "timeline", "render"];
-const STORYBOARD_TABS: StudioTab[] = [
-  "storyboard_script",
-  "storyboard_voice",
-  "storyboard_images",
-  "storyboard_timeline",
-  "storyboard_render",
-  "storyboard_publishing",
-];
-const SHORT_FALLBACK: Record<string, StudioTab> = {
-  storyboard_script: "narration",
-  storyboard_voice: "tts",
-  storyboard_timeline: "timeline",
-  storyboard_render: "render",
-  storyboard_publishing: "media",
-  storyboard_youtube: "media",
-};
-
-const STORYBOARD_FALLBACK: Record<string, StudioTab> = {
-  narration: "storyboard_script",
-  tts: "storyboard_voice",
-  timeline: "storyboard_timeline",
-  storyboard_watermark: "storyboard_timeline",
-  render: "storyboard_render",
-  storyboard_youtube: "storyboard_publishing",
-};
-
-function normalizeTab(
-  tab: StudioTab,
-  mode: "short" | "storyboard" | null
-): StudioTab {
-  if (tab === "storyboard_youtube") {
-    tab = "storyboard_publishing";
-  }
-  if (!mode) return tab;
-  if (mode === "short") {
-    if (SHORT_TABS.includes(tab)) return tab;
-    return SHORT_FALLBACK[tab] ?? "media";
-  }
-  if (STORYBOARD_TABS.includes(tab)) return tab;
-  return STORYBOARD_FALLBACK[tab] ?? "storyboard_script";
-}
-
-
 interface StudioState {
-  projectMode: "short" | "storyboard" | null;
-  setProjectMode: (mode: "short" | "storyboard" | null) => void;
-
   activeTab: StudioTab;
   setActiveTab: (tab: StudioTab) => void;
 
@@ -135,13 +78,10 @@ interface StudioState {
 export interface VoiceDraftState {
   provider?: string;
   voice?: string;
-  geminiModel?: string;
-  elevenlabsModel?: string;
-  runwareModel?: string;
+  model?: string;
   rate?: number | string;
   pitch?: number | string;
   customVoiceInput?: string;
-  runwareCustomVoiceInput?: string;
   selectedVoicePresetId?: string;
 }
 
@@ -161,17 +101,8 @@ export interface SubtitleDraftState {
 }
 
 export const useStudioStore = create<StudioState>((set, get) => ({
-  projectMode: null,
-  setProjectMode: (projectMode) => {
-    const { activeTab } = get();
-    set({ projectMode, activeTab: normalizeTab(activeTab, projectMode) });
-  },
-
   activeTab: "media",
-  setActiveTab: (tab) => {
-    const { projectMode } = get();
-    set({ activeTab: normalizeTab(tab, projectMode) });
-  },
+  setActiveTab: (activeTab) => set({ activeTab }),
 
   currentTime: 0,
   setCurrentTime: (currentTime) => set({ currentTime }),

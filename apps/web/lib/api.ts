@@ -10,22 +10,9 @@ import {
   Timeline,
   TimelineClip,
   SubtitleStyle,
-  SubtitleStyleUpdateRequest,
-  SubtitlePreset,
   RenderJob,
   VoiceInfo,
   ModelConfig,
-  StoryboardItem,
-  StoryboardShotMetadata,
-  StoryboardCharacter,
-  StoryboardLocation,
-  StoryboardWorldSetting,
-  StoryboardNarrationAnalysisResponse,
-  NarrationSegmentImprovement,
-  ImagePreset,
-  StudioAnalysisResult,
-  YouTubeMetadata,
-  YouTubeThumbnailHistory,
   YTInfoResponse,
   CostEstimateResponse,
   PresetCategory,
@@ -33,7 +20,6 @@ import {
   VideoSearchResponse,
   VideoImportRequest,
   VideoImportResponse,
-  ProjectType,
 } from "@/types";
 
 
@@ -125,7 +111,7 @@ export const api = {
   createProject: (data: {
     name: string;
     description?: string;
-    project_type?: ProjectType;
+    project_type?: string;
     aspect_ratio?: string;
     resolution?: string;
     language?: string;
@@ -144,7 +130,6 @@ export const api = {
         | "background_fill"
         | "watermark"
         | "language"
-        | "world_setting"
       >
     >
   ) => request<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
@@ -169,15 +154,21 @@ export const api = {
       method: "POST",
       body: formData,
     }),
-  getYTInfo: (projectId: string, url: string) =>
+  getYTInfo: (projectId: string, url: string, trim?: { start_sec?: number; end_sec?: number }) =>
     request<YTInfoResponse>(`/api/v1/projects/${projectId}/media/yt-info`, {
       method: "POST",
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, ...trim }),
     }),
-  downloadYT: (projectId: string, url: string, formatId?: string, title?: string) =>
+  downloadYT: (
+    projectId: string,
+    url: string,
+    formatId?: string,
+    title?: string,
+    trim?: { start_sec?: number; end_sec?: number }
+  ) =>
     request<SourceVideo>(`/api/v1/projects/${projectId}/media/yt-download`, {
       method: "POST",
-      body: JSON.stringify({ url, format_id: formatId, title }),
+      body: JSON.stringify({ url, format_id: formatId, title, ...trim }),
     }),
   deleteMedia: (projectId: string, videoId: string) =>
     request<void>(`/api/v1/projects/${projectId}/media/${videoId}`, { method: "DELETE" }),
@@ -235,24 +226,13 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  resetTemplate: (id: string) =>
-    request<NarrationTemplate>(`/api/v1/templates/${id}/reset`, {
-      method: "POST",
-    }),
   deleteTemplate: (id: string) =>
     request<void>(`/api/v1/templates/${id}`, {
       method: "DELETE",
     }),
   generateNarration: (
     projectId: string,
-    data: {
-      template_id: string;
-      topic?: string;
-      tone: string;
-      target_duration: number;
-      custom_prompt?: string;
-      language?: string;
-    }
+    data: { template_id: string; topic?: string; target_duration: number }
   ) =>
     request<Narration>(`/api/v1/projects/${projectId}/narration/generate`, {
       method: "POST",
@@ -315,7 +295,6 @@ export const api = {
   // Timeline
   autoMatchTimeline: (projectId: string) =>
     request<Timeline>(`/api/v1/projects/${projectId}/timeline/auto-match`, { method: "POST" }),
-  getTimeline: (projectId: string) => request<Timeline>(`/api/v1/projects/${projectId}/timeline`),
   updateTimeline: (
     projectId: string,
     data: {
@@ -357,45 +336,20 @@ export const api = {
   },
 
   // Subtitles
-  getSubtitlePresets: () => request<SubtitlePreset[]>("/api/v1/subtitles/presets"),
-  createSubtitlePreset: (data: Partial<SubtitlePreset>) =>
-    request<SubtitlePreset>("/api/v1/subtitles/presets", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  updateSubtitlePreset: (id: string, data: Partial<SubtitlePreset>) =>
-    request<SubtitlePreset>(`/api/v1/subtitles/presets/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  resetSubtitlePreset: (id: string) =>
-    request<SubtitlePreset>(`/api/v1/subtitles/presets/${id}/reset`, {
-      method: "POST",
-    }),
-  deleteSubtitlePreset: (id: string) =>
-    request<void>(`/api/v1/subtitles/presets/${id}`, {
-      method: "DELETE",
-    }),
-  getSubtitleStyle: (projectId: string) =>
-    request<SubtitleStyle>(`/api/v1/projects/${projectId}/subtitles/style`),
-  updateSubtitleStyle: (projectId: string, data: SubtitleStyleUpdateRequest) =>
+  updateSubtitleStyle: (projectId: string, data: SubtitleStyle) =>
     request<SubtitleStyle>(`/api/v1/projects/${projectId}/subtitles/style`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  previewASS: (projectId: string) =>
-    request<{ ass_content: string; line_count: number }>(
-      `/api/v1/projects/${projectId}/subtitles/preview-ass`
-    ),
-  matchSubtitleWithAudio: (
-    projectId: string,
-    data?: { offset_ms?: number; language?: string; model_size?: string }
-  ) =>
-    request<Narration>(`/api/v1/projects/${projectId}/subtitles/match-audio`, {
+  /** Same ASS generator as the final render, fed the unsaved style for the live preview. */
+  renderAss: (projectId: string, style: SubtitleStyle, segments: SentenceSegment[]) =>
+    request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/render-ass`, {
       method: "POST",
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify({ style, segments }),
     }),
-  getSubtitleExportUrl: (projectId: string, format: "ass" | "srt" | "vtt") =>
+  previewASS: (projectId: string) =>
+    request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/preview-ass`),
+  getSubtitleExportUrl: (projectId: string, format: "ass" | "srt") =>
     `/api/v1/projects/${projectId}/subtitles/export?format=${format}`,
 
   // Rendering
@@ -436,16 +390,6 @@ export const api = {
     tts_api_key?: string;
     elevenlabs_api_key?: string;
     elevenlabs_model?: string;
-    runware_api_key?: string;
-    runware_tts_model?: string;
-    image_provider?: string;
-    image_base_url?: string | null;
-    image_model?: string;
-    image_concurrency?: number;
-    image_steps?: number;
-    image_cfg_scale?: number;
-    image_api_key?: string;
-    image_system_prompt?: string | null;
   }) =>
     request<ModelConfig>("/api/v1/settings/config", {
       method: "POST",
@@ -464,23 +408,6 @@ export const api = {
         body: JSON.stringify(data),
       }
     ),
-  testImageConnection: (data: {
-    provider?: string;
-    base_url?: string;
-    image_model?: string;
-    api_key?: string;
-    steps?: number;
-    cfg_scale?: number;
-  }) =>
-    request<{
-      success: boolean;
-      message: string;
-      latency_ms?: number;
-      image_model_status?: string;
-    }>("/api/v1/settings/test-image-connection", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
   testTtsConnection: (data: {
     provider?: string;
     api_key?: string;
@@ -494,337 +421,15 @@ export const api = {
         body: JSON.stringify(data),
       }
     ),
-  getAvailableModels: (baseUrl?: string, apiKey?: string, category: "llm" | "image" = "llm") => {
-    const params = new URLSearchParams();
-    if (baseUrl) params.set("base_url", baseUrl);
-    if (category) params.set("category", category);
-    const query = params.toString() ? `?${params.toString()}` : "";
+  getAvailableModels: (baseUrl?: string, apiKey?: string) => {
+    const query = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : "";
     // Key travels in a header, not the query string, so it stays out of logs.
-    return request<{ models: string[]; image_models?: string[] }>(
+    return request<{ models: string[] }>(
       `/api/v1/settings/models${query}`,
       {
         headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
       }
     );
   },
-
-  // Storyboard (Long Video Explainer)
-  generateStoryboardScript: (
-    projectId: string,
-    data: {
-      topic: string;
-      target_duration_mins: number;
-      tone: string;
-      images_per_segment: number;
-      preset_id?: string;
-      custom_instructions?: string;
-      language?: string;
-      use_character_bible?: boolean;
-    }
-  ) =>
-    request<{
-      success: boolean;
-      project_id: string;
-      project_name?: string;
-      characters?: StoryboardCharacter[];
-      locations?: StoryboardLocation[];
-      world_setting?: StoryboardWorldSetting;
-      youtube_metadata?: Record<string, unknown>;
-      narration: Narration;
-      storyboard_items: StoryboardItem[];
-    }>(`/api/v1/projects/${projectId}/storyboard/generate-script`, {
-      method: "POST",
-      body: JSON.stringify(data),
-      timeoutMs: 360_000,
-    }),
-  redirectStoryboardVisuals: (
-    projectId: string,
-    data?: { preset_id?: string; custom_instructions?: string; use_character_bible?: boolean }
-  ) =>
-    request<{
-      success: boolean;
-      message: string;
-      project_id: string;
-      updated_count: number;
-      storyboard_items: StoryboardItem[];
-    }>(`/api/v1/projects/${projectId}/storyboard/redirect-visuals`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-      timeoutMs: 360_000,
-    }),
-  updateStoryboardCharacters: (projectId: string, characters: StoryboardCharacter[]) =>
-    request<{ success: boolean; characters: StoryboardCharacter[] }>(
-      `/api/v1/projects/${projectId}/storyboard/characters`,
-      {
-        method: "PUT",
-        body: JSON.stringify({ characters }),
-      }
-    ),
-  getStoryboardContinuityBible: (projectId: string) =>
-    request<{
-      characters: StoryboardCharacter[];
-      locations: StoryboardLocation[];
-      world_setting: StoryboardWorldSetting;
-    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible`),
-  updateStoryboardContinuityBible: (
-    projectId: string,
-    data: {
-      characters?: StoryboardCharacter[];
-      locations?: StoryboardLocation[];
-      world_setting?: StoryboardWorldSetting;
-    }
-  ) =>
-    request<{
-      success: boolean;
-      characters: StoryboardCharacter[];
-      locations: StoryboardLocation[];
-      world_setting: StoryboardWorldSetting;
-    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  extractStoryboardContinuityBible: (projectId: string, data?: { custom_instructions?: string }) =>
-    request<{
-      success: boolean;
-      characters: StoryboardCharacter[];
-      locations: StoryboardLocation[];
-      world_setting: StoryboardWorldSetting;
-    }>(`/api/v1/projects/${projectId}/storyboard/continuity-bible/extract`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    }),
-  generateLocationMasterImage: (projectId: string, locationId: string) =>
-    request<{
-      success: boolean;
-      location: StoryboardLocation;
-      locations: StoryboardLocation[];
-    }>(
-      `/api/v1/projects/${encodeURIComponent(projectId)}/storyboard/locations/${encodeURIComponent(locationId)}/generate-image`,
-      {
-        method: "POST",
-      }
-    ),
-  updateStoryboardSegment: (
-    projectId: string,
-    segmentId: string,
-    data: {
-      chapter?: string;
-      text?: string;
-      segment_index?: number;
-      items?: {
-        id: string;
-        image_prompt: string;
-        shot_metadata?: StoryboardShotMetadata | null;
-      }[];
-    }
-  ) =>
-    request<{
-      success: boolean;
-      segment_id: string;
-      narration: Narration;
-      storyboard_items: StoryboardItem[];
-    }>(`/api/v1/projects/${projectId}/storyboard/segments/${segmentId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  analyzeStoryboardNarration: (
-    projectId: string,
-    data?: { focus_aspect?: string; custom_instructions?: string }
-  ) =>
-    request<StoryboardNarrationAnalysisResponse>(
-      `/api/v1/projects/${projectId}/storyboard/analyze-narration`,
-      {
-        method: "POST",
-        body: JSON.stringify(data || {}),
-      }
-    ),
-  applyStoryboardNarrationImprovements: (
-    projectId: string,
-    improvedSegments: NarrationSegmentImprovement[],
-    updateVisualPrompts: boolean = true
-  ) =>
-    request<{
-      success: boolean;
-      applied_count: number;
-      updated_visual_count?: number;
-      total_segments: number;
-      segments: any[];
-    }>(`/api/v1/projects/${projectId}/storyboard/apply-narration-improvements`, {
-      method: "POST",
-      body: JSON.stringify({
-        improved_segments: improvedSegments,
-        update_visual_prompts: updateVisualPrompts,
-      }),
-    }),
-  getStoryboardItems: (projectId: string) =>
-    request<StoryboardItem[]>(`/api/v1/projects/${projectId}/storyboard/items`),
-  updateStoryboardItem: (
-    projectId: string,
-    itemId: string,
-    data: Partial<
-      Pick<
-        StoryboardItem,
-        | "chapter_title"
-        | "script_text"
-        | "image_prompt"
-        | "shot_metadata"
-        | "motion_effect"
-        | "start_time"
-        | "end_time"
-        | "duration"
-      >
-    >
-  ) =>
-    request<StoryboardItem>(`/api/v1/projects/${projectId}/storyboard/items/${itemId}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  generateSingleStoryboardImage: (
-    projectId: string,
-    itemId: string,
-    data?: { prompt?: string; preset_id?: string }
-  ) =>
-    request<StoryboardItem>(
-      `/api/v1/projects/${projectId}/storyboard/items/${itemId}/generate-image`,
-      {
-        method: "POST",
-        body: data ? JSON.stringify(data) : undefined,
-      }
-    ),
-  generateAllStoryboardImages: (
-    projectId: string,
-    data?: { item_ids?: string[]; concurrency?: number }
-  ) =>
-    request<{
-      success: boolean;
-      total_processed: number;
-      success_count: number;
-      fail_count: number;
-    }>(`/api/v1/projects/${projectId}/storyboard/generate-all-images`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    }),
-  syncStoryboardTiming: (projectId: string) =>
-    request<{ success: boolean; message: string }>(
-      `/api/v1/projects/${projectId}/storyboard/sync-timing`,
-      {
-        method: "POST",
-      }
-    ),
-
-  // AI Art Studio & Presets
-  getImagePresets: () => request<ImagePreset[]>("/api/v1/image-presets"),
-  getImagePreset: (id: string) => request<ImagePreset>(`/api/v1/image-presets/${id}`),
-  createImagePreset: (data: Partial<ImagePreset>) =>
-    request<ImagePreset>("/api/v1/image-presets", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  updateImagePreset: (id: string, data: Partial<ImagePreset>) =>
-    request<ImagePreset>(`/api/v1/image-presets/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  deleteImagePreset: (id: string) =>
-    request<void>(`/api/v1/image-presets/${id}`, {
-      method: "DELETE",
-    }),
-  activateImagePreset: (id: string) =>
-    request<ImagePreset>(`/api/v1/image-presets/${id}/activate`, {
-      method: "POST",
-    }),
-  uploadReferenceImage: async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch(`${BASE_URL}/api/v1/image-studio/upload-reference`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Gagal mengunggah gambar referensi");
-    }
-    return res.json() as Promise<{
-      success: boolean;
-      filename: string;
-      file_path: string;
-      url: string;
-    }>;
-  },
-  uploadReferenceImages: async (files: File[]) => {
-    const formData = new FormData();
-    files.forEach((f) => formData.append("files", f));
-    const res = await fetch(`${BASE_URL}/api/v1/image-studio/upload-references`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Gagal mengunggah gambar referensi");
-    }
-    return res.json() as Promise<
-      Array<{
-        success: boolean;
-        filename: string;
-        file_path: string;
-        url: string;
-      }>
-    >;
-  },
-  analyzeStylePreset: (data: {
-    user_text?: string;
-    preset_type?: ImagePreset["preset_type"];
-    reference_image_url?: string;
-    reference_image_path?: string;
-    reference_image_urls?: string[];
-    reference_image_paths?: string[];
-  }) =>
-    request<StudioAnalysisResult>("/api/v1/image-studio/analyze", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  testGeneratePresetImage: (data: {
-    master_prompt: string;
-    negative_prompt?: string;
-    scene_prompt?: string;
-    aspect_ratio?: string;
-  }) =>
-    request<{ image_url: string; file_path: string; prompt_used: string }>(
-      "/api/v1/image-studio/test-generate",
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      }
-    ),
-
-  // YouTube & Thumbnail Suite
-  generateYouTubeMetadata: (
-    projectId: string,
-    data?: { focus_angle?: string; custom_prompt?: string; language?: string }
-  ) =>
-    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-metadata`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    }),
-  generateYouTubeThumbnail: (
-    projectId: string,
-    data: { prompt: string; style_prompt?: string; preset_id?: string }
-  ) =>
-    request<{
-      thumbnail_url: string;
-      prompt: string;
-      history: YouTubeThumbnailHistory[];
-      youtube_metadata: YouTubeMetadata;
-    }>(`/api/v1/projects/${projectId}/storyboard/youtube/generate-thumbnail`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  updateYouTubeMetadata: (projectId: string, data: Partial<YouTubeMetadata>) =>
-    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-  getYouTubeMetadata: (projectId: string) =>
-    request<YouTubeMetadata>(`/api/v1/projects/${projectId}/storyboard/youtube/metadata`),
 
 };
