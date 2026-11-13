@@ -1,0 +1,1135 @@
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+
+const EMPTY_SEGMENTS: never[] = [];
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat } from "lucide-react";
+import {
+  Project,
+  TimelineClip,
+  Narration,
+  AudioTrack,
+  SubtitleStyle,
+  JassubInstance,
+} from "@/types";
+import { useAssPreview, EMPTY_ASS } from "@/hooks/useAssPreview";
+import { toSubtitleStyle } from "@/features/subtitles/constants";
+import {
+  COMPOSITION_FPS,
+  calculateKenBurnsZoom,
+  COLOR_GRADING_CANVAS_FILTER,
+  snapToFrame,
+} from "@/lib/timeline/frameMath";
+import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
+
+export function hexToRgba(hex: string, alpha: number = 1.0): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16) || 0;
+  const g = parseInt(clean.substring(2, 4), 16) || 0;
+  const b = parseInt(clean.substring(4, 6), 16) || 0;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+interface PreviewPlayerProps {
+  project: Project & {
+    timeline?: { clips: TimelineClip[]; total_duration: number } | null;
+    narration?: Narration | null;
+    audio?: AudioTrack | null;
+    subtitle_style?: SubtitleStyle | null;
+  };
+  onUpdateWatermarkPosition?: (pos: { custom_x: number; custom_y: number }) => void;
+  onWatermarkDragEnd?: () => void;
+  isWatermarkDraggable?: boolean;
+  compact?: boolean;
+}
+
+export function PreviewPlayer({
+  project,
+  onUpdateWatermarkPosition,
+  onWatermarkDragEnd,
+  isWatermarkDraggable,
+  compact,
+}: PreviewPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRefA = useRef<HTMLVideoElement | null>(null);
+  const videoRefB = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const blurCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const thumbnailImgCache = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  const activeVideoSlot = useRef<0 | 1>(0);
+  const [, setActiveSlotState] = useState<0 | 1>(0);
+  const currentClipIndexRef = useRef<number>(0);
+  const lastPreloadedClipIndex = useRef<number | null>(null);
+
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const jassubRef = useRef<JassubInstance | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTimeSec, setCurrentTimeSec] = useState(0);
+  // Mirror of currentTimeSec for effects that must not re-run every frame
+  const currentTimeRef = useRef(0);
+  // Last value pushed to state from the compositor loop (throttles re-renders)
+  const lastPublishedTimeRef = useRef(0);
+  const [durationSec, setDurationSec] = useState(project.timeline?.total_duration || 30);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const isLoopingRef = useRef(false);
+  useEffect(() => {
+    isLoopingRef.current = isLooping;
+  }, [isLooping]);
+  const [frameWidth, setFrameWidth] = useState(320);
+  const [isJassubReady, setIsJassubReady] = useState(false);
+  const clips = project.timeline?.clips || [];
+  const subtitleStyle = useMemo(() => toSubtitleStyle(project.subtitle_style), [project.subtitle_style]);
+  const subtitleAss = useAssPreview(project.id, subtitleStyle, project.narration?.segments || EMPTY_SEGMENTS);
+  const subtitleAssRef = useRef(subtitleAss);
+  subtitleAssRef.current = subtitleAss;
+
+  // Canonical canvas resolution matching project aspect ratio
+  const canvasWidth = project.aspect_ratio === "16:9" ? 1920 : 1080;
+  const canvasHeight =
+    project.aspect_ratio === "16:9" ? 1080 : project.aspect_ratio === "1:1" ? 1080 : 1920;
+
+  // Measure actual preview container width for 100% pixel-perfect scaling
+  useEffect(() => {
+    if (!frameRef.current) return;
+    const defaultWidth = project.aspect_ratio === "16:9" ? 960 : 360;
+    const updateSize = () => {
+      if (frameRef.current) {
+        setFrameWidth(frameRef.current.clientWidth || defaultWidth);
+      }
+    };
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(frameRef.current);
+    return () => ro.disconnect();
+  }, [project.aspect_ratio, frameRef.current]);
+
+  // Update total duration when project updates
+  useEffect(() => {
+    if (project.timeline?.total_duration) {
+      setDurationSec(project.timeline.total_duration);
+    } else if (project.audio?.duration) {
+      setDurationSec(project.audio.duration);
+    }
+  }, [project.timeline?.total_duration, project.audio?.duration]);
+
+  useEffect(() => {
+    currentTimeRef.current = currentTimeSec;
+  }, [currentTimeSec]);
+
+
+
+  // Initial & Clips-Change Setup for Video Elements
+  useEffect(() => {
+    if (clips.length === 0) return;
+
+    const seekTime = currentTimeRef.current;
+    let idx = clips.findIndex((c) => seekTime >= c.timeline_start && seekTime < c.timeline_end);
+    if (idx === -1) idx = 0;
+    currentClipIndexRef.current = idx;
+
+    const curClip = clips[idx];
+    const vidA = videoRefA.current;
+    if (vidA) {
+      if (vidA.getAttribute("src") !== curClip.video_url) {
+        vidA.src = curClip.video_url || "";
+      }
+      const clipProg = Math.max(0, seekTime - curClip.timeline_start);
+      vidA.currentTime = curClip.clip_start + clipProg * (curClip.speed || 1.0);
+      vidA.playbackRate = curClip.speed || 1.0;
+      vidA.muted = true;
+    }
+
+    // Preload next clip on slot B
+    const nextIdx = idx + 1;
+    const vidB = videoRefB.current;
+    if (vidB && nextIdx < clips.length) {
+      const nextClip = clips[nextIdx];
+      if (vidB.getAttribute("src") !== nextClip.video_url) {
+        vidB.src = nextClip.video_url || "";
+      }
+      vidB.currentTime = nextClip.clip_start;
+      vidB.playbackRate = nextClip.speed || 1.0;
+      vidB.muted = true;
+      lastPreloadedClipIndex.current = nextIdx;
+    }
+
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+  }, [clips]);
+
+  // Hardware-Accelerated 2D Canvas Compositor
+  // Emulates FFmpeg's video pipeline: live moving blur background, dynamic zoom (Ken Burns), and color grading
+  const renderCanvasFrame = useCallback(
+    (timeSec: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const cW = canvas.width;
+      const cH = canvas.height;
+
+      const bgMode = project.background_fill?.mode || "blur";
+      const bgColor = project.background_fill?.color || "#000000";
+      const userZoom = Math.max(0.5, project.background_fill?.zoom ?? 1.0);
+      const antiCopyright = project.background_fill?.anti_copyright ?? true;
+      const dynamicZoom = antiCopyright ? (project.background_fill?.dynamic_zoom ?? true) : false;
+      const colorGrading = antiCopyright ? (project.background_fill?.color_grading ?? true) : false;
+
+      // Active clip lookup
+      const clipIdx = clips.findIndex(
+        (c) => timeSec >= c.timeline_start && timeSec < c.timeline_end
+      );
+      const activeIdx =
+        clipIdx !== -1 ? clipIdx : timeSec >= durationSec ? Math.max(0, clips.length - 1) : 0;
+      const curClip = clips[activeIdx];
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+
+      ctx.clearRect(0, 0, cW, cH);
+
+      const isVideoReady = Boolean(
+        activeVid && activeVid.readyState >= 2 && activeVid.videoWidth > 0
+      );
+
+      // Always resolve and cache clip thumbnail for immediate poster rendering
+      let thumbImg: HTMLImageElement | undefined = undefined;
+      if (curClip?.thumbnail_url) {
+        thumbImg = thumbnailImgCache.current.get(curClip.thumbnail_url);
+        if (!thumbImg) {
+          thumbImg = new Image();
+          thumbImg.crossOrigin = "anonymous";
+          thumbImg.src = curClip.thumbnail_url;
+          thumbnailImgCache.current.set(curClip.thumbnail_url, thumbImg);
+          thumbImg.onload = () => {
+            renderCanvasFrame(currentTimeRef.current);
+          };
+        }
+      }
+
+      // 1. Render Background
+      if (bgMode === "cover") {
+        // Fullscreen cover: video fills entire canvas, background layer is omitted
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, cW, cH);
+      } else if (bgMode === "blur" && isVideoReady && activeVid) {
+        // High-Performance Offscreen Background Blur matching FFmpeg boxblur=25:5
+        if (!blurCanvasRef.current) {
+          blurCanvasRef.current = document.createElement("canvas");
+        }
+        const bCanvas = blurCanvasRef.current;
+        const bW = Math.max(160, Math.round(cW / 3));
+        const bH = Math.max(160, Math.round(cH / 3));
+        if (bCanvas.width !== bW || bCanvas.height !== bH) {
+          bCanvas.width = bW;
+          bCanvas.height = bH;
+        }
+        const bCtx = bCanvas.getContext("2d");
+        if (bCtx) {
+          bCtx.drawImage(activeVid, 0, 0, bW, bH);
+        }
+        ctx.save();
+        ctx.filter = "blur(12px) brightness(0.70)";
+        ctx.drawImage(bCanvas, -25, -25, cW + 50, cH + 50);
+        ctx.restore();
+      } else if (bgMode === "blur" && thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.filter = "blur(30px) brightness(0.70)";
+        ctx.drawImage(thumbImg, -25, -25, cW + 50, cH + 50);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, cW, cH);
+      }
+
+      // 2. Render Main Video Content (Letterboxed / Cover / Custom Zoom + Ken Burns Zoom + Color Grading)
+      if (isVideoReady && activeVid) {
+        ctx.save();
+
+        const vW = activeVid.videoWidth;
+        const vH = activeVid.videoHeight;
+        const videoAspect = vW / vH;
+        const canvasAspect = cW / cH;
+
+        let destW = cW;
+        let destH = cH;
+        let destX = 0;
+        let destY = 0;
+
+        if (bgMode === "cover") {
+          // Cover: Fill entire canvas, crop overflowing edges symmetrically
+          if (videoAspect > canvasAspect) {
+            destH = cH;
+            destW = cH * videoAspect;
+            destX = (cW - destW) / 2;
+            destY = 0;
+          } else {
+            destW = cW;
+            destH = cW / videoAspect;
+            destX = 0;
+            destY = (cH - destH) / 2;
+          }
+        } else {
+          // Fit (zoom = 1.0) or Custom Zoom with background blur/color
+          if (videoAspect > canvasAspect) {
+            destW = cW * userZoom;
+            destH = (cW / videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          } else {
+            destH = cH * userZoom;
+            destW = cH * videoAspect * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          }
+        }
+
+        // Apply Dynamic Zoom (Ken Burns) matching FFmpeg zoompan
+        if (dynamicZoom && curClip) {
+          const elapsedInClip = Math.max(0, timeSec - curClip.timeline_start);
+          const frameInClip = Math.floor(elapsedInClip * COMPOSITION_FPS);
+          const zoom = calculateKenBurnsZoom(frameInClip, activeIdx % 2 === 0);
+
+          ctx.translate(cW / 2, cH / 2);
+          ctx.scale(zoom, zoom);
+          ctx.translate(-cW / 2, -cH / 2);
+        }
+
+        // Apply Color Grading matching FFmpeg eq=contrast=1.03:saturation=1.04:brightness=0.01
+        if (colorGrading) {
+          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+        } else {
+          ctx.filter = "none";
+        }
+
+        ctx.drawImage(activeVid, destX, destY, destW, destH);
+        ctx.restore();
+      } else if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
+        ctx.save();
+        const vW = thumbImg.naturalWidth;
+        const vH = thumbImg.naturalHeight;
+        const videoAspect = vW / vH;
+        const canvasAspect = cW / cH;
+
+        let destW = cW;
+        let destH = cH;
+        let destX = 0;
+        let destY = 0;
+
+        if (bgMode === "cover") {
+          if (videoAspect > canvasAspect) {
+            destH = cH;
+            destW = cH * videoAspect;
+            destX = (cW - destW) / 2;
+            destY = 0;
+          } else {
+            destW = cW;
+            destH = cW / videoAspect;
+            destX = 0;
+            destY = (cH - destH) / 2;
+          }
+        } else {
+          if (videoAspect > canvasAspect) {
+            destW = cW * userZoom;
+            destH = (cW / videoAspect) * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          } else {
+            destH = cH * userZoom;
+            destW = cH * videoAspect * userZoom;
+            destX = (cW - destW) / 2;
+            destY = (cH - destH) / 2;
+          }
+        }
+
+        // Apply Dynamic Zoom (Ken Burns) matching FFmpeg zoompan
+        if (dynamicZoom && curClip) {
+          const elapsedInClip = Math.max(0, timeSec - curClip.timeline_start);
+          const frameInClip = Math.floor(elapsedInClip * COMPOSITION_FPS);
+          const zoom = calculateKenBurnsZoom(frameInClip, activeIdx % 2 === 0);
+
+          ctx.translate(cW / 2, cH / 2);
+          ctx.scale(zoom, zoom);
+          ctx.translate(-cW / 2, -cH / 2);
+        }
+
+        if (colorGrading) {
+          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
+        } else {
+          ctx.filter = "none";
+        }
+        ctx.drawImage(thumbImg, destX, destY, destW, destH);
+        ctx.restore();
+      }
+    },
+    [clips, project.background_fill, durationSec]
+  );
+
+  // Eagerly preload thumbnails for all timeline clips
+  useEffect(() => {
+    clips.forEach((c) => {
+      if (c.thumbnail_url && !thumbnailImgCache.current.has(c.thumbnail_url)) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = c.thumbnail_url;
+        img.onload = () => {
+          if (!isPlaying) {
+            renderCanvasFrame(currentTimeRef.current);
+          }
+        };
+        thumbnailImgCache.current.set(c.thumbnail_url, img);
+      }
+    });
+  }, [clips, isPlaying, renderCanvasFrame]);
+
+  // Playback Control Lifecycle: Reset, Stop, and Looping Restart
+  const handleReset = useCallback(() => {
+    setCurrentTimeSec(0);
+    currentTimeRef.current = 0;
+    lastPublishedTimeRef.current = 0;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (videoRefA.current) {
+      videoRefA.current.pause();
+    }
+    if (videoRefB.current) {
+      videoRefB.current.pause();
+    }
+
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+    currentClipIndexRef.current = 0;
+
+    if (clips.length > 0 && videoRefA.current) {
+      if (videoRefA.current.getAttribute("src") !== (clips[0].video_url || "")) {
+        videoRefA.current.src = clips[0].video_url || "";
+      }
+      videoRefA.current.currentTime = clips[0].clip_start;
+      videoRefA.current.playbackRate = clips[0].speed || 1.0;
+    }
+    if (clips.length > 1 && videoRefB.current) {
+      if (videoRefB.current.getAttribute("src") !== (clips[1].video_url || "")) {
+        videoRefB.current.src = clips[1].video_url || "";
+      }
+      videoRefB.current.currentTime = clips[1].clip_start;
+      videoRefB.current.playbackRate = clips[1].speed || 1.0;
+      lastPreloadedClipIndex.current = 1;
+    }
+
+    renderCanvasFrame(0);
+  }, [clips, renderCanvasFrame]);
+
+  const restartPlayback = useCallback(() => {
+    setCurrentTimeSec(0);
+    currentTimeRef.current = 0;
+    lastPublishedTimeRef.current = 0;
+    activeVideoSlot.current = 0;
+    setActiveSlotState(0);
+    currentClipIndexRef.current = 0;
+
+    if (clips.length > 0 && videoRefA.current) {
+      if (videoRefA.current.getAttribute("src") !== (clips[0].video_url || "")) {
+        videoRefA.current.src = clips[0].video_url || "";
+      }
+      videoRefA.current.currentTime = clips[0].clip_start;
+      videoRefA.current.playbackRate = clips[0].speed || 1.0;
+      videoRefA.current.play().catch(() => {});
+    }
+    if (clips.length > 1 && videoRefB.current) {
+      if (videoRefB.current.getAttribute("src") !== (clips[1].video_url || "")) {
+        videoRefB.current.src = clips[1].video_url || "";
+      }
+      videoRefB.current.currentTime = clips[1].clip_start;
+      videoRefB.current.playbackRate = clips[1].speed || 1.0;
+      videoRefB.current.pause();
+      lastPreloadedClipIndex.current = 1;
+    }
+
+    // Audio HARUS menyala kembali saat loop diaktifkan
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.muted = isMuted;
+      audio.play().catch((err) => {
+        console.warn("[PreviewPlayer] Gagal memutar audio saat loop:", err);
+      });
+    }
+
+    setIsPlaying(true);
+    renderCanvasFrame(0);
+  }, [clips, isMuted, renderCanvasFrame]);
+
+  const stopPlayback = useCallback(() => {
+    setIsPlaying(false);
+    handleReset();
+  }, [handleReset]);
+
+  // Audio event listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTimeSec(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      if (isLoopingRef.current) {
+        restartPlayback();
+      } else {
+        stopPlayback();
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setDurationSec(audio.duration);
+      }
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, [restartPlayback, stopPlayback]);
+
+  // Timer fallback if no audio track exists yet
+  useEffect(() => {
+    if (project.audio?.audio_url) return;
+    if (!isPlaying) return;
+
+    let lastTime = performance.now();
+    const interval = setInterval(() => {
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+      setCurrentTimeSec((cur) => {
+        const next = cur + delta;
+        if (next >= durationSec && durationSec > 0) {
+          if (isLoopingRef.current) {
+            restartPlayback();
+            return 0;
+          } else {
+            stopPlayback();
+            return 0;
+          }
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, project.audio?.audio_url, durationSec, restartPlayback, stopPlayback]);
+
+  // High-Precision Unified Compositor Loop (Audio Clock + Dual-Video Ping-Pong + Canvas + JASSUB)
+  useEffect(() => {
+    let animId: number;
+
+    const compositorLoop = () => {
+      const audio = audioRef.current;
+      // Read the ref, not state: currentTimeSec is no longer an effect dep, so the
+      // closure value would be frozen and paused seeks would not repaint.
+      const curTime =
+        isPlaying && audio && !audio.paused ? audio.currentTime : currentTimeRef.current;
+
+      // Handle video reached duration limit
+      if (isPlaying && durationSec > 0 && curTime >= durationSec) {
+        if (isLoopingRef.current) {
+          restartPlayback();
+        } else {
+          stopPlayback();
+        }
+        return;
+      }
+
+      if (isPlaying && audio && !audio.paused) {
+        // Only push to state ~20x/sec; the loop itself reads currentTimeRef at 60fps.
+        // ponytail: coarse display cadence; lower to 1/60 once the time readout is the only consumer.
+        if (Math.abs(curTime - lastPublishedTimeRef.current) >= 0.05) {
+          lastPublishedTimeRef.current = curTime;
+          setCurrentTimeSec(curTime);
+        }
+
+        // Find which clip belongs to curTime
+        const newIdx = clips.findIndex(
+          (c) => curTime >= c.timeline_start && curTime < c.timeline_end
+        );
+        const validIdx =
+          newIdx !== -1 ? newIdx : curTime >= durationSec ? Math.max(0, clips.length - 1) : 0;
+
+        if (validIdx !== currentClipIndexRef.current && validIdx < clips.length) {
+          // Transition boundary hit! Ping-pong switch to the other video element
+          const nextSlot = (activeVideoSlot.current === 0 ? 1 : 0) as 0 | 1;
+          const newActiveVid = nextSlot === 0 ? videoRefA.current : videoRefB.current;
+          const oldActiveVid = nextSlot === 0 ? videoRefB.current : videoRefA.current;
+
+          const targetClip = clips[validIdx];
+          if (newActiveVid && targetClip) {
+            const clipProg = Math.max(0, curTime - targetClip.timeline_start);
+            const targetVideoTime = Math.min(
+              targetClip.clip_end,
+              targetClip.clip_start + clipProg * (targetClip.speed || 1.0)
+            );
+
+            if (Math.abs(newActiveVid.currentTime - targetVideoTime) > 0.1) {
+              newActiveVid.currentTime = targetVideoTime;
+            }
+            newActiveVid.playbackRate = targetClip.speed || 1.0;
+            newActiveVid.muted = true;
+            if (targetVideoTime < targetClip.clip_end - 0.03) {
+              newActiveVid.play().catch(() => {});
+            }
+          }
+
+          if (oldActiveVid) {
+            oldActiveVid.pause();
+          }
+
+          activeVideoSlot.current = nextSlot;
+          setActiveSlotState(nextSlot);
+          currentClipIndexRef.current = validIdx;
+
+          // Preload the next clip on the now-inactive video element
+          const preloadIdx = validIdx + 1;
+          if (preloadIdx < clips.length && oldActiveVid) {
+            const preloadClip = clips[preloadIdx];
+            if (oldActiveVid.getAttribute("src") !== preloadClip.video_url) {
+              oldActiveVid.src = preloadClip.video_url || "";
+            }
+            oldActiveVid.currentTime = preloadClip.clip_start;
+            oldActiveVid.playbackRate = preloadClip.speed || 1.0;
+            oldActiveVid.muted = true;
+            lastPreloadedClipIndex.current = preloadIdx;
+          }
+        } else {
+          // Inside current clip: enforce playback speed & drift alignment
+          const curClip = clips[validIdx];
+          if (curClip) {
+            const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+            if (activeVid) {
+              const targetSpeed = curClip.speed || 1.0;
+              if (Math.abs(activeVid.playbackRate - targetSpeed) > 0.01) {
+                activeVid.playbackRate = targetSpeed;
+              }
+              const expectedVidTime =
+                curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
+              if (expectedVidTime >= curClip.clip_end - 0.03) {
+                activeVid.pause();
+                activeVid.currentTime = curClip.clip_end;
+              } else {
+                if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
+                  activeVid.currentTime = expectedVidTime;
+                }
+                if (activeVid.paused && !audio.paused && !activeVid.ended && curTime < durationSec) {
+                  activeVid.play().catch(() => {});
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Render frame to Canvas 2D compositor
+      renderCanvasFrame(curTime);
+
+      // Render Subtitles via JASSUB libass
+      if (jassubRef.current && isJassubReady) {
+        jassubRef.current.manualRender({
+          expectedDisplayTime: performance.now(),
+          width: canvasWidth,
+          height: canvasHeight,
+          mediaTime: curTime,
+        });
+      }
+
+      if (isPlaying) {
+        animId = requestAnimationFrame(compositorLoop);
+      }
+    };
+
+    if (isPlaying) {
+      animId = requestAnimationFrame(compositorLoop);
+    } else {
+      // Single paint when paused
+      renderCanvasFrame(currentTimeRef.current);
+      if (jassubRef.current && isJassubReady) {
+        jassubRef.current.manualRender({
+          expectedDisplayTime: performance.now(),
+          width: canvasWidth,
+          height: canvasHeight,
+          mediaTime: currentTimeRef.current,
+        });
+      }
+    }
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [isPlaying, clips, durationSec, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame]);
+
+  // Paused repaint. The compositor effect above deliberately omits currentTimeSec so it is
+  // not torn down 60x/sec; without this, scrubbing while paused would leave a stale frame.
+  useEffect(() => {
+    if (isPlaying) return;
+    renderCanvasFrame(currentTimeRef.current);
+    if (jassubRef.current && isJassubReady) {
+      jassubRef.current.manualRender({
+        expectedDisplayTime: performance.now(),
+        width: canvasWidth,
+        height: canvasHeight,
+        mediaTime: currentTimeRef.current,
+      });
+    }
+  }, [currentTimeSec, isPlaying, isJassubReady, canvasWidth, canvasHeight, renderCanvasFrame]);
+
+  // Initialize JASSUB (WebAssembly libass) for 100% true WYSIWYG subtitle rendering
+  useEffect(() => {
+    let mounted = true;
+    let canvasEl: HTMLCanvasElement | null = null;
+
+    async function initJassub() {
+      if (!canvasContainerRef.current) return;
+
+      try {
+        const JASSUBModule = await import("jassub");
+        const JASSUB = JASSUBModule.default || JASSUBModule;
+
+        if (!mounted || !canvasContainerRef.current) return;
+
+        canvasContainerRef.current.innerHTML = "";
+        canvasEl = document.createElement("canvas");
+        canvasEl.width = canvasWidth;
+        canvasEl.height = canvasHeight;
+        canvasEl.style.width = "100%";
+        canvasEl.style.height = "100%";
+        canvasEl.style.position = "absolute";
+        canvasEl.style.inset = "0";
+        canvasEl.style.pointerEvents = "none";
+        canvasContainerRef.current.appendChild(canvasEl);
+
+        const baseUrl = window.location.origin;
+
+        const instance = new JASSUB({
+          canvas: canvasEl,
+          subContent: subtitleAssRef.current || EMPTY_ASS,
+          workerUrl: `${baseUrl}/jassub/jassub-worker.js`,
+          wasmUrl: `${baseUrl}/jassub/jassub-worker.wasm`,
+          modernWasmUrl: `${baseUrl}/jassub/jassub-worker-modern.wasm`,
+          availableFonts: {
+            "liberation sans": `${baseUrl}/jassub/default.woff2`,
+          },
+          fonts: [
+            `${baseUrl}/fonts/Montserrat.ttf`,
+            `${baseUrl}/fonts/BebasNeue.ttf`,
+            `${baseUrl}/fonts/Poppins.ttf`,
+            `${baseUrl}/fonts/Inter.ttf`,
+            `${baseUrl}/fonts/Anton.ttf`,
+            `${baseUrl}/fonts/Oswald.ttf`,
+            `${baseUrl}/fonts/Roboto.ttf`,
+          ],
+          debug: false,
+        });
+
+        await instance.ready;
+
+        if (!mounted) {
+          try {
+            instance.destroy();
+          } catch {
+            /* ignore cleanup error */
+          }
+          return;
+        }
+
+        jassubRef.current = instance;
+        setIsJassubReady(true);
+        const win = window as unknown as { __jassub?: JassubInstance; __isJassubReady?: boolean };
+        win.__jassub = instance;
+        win.__isJassubReady = true;
+
+        instance.manualRender({
+          expectedDisplayTime: performance.now(),
+          width: canvasWidth,
+          height: canvasHeight,
+          mediaTime: currentTimeRef.current,
+        });
+      } catch (err: unknown) {
+        console.error("[JASSUB] initialization failed:", err);
+        setIsJassubReady(false);
+      }
+    }
+
+    initJassub();
+
+    return () => {
+      mounted = false;
+      setIsJassubReady(false);
+      if (jassubRef.current) {
+        try {
+          jassubRef.current.destroy();
+        } catch {
+          /* ignore cleanup error */
+        }
+        jassubRef.current = null;
+      }
+      if (canvasEl) {
+        canvasEl.remove();
+      }
+    };
+  }, [canvasWidth, canvasHeight]);
+
+  // Update JASSUB track in real-time when subtitleStyle or segments change
+  useEffect(() => {
+    if (!jassubRef.current || !isJassubReady) return;
+    let isCancelled = false;
+    const updateTrack = async () => {
+      try {
+        const newAss = subtitleAss || EMPTY_ASS;
+        if (jassubRef.current?.renderer?.setTrack) {
+          await jassubRef.current.renderer.setTrack(newAss);
+        }
+        if (!isCancelled && jassubRef.current) {
+          await jassubRef.current.manualRender(
+            {
+              expectedDisplayTime: performance.now(),
+              width: canvasWidth,
+              height: canvasHeight,
+              mediaTime: currentTimeRef.current,
+            },
+            true
+          );
+        }
+      } catch (err) {
+        console.error("Failed to update JASSUB track:", err);
+      }
+    };
+    updateTrack();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [subtitleAss, isJassubReady, canvasWidth, canvasHeight]);
+
+  // Listen for video decoder seeked/loaded events to redraw canvas when paused
+  useEffect(() => {
+    const onFrameUpdate = () => {
+      if (!isPlaying) {
+        renderCanvasFrame(currentTimeRef.current);
+      }
+    };
+
+    const vA = videoRefA.current;
+    const vB = videoRefB.current;
+
+    vA?.addEventListener("seeked", onFrameUpdate);
+    vA?.addEventListener("loadeddata", onFrameUpdate);
+    vB?.addEventListener("seeked", onFrameUpdate);
+    vB?.addEventListener("loadeddata", onFrameUpdate);
+
+    return () => {
+      vA?.removeEventListener("seeked", onFrameUpdate);
+      vA?.removeEventListener("loadeddata", onFrameUpdate);
+      vB?.removeEventListener("seeked", onFrameUpdate);
+      vB?.removeEventListener("loadeddata", onFrameUpdate);
+    };
+  }, [isPlaying, renderCanvasFrame]);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      if (audioRef.current) audioRef.current.pause();
+      if (videoRefA.current) videoRefA.current.pause();
+      if (videoRefB.current) videoRefB.current.pause();
+      setIsPlaying(false);
+    } else {
+      let t = currentTimeRef.current;
+      if (durationSec > 0 && t >= durationSec - 0.05) {
+        t = 0;
+        setCurrentTimeSec(0);
+        currentTimeRef.current = 0;
+      }
+      if (audioRef.current) {
+        audioRef.current.currentTime = t;
+        audioRef.current.muted = isMuted;
+        audioRef.current.play().catch(() => {});
+      }
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+      if (activeVid) {
+        if (t === 0 && clips.length > 0) {
+          activeVid.src = clips[0].video_url || "";
+          activeVid.currentTime = clips[0].clip_start;
+        }
+        activeVid.play().catch(() => {});
+      }
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawT = parseFloat(e.target.value);
+    const t = snapToFrame(rawT);
+    setCurrentTimeSec(t);
+    lastPublishedTimeRef.current = t;
+    if (audioRef.current) {
+      audioRef.current.currentTime = t;
+    }
+
+    const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
+    const idx =
+      seekIdx !== -1 ? seekIdx : t >= durationSec ? Math.max(0, clips.length - 1) : 0;
+    currentClipIndexRef.current = idx;
+    const seekClip = clips[idx];
+
+    if (seekClip) {
+      const activeVid = activeVideoSlot.current === 0 ? videoRefA.current : videoRefB.current;
+      const otherVid = activeVideoSlot.current === 0 ? videoRefB.current : videoRefA.current;
+
+      const clipProgress = Math.max(0, t - seekClip.timeline_start);
+      const targetTime = Math.min(
+        seekClip.clip_end,
+        seekClip.clip_start + clipProgress * (seekClip.speed || 1.0)
+      );
+
+      if (activeVid) {
+        if (activeVid.getAttribute("src") !== seekClip.video_url) {
+          activeVid.src = seekClip.video_url || "";
+        }
+        activeVid.currentTime = targetTime;
+        activeVid.playbackRate = seekClip.speed || 1.0;
+        if (isPlaying && targetTime < seekClip.clip_end - 0.03) {
+          activeVid.play().catch(() => {});
+        }
+      }
+
+      // Pre-seek next clip on the other slot
+      const nextIdx = idx + 1;
+      if (nextIdx < clips.length && otherVid) {
+        const nextClip = clips[nextIdx];
+        if (otherVid.getAttribute("src") !== nextClip.video_url) {
+          otherVid.src = nextClip.video_url || "";
+        }
+        otherVid.currentTime = nextClip.clip_start;
+        otherVid.playbackRate = nextClip.speed || 1.0;
+        lastPreloadedClipIndex.current = nextIdx;
+      }
+    }
+
+    renderCanvasFrame(t);
+
+    if (jassubRef.current && isJassubReady) {
+      jassubRef.current.manualRender({
+        expectedDisplayTime: performance.now(),
+        width: canvasWidth,
+        height: canvasHeight,
+        mediaTime: t,
+      });
+    }
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (audioRef.current) {
+      audioRef.current.muted = nextMuted;
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
+  // Aspect ratio responsive frame wrapper styling
+  const aspectClass = compact
+    ? project.aspect_ratio === "16:9"
+      ? "w-[260px] sm:w-[340px] aspect-[16/9]"
+      : project.aspect_ratio === "1:1"
+        ? "w-[200px] sm:w-[240px] aspect-square"
+        : "w-[190px] sm:w-[220px] aspect-[9/16]"
+    : project.aspect_ratio === "16:9"
+      ? "w-[320px] sm:w-[480px] aspect-[16/9]"
+      : project.aspect_ratio === "1:1"
+        ? "w-[280px] sm:w-[340px] aspect-square"
+        : "w-[280px] sm:w-[320px] aspect-[9/16]";
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Hidden audio element for speech */}
+      {project.audio?.audio_url && (
+        <audio ref={audioRef} src={project.audio.audio_url} preload="auto" />
+      )}
+
+      {/* Dynamic Screen Frame */}
+      <div
+        ref={frameRef}
+        className={`relative ${aspectClass} bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-surface-border flex flex-col justify-between select-none`}
+      >
+        {/* Hardware-Accelerated Canvas Compositor (Moving Video Blur + Dynamic Zoom + Color Grading) */}
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+        />
+
+        {/* 100% Bit-for-Bit WYSIWYG Subtitle Canvas Layer (JASSUB WebAssembly libass) */}
+        <div
+          ref={canvasContainerRef}
+          className="absolute inset-0 z-20 pointer-events-none w-full h-full overflow-hidden flex items-center justify-center"
+        />
+
+        {/* Watermark Video Text Overlay */}
+        <WatermarkOverlay
+          watermark={project.watermark}
+          containerWidth={frameWidth}
+          containerHeight={frameWidth * (canvasHeight / canvasWidth)}
+          isDraggable={
+            isWatermarkDraggable ??
+            Boolean(project.watermark?.enabled && project.watermark?.position === "custom")
+          }
+          onCustomPositionChange={onUpdateWatermarkPosition}
+          onDragEnd={onWatermarkDragEnd}
+        />
+
+        {/* Hidden Dual-Video Decoder Pipeline */}
+        <video
+          ref={videoRefA}
+          playsInline
+          muted
+          preload="auto"
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: "1px",
+            height: "1px",
+            zIndex: -100,
+          }}
+        />
+        <video
+          ref={videoRefB}
+          playsInline
+          muted
+          preload="auto"
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: "1px",
+            height: "1px",
+            zIndex: -100,
+          }}
+        />
+
+        {/* If no clips in timeline */}
+        {clips.length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-4 text-center text-xs text-white/60">
+            Belum ada video di timeline
+          </div>
+        )}
+
+        {/* Top Watermark Overlay */}
+        <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-xs text-white/90 font-mono shadow-lg">
+          <span className="w-2 h-2 rounded-full bg-[#F8EEEA] animate-pulse" />
+          <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
+          <span className="text-white/30">•</span>
+          <span className="text-[#8A6A2F] font-semibold uppercase">
+            {project.background_fill?.mode === "cover"
+              ? "Cover 9:16"
+              : project.background_fill?.zoom && project.background_fill.zoom > 1.05
+                ? `Zoom ${Math.round(project.background_fill.zoom * 100)}%`
+                : project.background_fill?.mode === "black"
+                  ? "Fit Black"
+                  : "Fit Blur"}
+          </span>
+        </div>
+      </div>
+
+      {/* Playback Controls */}
+      <div
+        className={`w-full ${
+          compact ? "max-w-[240px] sm:max-w-[260px] p-2.5 mt-2.5" : "max-w-sm p-3.5 mt-3.5"
+        } space-y-2 rounded-xl border border-border bg-card shadow-sm`}
+      >
+        {/* Scrubber */}
+        <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+          <span>{formatTime(currentTimeSec)}</span>
+          <input
+            type="range"
+            min="0"
+            max={durationSec || 1}
+            step="0.0333"
+            value={currentTimeSec}
+            onChange={handleSeek}
+            className="h-1.5 flex-1 cursor-pointer rounded-lg bg-muted accent-primary"
+          />
+          <span>{formatTime(durationSec)}</span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground transition hover:text-foreground"
+              title="Reset ke Awal"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs flex items-center gap-1.5 hover:bg-primary/90 transition shadow-xs"
+            >
+              {isPlaying ? (
+                <Pause className="w-3.5 h-3.5 fill-current" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-current" />
+              )}
+              <span>{isPlaying ? "Pause" : "Play"}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsLooping(!isLooping)}
+              className={`rounded-lg border p-1.5 text-xs transition flex items-center gap-1 ${
+                isLooping
+                  ? "border-primary/40 bg-primary/10 text-primary font-medium"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+              }`}
+              title={isLooping ? "Loop aktif (Klik untuk matikan)" : "Loop nonaktif (Klik untuk nyalakan)"}
+            >
+              <Repeat className="w-4 h-4" />
+              <span className="text-xs hidden sm:inline">
+                {isLooping ? "Loop On" : "Loop"}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleMute}
+              className={`rounded-lg border border-border p-1.5 text-xs transition ${
+                isMuted
+                  ? "text-destructive bg-destructive/10"
+                  : "bg-background text-muted-foreground hover:text-foreground"
+              }`}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

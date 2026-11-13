@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cliper Pro — AI Short Video Maker (TikTok/Reels/Shorts)</title>
+    <meta
+      name="description"
+      content="Otomatisasi pembuatan video pendek viral dari materi video mentah menggunakan AI scene detection, template narasi, Gemini TTS, dan subtitle karaoke."
+    />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolved = stored === "dark" || (stored !== "light" && prefersDark) ? "dark" : "light";
+          if (resolved === "dark") {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased selection:bg-primary/30 font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
