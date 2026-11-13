@@ -2,10 +2,8 @@
 
 import React, { use, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Film, FileText, Volume2, Layers, Download, Loader2 } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
-import { useEditorConfigStore } from "@/lib/editorConfigStore";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
 import { StudioLayout, StudioNavTab } from "@/components/layout";
@@ -19,11 +17,9 @@ interface ShortLayoutProps {
 
 export default function ShortVideoStudioLayout({ children, params }: ShortLayoutProps) {
   const { id } = use(params);
-  const router = useRouter();
   const {
     activeTab,
     setActiveTab,
-    setProjectMode,
     activeTask,
     setActiveTask,
     setCurrentProjectId,
@@ -34,12 +30,11 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
   // Reset activeTab to initial Tab 1 whenever project opens or switches
   const lastMountedProjectIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setProjectMode("short");
     if (lastMountedProjectIdRef.current !== id) {
       lastMountedProjectIdRef.current = id;
       setActiveTab("media");
     }
-  }, [id, setActiveTab, setProjectMode]);
+  }, [id, setActiveTab]);
 
   // Scope active project ID in store
   useEffect(() => {
@@ -53,23 +48,6 @@ export default function ShortVideoStudioLayout({ children, params }: ShortLayout
   useProjectEvents(id);
 
   const { data: project, isLoading, error } = useProject(id);
-  const syncShortsConfigFromProject = useEditorConfigStore(
-    (s) => s.syncShortsConfigFromProject
-  );
-
-  useEffect(() => {
-    if (project) {
-      syncShortsConfigFromProject(project);
-    }
-  }, [project, syncShortsConfigFromProject]);
-
-  // If this project is actually a long storyboard, redirect to its studio
-  useEffect(() => {
-    if (!project) return;
-    if (project.project_type === "long_storyboard") {
-      router.replace(`/project/storyboard/${id}`);
-    }
-  }, [project, id, router]);
 
   // Restore activeTask on page refresh from project database state if not yet set by SSE
   useEffect(() => {

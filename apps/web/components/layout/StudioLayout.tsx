@@ -61,10 +61,7 @@ export function StudioLayout({
     setIsEditingTitle(false);
   };
 
-  const isFullHeightTab =
-    activeTab === "timeline" ||
-    activeTab === "storyboard_timeline" ||
-    activeTab === "storyboard_watermark";
+  const isFullHeightTab = activeTab === "timeline";
 
   return (
     <div

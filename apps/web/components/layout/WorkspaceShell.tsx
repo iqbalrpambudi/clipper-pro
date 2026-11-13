@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Film, LayoutGrid, Palette, Settings } from "lucide-react";
+import { Film, LayoutGrid, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
-export type WorkspacePage = "projects" | "image-studio" | "settings";
+export type WorkspacePage = "projects" | "settings";
 
 const navigation = [
   { href: "/", label: "Project", id: "projects", icon: LayoutGrid },
-  { href: "/image-studio", label: "Art Studio", id: "image-studio", icon: Palette },
   { href: "/settings", label: "Pengaturan", id: "settings", icon: Settings },
 ] as const;
 
@@ -58,7 +57,7 @@ export function WorkspaceShell({
               <strong className="!mb-0">Mode Tampilan</strong>
               <ThemeToggle align="start" />
             </div>
-            Kelola project, gaya visual, dan pengaturan produksi Anda.
+            Kelola project dan pengaturan produksi Anda.
           </div>
         </aside>
 

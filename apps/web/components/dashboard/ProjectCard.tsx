@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Film,
   Video,
-  Image as ImageIcon,
   Edit3,
   Trash2,
   ArrowRight,
@@ -21,8 +20,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
-  const isStoryboard = project.project_type === "long_storyboard";
-  const projectUrl = isStoryboard ? `/project/storyboard/${project.id}` : `/project/short/${project.id}`;
+  const projectUrl = `/project/short/${project.id}`;
 
   const formattedDate = React.useMemo(() => {
     if (!project.created_at) return null;
@@ -40,29 +38,18 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
 
   return (
     <Card className="workspace-project-card group relative flex flex-col justify-between">
-      <div
-        className={`workspace-project-art ${
-          isStoryboard ? "workspace-project-art-storyboard" : ""
-        }`}
-        aria-hidden="true"
-      >
-        <span>
-          {isStoryboard ? "STORYBOARD" : "VIDEO PROJECT"}
-        </span>
+      <div className="workspace-project-art" aria-hidden="true">
+        <span>VIDEO PROJECT</span>
       </div>
       <CardHeader className="workspace-project-card-header">
         <div className="mb-2.5 flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span
-              className={`workspace-project-type ${
-                isStoryboard ? "is-storyboard" : ""
-              }`}
-            >
-              {isStoryboard ? <ImageIcon aria-hidden="true" /> : <Video aria-hidden="true" />}
-              {isStoryboard ? "Storyboard" : "Clip pendek"}
+            <span className="workspace-project-type">
+              <Video aria-hidden="true" />
+              Clip pendek
             </span>
             <span className="workspace-project-format">
-              {project.aspect_ratio || (isStoryboard ? "16:9" : "9:16")} ·{" "}
+              {project.aspect_ratio || "9:16"} ·{" "}
               {project.resolution}
             </span>
 
@@ -127,13 +114,6 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
 
       <CardFooter className="workspace-project-footer">
         <div className="flex items-center gap-3">
-          {isStoryboard ? (
-            <span className="workspace-project-stat">
-              <ImageIcon aria-hidden="true" />
-              {project.storyboard_count || 0} ilustrasi
-            </span>
-          ) : (
-            <>
               <span className="workspace-project-stat">
                 <Video aria-hidden="true" />
                 {project.source_video_count || 0} media
@@ -142,8 +122,6 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
                 <Film aria-hidden="true" />
                 {project.scene_count || 0} scene
               </span>
-            </>
-          )}
         </div>
 
         <Link href={projectUrl} className="workspace-project-link">

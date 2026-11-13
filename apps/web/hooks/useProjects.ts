@@ -34,9 +34,7 @@ export function useCreateProject() {
     mutationFn: api.createProject,
     onSuccess: (newProj) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
-      const mode =
-        newProj.project_type === "long_storyboard" ? "storyboard" : "short";
-      router.push(`/project/${mode}/${newProj.id}`);
+      router.push(`/project/short/${newProj.id}`);
     },
     onError: (err: Error) => {
       showToast(err.message || "Gagal membuat project", "error");
@@ -101,7 +99,6 @@ export function useUpdateProject() {
           | "background_fill"
           | "watermark"
           | "language"
-          | "world_setting"
         >
       >;
     }) => api.updateProject(id, data),

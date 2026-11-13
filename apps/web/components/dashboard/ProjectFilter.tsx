@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Film, Image as ImageIcon, Search, X, RotateCcw } from "lucide-react";
+import { Film, Search, X, RotateCcw } from "lucide-react";
 import {
   Input,
   Select,
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui";
 
-export type ProjectModeFilter = "all" | "short_video" | "long_storyboard";
+export type ProjectModeFilter = "all" | "short_video";
 export type ProjectSortOption = "newest" | "oldest" | "name_asc" | "name_desc";
 
 interface ProjectFilterProps {
@@ -23,7 +23,6 @@ interface ProjectFilterProps {
   onSortOptionChange: (option: ProjectSortOption) => void;
   totalCount: number;
   shortCount: number;
-  storyboardCount: number;
   filteredCount: number;
   onResetFilters: () => void;
 }
@@ -37,7 +36,6 @@ export function ProjectFilter({
   onSortOptionChange,
   totalCount,
   shortCount,
-  storyboardCount,
   filteredCount,
   onResetFilters,
 }: ProjectFilterProps) {
@@ -71,18 +69,6 @@ export function ProjectFilter({
           >
             <Film className="w-3.5 h-3.5" />
             <span>Short Video (9:16) ({shortCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onModeFilterChange("long_storyboard")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition whitespace-nowrap ${
-              modeFilter === "long_storyboard"
-                ? "workspace-filter-active"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span>Storyboard ({storyboardCount})</span>
           </button>
         </div>
 

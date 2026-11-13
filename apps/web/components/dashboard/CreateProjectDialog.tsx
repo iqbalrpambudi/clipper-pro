@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { Film, Image as ImageIcon } from "lucide-react";
-import type { ProjectType } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +20,6 @@ import {
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  createMode: ProjectType;
-  setCreateMode: (mode: ProjectType) => void;
   name: string;
   setName: (name: string) => void;
   aspectRatio: string;
@@ -39,8 +35,6 @@ interface CreateProjectDialogProps {
 export function CreateProjectDialog({
   open,
   onOpenChange,
-  createMode,
-  setCreateMode,
   name,
   setName,
   aspectRatio,
@@ -58,80 +52,11 @@ export function CreateProjectDialog({
         <DialogHeader>
           <DialogTitle>Buat Project Baru</DialogTitle>
           <DialogDescription>
-            Pilih mode pembuatan video yang ingin Anda produksi.
+            Potong video panjang jadi klip 9:16 dengan narasi AI dan subtitle.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4 pt-2">
-          {/* Mode Selection Cards */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-2">
-              Pilih Mode Project
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Card 1: Short Video */}
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("short_video");
-                  setAspectRatio("9:16");
-                }}
-                className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${
-                  createMode === "short_video"
-                    ? "border-primary bg-accent/60 ring-1 ring-primary/30"
-                    : "border-border bg-card hover:border-primary/40"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground">
-                      <Film className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-accent text-accent-foreground font-semibold">
-                      9:16
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-bold text-foreground mb-1">Short Video Clipper</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Potong video panjang jadi klip TikTok/Reels dengan Scene AI & subtitle karaoke.
-                  </p>
-                </div>
-              </button>
-
-              {/* Card 2: Long Storyboard */}
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode("long_storyboard");
-                  setAspectRatio("16:9");
-                }}
-                className={`cursor-pointer rounded-xl p-3.5 border transition-all text-left flex flex-col justify-between ${
-                  createMode === "long_storyboard"
-                    ? "border-emerald-600/60 bg-emerald-500/5 ring-1 ring-emerald-600/25"
-                    : "border-border bg-card hover:border-emerald-600/40"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
-                      <ImageIcon className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold">
-                      16:9
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-bold text-foreground mb-1">
-                    Long Storyboard
-                  </h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Naskah 4–8 menit, suara TTS, dan ilustrasi AI konsisten per segmen cerita.
-                  </p>
-                </div>
-              </button>
-
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">
               Nama Project
@@ -139,11 +64,7 @@ export function CreateProjectDialog({
             <Input
               type="text"
               required
-              placeholder={
-                createMode === "long_storyboard"
-                  ? "Mis. Misteri Segitiga Bermuda dan Dimensi Waktu"
-                  : "Mis. Fakta Menakjubkan Lautan Dalam"
-              }
+              placeholder="Mis. Kenapa Batang Pohon Kurma Sengaja Dikuliti"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -161,7 +82,6 @@ export function CreateProjectDialog({
                 </SelectTrigger>
                 <SelectContent appearance="workspace">
                   <SelectItem value="9:16" className="text-xs">9:16 (TikTok/Reels/Shorts)</SelectItem>
-                  <SelectItem value="16:9" className="text-xs">16:9 (Landscape YouTube)</SelectItem>
                   <SelectItem value="1:1" className="text-xs">1:1 (Square Feed)</SelectItem>
                 </SelectContent>
               </Select>

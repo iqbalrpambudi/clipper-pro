@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Clock3,
   Video,
-  Image as ImageIcon,
   Trash2,
   Edit3,
   AlertTriangle,
@@ -22,7 +21,7 @@ import {
   useDeleteProject,
   useUpdateProject,
 } from "@/hooks/useProjects";
-import { Project, ProjectType } from "@/types";
+import { Project } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
@@ -65,7 +64,6 @@ export default function DashboardPage() {
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
-  const [createMode, setCreateMode] = useState<ProjectType>("short_video");
   const [name, setName] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [resolution, setResolution] = useState("1080p");
@@ -100,10 +98,6 @@ export default function DashboardPage() {
   // Mode counts
   const shortCount = useMemo(
     () => projects.filter((p) => (p.project_type || "short_video") === "short_video").length,
-    [projects]
-  );
-  const storyboardCount = useMemo(
-    () => projects.filter((p) => p.project_type === "long_storyboard").length,
     [projects]
   );
 
@@ -162,9 +156,8 @@ export default function DashboardPage() {
     ? filteredProjects.filter((project) => project.id !== featuredProject.id)
     : filteredProjects;
 
-  const handleOpenCreate = (mode: ProjectType = "short_video") => {
-    setCreateMode(mode);
-    setAspectRatio(mode === "long_storyboard" ? "16:9" : "9:16");
+  const handleOpenCreate = () => {
+    setAspectRatio("9:16");
     setName("");
     setIsCreateOpen(true);
   };
@@ -175,7 +168,6 @@ export default function DashboardPage() {
     createMutation.mutate(
       {
         name: name.trim(),
-        project_type: createMode,
         aspect_ratio: aspectRatio,
         resolution,
         language,
@@ -258,7 +250,7 @@ export default function DashboardPage() {
               Cari Sumber Video
             </Button>
             <Button
-              onClick={() => handleOpenCreate("short_video")}
+              onClick={() => handleOpenCreate()}
               className="workspace-create-button"
             >
               <Plus className="h-4 w-4" />
@@ -307,29 +299,18 @@ export default function DashboardPage() {
                   <h3 id="featured-project-title">{featuredProject.name}</h3>
                   <p>
                     {featuredProject.description ||
-                      (featuredProject.project_type === "long_storyboard"
-                        ? "Lanjutkan menyusun storyboard dan ilustrasi project ini."
-                        : "Lanjutkan memilih media dan menyusun klip video project ini.")}
+                      "Lanjutkan memilih media dan menyusun klip video project ini."}
                   </p>
                 </div>
                 <div className="workspace-featured-footer">
                   <div className="workspace-project-facts">
-                    {featuredProject.project_type === "long_storyboard" ? (
-                      <span>
-                        <ImageIcon aria-hidden="true" /> {featuredProject.storyboard_count || 0}{" "}
-                        ilustrasi
-                      </span>
-                    ) : (
-                      <>
-                        <span>
-                          <Video aria-hidden="true" /> {featuredProject.source_video_count || 0}{" "}
-                          media
-                        </span>
-                        <span>
-                          <Film aria-hidden="true" /> {featuredProject.scene_count || 0} scene
-                        </span>
-                      </>
-                    )}
+                    <span>
+                      <Video aria-hidden="true" /> {featuredProject.source_video_count || 0}{" "}
+                      media
+                    </span>
+                    <span>
+                      <Film aria-hidden="true" /> {featuredProject.scene_count || 0} scene
+                    </span>
                     <span>
                       <Clock3 aria-hidden="true" /> Diperbarui
                     </span>
@@ -358,13 +339,7 @@ export default function DashboardPage() {
                       <Trash2 aria-hidden="true" />
                     </Button>
                     <Button asChild className="workspace-open-project">
-                      <Link
-                        href={
-                          featuredProject.project_type === "long_storyboard"
-                            ? `/project/storyboard/${featuredProject.id}`
-                            : `/project/short/${featuredProject.id}`
-                        }
-                      >
+                      <Link href={`/project/short/${featuredProject.id}`}>
                         Buka project <ArrowRight aria-hidden="true" />
                       </Link>
                     </Button>
@@ -374,9 +349,7 @@ export default function DashboardPage() {
               <div className="workspace-featured-art" aria-hidden="true">
                 <span className="workspace-art-orb" />
                 <span className="workspace-art-frame">
-                  {featuredProject.project_type === "long_storyboard"
-                    ? "STORYBOARD"
-                    : "VIDEO PROJECT"}
+                  VIDEO PROJECT
                   <small>
                     {featuredProject.aspect_ratio} · {featuredProject.resolution}
                   </small>
@@ -404,7 +377,6 @@ export default function DashboardPage() {
             onSortOptionChange={setSortOption}
             totalCount={projects.length}
             shortCount={shortCount}
-            storyboardCount={storyboardCount}
             filteredCount={filteredProjects.length}
             onResetFilters={handleResetFilters}
           />
@@ -423,22 +395,14 @@ export default function DashboardPage() {
                 </span>
                 <h3>Belum ada project</h3>
                 <p>
-                  Mulai buat video pendek dari koleksi media Anda atau susun naskah storyboard
-                  dengan ilustrasi AI.
+                  Mulai buat video pendek dari koleksi media Anda.
                 </p>
                 <div className="workspace-empty-actions">
                   <Button
-                    onClick={() => handleOpenCreate("short_video")}
+                    onClick={() => handleOpenCreate()}
                     className="workspace-create-button"
                   >
                     <Plus className="h-4 w-4" /> Buat short video
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenCreate("long_storyboard")}
-                    variant="outline"
-                    className="workspace-secondary-button"
-                  >
-                    <Plus className="h-4 w-4" /> Buat storyboard
                   </Button>
                 </div>
               </div>
@@ -477,8 +441,6 @@ export default function DashboardPage() {
       <CreateProjectDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        createMode={createMode}
-        setCreateMode={setCreateMode}
         name={name}
         setName={setName}
         aspectRatio={aspectRatio}
