@@ -670,9 +670,14 @@ export function TimelineMonitor({
             }
             const expectedVidTime =
               curClip.clip_start + Math.max(0, curTime - curClip.timeline_start) * targetSpeed;
-            if (expectedVidTime >= curClip.clip_end - 0.03) {
+            // Video may run up to 0.25s ahead of the audio clock: also stop on the video's own
+            // position, and hold one frame before clip_end so the next shot never flashes in.
+            const holdTime = curClip.clip_end - 1 / 30;
+            if (expectedVidTime >= curClip.clip_end - 0.03 || activeVid.currentTime >= holdTime) {
               activeVid.pause();
-              activeVid.currentTime = curClip.clip_end;
+              if (Math.abs(activeVid.currentTime - holdTime) > 1 / 60) {
+                activeVid.currentTime = holdTime;
+              }
             } else {
               if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.25) {
                 activeVid.currentTime = expectedVidTime;
