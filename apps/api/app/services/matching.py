@@ -260,7 +260,7 @@ def _run_end(
     for sc in following:
         if end - safe_start >= need:
             break
-        if float(sc.get("start_time", 0.0)) - prev_end > 0.2 or (sc.get("shot_info") or {}).get("montage"):
+        if float(sc.get("start_time", 0.0)) - prev_end > 0.2 or (sc.get("shot_info") or {}).get("montage") or is_filler_scene(sc):
             break
         prev_end = float(sc.get("end_time", prev_end))
         end = round(prev_end - 0.15, 3)
@@ -347,6 +347,16 @@ STATIC_BORING_KEYWORDS = {
     "kamera statis", "layar kosong", "layar hitam", "berbicara", "wawancara", "duduk diam",
     "talking head", "static shot", "blank screen",
 }
+
+# Channel branding, not the process: intro logo, ad/title card, outro end screen.
+FILLER_TAGS = {
+    "logo", "branding", "iklan", "intro", "outro", "end screen", "endscreen", "subscribe",
+    "title card", "kartu judul",
+}
+
+
+def is_filler_scene(scene: Dict[str, Any]) -> bool:
+    return bool({str(t).strip().lower() for t in scene.get("tags") or []} & FILLER_TAGS)
 
 
 def _calc_heatmap_boost(scene: Dict[str, Any]) -> float:
@@ -439,6 +449,18 @@ async def match_scenes_to_segments(
     recent_scene_ids: List[str] = []
     global_used_ids = set()
     scene_by_id = {sc["id"]: sc for sc in scenes}
+    pool = [sc for sc in scenes if not is_filler_scene(sc)] or scenes
+    # The script's tagged shots mark the story's footage (one chapter of a compilation);
+    # follow-up cuts stay inside it instead of borrowing another subject's shot.
+    tagged_scenes = list({w["scene_id"]: scene_by_id[w["scene_id"]] for w in windows if w.get("scene_id") in scene_by_id}.values())
+    if len(tagged_scenes) >= 2:  # one tagged shot is a point, not a span
+        lo = min(float(sc.get("start_time", 0.0)) for sc in tagged_scenes)
+        hi = max(float(sc.get("end_time", 0.0)) for sc in tagged_scenes)
+        sources = {sc.get("source_video_id") for sc in tagged_scenes}
+        pool = [
+            sc for sc in pool
+            if sc.get("source_video_id") in sources and lo <= float(sc.get("start_time", 0.0)) < hi
+        ] or pool
     reserved_ids = {w["scene_id"] for w in windows if w.get("scene_id")}
 
     total_video_dur = max((sc.get("end_time", 0.0) for sc in scenes), default=1.0)
@@ -457,18 +479,21 @@ async def match_scenes_to_segments(
         tagged = scene_by_id.get(win.get("scene_id") or "")
         if tagged is not None:
             _, _, tagged_dur, tagged_montage = _get_scene_usable_range(tagged, target_duration)
-            if tagged_montage or tagged_dur < 2.0:
+            if tagged_montage or tagged_dur < 2.0 or is_filler_scene(tagged):
                 tagged = None
 
         # 3. Score all candidate scenes with Hybrid Search + Heatmap + Vision Satisfaction + Strict Chrono Flow
         # Follow-up cuts never take a shot the script wrote another line for; with no free
         # scene left the previous clip simply plays on.
-        candidates = scenes if tagged is not None else [sc for sc in scenes if sc["id"] not in reserved_ids]
+        candidates = pool if tagged is not None else [sc for sc in pool if sc["id"] not in reserved_ids]
         if not candidates and clips:
             _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]}, scenes)
             continue
+        # Follow-up cut inside the same line: the shots right after the previous one are the
+        # next moves of the same step (reference channel cuts 2-4 shots per step sentence).
+        prev_sc = scene_by_id.get(clips[-1]["scene_id"]) if clips and clips[-1]["segment_id"] == win["primary_segment_id"] else None
         scored_scenes = []
-        for sc in candidates or scenes:
+        for sc in candidates or pool:
             sc_emb = sc.get("embedding")
             sim = 0.5
             if sc_emb is not None and win_emb is not None:
@@ -483,7 +508,7 @@ async def match_scenes_to_segments(
             if recent_scene_ids and sc["id"] == recent_scene_ids[-1]:
                 recency_penalty = 0.01  # Never duplicate immediately consecutive scene
             elif sc["id"] in global_used_ids:
-                recency_penalty = 0.03 if len(scenes) >= len(windows) * 2 else 0.35
+                recency_penalty = 0.03  # any unused shot beats a reused one; when all are used they tie
             elif len(recent_scene_ids) >= 2 and sc["id"] == recent_scene_ids[-2]:
                 recency_penalty = 0.25
             else:
@@ -530,6 +555,9 @@ async def match_scenes_to_segments(
             heatmap_boost = _calc_heatmap_boost(sc)
             satisfaction_boost = _calc_visual_satisfaction_boost(sc)
 
+            gap = float(sc.get("start_time", 0.0)) - float(prev_sc.get("end_time", 0.0)) if prev_sc else -1.0
+            continuity = 1.5 if prev_sc and sc.get("source_video_id") == prev_sc.get("source_video_id") and -0.05 <= gap <= 15.0 else 1.0
+
             score = (
                 relevance
                 * recency_penalty
@@ -537,6 +565,7 @@ async def match_scenes_to_segments(
                 * chrono_bonus
                 * heatmap_boost
                 * satisfaction_boost
+                * continuity
             )
             scored_scenes.append((score, sc))
 
@@ -544,10 +573,17 @@ async def match_scenes_to_segments(
         if tagged is not None:
             scored_scenes = [(10.0, tagged)] + [p for p in scored_scenes if p[1]["id"] != tagged["id"]]
         best_scene = scored_scenes[0][1]
+        if tagged is None and clips and best_scene["id"] in global_used_ids:
+            # No fresh shot fits here: let the previous clip play on instead of repeating footage.
+            _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]}, scenes)
+            continue
         recent_scene_ids.append(best_scene["id"])
         global_used_ids.add(best_scene["id"])
         best_p_sc = best_scene.get("start_time", 0.0) / max(total_video_dur, 1.0)
-        if best_p_sc > last_selected_progress:
+        if tagged is not None:
+            # Script shot order is the story order (shot 1 is the hook, out of time order), so it sets progress.
+            last_selected_progress = best_p_sc
+        elif best_p_sc > last_selected_progress:
             # Advance monotonic progress (capped gently to p_win + 0.18 so one outlier doesn't skip the whole video)
             last_selected_progress = min(best_p_sc, p_win + 0.18)
 

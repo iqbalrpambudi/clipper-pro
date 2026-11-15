@@ -31,6 +31,7 @@ from app.services.matching import (
     _calc_lexical_overlap,
     _calc_visual_satisfaction_boost,
     _get_scene_usable_range,
+    is_filler_scene,
     match_scenes_to_segments,
     verify_and_heal_timeline_clips,
 )
@@ -967,8 +968,8 @@ def _pick_replacement_scene(
         if sid in forbidden and len(scenes) > len(forbidden):
             continue
         desc = f"{sc.get('description', '')} {' '.join(sc.get('tags') or [])}".lower()
-        has_bad_frame = any(kw in desc for kw in LOW_QUALITY_FRAME_KEYWORDS)
-        score = _calc_lexical_overlap(seg_text, desc) * 2.0 + _calc_visual_satisfaction_boost(sc)
+        has_bad_frame = any(kw in desc for kw in LOW_QUALITY_FRAME_KEYWORDS) or is_filler_scene(sc)
+        score =_calc_lexical_overlap(seg_text, desc) * 2.0 + _calc_visual_satisfaction_boost(sc)
         score -= used_counts.get(sid, 0) * 0.6
         if has_bad_frame:
             score -= 2.5

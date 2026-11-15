@@ -10,6 +10,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.ai_adapters.base import EMBEDDING_DIM, BaseLLMAdapter, hash_embedding
+from app.services.vision_tagger import VISION_PROMPT
 
 log = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a structured video scene analyzer. Output ONLY valid JSON with keys 'description' (string in Indonesian, 1 natural sentence), 'characters' (list of visible people/characters), 'action' (main activity, short phrase in Indonesian), 'location' (setting in Indonesian), 'objects' (list of important objects), 'state' (mood/time/weather in Indonesian), 'confidence' (float 0.0-1.0), and 'tags' (list of 3-6 relevant Indonesian keywords).",
+                    "content": "You are a structured video scene analyzer. Output ONLY one valid JSON object with exactly the keys the user asks for.",
                 },
                 {"role": "user", "content": content_parts},
             ],
@@ -274,14 +275,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 return {
                     "description": parsed.get("description", "Aktivitas visual dalam scene"),
                     "tags": parsed.get("tags", ["video", "klip"]),
-                    "analysis": {
-                        "characters": parsed.get("characters", []),
-                        "action": parsed.get("action", ""),
-                        "location": parsed.get("location", ""),
-                        "objects": parsed.get("objects", []),
-                        "state": parsed.get("state", ""),
-                        "confidence": parsed.get("confidence", 0.5),
-                    },
+                    # Whole object: the caller's prompt owns the schema, parse_scene_analysis normalizes it.
+                    "analysis": parsed,
                 }
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             self._service_unavailable = True
@@ -321,7 +316,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             async with semaphore:
                 for attempt in range(2):
                     try:
-                        res = await self.analyze_vision([t_path], "Analisis frame video ini.")
+                        res = await self.analyze_vision([t_path], VISION_PROMPT)
                         desc = res.get("description")
                         tags = res.get("tags", ["video", "scene"])
                         if desc and desc != "Cuplikan video aksi/aktivitas":
@@ -329,7 +324,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                                 "scene_id": sc_id,
                                 "description": desc,
                                 "tags": tags,
-                                "analysis": res.get("analysis"),
+                                "analysis": res.get("analysis") or res,
                             }
                         elif attempt == 0:
                             await asyncio.sleep(1.2)
@@ -339,7 +334,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                                 "scene_id": sc_id,
                                 "description": desc or "Cuplikan video aksi/aktivitas",
                                 "tags": tags,
-                                "analysis": res.get("analysis"),
+                                "analysis": res.get("analysis") or res,
                             }
                     except Exception as exc:
                         if attempt == 0:

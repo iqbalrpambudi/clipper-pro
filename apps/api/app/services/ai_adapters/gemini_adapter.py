@@ -60,11 +60,14 @@ class GeminiAdapter(OpenAICompatibleAdapter):
             "- location: tempat/latar scene\n"
             "- objects: objek penting yang terlihat\n"
             "- state: suasana/keadaan (emosi, waktu, cuaca)\n"
+            "- visual_satisfaction: 0.0-1.0 seberapa satisfying/dinamis untuk Shorts (0.85-1.0 = aksi presisi, "
+            "pemotongan, transformasi jelas; 0.5-0.8 = proses kerja aktif; 0.1-0.3 = statis/blur; "
+            "0.0 = logo, intro, outro, end screen, ajakan subscribe, kartu judul/teks)\n"
             "- confidence: 0.0-1.0 keyakinan analisis\n"
-            "- tags: 3-5 kata kunci\n"
+            "- tags: 3-5 kata kunci; tambahkan 'logo', 'intro', atau 'outro' jika gambar berupa branding channel\n"
             'Output WAJIB berupa JSON array dengan format: [{"index": 0, "description": "...", '
             '"characters": ["..."], "action": "...", "location": "...", "objects": ["..."], '
-            '"state": "...", "confidence": 0.8, "tags": ["..."]}]'
+            '"state": "...", "visual_satisfaction": 0.7, "confidence": 0.8, "tags": ["..."]}]'
         )
         parts: List[Dict[str, Any]] = [{"text": instruction}]
 
@@ -140,14 +143,7 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                                 "scene_id": sc_id,
                                 "description": item.get("description", "Cuplikan video aksi/aktivitas"),
                                 "tags": item.get("tags", ["video", "scene"]),
-                                "analysis": {
-                                    "characters": item.get("characters", []),
-                                    "action": item.get("action", ""),
-                                    "location": item.get("location", ""),
-                                    "objects": item.get("objects", []),
-                                    "state": item.get("state", ""),
-                                    "confidence": item.get("confidence", 0.5),
-                                },
+                                "analysis": item,
                             })
                         return out
                 except Exception as exc:
@@ -177,12 +173,7 @@ class GeminiAdapter(OpenAICompatibleAdapter):
         parts: List[Dict[str, Any]] = [
             {
                 "text": (
-                    f"{prompt}\n\n"
-                    "PENTING: Jawab HANYA dalam format JSON valid dengan keys:\n"
-                    "{\"description\": \"Deskripsi singkat scene dalam 1 kalimat Bahasa Indonesia\", "
-                    "\"characters\": [\"...\"], \"action\": \"...\", \"location\": \"...\", "
-                    "\"objects\": [\"...\"], \"state\": \"...\", \"confidence\": 0.8, "
-                    "\"tags\": [\"tag1\", \"tag2\", \"tag3\"]}"
+                    f"{prompt}\n\nPENTING: jawab HANYA satu objek JSON valid dengan keys yang diminta di atas."
                 )
             }
         ]
@@ -249,14 +240,7 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                         return {
                             "description": parsed.get("description", "Aktivitas visual dalam scene"),
                             "tags": parsed.get("tags", ["video", "scene"]),
-                            "analysis": {
-                                "characters": parsed.get("characters", []),
-                                "action": parsed.get("action", ""),
-                                "location": parsed.get("location", ""),
-                                "objects": parsed.get("objects", []),
-                                "state": parsed.get("state", ""),
-                                "confidence": parsed.get("confidence", 0.5),
-                            },
+                            "analysis": parsed,  # caller's prompt owns the schema
                         }
                 except Exception as exc:
                     if self._quota_exhausted:

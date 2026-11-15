@@ -119,3 +119,39 @@ def test_heal_plays_into_next_scene_instead_of_slowmo():
     healed = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0, scenes=scenes)
     assert healed[0]["clip_end"] == pytest.approx(6.0, abs=0.05)
     assert healed[0]["speed"] == pytest.approx(1.0, abs=0.02)
+
+
+@pytest.mark.asyncio
+async def test_follow_up_cut_continues_with_next_shots_of_the_step():
+    scenes = [_scene(f"S{i}", i * 6.0, i * 6.0 + 6.0) for i in range(21)]
+    # Hook shot from mid-video; the second cut of the same line should be its next move, not a far shot.
+    segments = [{"id": "seg-1", "text": "satu", "start_ms": 0, "end_ms": 6000, "scene_id": "S10"}]
+    clips = await match_scenes_to_segments(_FakeAdapter(), segments, scenes, total_audio_duration_sec=6.0)
+    assert clips[0]["scene_id"] == "S10"
+    assert clips[1]["scene_id"] in {"S11", "S12", "S13"}
+
+
+@pytest.mark.asyncio
+async def test_follow_up_cuts_stay_inside_the_scripts_footage():
+    # Script tags S2 and S6 (one chapter); S12+ is another subject later in the compilation.
+    scenes = [_scene(f"S{i}", i * 6.0, i * 6.0 + 6.0) for i in range(20)]
+    segments = [
+        {"id": "seg-1", "text": "satu", "start_ms": 0, "end_ms": 6000, "scene_id": "S2"},
+        {"id": "seg-2", "text": "dua", "start_ms": 6000, "end_ms": 12000, "scene_id": "S6"},
+    ]
+    clips = await match_scenes_to_segments(_FakeAdapter(), segments, scenes, total_audio_duration_sec=12.0)
+    assert {c["scene_id"] for c in clips} <= {f"S{i}" for i in range(2, 7)}
+
+
+@pytest.mark.asyncio
+async def test_no_fresh_shot_left_plays_on_instead_of_repeating():
+    # Story span S0..S2 with one free shot (S1): the second follow-up cut has only a used shot left.
+    scenes = [_scene(f"S{i}", i * 6.0, i * 6.0 + 6.0) for i in range(3)]
+    segments = [
+        {"id": "seg-1", "text": "x", "start_ms": 0, "end_ms": 6000, "scene_id": "S0"},
+        {"id": "seg-2", "text": "y", "start_ms": 6000, "end_ms": 12000, "scene_id": "S2"},
+    ]
+    clips = await match_scenes_to_segments(_FakeAdapter(), segments, scenes, total_audio_duration_sec=12.0)
+    ids = [c["scene_id"] for c in clips]
+    assert len(ids) == len(set(ids))
+    assert clips[-1]["timeline_end"] == pytest.approx(12.0, abs=0.05)
