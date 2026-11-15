@@ -1,4 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Sliders } from "lucide-react";
+import { api } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +48,15 @@ export function CreateProjectDialog({
   onSubmit,
   isPending,
 }: CreateProjectDialogProps) {
+  const { data: defaultsResp } = useQuery({
+    queryKey: ["project-defaults"],
+    queryFn: api.getProjectDefaults,
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const activeDefaults = defaultsResp;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="workspace-dialog max-w-2xl">
@@ -129,6 +142,41 @@ export function CreateProjectDialog({
               </button>
             </div>
           </div>
+
+          {activeDefaults && (
+            <div className="rounded-xl border border-border bg-secondary/40 px-3.5 py-2.5 text-xs">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                  <Sliders className="h-3.5 w-3.5 text-primary" />
+                  Default Otomatis (config.json)
+                </span>
+                <Link
+                  to="/settings?tab=defaults"
+                  onClick={() => onOpenChange(false)}
+                  className="text-[11px] font-semibold text-primary hover:underline"
+                >
+                  Ubah Default
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px] text-muted-foreground">
+                <div>
+                  <span className="font-medium text-foreground/80">Subtitle:</span>{" "}
+                  {activeDefaults.subtitle.font_family} {activeDefaults.subtitle.font_size}px (
+                  {activeDefaults.subtitle.position})
+                </div>
+                <div>
+                  <span className="font-medium text-foreground/80">Watermark:</span>{" "}
+                  {activeDefaults.watermark.enabled
+                    ? `${activeDefaults.watermark.text || "Aktif"} (${activeDefaults.watermark.position})`
+                    : "Nonaktif"}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground/80">TTS:</span>{" "}
+                  {activeDefaults.tts.provider} · {activeDefaults.tts.voice}
+                </div>
+              </div>
+            </div>
+          )}
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" className="h-9 px-4 text-xs rounded-xl font-medium" onClick={() => onOpenChange(false)}>

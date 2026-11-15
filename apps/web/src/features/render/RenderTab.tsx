@@ -17,6 +17,8 @@ import {
   Stamp,
   X,
   StopCircle,
+  FileJson,
+  BookmarkCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
@@ -29,9 +31,13 @@ import {
   SubtitleStyle,
   RenderJob,
   WatermarkConfig,
+  TTSConfig,
 } from "@/types";
 import { PreviewPlayer } from "./PreviewPlayer";
 import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
+import { toSubtitleStyle } from "../subtitles/constants";
+import { normalizeWatermarkConfig } from "../watermark/constants";
+import { DEFAULT_TTS_CONFIG } from "../tts/constants";
 import { resolveApiUrl } from "@/env";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +59,15 @@ function formatBytes(bytes?: number | null): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function parseNumericDelta(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  if (typeof value === "string") {
+    const match = value.match(/[+-]?\d+/);
+    if (match) return Number.parseInt(match[0], 10);
+  }
+  return fallback;
 }
 
 export function RenderTab({ project }: RenderTabProps) {
@@ -171,6 +186,41 @@ export function RenderTab({ project }: RenderTabProps) {
     },
     onError: (err: Error) => {
       showToast(err.message || "Gagal membatalkan rendering", "error");
+    },
+  });
+
+  const saveAsDefaultsMutation = useMutation({
+    mutationFn: () => {
+      const ttsSource = project.tts_config;
+      const audioSource = project.audio;
+      const ttsConfig: TTSConfig = {
+        provider:
+          ttsSource?.provider === "elevenlabs" || audioSource?.provider === "elevenlabs"
+            ? "elevenlabs"
+            : DEFAULT_TTS_CONFIG.provider,
+        voice: ttsSource?.voice || audioSource?.voice || DEFAULT_TTS_CONFIG.voice,
+        rate: parseNumericDelta(
+          ttsSource?.rate ?? audioSource?.rate,
+          DEFAULT_TTS_CONFIG.rate
+        ),
+        pitch: parseNumericDelta(
+          ttsSource?.pitch ?? audioSource?.pitch,
+          DEFAULT_TTS_CONFIG.pitch
+        ),
+        model: ttsSource?.model ?? DEFAULT_TTS_CONFIG.model,
+      };
+      return api.saveProjectDefaults({
+        subtitle: toSubtitleStyle(project.subtitle_style),
+        watermark: normalizeWatermarkConfig(liveWatermark || project.watermark),
+        tts: ttsConfig,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-defaults"] });
+      showToast("Konfigurasi project disimpan sebagai default (config.json)", "success");
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Gagal menyimpan default config.json", "error");
     },
   });
 
@@ -430,6 +480,41 @@ export function RenderTab({ project }: RenderTabProps) {
                       />
                     </div>
                   )}
+                </div>
+
+                {/* Config.json Export & Save as Default */}
+                <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                      <FileJson className="w-3.5 h-3.5 text-primary" />
+                      <span>Konfigurasi Project (config.json)</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Export subtitle, watermark, &amp; TTS project ini atau simpan jadi default project baru.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" asChild className="text-xs gap-1.5">
+                      <a href={api.getProjectConfigExportUrl(project.id)} download="config.json">
+                        <Download className="w-3.5 h-3.5" />
+                        Export config.json
+                      </a>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => saveAsDefaultsMutation.mutate()}
+                      disabled={saveAsDefaultsMutation.isPending}
+                      className="text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                    >
+                      {saveAsDefaultsMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <BookmarkCheck className="w-3.5 h-3.5" />
+                      )}
+                      Jadikan Default Project Baru
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Action Buttons */}

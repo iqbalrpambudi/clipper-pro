@@ -9,6 +9,25 @@ export interface BackgroundFill {
   color_grading?: boolean;
 }
 
+export interface TTSConfig {
+  provider: "gemini" | "elevenlabs";
+  voice: string;
+  rate: number;
+  pitch: number;
+  model?: string | null;
+}
+
+export interface ProjectDefaultsConfig {
+  subtitle: SubtitleStyle;
+  watermark: WatermarkConfig;
+  tts: TTSConfig;
+}
+
+export interface ProjectDefaultsResponse extends ProjectDefaultsConfig {
+  config_path: string;
+  from_file: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -19,6 +38,7 @@ export interface Project {
   resolution: string;
   background_fill: BackgroundFill;
   watermark?: WatermarkConfig | null;
+  tts_config?: TTSConfig | null;
   created_at: string;
   updated_at: string;
   source_video_count?: number;
@@ -304,6 +324,8 @@ export interface PresetCategory {
 
 export interface VideoCandidate {
   id: string;
+  source: string;
+  source_label: string;
   title: string;
   url: string;
   duration: number;
@@ -321,7 +343,11 @@ export interface VideoCandidate {
 export interface VideoSearchRequest {
   preset_id?: string | null;
   custom_query?: string | null;
+  sources?: string[];
+  page?: number;
   exclude_ai: boolean;
+  hide_imported?: boolean;
+  exclude_urls?: string[];
   min_duration?: number;
   max_duration?: number;
   min_views?: number;
@@ -332,12 +358,18 @@ export interface VideoSearchResponse {
   query_used: string;
   preset_id?: string | null;
   exclude_ai: boolean;
+  hide_imported: boolean;
+  page: number;
+  has_more: boolean;
+  sources_used: string[];
+  skipped_imported_count: number;
   candidates: VideoCandidate[];
 }
 
 export interface VideoImportRequest {
   url: string;
   title: string;
+  source?: string;
   project_name?: string | null;
   aspect_ratio?: string;
   resolution?: string;

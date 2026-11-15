@@ -98,6 +98,7 @@ export function useUpdateProject() {
           | "resolution"
           | "background_fill"
           | "watermark"
+          | "tts_config"
           | "language"
         >
       >;

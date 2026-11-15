@@ -21,16 +21,21 @@ export function useTTSState({ project }: UseTTSStateProps) {
 
   const draft = voiceDraftsByProject[project.id];
   const audio = project.audio || project.audio_track;
+  const projTts = project.tts_config;
 
-  const initialProvider = draft?.provider || audio?.provider || "gemini";
-  const initialVoice = draft?.voice || audio?.voice || "Puck";
+  const initialProvider = draft?.provider || audio?.provider || projTts?.provider || "gemini";
+  const initialVoice =
+    draft?.voice ||
+    audio?.voice ||
+    projTts?.voice ||
+    (initialProvider === "elevenlabs" ? "Adam" : "Puck");
   const parseRate = (val: string | number | undefined | null) => {
     if (typeof val === "number") return val;
     if (!val) return 0;
     return parseInt(String(val).replace(/[%+]/g, "")) || 0;
   };
-  const initialRate = parseRate(draft?.rate ?? audio?.rate);
-  const initialPitch = parseRate(draft?.pitch ?? audio?.pitch);
+  const initialRate = parseRate(draft?.rate ?? audio?.rate ?? projTts?.rate);
+  const initialPitch = parseRate(draft?.pitch ?? audio?.pitch ?? projTts?.pitch);
 
   const [selectedVoice, setSelectedVoice] = useState(initialVoice);
   const [provider, setProvider] = useState(initialProvider);
@@ -42,7 +47,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
     const voicePayload = {
       provider,
       voice: selectedVoice,
-      model: TTS_MODEL[provider],
+      model: (projTts?.provider === provider && projTts?.model) || TTS_MODEL[provider],
       rate,
       pitch,
       customVoiceInput: draft?.customVoiceInput || "",
@@ -50,20 +55,33 @@ export function useTTSState({ project }: UseTTSStateProps) {
     };
 
     setVoiceDraft(project.id, voicePayload);
-  }, [project.id, provider, selectedVoice, rate, pitch, draft?.customVoiceInput, setVoiceDraft]);
+  }, [project.id, provider, selectedVoice, rate, pitch, projTts?.provider, projTts?.model, draft?.customVoiceInput, setVoiceDraft]);
 
 
-  // Fetch active config to sync saved tts_provider & models
+  // Fetch active config & project defaults for older projects without tts_config
   const { data: appConfig } = useQuery({
     queryKey: ["model-config"],
     queryFn: api.getModelConfig,
+  });
+  const { data: projectDefaults } = useQuery({
+    queryKey: ["project-defaults"],
+    queryFn: api.getProjectDefaults,
+    enabled: !draft && !audio?.provider && !projTts?.provider,
   });
 
   const hasInitializedConfigRef = useRef(false);
   useEffect(() => {
     if (hasInitializedConfigRef.current) return;
-    if (draft || audio?.provider) {
+    if (draft || audio?.provider || projTts?.provider) {
       hasInitializedConfigRef.current = true;
+      return;
+    }
+    if (projectDefaults?.tts) {
+      hasInitializedConfigRef.current = true;
+      setProvider(projectDefaults.tts.provider);
+      setSelectedVoice(projectDefaults.tts.voice);
+      setRate(projectDefaults.tts.rate);
+      setPitch(projectDefaults.tts.pitch);
       return;
     }
     if (!appConfig) return;
@@ -73,7 +91,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
       setProvider("elevenlabs");
       setSelectedVoice("Adam");
     }
-  }, [appConfig, draft, audio?.provider]);
+  }, [appConfig, projectDefaults, draft, audio?.provider, projTts?.provider]);
 
   // Sample voice audio state
   const [sampleAudioPlaying, setSampleAudioPlaying] = useState<string | null>(null);
@@ -244,7 +262,7 @@ export function useTTSState({ project }: UseTTSStateProps) {
         voice: selectedVoice,
         rate: `${rate >= 0 ? "+" : ""}${rate}%`,
         pitch: `${pitch >= 0 ? "+" : ""}${pitch}Hz`,
-        model: TTS_MODEL[provider],
+        model: (projTts?.provider === provider && projTts?.model) || TTS_MODEL[provider],
         language: projectLanguage,
       });
     },

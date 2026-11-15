@@ -1,7 +1,17 @@
+import type { TTSConfig } from "@/types";
+
 // shortcut: one fixed model per provider, add a select when a second model is actually needed
 export const TTS_MODEL: Record<string, string> = {
   gemini: "gemini-2.5-flash-preview-tts",
   elevenlabs: "eleven_multilingual_v2",
+};
+
+export const DEFAULT_TTS_CONFIG: TTSConfig = {
+  provider: "gemini",
+  voice: "Puck",
+  rate: 0,
+  pitch: 0,
+  model: TTS_MODEL.gemini,
 };
 
 export function formatAudioTime(secs: number): string {

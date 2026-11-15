@@ -1,6 +1,14 @@
 import { SubtitleStyle } from "@/types";
 
-export const SUBTITLE_FONTS = ["Montserrat", "Poppins", "Bebas Neue"];
+export const SUBTITLE_FONTS = [
+  "Montserrat",
+  "Poppins",
+  "Bebas Neue",
+  "Inter",
+  "Anton",
+  "Oswald",
+  "Roboto",
+];
 
 export const HIGHLIGHT_COLORS = ["#FFE600", "#00E5FF", "#39FF14", "#FF453A", "#FF007A", "#FFFFFF"];
 
@@ -33,10 +41,12 @@ export const SUBTITLE_PRESETS: { id: string; name: string; style: Partial<Subtit
 /** Server rows from older versions can hold values the API no longer accepts; coerce them. */
 export function toSubtitleStyle(raw?: Partial<Record<keyof SubtitleStyle, unknown>> | null): SubtitleStyle {
   const s = { ...DEFAULT_SUBTITLE_STYLE, ...Object.fromEntries(Object.entries(raw || {}).filter(([, v]) => v != null)) };
+  const rawFont = String(s.font_family || "").trim();
+  const normalizedFont = rawFont.toLowerCase() === "bebasneue" ? "Bebas Neue" : rawFont;
   return {
     ...(s as SubtitleStyle),
     enabled: s.enabled !== false,
-    font_family: SUBTITLE_FONTS.includes(String(s.font_family)) ? String(s.font_family) : "Poppins",
+    font_family: SUBTITLE_FONTS.includes(normalizedFont) ? normalizedFont : "Poppins",
     position: ["center", "top"].includes(String(s.position)) ? "center" : "bottom",
     burst_word_count: Math.min(3, Math.max(1, Math.round(Number(s.burst_word_count) || 3))) as 1 | 2 | 3,
     highlight_animation: s.highlight_animation === "none" ? "none" : "scale",
