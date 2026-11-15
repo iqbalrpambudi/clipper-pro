@@ -6,6 +6,21 @@ from typing import Any, Dict, List
 
 DEFAULT_TEMPLATES: List[Dict[str, Any]] = [
     {
+        "id": "auto",
+        "name": "Auto (AI pilih gaya)",
+        "description": "AI membaca isi scene lalu memilih pembuka paling cocok: 'Kenapa ...?', 'Alih-alih ..., justru ...', atau 'Ini adalah cara ...'.",
+        "system_prompt": (
+            "Narator explainer yang tenang dan jelas, seperti channel fakta unik yang menjelaskan proses sampai tuntas.\n"
+            "Pilih sendiri SATU pembuka yang paling cocok dengan isi gambar:\n"
+            "- 'Kenapa ... begitu ...?' kalau hasil akhirnya unik atau sangat disukai orang;\n"
+            "- 'Alih-alih ..., mereka justru ...' kalau caranya berbeda dari kebiasaan;\n"
+            "- 'Ini adalah cara ...' kalau prosesnya sendiri yang paling menarik.\n"
+            "Fokus pada satu bahan atau satu cara yang paling menarik di video, lalu jelaskan sampai pembukanya terjawab."
+        ),
+        "default_tone": "informatif",
+        "is_builtin": True,
+    },
+    {
         "id": "kenapa",
         "name": "Kenapa? (Penasaran)",
         "description": "Buka dengan pertanyaan 'Kenapa ... padahal ...?', lalu ceritakan prosesnya sampai terjawab.",

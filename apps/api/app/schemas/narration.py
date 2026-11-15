@@ -44,7 +44,7 @@ class TemplateUpdate(BaseModel):
 
 
 class NarrationGenerateRequest(BaseModel):
-    template_id: str = "kenapa"
+    template_id: str = "auto"
     topic: Optional[str] = None
     target_duration: int = Field(55, ge=15, le=180)
 

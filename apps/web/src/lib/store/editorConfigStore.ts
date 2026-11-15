@@ -7,7 +7,7 @@ export function createDefaultShortsConfig(project?: Partial<ProjectDetail | Proj
     mediaPool: { ytUrl: "" },
     narration: {
       topic: narration?.topic || "",
-      preset: narration?.template_id || "kenapa",
+      preset: narration?.template_id || "auto",
       duration: narration?.target_duration || 55,
     },
   };

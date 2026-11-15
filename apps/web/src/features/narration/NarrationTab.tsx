@@ -26,7 +26,7 @@ export function NarrationTab({ project }: NarrationTabProps) {
   const { getShortsConfig, setShortsStepConfig } = useEditorConfigStore();
   const saved = getShortsConfig(project.id, project).narration;
 
-  const [templateId, setTemplateId] = useState(saved.preset || "kenapa");
+  const [templateId, setTemplateId] = useState(saved.preset || "auto");
   const [topic, setTopic] = useState(saved.topic ?? "");
   const [duration, setDuration] = useState(saved.duration || 55);
   const [rawText, setRawText] = useState("");

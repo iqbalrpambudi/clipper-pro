@@ -37,7 +37,7 @@ async def seed_templates(db: AsyncSession):
 @router.get("", response_model=List[TemplateResponse])
 async def list_templates(db: AsyncSession = Depends(get_db)):
     await seed_templates(db)
-    res = await db.execute(select(NarrationTemplate).order_by(NarrationTemplate.is_builtin.desc()))
+    res = await db.execute(select(NarrationTemplate).order_by((NarrationTemplate.id == "auto").desc(), NarrationTemplate.is_builtin.desc()))
     return res.scalars().all()
 
 
