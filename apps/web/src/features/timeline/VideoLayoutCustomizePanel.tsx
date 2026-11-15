@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Maximize2, Scan, ZoomIn, Info } from "lucide-react";
+import { Maximize2, Scan, ZoomIn } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, BackgroundFill } from "@/types";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui";
 
 type LayoutPreset = "cover" | "fit" | "custom";
 
@@ -176,41 +176,15 @@ export function VideoLayoutCustomizePanel({
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-surface-secondary overflow-hidden">
-      {/* Header Panel */}
-      <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-muted p-3">
-        <div className="flex items-center gap-2">
-          <Maximize2 className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-semibold text-foreground tracking-tight">
-            Mode Tampilan & Rasio
-          </h3>
-        </div>
-        <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
-          {aspectRatio} •{" "}
-          {activePreset === "cover"
-            ? "Cover"
-            : activePreset === "fit"
-              ? isBlur
-                ? "Fit+Blur"
-                : "Fit+Hitam"
-              : isBlur
-                ? "Zoom+Blur"
-                : "Zoom+Hitam"}
-        </Badge>
-      </div>
-
+    <div className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       {/* Scrollable Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-4 no-scrollbar">
-        {/* Section 2: Preset Mode Tampilan Video (3 Preset) */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-4 no-scrollbar">
+        {/* Preset Mode Tampilan Video (3 Preset) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-foreground">Preset Tampilan Video</label>
-            <span className="text-xs text-primary font-mono font-semibold uppercase">
-              {activePreset === "cover"
-                ? "1. COVER"
-                : activePreset === "fit"
-                  ? `2. FIT (${isBlur ? "BLUR" : "HITAM"})`
-                  : `3. ZOOM (${Math.round(customZoom * 100)}%)`}
+            <label className="text-xs font-semibold text-foreground">Tampilan Video</label>
+            <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              {aspectRatio}
             </span>
           </div>
 
@@ -286,49 +260,25 @@ export function VideoLayoutCustomizePanel({
           </div>
         </div>
 
-        {/* Section 3: Checklist Background Blur */}
-        <div className="space-y-1.5">
-          <label className="flex cursor-pointer select-none items-start gap-3 rounded-xl border border-border bg-background p-3 transition hover:border-primary/40">
-            <input
-              type="checkbox"
-              checked={isBlur}
-              onChange={(e) => handleBlurToggle(e.target.checked)}
-              className="mt-0.5 h-4 w-4 cursor-pointer rounded border-input text-primary focus:ring-primary/30"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">Background Blur</span>
-                <Badge
-                  variant="outline"
-                  className={`text-xs font-mono ${
-                    isBlur
-                      ? "text-primary border-primary/30 bg-primary/10"
-                      : "border-border bg-background text-muted-foreground"
-                  }`}
-                >
-                  {isBlur ? "Blur Aktif" : "Hitam Solid"}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                {isBlur
-                  ? "Area sisa kanvas diisi dengan efek video blur yang dinamis."
-                  : "Latar belakang menjadi hitam solid (tanpa efek blur)."}
-              </p>
+        {/* Background Blur Toggle */}
+        <label className="flex cursor-pointer items-center justify-between gap-3 border-t border-border pt-3">
+          <div>
+            <div className="text-xs font-semibold text-foreground">Background Blur</div>
+            <div className="text-[11px] text-muted-foreground">
+              {isBlur ? "Sisa kanvas diisi blur dinamis." : "Sisa kanvas hitam solid."}
             </div>
-          </label>
-        </div>
+          </div>
+          <Switch checked={isBlur} onCheckedChange={handleBlurToggle} />
+        </label>
 
-        {/* Section 4: Sub-Panel Slider Custom Zoom (Hanya Tampil Jika Custom Zoom Aktif) */}
+        {/* Sub-Panel Slider Custom Zoom */}
         {activePreset === "custom" && (
-          <div className="space-y-3 rounded-xl border border-border bg-background p-3.5">
+          <div className="space-y-2 border-t border-border pt-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <ZoomIn className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground">Tingkat Zoom Manual</span>
-              </div>
-              <Badge variant="outline" className="text-primary font-mono text-xs">
+              <span className="text-xs font-semibold text-foreground">Zoom Manual</span>
+              <span className="font-mono text-xs tabular-nums text-primary">
                 {Math.round(customZoom * 100)}% ({customZoom.toFixed(2)}x)
-              </Badge>
+              </span>
             </div>
 
             <div className="space-y-1">
@@ -341,25 +291,15 @@ export function VideoLayoutCustomizePanel({
                 onChange={(e) => handleZoomSliderChange(parseFloat(e.target.value))}
                 className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
               />
-              <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+              <div className="flex items-center justify-between text-[11px] font-mono tabular-nums text-muted-foreground">
                 <span>100%</span>
                 <span>150%</span>
                 <span>200%</span>
                 <span>300%</span>
               </div>
             </div>
-
           </div>
         )}
-
-        {/* Tip Informatif */}
-        <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
-          <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Perubahan tampilan langsung aktif di Player Monitor dan disimpan otomatis untuk proses
-            render final.
-          </p>
-        </div>
       </div>
     </div>
   );

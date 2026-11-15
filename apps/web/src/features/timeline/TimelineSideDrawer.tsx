@@ -1,24 +1,18 @@
-import {
-  Film,
-  SlidersHorizontal,
-  Subtitles,
-  Maximize2,
-} from "lucide-react";
 import { TimelineMediaPool } from "./TimelineMediaPool";
 import { ClipInspector } from "./ClipInspector";
 import { SubtitleCustomizePanel } from "../subtitles/SubtitleCustomizePanel";
 import { toSubtitleStyle } from "../subtitles/constants";
 import { VideoLayoutCustomizePanel } from "./VideoLayoutCustomizePanel";
 import {
+  AudioTrack,
+  BackgroundFill,
+  Narration,
   Project,
+  Scene,
+  SourceVideo,
+  SubtitleStyle,
   Timeline,
   TimelineClip,
-  Scene,
-  AudioTrack,
-  Narration,
-  SourceVideo,
-  BackgroundFill,
-  SubtitleStyle,
 } from "@/types";
 import { SceneMap } from "@/lib/timeline/editOps";
 
@@ -26,7 +20,6 @@ export type SideTab = "pool" | "inspector" | "subtitles" | "layout";
 
 interface TimelineSideDrawerProps {
   activeSideTab: SideTab;
-  setActiveSideTab: (tab: SideTab) => void;
   selectedClipIndex: number | null;
   project: Project & {
     timeline?: Timeline | null;
@@ -68,12 +61,10 @@ interface TimelineSideDrawerProps {
   setLiveBackgroundFill: (fill: BackgroundFill | null) => void;
   liveSubtitleStyle?: SubtitleStyle | null;
   onSubtitleChange: (style: SubtitleStyle, immediate?: boolean) => void;
-  seekTo: (t: number) => void;
 }
 
 export function TimelineSideDrawer({
   activeSideTab,
-  setActiveSideTab,
   selectedClipIndex,
   project,
   usedSceneMap,
@@ -105,11 +96,9 @@ export function TimelineSideDrawer({
   const selectedClip = selectedClipIndex !== null ? clips[selectedClipIndex] || null : null;
   const selectedScene = selectedClip ? sceneMap.get(selectedClip.scene_id) : undefined;
 
-  const handleTabClick = setActiveSideTab;
-
-  const renderActiveContent = () => {
-    if (activeSideTab === "pool") {
-      return (
+  return (
+    <div className="flex flex-1 min-w-0 min-h-0 flex-col overflow-hidden bg-surface-secondary">
+      {activeSideTab === "pool" && (
         <TimelineMediaPool
           scenes={project.scenes || []}
           usedSceneMap={usedSceneMap}
@@ -131,11 +120,9 @@ export function TimelineSideDrawer({
             })
           }
         />
-      );
-    }
+      )}
 
-    if (activeSideTab === "inspector") {
-      return (
+      {activeSideTab === "inspector" && (
         <ClipInspector
           clip={selectedClip}
           index={selectedClipIndex}
@@ -167,11 +154,9 @@ export function TimelineSideDrawer({
           onPreviewSource={handlePreviewSelectedClipSource}
           onToggleLoop={toggleLoop}
         />
-      );
-    }
+      )}
 
-    if (activeSideTab === "layout") {
-      return (
+      {activeSideTab === "layout" && (
         <VideoLayoutCustomizePanel
           project={project}
           onLayoutChange={(ratio, fill) => {
@@ -179,85 +164,15 @@ export function TimelineSideDrawer({
             setLiveBackgroundFill(fill);
           }}
         />
-      );
-    }
+      )}
 
-    return (
-      <SubtitleCustomizePanel
-        projectId={project.id}
-        style={toSubtitleStyle(liveSubtitleStyle || project.subtitle_style)}
-        onChange={onSubtitleChange}
-      />
-    );
-  };
-
-  return (
-    <>
-      {/* Vertical Icon Rail */}
-      <div className="w-12 shrink-0 border-r border-border bg-surface flex flex-col items-center py-2.5 justify-between select-none">
-        <div className="flex flex-col items-center gap-2 w-full">
-          <button
-            type="button"
-            onClick={() => handleTabClick("pool")}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "pool"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-            title="Media Pool (Koleksi Scene)"
-          >
-            <Film className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabClick("inspector")}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition relative ${
-              activeSideTab === "inspector"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-            title="Clip Inspector (Pengaturan Klip)"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            {selectedClipIndex !== null && (
-              <span className="w-1.5 h-1.5 rounded-full bg-primary absolute top-1.5 right-1.5" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabClick("subtitles")}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "subtitles"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-            title="Subtitle Style & Presets"
-          >
-            <Subtitles className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabClick("layout")}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
-              activeSideTab === "layout"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-            title="Mode Tampilan & Rasio Video"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-
-        </div>
-      </div>
-
-      {/* Drawer Content */}
-      <div className="flex-1 min-w-0 bg-surface-secondary flex flex-col overflow-hidden">
-        {renderActiveContent()}
-      </div>
-    </>
+      {activeSideTab === "subtitles" && (
+        <SubtitleCustomizePanel
+          projectId={project.id}
+          style={toSubtitleStyle(liveSubtitleStyle || project.subtitle_style)}
+          onChange={onSubtitleChange}
+        />
+      )}
+    </div>
   );
 }

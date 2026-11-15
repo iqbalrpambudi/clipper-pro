@@ -95,9 +95,12 @@ export function TimelineTab({ project }: TimelineTabProps) {
   );
 
   return (
-    <div className="flex h-[calc(100vh-130px)] max-h-[calc(100vh-120px)] min-h-[640px] w-full flex-col overflow-hidden border border-surface-border bg-surface-secondary shadow-md">
-      {/* Top Header Bar */}
+    <div className="flex h-[calc(100vh-112px)] max-h-[calc(100vh-108px)] min-h-[560px] w-full flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-secondary shadow-sm">
+      {/* Top Header Bar with Integrated Panel Navigation */}
       <TimelineHeader
+        activeSideTab={activeSideTab}
+        onSelectSideTab={setActiveSideTab}
+        selectedClipIndex={selectedClipIndex}
         clipsCount={clips.length}
         isSaving={saveTimelineMutation.isPending}
         isDirty={isDirty}
@@ -132,14 +135,13 @@ export function TimelineTab({ project }: TimelineTabProps) {
       />
 
       {/* Main Studio Body: Zero-Scroll NLE Layout */}
-      {/* Left: drawer + tracks. Right: full-height 9:16 monitor */}
+      {/* Left: active panel + tracks. Right: full-height 9:16 monitor */}
       <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
         {/* Left Column: Editor controls & Tracks */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 flex flex-row overflow-hidden border-b border-surface-border/70">
             <TimelineSideDrawer
               activeSideTab={activeSideTab}
-              setActiveSideTab={setActiveSideTab}
               selectedClipIndex={selectedClipIndex}
               project={project}
               usedSceneMap={usedSceneMap}
@@ -167,7 +169,6 @@ export function TimelineTab({ project }: TimelineTabProps) {
               setLiveBackgroundFill={setLiveBackgroundFill}
               liveSubtitleStyle={liveSubtitleStyle}
               onSubtitleChange={handleSubtitleChange}
-              seekTo={seekTo}
             />
           </div>
 
