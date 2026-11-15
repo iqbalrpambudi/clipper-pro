@@ -1,9 +1,11 @@
 import logging
 import re
 import time
+from typing import Any, Dict
 
 import httpx
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,8 @@ from app.models.config import ModelConfig
 from app.schemas.config import (
     ModelConfigResponse,
     ModelConfigUpdate,
+    ProjectDefaultsConfig,
+    ProjectDefaultsResponse,
     TestConnectionRequest,
     TestConnectionResponse,
     TestTtsConnectionRequest,
@@ -21,6 +25,13 @@ from app.schemas.config import (
 )
 from app.services.ai_adapters.gemini_adapter import GeminiAdapter
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
+from app.services.project_defaults import (
+    export_project_defaults_json,
+    load_project_defaults,
+    reset_project_defaults,
+    resolve_config_json_path,
+    save_project_defaults,
+)
 from app.services.tts import test_tts_connection
 
 log = logging.getLogger("cliper-pro.settings")
@@ -284,3 +295,54 @@ async def list_available_models(
         log.warning("Failed to fetch models from %s: %s", raw_url, e)
 
     return {"models": []}
+
+
+def _to_defaults_response(cfg: ProjectDefaultsConfig, path_str: str, from_file: bool) -> ProjectDefaultsResponse:
+    return ProjectDefaultsResponse(
+        subtitle=cfg.subtitle,
+        watermark=cfg.watermark,
+        tts=cfg.tts,
+        config_path=path_str,
+        from_file=from_file,
+    )
+
+
+@router.get("/project-defaults", response_model=ProjectDefaultsResponse)
+async def get_project_defaults():
+    cfg, cfg_path, from_file = load_project_defaults()
+    return _to_defaults_response(cfg, str(cfg_path), from_file)
+
+
+@router.put("/project-defaults", response_model=ProjectDefaultsResponse)
+async def update_project_defaults(payload: ProjectDefaultsConfig):
+    saved = save_project_defaults(payload)
+    target = resolve_config_json_path()
+    return _to_defaults_response(saved, str(target), True)
+
+
+@router.post("/project-defaults/import", response_model=ProjectDefaultsResponse)
+async def import_project_defaults(payload: Dict[str, Any]):
+    try:
+        saved = save_project_defaults(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Format config.json tidak valid: {exc}")
+    target = resolve_config_json_path()
+    return _to_defaults_response(saved, str(target), True)
+
+
+@router.post("/project-defaults/reset", response_model=ProjectDefaultsResponse)
+async def reset_project_defaults_endpoint():
+    saved = reset_project_defaults()
+    target = resolve_config_json_path()
+    return _to_defaults_response(saved, str(target), True)
+
+
+@router.get("/project-defaults/export")
+async def export_project_defaults():
+    cfg, _, _ = load_project_defaults()
+    content = export_project_defaults_json(cfg)
+    return Response(
+        content=content,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="config.json"'},
+    )

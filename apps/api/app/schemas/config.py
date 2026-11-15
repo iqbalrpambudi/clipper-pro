@@ -1,6 +1,23 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.project import WatermarkSchema
+from app.schemas.subtitle import SubtitleStyleIn
+from app.schemas.tts import TTSConfigSchema
+
+
+class ProjectDefaultsConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    subtitle: SubtitleStyleIn = Field(default_factory=SubtitleStyleIn)
+    watermark: WatermarkSchema = Field(default_factory=WatermarkSchema)
+    tts: TTSConfigSchema = Field(default_factory=TTSConfigSchema)
+
+
+class ProjectDefaultsResponse(ProjectDefaultsConfig):
+    config_path: str
+    from_file: bool = False
 
 
 class ModelConfigUpdate(BaseModel):

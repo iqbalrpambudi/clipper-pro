@@ -15,7 +15,7 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, processing, ready, rendering, completed, failed
-    project_type: Mapped[str] = mapped_column(String(50), default="short_video")  
+    project_type: Mapped[str] = mapped_column(String(50), default="short_video")
     aspect_ratio: Mapped[str] = mapped_column(String(20), default="9:16")  # 9:16, 1:1, 16:9
     resolution: Mapped[str] = mapped_column(String(20), default="1080p")  # 1080p, 720p
     background_fill: Mapped[dict] = mapped_column(
@@ -23,6 +23,7 @@ class Project(Base):
         default=lambda: {"mode": "blur", "color": "#000000", "zoom": 1.45, "source_asmr": True, "curiosity_bgm": True},
     )
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    tts_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     locations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)

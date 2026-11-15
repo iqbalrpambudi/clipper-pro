@@ -61,11 +61,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Initialize DB: create all tables on startup and ensure incremental columns exist."""
     from sqlalchemy import inspect, text
+
     import app.models  # noqa: F401
 
     def _ensure_incremental_columns(sync_conn) -> None:
         inspector = inspect(sync_conn)
         table_names = set(inspector.get_table_names())
+        if "projects" in table_names:
+            proj_cols = {c["name"] for c in inspector.get_columns("projects")}
+            if "tts_config" not in proj_cols:
+                sync_conn.execute(text("ALTER TABLE projects ADD COLUMN tts_config JSON"))
         if "source_videos" in table_names:
             sv_cols = {c["name"] for c in inspector.get_columns("source_videos")}
             for col in ("trim_start", "trim_end"):

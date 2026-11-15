@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -9,7 +10,6 @@ from app.core.db import get_db
 from app.core.storage import storage
 from app.models.project import Project, Scene, SourceVideo
 from app.models.timeline import SubtitleStyle, Timeline
-from app.services.subtitle_ass import style_to_dict
 from app.schemas.project import (
     ProjectCreate,
     ProjectDetailResponse,
@@ -19,6 +19,12 @@ from app.schemas.project import (
     SceneResponse,
     SourceVideoResponse,
 )
+from app.services.project_defaults import (
+    build_project_config_snapshot,
+    export_project_defaults_json,
+    load_project_defaults,
+)
+from app.services.subtitle_ass import style_to_dict
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -50,8 +56,19 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_db)):
+    defaults, _, _ = load_project_defaults()
     aspect = payload.aspect_ratio
     world_cfg = payload.world_setting or {}
+    watermark_data = (
+        payload.watermark.model_dump()
+        if payload.watermark is not None
+        else defaults.watermark.model_dump()
+    )
+    tts_data = (
+        payload.tts_config.model_dump()
+        if payload.tts_config is not None
+        else defaults.tts.model_dump()
+    )
     proj = Project(
         name=payload.name,
         description=payload.description,
@@ -60,14 +77,15 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         resolution=payload.resolution,
         language=payload.language or "id",
         background_fill=payload.background_fill.model_dump(),
-        watermark=payload.watermark.model_dump() if payload.watermark else None,
+        watermark=watermark_data,
+        tts_config=tts_data,
         world_setting=world_cfg,
     )
     db.add(proj)
     await db.flush()
 
-    # Create default subtitle style
-    sub_style = SubtitleStyle(project_id=proj.id)
+    # Create subtitle style from config.json defaults
+    sub_style = SubtitleStyle(project_id=proj.id, **defaults.subtitle.model_dump())
     db.add(sub_style)
 
     # Create empty timeline
@@ -101,6 +119,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
     bg_fill = proj.background_fill if isinstance(proj.background_fill, dict) else {"mode": "blur", "color": "#000000"}
     watermark_dict = proj.watermark if isinstance(proj.watermark, dict) else None
+    tts_dict = proj.tts_config if isinstance(proj.tts_config, dict) else None
     resp = ProjectDetailResponse(
         id=proj.id,
         name=proj.name,
@@ -112,6 +131,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         language=proj.language or "id",
         background_fill=bg_fill,
         watermark=watermark_dict,
+        tts_config=tts_dict,
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         source_video_count=len(proj.source_videos),
@@ -282,6 +302,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.background_fill = payload.background_fill.model_dump()
     if payload.watermark is not None:
         proj.watermark = payload.watermark.model_dump()
+    if payload.tts_config is not None:
+        proj.tts_config = payload.tts_config.model_dump()
     if payload.status is not None:
         proj.status = payload.status
     if payload.characters is not None:
@@ -304,3 +326,31 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     storage.delete_project_files(project_id)
     await db.delete(proj)
     await db.commit()
+
+
+@router.get("/{project_id}/config/export")
+async def export_project_config(project_id: str, db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.subtitle_style),
+            selectinload(Project.audio_tracks),
+        )
+    )
+    res = await db.execute(stmt)
+    proj = res.scalar_one_or_none()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan")
+
+    latest_audio = (
+        sorted(proj.audio_tracks, key=lambda x: x.created_at, reverse=True)[0]
+        if proj.audio_tracks
+        else None
+    )
+    snapshot = build_project_config_snapshot(proj, latest_audio, proj.subtitle_style)
+    return Response(
+        content=export_project_defaults_json(snapshot),
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="config.json"'},
+    )

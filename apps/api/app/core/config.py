@@ -5,7 +5,6 @@ from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -32,6 +31,7 @@ class Settings(BaseSettings):
     GEMINI_TTS_VOICE: str = "Puck"
     ELEVENLABS_API_KEY: str = ""
     ELEVENLABS_MODEL: str = "eleven_multilingual_v2"
+    CONFIG_JSON_PATH: str = ""
 
 
     @property

@@ -1,10 +1,20 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ASS style headers and fontconfig names are built from these values, so keep them to known-safe shapes.
 _HEX_COLOR = r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
 FontFamily = Literal["Montserrat", "Poppins", "Bebas Neue", "BebasNeue", "Inter", "Anton", "Oswald", "Roboto"]
+_FONT_FAMILY_CANONICAL = {
+    "montserrat": "Montserrat",
+    "poppins": "Poppins",
+    "bebas neue": "Bebas Neue",
+    "bebasneue": "Bebas Neue",
+    "inter": "Inter",
+    "anton": "Anton",
+    "oswald": "Oswald",
+    "roboto": "Roboto",
+}
 
 
 class SubtitleStyleIn(BaseModel):
@@ -17,6 +27,15 @@ class SubtitleStyleIn(BaseModel):
     offset_y: int = Field(260, ge=-1000, le=1000)
     burst_word_count: Literal[1, 2, 3] = 3
     highlight_animation: Literal["scale", "none"] = "scale"
+
+    @field_validator("font_family", mode="before")
+    @classmethod
+    def _normalize_font_family(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            key = v.strip().lower()
+            if key in _FONT_FAMILY_CANONICAL:
+                return _FONT_FAMILY_CANONICAL[key]
+        return v
 
 
 class SubtitleStyleResponse(BaseModel):

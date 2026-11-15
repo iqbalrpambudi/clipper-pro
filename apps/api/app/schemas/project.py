@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.tts import TTSConfigSchema
+
 
 class BackgroundFillSchema(BaseModel):
     mode: str = "blur"  # blur | black | cover
@@ -16,16 +18,16 @@ class BackgroundFillSchema(BaseModel):
 class WatermarkSchema(BaseModel):
     enabled: bool = False
     watermark_type: str = "text"
-    text: str = ""
+    text: str = "@cliperpro"
     font_family: str = "Poppins"
-    font_size: int = 36
+    font_size: int = 34
     font_color: str = "#FFFFFF"
     opacity: float = 0.85
     position: str = "bottom-right"
     custom_x: Optional[float] = 50.0
     custom_y: Optional[float] = 50.0
-    offset_x: int = 30
-    offset_y: int = 30
+    offset_x: int = 32
+    offset_y: int = 32
     has_background: bool = False
     background_color: str = "#000000"
     background_opacity: float = 0.5
@@ -40,12 +42,13 @@ ProjectWatermarkUpdate = WatermarkSchema
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
-    project_type: str = "short_video"  
+    project_type: str = "short_video"
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
     language: str = "id"  # id | en
     background_fill: BackgroundFillSchema = BackgroundFillSchema()
     watermark: Optional[WatermarkSchema] = None
+    tts_config: Optional[TTSConfigSchema] = None
     world_setting: Optional[Dict[str, Any]] = None
 
 
@@ -62,6 +65,7 @@ class ProjectUpdate(BaseModel):
     language: Optional[str] = None
     background_fill: Optional[BackgroundFillSchema] = None
     watermark: Optional[WatermarkSchema] = None
+    tts_config: Optional[TTSConfigSchema] = None
     status: Optional[str] = None
     characters: Optional[List[Dict[str, Any]]] = None
     locations: Optional[List[Dict[str, Any]]] = None

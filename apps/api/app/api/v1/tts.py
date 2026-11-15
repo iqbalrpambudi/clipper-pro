@@ -22,10 +22,12 @@ from app.schemas.tts import (
     CostEstimateRequest,
     CostEstimateResponse,
     RealignWordsRequest,
+    TTSConfigSchema,
     TTSGenerateRequest,
     VoiceInfo,
 )
 from app.services.alignment import align_audio_with_text
+from app.services.project_defaults import load_project_defaults
 from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.workers.tasks import generate_tts_and_align_job
 
@@ -178,15 +180,42 @@ async def trigger_tts_generation(
 
     target_lang = (payload.language or getattr(narration, "language", None) or getattr(proj, "language", None) or "id").strip().lower()
 
-    provider = payload.provider or "gemini"
+    defaults, _, _ = load_project_defaults()
+    proj_tts = proj.tts_config if isinstance(proj.tts_config, dict) else {}
+
+    provider = (payload.provider or proj_tts.get("provider") or defaults.tts.provider or "gemini").strip().lower()
     if payload.voice:
         voice = payload.voice
+    elif proj_tts.get("voice") and (not payload.provider or payload.provider == proj_tts.get("provider")):
+        voice = str(proj_tts["voice"])
+    elif defaults.tts.voice and provider == defaults.tts.provider:
+        voice = defaults.tts.voice
     elif provider == "gemini":
         voice = "Puck"
     elif provider == "elevenlabs":
         voice = "Adam"
     else:
         raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
+
+    raw_rate = payload.rate if payload.rate is not None else proj_tts.get("rate", defaults.tts.rate)
+    raw_pitch = payload.pitch if payload.pitch is not None else proj_tts.get("pitch", defaults.tts.pitch)
+    parsed_tts = TTSConfigSchema(
+        provider=provider,
+        voice=voice,
+        rate=raw_rate,
+        pitch=raw_pitch,
+        model=payload.model or proj_tts.get("model") or defaults.tts.model,
+    )
+    rate_str = f"{parsed_tts.rate:+d}%"
+    pitch_str = f"{parsed_tts.pitch:+d}Hz"
+    model_name = payload.model or (
+        parsed_tts.model
+        if (parsed_tts.model and (provider == proj_tts.get("provider") or provider == defaults.tts.provider))
+        else None
+    )
+
+    # Remember chosen TTS settings on the project for future config export
+    proj.tts_config = parsed_tts.model_dump()
 
     # Estimate cost
     cost_est = estimate_tts_cost(narration.raw_text, provider)
@@ -196,8 +225,8 @@ async def trigger_tts_generation(
         narration_id=narration.id,
         provider=provider,
         voice=voice,
-        rate=payload.rate,
-        pitch=payload.pitch,
+        rate=rate_str,
+        pitch=pitch_str,
         estimated_cost=cost_est.estimated_cost_usd,
         status="generating",
     )
@@ -213,9 +242,9 @@ async def trigger_tts_generation(
         narration.id,
         voice,
         provider,
-        payload.rate,
-        payload.pitch,
-        payload.model,
+        rate_str,
+        pitch_str,
+        model_name,
         target_lang,
     )
 

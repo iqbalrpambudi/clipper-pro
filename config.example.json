@@ -1,0 +1,39 @@
+{
+  "subtitle": {
+    "enabled": true,
+    "preset_name": "pop_kuning",
+    "font_family": "Poppins",
+    "font_size": 58,
+    "highlight_color": "#FFE600",
+    "position": "bottom",
+    "offset_y": 260,
+    "burst_word_count": 3,
+    "highlight_animation": "scale"
+  },
+  "watermark": {
+    "enabled": false,
+    "watermark_type": "text",
+    "text": "@cliperpro",
+    "font_family": "Poppins",
+    "font_size": 34,
+    "font_color": "#FFFFFF",
+    "opacity": 0.85,
+    "position": "bottom-right",
+    "custom_x": 50.0,
+    "custom_y": 50.0,
+    "offset_x": 32,
+    "offset_y": 32,
+    "has_background": false,
+    "background_color": "#000000",
+    "background_opacity": 0.5,
+    "has_shadow": true,
+    "shadow_color": "#000000"
+  },
+  "tts": {
+    "provider": "gemini",
+    "voice": "Puck",
+    "rate": 0,
+    "pitch": 0,
+    "model": "gemini-2.5-flash-preview-tts"
+  }
+}

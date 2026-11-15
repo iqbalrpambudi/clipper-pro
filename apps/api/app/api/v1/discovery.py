@@ -17,6 +17,7 @@ from app.schemas.discovery import (
     VideoSearchResponse,
 )
 from app.services.discovery import get_preset_categories, search_candidates
+from app.services.project_defaults import load_project_defaults
 from app.workers.tasks import download_youtube_job
 
 log = logging.getLogger(__name__)
@@ -41,12 +42,20 @@ async def search_video_sources(
     payload: VideoSearchRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Cari kandidat video YouTube berdasarkan preset atau kustom query dengan pengecualian video AI."""
+    """Cari kandidat video lintas platform berdasarkan preset atau kustom query."""
     try:
         return await search_candidates(payload, db)
     except Exception as e:
         log.error("Gagal mencari kandidat video: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Gagal mencari video YouTube: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Gagal mencari sumber video: {str(e)}")
+
+
+_SOURCE_LABELS = {
+    "youtube": "YouTube",
+    "dailymotion": "Dailymotion",
+    "archive_org": "Archive.org",
+    "bilibili": "Bilibili",
+}
 
 
 @router.post("/import", response_model=VideoImportResponse, status_code=status.HTTP_201_CREATED)
@@ -55,19 +64,21 @@ async def import_discovered_video(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Otomatis buat project baru dari video YouTube terpilih dan
-    langsung jalankan antrean download serta deteksi scene AI.
+    Otomatis buat project baru dari video sumber terpilih (YouTube/Dailymotion/Archive.org/Bilibili)
+    dan langsung jalankan antrean download serta deteksi scene AI.
     """
     video_url = payload.url.strip()
     if not video_url:
         raise HTTPException(status_code=400, detail="URL video tidak boleh kosong")
 
     project_name = (payload.project_name or payload.title or "Project Video Baru").strip()
+    src_label = _SOURCE_LABELS.get((payload.source or "").strip().lower(), "Video")
+    defaults, _, _ = load_project_defaults()
 
     # 1. Buat Project Baru
     proj = Project(
         name=project_name[:250],
-        description=f"Sumber YouTube: {video_url}",
+        description=f"Sumber {src_label}: {video_url}",
         project_type="short_video",
         aspect_ratio=payload.aspect_ratio or "9:16",
         resolution=payload.resolution or "1080p",
@@ -78,12 +89,14 @@ async def import_discovered_video(
             "anti_copyright": True,
             "dynamic_zoom": True,
         },
+        watermark=defaults.watermark.model_dump(),
+        tts_config=defaults.tts.model_dump(),
     )
     db.add(proj)
     await db.flush()
 
-    # 2. Tambahkan default Subtitle Style
-    sub_style = SubtitleStyle(project_id=proj.id)
+    # 2. Tambahkan default Subtitle Style dari config.json
+    sub_style = SubtitleStyle(project_id=proj.id, **defaults.subtitle.model_dump())
     db.add(sub_style)
 
     # 3. Tambahkan default Timeline kosong
@@ -103,7 +116,7 @@ async def import_discovered_video(
     else:
         format_spec = payload.download_resolution or "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
 
-    clean_title = (payload.title or "Mendownload dari YouTube").strip()
+    clean_title = (payload.title or "Mendownload sumber video").strip()
     if not clean_title.lower().endswith(".mp4"):
         filename = f"{clean_title}.mp4"
     else:
