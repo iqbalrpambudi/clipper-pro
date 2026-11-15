@@ -135,7 +135,7 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
             "subtitle": {"font_family": "bebasneue", "font_size": 52, "position": "center"},
             "watermark": {"enabled": True, "text": "@brand_resmi", "position": "top-right"},
             "tts": {"provider": "gemini", "voice": "Alnilam", "rate": "+10%", "pitch": "-3Hz"},
-            "background_fill": {"mode": "cover"},
+            "background_fill": {"mode": "cover", "zoom": 2.0},
         },
     )
     assert import_resp.status_code == 200
@@ -147,6 +147,9 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert imported["tts"]["voice"] == "Alnilam"
     assert imported["tts"]["rate"] == 10
     assert imported["tts"]["pitch"] == -3
+    assert imported["background_fill"]["zoom"] == 2.0  # every section reaches Settings, not just the first four
+    get_back = (await isolated_client.get("/api/v1/settings/project-defaults")).json()
+    assert get_back["background_fill"] == imported["background_fill"]
 
     # 3. Export global config.json
     export_resp = await isolated_client.get("/api/v1/settings/project-defaults/export")

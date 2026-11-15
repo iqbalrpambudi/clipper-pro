@@ -298,14 +298,8 @@ async def list_available_models(
 
 
 def _to_defaults_response(cfg: ProjectDefaultsConfig, path_str: str, from_file: bool) -> ProjectDefaultsResponse:
-    return ProjectDefaultsResponse(
-        subtitle=cfg.subtitle,
-        watermark=cfg.watermark,
-        tts=cfg.tts,
-        qc=cfg.qc,
-        config_path=path_str,
-        from_file=from_file,
-    )
+    # Every section of the config, so a newly added one (e.g. background_fill) is never dropped.
+    return ProjectDefaultsResponse(**cfg.model_dump(), config_path=path_str, from_file=from_file)
 
 
 @router.get("/project-defaults", response_model=ProjectDefaultsResponse)
