@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.qc import QCConfigSchema
 from app.schemas.tts import TTSConfigSchema
@@ -80,6 +80,25 @@ class HeatmapBucketOut(BaseModel):
     end_time: float
     value: float
 
+class HardsubSchema(BaseModel):
+    """Burned-in subtitle band of a source video, as fractions of frame height (0 = top)."""
+
+    enabled: bool = False
+    top: float = Field(default=0.78, ge=0.0, le=1.0)
+    bottom: float = Field(default=0.95, ge=0.0, le=1.0)
+    source: Literal["auto", "manual"] = "auto"
+
+    @model_validator(mode="after")
+    def _band_order(self) -> "HardsubSchema":
+        if self.bottom <= self.top:
+            raise ValueError("hardsub.bottom harus lebih besar dari hardsub.top")
+        return self
+
+
+class SourceVideoUpdate(BaseModel):
+    hardsub: HardsubSchema
+
+
 class SourceVideoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -98,6 +117,7 @@ class SourceVideoResponse(BaseModel):
     progress: int
     error_message: Optional[str] = None
     heatmap_data: Optional[List[HeatmapBucketOut]] = None
+    hardsub: Optional[HardsubSchema] = None
     created_at: datetime
 
 

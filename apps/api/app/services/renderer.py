@@ -13,6 +13,7 @@ from app.services.cancellation import (
     register_process,
     unregister_process,
 )
+from app.services.hardsub import ffmpeg_chain
 from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -380,6 +381,7 @@ async def render_timeline_video(
     heartbeat_callback: Optional[Callable[[], Any]] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
+    hardsub_map: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,  # source_video_id -> hardsub band
 ) -> str:
     """Render structured timeline into final MP4 video using FFmpeg with instant cancellation support."""
     out_p = Path(output_path)
@@ -408,7 +410,6 @@ async def render_timeline_video(
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
     enable_source_asmr = bool((background_fill or {}).get("source_asmr", True))
     enable_curiosity_bgm = bool((background_fill or {}).get("curiosity_bgm", True))
-    crop_source_subs = bool((background_fill or {}).get("crop_source_subs", aspect_ratio == "9:16"))
 
     # Check target audio duration if audio provided
     audio_dur = 0.0
@@ -495,6 +496,9 @@ async def render_timeline_video(
                 speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts=PTS-STARTPTS[v_trim];"
                 in_label = "[v_trim]"
 
+            # Hide the source's burned-in subtitles (crop or blur band) before any layout step
+            src_chain = speed_prefix + ffmpeg_chain((hardsub_map or {}).get(vid_id), in_label, "[v_src]")
+
             # Calculate scaled foreground dimensions if custom zoom is applied
             fg_w = int(round(w * custom_zoom))
             fg_h = int(round(h * custom_zoom))
@@ -504,26 +508,25 @@ async def render_timeline_video(
             # Video layout filter: cover (fullscreen 9:16), darkened ambient blur with Cinema-Vertical zoom, or solid color
             if bg_mode == "cover":
                 vf_filter = (
-                    f"{speed_prefix}"
-                    f"{in_label}scale={w}:{h}:force_original_aspect_ratio=increase,"
+                    f"{src_chain}"
+                    f"[v_src]scale={w}:{h}:force_original_aspect_ratio=increase,"
                     f"crop={w}:{h},"
                     f"setsar=1,fps=30{post_chain}"
                 )
             elif bg_mode == "blur":
-                fg_crop_prefix = "crop=iw:trunc(ih*0.82/2)*2:0:0," if crop_source_subs else ""
                 vf_filter = (
-                    f"{speed_prefix}"
-                    f"{in_label}split[bg_in][fg_in];"
+                    f"{src_chain}"
+                    f"[v_src]split[bg_in][fg_in];"
                     f"[bg_in]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},boxblur=28:6,eq=brightness=-0.08:saturation=0.85[bg];"
-                    f"[fg_in]{fg_crop_prefix}scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
+                    f"[fg_in]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
                     f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=30{post_chain}"
                 )
             else:
                 # Solid color background (black or custom color) using color canvas to safely support custom zoom
                 vf_filter = (
-                    f"{speed_prefix}"
+                    f"{src_chain}"
                     f"color=c='{bg_color}':s={w}x{h}:r=30[bg_solid];"
-                    f"{in_label}scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
+                    f"[v_src]scale={fg_w}:{fg_h}:force_original_aspect_ratio=decrease[fg];"
                     f"[bg_solid][fg]overlay=(W-w)/2:(H-h)/2:shortest=1,setsar=1,fps=30{post_chain}"
                 )
 

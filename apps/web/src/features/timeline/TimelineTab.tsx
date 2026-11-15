@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ScenePreviewModal } from "@/features/media/ScenePreviewModal";
 import { TimelineMonitor } from "./TimelineMonitor";
 import { TimelineTracks } from "./TimelineTracks";
@@ -12,6 +13,10 @@ interface TimelineTabProps {
 }
 
 export function TimelineTab({ project }: TimelineTabProps) {
+  const hardsubBySource = useMemo(
+    () => Object.fromEntries((project.source_videos ?? []).map((v) => [v.id, v.hardsub])),
+    [project.source_videos]
+  );
   const {
     clips,
     setClips,
@@ -232,6 +237,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
             subtitleAss={subtitleAss}
             aspectRatio={liveAspectRatio}
             backgroundFill={liveBackgroundFill}
+            hardsubBySource={hardsubBySource}
             bgMode={liveBackgroundFill?.mode || "blur"}
             subtitleStyle={liveSubtitleStyle}
             watermark={liveWatermark}

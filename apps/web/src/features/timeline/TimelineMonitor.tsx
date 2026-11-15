@@ -6,7 +6,9 @@ import {
   WatermarkConfig,
   JassubInstance,
   BackgroundFill,
+  Hardsub,
 } from "@/types";
+import { hardsubTreatment } from "@/lib/timeline/hardsub";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
 import { EMPTY_ASS } from "@/hooks/useAssPreview";
 import {
@@ -30,6 +32,8 @@ interface TimelineMonitorProps {
   subtitleStyle?: SubtitleStyle | null;
   aspectRatio: string;
   backgroundFill?: Partial<BackgroundFill> | null;
+  /** source_video_id -> burned-in subtitle band, hidden the same way the renderer does */
+  hardsubBySource?: Record<string, Hardsub | null | undefined>;
   bgMode?: string;
   time: number;
   seekRequest: SeekRequest;
@@ -68,6 +72,7 @@ export function TimelineMonitor({
   onSubtitleDragEnd,
   aspectRatio,
   backgroundFill,
+  hardsubBySource,
   bgMode = "blur",
   time,
   seekRequest,
@@ -267,13 +272,22 @@ export function TimelineMonitor({
         ctx.fillRect(0, 0, cW, cH);
       }
 
-      // 2. Render Main Video
-      if (isVideoReady && activeVid) {
+      // 2. Render Main Video (falls back to the scene thumbnail while the video loads)
+      const source: HTMLVideoElement | HTMLImageElement | null =
+        isVideoReady && activeVid
+          ? activeVid
+          : thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0
+            ? thumbImg
+            : null;
+      if (source) {
         ctx.save();
 
-        const vW = activeVid.videoWidth;
-        const vH = activeVid.videoHeight;
-        const videoAspect = vW / vH;
+        const vW = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
+        const vH = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
+        // Burned-in subtitles: same crop/blur rule as the renderer (lib/timeline/hardsub.ts)
+        const hardsub = curClip ? hardsubTreatment(hardsubBySource?.[curClip.source_video_id]) : null;
+        const srcH = hardsub?.kind === "crop" ? vH * hardsub.top : vH;
+        const videoAspect = vW / srcH;
         const canvasAspect = cW / cH;
 
         let destW = cW;
@@ -317,72 +331,23 @@ export function TimelineMonitor({
           ctx.translate(-cW / 2, -cH / 2);
         }
 
-        if (colorGrading) {
-          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
-        } else {
-          ctx.filter = "none";
+        const baseFilter = colorGrading ? COLOR_GRADING_CANVAS_FILTER : "none";
+        ctx.filter = baseFilter;
+        ctx.drawImage(source, 0, 0, vW, srcH, destX, destY, destW, destH);
+
+        if (hardsub?.kind === "blur") {
+          const bandY = destY + destH * hardsub.top;
+          const bandH = destH * (hardsub.bottom - hardsub.top);
+          ctx.beginPath();
+          ctx.rect(destX, bandY, destW, bandH);
+          ctx.clip();
+          ctx.filter = `${baseFilter === "none" ? "" : baseFilter} blur(14px)`.trim();
+          ctx.drawImage(source, 0, 0, vW, srcH, destX, destY, destW, destH);
         }
-
-        ctx.drawImage(activeVid, destX, destY, destW, destH);
-        ctx.restore();
-      } else if (thumbImg && thumbImg.complete && thumbImg.naturalWidth > 0) {
-        ctx.save();
-        const vW = thumbImg.naturalWidth;
-        const vH = thumbImg.naturalHeight;
-        const videoAspect = vW / vH;
-        const canvasAspect = cW / cH;
-
-        let destW = cW;
-        let destH = cH;
-        let destX = 0;
-        let destY = 0;
-
-        if (fillMode === "cover") {
-          if (videoAspect > canvasAspect) {
-            destH = cH;
-            destW = cH * videoAspect;
-            destX = (cW - destW) / 2;
-            destY = 0;
-          } else {
-            destW = cW;
-            destH = cW / videoAspect;
-            destX = 0;
-            destY = (cH - destH) / 2;
-          }
-        } else {
-          if (videoAspect > canvasAspect) {
-            destW = cW * userZoom;
-            destH = (cW / videoAspect) * userZoom;
-            destX = (cW - destW) / 2;
-            destY = (cH - destH) / 2;
-          } else {
-            destH = cH * userZoom;
-            destW = cH * videoAspect * userZoom;
-            destX = (cW - destW) / 2;
-            destY = (cH - destH) / 2;
-          }
-        }
-
-        if (dynamicZoom && curClip) {
-          const elapsedInClip = Math.max(0, timeSec - curClip.timeline_start);
-          const frameInClip = Math.floor(elapsedInClip * COMPOSITION_FPS);
-          const zoom = calculateKenBurnsZoom(frameInClip, activeIdx % 2 === 0);
-
-          ctx.translate(cW / 2, cH / 2);
-          ctx.scale(zoom, zoom);
-          ctx.translate(-cW / 2, -cH / 2);
-        }
-
-        if (colorGrading) {
-          ctx.filter = COLOR_GRADING_CANVAS_FILTER;
-        } else {
-          ctx.filter = "none";
-        }
-        ctx.drawImage(thumbImg, destX, destY, destW, destH);
         ctx.restore();
       }
     },
-    [clips, backgroundFill, bgMode, duration]
+    [clips, backgroundFill, bgMode, duration, hardsubBySource]
   );
 
   // Eagerly preload thumbnails for all timeline clips

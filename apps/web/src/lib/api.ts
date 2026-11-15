@@ -2,6 +2,7 @@ import {
   Project,
   ProjectDetail,
   SourceVideo,
+  Hardsub,
   Scene,
   SentenceSegment,
   Narration,
@@ -188,6 +189,11 @@ export const api = {
     }),
   deleteMedia: (projectId: string, videoId: string) =>
     request<void>(`/api/v1/projects/${projectId}/media/${videoId}`, { method: "DELETE" }),
+  updateSourceVideo: (projectId: string, videoId: string, data: { hardsub: Omit<Hardsub, "source"> }) =>
+    request<SourceVideo>(`/api/v1/projects/${projectId}/media/${videoId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   cancelMedia: (projectId: string, videoId: string) =>
     request<{ status: string; message: string }>(
       `/api/v1/projects/${projectId}/media/${videoId}/cancel`,

@@ -172,7 +172,16 @@ export interface SourceVideo {
   progress: number;
   error_message?: string | null;
   heatmap_data?: HeatmapBucket[] | null;
+  hardsub?: Hardsub | null;
   created_at: string;
+}
+
+/** Burned-in subtitle band of a source video, fractions of frame height (0 = top). */
+export interface Hardsub {
+  enabled: boolean;
+  top: number;
+  bottom: number;
+  source: "auto" | "manual";
 }
 
 export interface Scene {

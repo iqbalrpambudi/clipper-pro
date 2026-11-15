@@ -167,6 +167,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             status=v.status,
             progress=v.progress,
             error_message=v.error_message,
+            hardsub=v.hardsub,
             created_at=v.created_at,
         )
         for v in proj.source_videos

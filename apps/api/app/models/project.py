@@ -64,6 +64,7 @@ class SourceVideo(Base):
     progress: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     heatmap_data: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)  # YouTube "most replayed" [{start_time, end_time, value}]
+    hardsub: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # burned-in subtitle band, see services/hardsub.py
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

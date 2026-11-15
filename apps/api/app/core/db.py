@@ -78,6 +78,8 @@ async def init_db() -> None:
             for col in ("trim_start", "trim_end"):
                 if col not in sv_cols:
                     sync_conn.execute(text(f"ALTER TABLE source_videos ADD COLUMN {col} FLOAT"))
+            if "hardsub" not in sv_cols:
+                sync_conn.execute(text("ALTER TABLE source_videos ADD COLUMN hardsub JSON"))
         if "subtitle_styles" in table_names:
             sub_cols = {c["name"] for c in inspector.get_columns("subtitle_styles")}
             if "text_case" not in sub_cols:

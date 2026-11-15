@@ -200,6 +200,15 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                       <p className="truncate text-xs font-medium text-foreground" title={vid.filename}>
                         {vid.filename}
                       </p>
+                      {vid.hardsub?.enabled && (
+                        <Badge
+                          variant="workspace-warning"
+                          className="mt-0.5 text-[10px]"
+                          title="Video ini punya subtitle bawaan; disembunyikan saat render. Atur lewat tombol putar."
+                        >
+                          Hardsub
+                        </Badge>
+                      )}
                       <p
                         className={`line-clamp-2 break-words text-xs ${vid.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}
                         title={meta}

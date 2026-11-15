@@ -15,6 +15,7 @@ from app.services.cancellation import (
     TaskCancelledException,
     is_cancelled,
 )
+from app.services.hardsub import detect_hardsub
 from app.services.scene_detector import detect_scenes
 from app.services.vision_tagger import analyze_scenes_batch
 
@@ -142,6 +143,19 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
 
             if await is_cancelled(video.project_id, video_id=video_id):
                 raise TaskCancelledException("Deteksi visual scene dibatalkan oleh pengguna.")
+
+            # Burned-in subtitles: a manual band set by the user always wins over detection
+            if not (isinstance(video.hardsub, dict) and video.hardsub.get("source") == "manual"):
+                await publish_project_event(
+                    video.project_id,
+                    task_type="scene_detect",
+                    status="progress",
+                    progress=96,
+                    stage="hardsub_detect",
+                    message="Memeriksa subtitle bawaan (hardsub) di video...",
+                    data={"video_id": video_id},
+                )
+                video.hardsub = await detect_hardsub(adapter, video.file_path, float(video.duration or 0.0))
 
             video.status = "ready"
             video.progress = 100

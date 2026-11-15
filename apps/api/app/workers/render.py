@@ -155,7 +155,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
 
             # Fetch source videos map
             v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
-            source_videos_map = {v.id: v.file_path for v in v_res.scalars().all() if v.file_path}
+            source_videos = [v for v in v_res.scalars().all() if v.file_path]
+            source_videos_map = {v.id: v.file_path for v in source_videos}
+            hardsub_map = {v.id: v.hardsub for v in source_videos}
 
             if await is_cancelled(project.id, job_id=render_job_id):
                 raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
@@ -175,6 +177,7 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 heartbeat_callback=_heartbeat,
                 project_id=project.id,
                 job_id=render_job_id,
+                hardsub_map=hardsub_map,
             )
 
         try:

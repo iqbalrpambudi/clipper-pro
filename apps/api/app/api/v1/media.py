@@ -16,7 +16,7 @@ from app.schemas.media import (
     YTDownloadRequest,
     YTInfoResponse,
 )
-from app.schemas.project import SourceVideoResponse
+from app.schemas.project import SourceVideoResponse, SourceVideoUpdate
 from app.services.scene_detector import get_video_metadata
 from app.services.ytdlp import (
     get_video_info,
@@ -55,6 +55,7 @@ async def list_media(project_id: str, db: AsyncSession = Depends(get_db)):
             progress=v.progress,
             error_message=v.error_message,
             heatmap_data=v.heatmap_data,
+            hardsub=v.hardsub,
             created_at=v.created_at,
         )
         for v in videos
@@ -168,6 +169,7 @@ async def upload_media_files(
             progress=v.progress,
             error_message=v.error_message,
             heatmap_data=v.heatmap_data,
+            hardsub=v.hardsub,
             created_at=v.created_at,
         )
         for v in created_videos
@@ -297,6 +299,42 @@ async def cancel_video_processing(
     )
 
     return {"status": "cancelled", "message": f"Proses video '{video.filename}' berhasil dibatalkan."}
+
+
+@router.patch("/{video_id}", response_model=SourceVideoResponse)
+async def update_source_video(
+    project_id: str,
+    video_id: str,
+    payload: SourceVideoUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    video = await db.get(SourceVideo, video_id)
+    if not video or video.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Video tidak ditemukan")
+
+    # A user edit is final: scene re-detection never overwrites a manual band
+    video.hardsub = {**payload.hardsub.model_dump(), "source": "manual"}
+    await db.commit()
+    await db.refresh(video)
+    return SourceVideoResponse(
+        id=video.id,
+        project_id=video.project_id,
+        origin=video.origin,
+        file_url=storage.to_relative_url(video.file_path),
+        filename=video.filename,
+        youtube_url=video.youtube_url,
+        selected_resolution=video.selected_resolution,
+        duration=video.duration,
+        width=video.width,
+        height=video.height,
+        fps=video.fps,
+        status=video.status,
+        progress=video.progress,
+        error_message=video.error_message,
+        heatmap_data=video.heatmap_data,
+        hardsub=video.hardsub,
+        created_at=video.created_at,
+    )
 
 
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
