@@ -102,8 +102,10 @@ def build_visual_shot_windows(
     for span in seg_spans:
         dur = span["duration"]
 
-        # If single sentence span is very long (> max_dur), flush current and split
-        if dur > max_dur:
+        # If single sentence span is very long (> max_dur), flush current and split;
+        # only when every chunk can stay >= min_dur, else heal merges the chunks back
+        # and the tagged shot is lost under a slowed-down neighbour.
+        if dur > max_dur and dur >= 2 * min_dur:
             if curr_spans:
                 flush_end = snap_to_frame(curr_spans[-1]["end_sec"])
                 windows.append({
@@ -118,7 +120,7 @@ def build_visual_shot_windows(
                 curr_spans = []
 
             # Divide long span into balanced chunks between min_dur and max_dur
-            num_chunks = max(2, int(round(dur / ((min_dur + max_dur) / 2))))
+            num_chunks = min(int(dur // min_dur), max(2, int(round(dur / ((min_dur + max_dur) / 2)))))
             chunk_len = dur / num_chunks
             c_start = span["start_sec"]
             for c_idx in range(num_chunks):
@@ -265,14 +267,20 @@ def _run_end(
     return end
 
 
-def _absorb(prev: Dict[str, Any], c: Dict[str, Any]) -> None:
+def _absorb(prev: Dict[str, Any], c: Dict[str, Any], scenes: Optional[List[Dict[str, Any]]] = None) -> None:
     prev["timeline_end"] = snap_to_frame(c.get("timeline_end", prev["timeline_end"]))
     if c.get("text") and c["text"] not in prev.get("text", ""):
         prev["text"] = f"{prev.get('text', '')} {c['text']}".strip()
     # Extend the source slice (up to its safe end) instead of slowing the clip down.
     new_target = round(prev["timeline_end"] - prev["timeline_start"], 3)
     safe_end = float(prev.get("_safe_end") or prev.get("clip_end", 0.0))
-    prev["clip_end"] = snap_to_frame(min(safe_end, float(prev["clip_start"]) + new_target * float(prev.get("speed") or 1.0)))
+    want_end = float(prev["clip_start"]) + new_target * float(prev.get("speed") or 1.0)
+    scene = next((sc for sc in scenes or [] if sc["id"] == prev.get("scene_id")), None)
+    if want_end > safe_end and scene is not None:
+        # Own shot too short for the grown slot: play on into the following shots, not slow-mo.
+        safe_end = max(safe_end, _run_end(scene, scenes, float(prev["clip_start"]), want_end - float(prev["clip_start"])))
+        prev["_safe_end"] = safe_end
+    prev["clip_end"] = snap_to_frame(min(safe_end, want_end))
     src_dur = round(float(prev.get("clip_end", 0.0)) - float(prev.get("clip_start", 0.0)), 3)
     if src_dur > 0 and new_target > 0:
         # Real ratio: renderer stretches source to the slot anyway.
@@ -282,6 +290,7 @@ def _absorb(prev: Dict[str, Any], c: Dict[str, Any]) -> None:
 def verify_and_heal_timeline_clips(
     clips: List[Dict[str, Any]],
     min_clip_dur: float = 3.0,
+    scenes: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """Safety guard (Layer 3): Guarantees timeline never has flash cuts (< min_clip_dur).
 
@@ -303,7 +312,7 @@ def verify_and_heal_timeline_clips(
     for c in clips:
         c_dur = round(float(c.get("timeline_end", 0.0)) - float(c.get("timeline_start", 0.0)), 3)
         if c_dur < min_clip_dur and merged:
-            _absorb(merged[-1], c)
+            _absorb(merged[-1], c, scenes)
         else:
             merged.append(dict(c))
 
@@ -311,7 +320,7 @@ def verify_and_heal_timeline_clips(
     if len(merged) > 1:
         first_dur = round(float(merged[0]["timeline_end"]) - float(merged[0]["timeline_start"]), 3)
         if first_dur < min_clip_dur:
-            _absorb(merged[0], merged.pop(1))
+            _absorb(merged[0], merged.pop(1), scenes)
 
     # Pass 2: Ensure strict mathematical continuity across timeline
     if merged:
@@ -456,7 +465,7 @@ async def match_scenes_to_segments(
         # scene left the previous clip simply plays on.
         candidates = scenes if tagged is not None else [sc for sc in scenes if sc["id"] not in reserved_ids]
         if not candidates and clips:
-            _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]})
+            _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]}, scenes)
             continue
         scored_scenes = []
         for sc in candidates or scenes:
@@ -590,5 +599,5 @@ async def match_scenes_to_segments(
             })
 
     # Layer 3: Post-match verification guard ensuring no timeline clip < 2.0s
-    healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0)
+    healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0, scenes=scenes)
     return healed_clips

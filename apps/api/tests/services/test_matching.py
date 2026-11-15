@@ -93,3 +93,29 @@ def test_heal_extends_source_before_slowing():
     assert len(healed) == 1
     assert healed[0]["clip_end"] == pytest.approx(6.5, abs=0.05)
     assert healed[0]["speed"] == pytest.approx(1.0, abs=0.02)
+
+
+def test_span_just_over_max_dur_is_not_split_into_flash_chunks():
+    # 3.87 s line: two 1.93 s chunks would fall under the 2 s heal floor and get merged away.
+    segments = [
+        {"id": "seg-1", "text": "a", "start_ms": 0, "end_ms": 3000, "scene_id": "A"},
+        {"id": "seg-2", "text": "b", "start_ms": 3000, "end_ms": 6870, "scene_id": "B"},
+    ]
+    windows = build_visual_shot_windows(segments, min_dur=2.0, max_dur=3.5)
+    assert [w["scene_id"] for w in windows] == ["A", "B"]
+    assert all(w["duration"] >= 2.0 for w in windows)
+
+
+def test_heal_plays_into_next_scene_instead_of_slowmo():
+    scenes = [_scene("A", 0, 5.0), _scene("B", 5.0, 20.0)]
+    clips = [
+        {"scene_id": "A", "timeline_start": 0.0, "timeline_end": 4.0, "clip_start": 0.5, "clip_end": 4.5, "speed": 1.0, "text": "a", "_safe_end": 4.8},
+        {"scene_id": "X", "timeline_start": 4.0, "timeline_end": 9.0, "clip_start": 30.0, "clip_end": 35.0, "speed": 1.0, "text": "b"},
+        {"scene_id": "Y", "timeline_start": 9.0, "timeline_end": 10.0, "clip_start": 40.0, "clip_end": 41.0, "speed": 1.0, "text": "c"},
+    ]
+    clips[1]["timeline_end"] = 5.5  # X is a 1.5 s flash -> absorbed into A, slot grows to 5.5 s
+    clips[2]["timeline_start"] = 5.5
+    clips[2]["timeline_end"] = 9.0
+    healed = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0, scenes=scenes)
+    assert healed[0]["clip_end"] == pytest.approx(6.0, abs=0.05)
+    assert healed[0]["speed"] == pytest.approx(1.0, abs=0.02)
