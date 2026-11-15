@@ -24,6 +24,7 @@ class Project(Base):
     )
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     tts_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    qc_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     locations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
@@ -40,6 +41,7 @@ class Project(Base):
     timeline: Mapped[Optional["Timeline"]] = relationship("Timeline", back_populates="project", uselist=False, cascade="all, delete-orphan")
     subtitle_style: Mapped[Optional["SubtitleStyle"]] = relationship("SubtitleStyle", back_populates="project", uselist=False, cascade="all, delete-orphan")
     render_jobs: Mapped[List["RenderJob"]] = relationship("RenderJob", back_populates="project", cascade="all, delete-orphan")
+    qc_runs: Mapped[List["QCRun"]] = relationship("QCRun", back_populates="project", cascade="all, delete-orphan")
 
 
 class SourceVideo(Base):

@@ -5,6 +5,7 @@ from app.api.v1.events import router as events_router
 from app.api.v1.media import router as media_router
 from app.api.v1.narration import router as narration_router
 from app.api.v1.projects import router as projects_router
+from app.api.v1.qc import router as qc_router
 from app.api.v1.render import router as render_router
 from app.api.v1.scenes import router as scenes_router
 from app.api.v1.settings import router as settings_router
@@ -26,6 +27,7 @@ api_router.include_router(tts_router)
 api_router.include_router(timeline_router)
 api_router.include_router(subtitles_router)
 api_router.include_router(render_router)
+api_router.include_router(qc_router)
 api_router.include_router(settings_router)
 api_router.include_router(events_router)
 api_router.include_router(tasks_router)

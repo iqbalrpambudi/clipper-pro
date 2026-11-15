@@ -71,6 +71,8 @@ async def init_db() -> None:
             proj_cols = {c["name"] for c in inspector.get_columns("projects")}
             if "tts_config" not in proj_cols:
                 sync_conn.execute(text("ALTER TABLE projects ADD COLUMN tts_config JSON"))
+            if "qc_config" not in proj_cols:
+                sync_conn.execute(text("ALTER TABLE projects ADD COLUMN qc_config JSON"))
         if "source_videos" in table_names:
             sv_cols = {c["name"] for c in inspector.get_columns("source_videos")}
             for col in ("trim_start", "trim_end"):

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Settings as SettingsIcon,
@@ -9,11 +10,72 @@ import {
   Loader2,
   Download,
   LucideIcon,
+  ShieldCheck,
 } from "lucide-react";
 import { Button, Input, Badge } from "@/components/ui";
 import { GlobalTaskIndicator } from "@/components/common/GlobalTaskIndicator";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { StudioTab } from "@/lib/store";
+import { api } from "@/lib/api";
+import { QCReportDialog } from "@/features/qc/QCReportDialog";
+
+const StudioQCButton: React.FC<{
+  activeTab: StudioTab;
+}> = ({ activeTab }) => {
+  const { id: projectId } = useParams<{ id: string }>();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { data: latestQC } = useQuery({
+    queryKey: ["qc-latest", projectId],
+    queryFn: () => api.getLatestQC(projectId!),
+    enabled: Boolean(projectId),
+  });
+
+  if (!projectId) return null;
+
+  const currentGate =
+    activeTab === "tts" || activeTab === "narration" ? "script" : "timeline";
+  const latestRun =
+    (currentGate === "script" ? latestQC?.script : latestQC?.timeline) ||
+    latestQC?.timeline ||
+    latestQC?.script;
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="workspace-secondary"
+        size="workspace-sm"
+        onClick={() => setIsOpen(true)}
+        className="gap-1.5 px-2 sm:px-3"
+        aria-label="AI Quality Control"
+        title="Buka AI Quality Control (QC)"
+      >
+        <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+        <span className="hidden md:inline">AI QC</span>
+        {latestRun && (
+          <span
+            className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+              latestRun.status === "passed" || latestRun.status === "fixed"
+                ? "bg-emerald-500/15 text-emerald-500"
+                : latestRun.status === "warning"
+                  ? "bg-amber-500/15 text-amber-500"
+                  : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {latestRun.overall_score.toFixed(1)}
+          </span>
+        )}
+      </Button>
+      <QCReportDialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        projectId={projectId}
+        initialGate={currentGate}
+      />
+    </>
+  );
+};
 
 export interface StudioNavTab {
   id: StudioTab;
@@ -165,6 +227,7 @@ export function StudioLayout({
             <Badge variant="workspace" className="font-mono text-xs sm:hidden">
               {aspectRatio}
             </Badge>
+            <StudioQCButton activeTab={activeTab} />
             <ThemeToggle align="end" />
             <Button
               asChild

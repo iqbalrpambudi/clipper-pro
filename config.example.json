@@ -1,12 +1,12 @@
 {
   "subtitle": {
     "enabled": true,
-    "preset_name": "pop_kuning",
+    "preset_name": "tiktok_pop",
     "font_family": "Poppins",
     "font_size": 58,
     "highlight_color": "#FFE600",
     "position": "bottom",
-    "offset_y": 260,
+    "offset_y": 28,
     "burst_word_count": 3,
     "highlight_animation": "scale"
   },
@@ -34,6 +34,12 @@
     "voice": "Puck",
     "rate": 0,
     "pitch": 0,
-    "model": "gemini-2.5-flash-preview-tts"
+    "model": null
+  },
+  "qc": {
+    "max_fix_rounds": 2,
+    "threshold": 7.5,
+    "platform": "tiktok",
+    "qc_model": null
   }
 }

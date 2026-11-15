@@ -38,12 +38,20 @@ import {
   normalizeWatermarkConfig,
 } from "@/features/watermark/constants";
 import { DEFAULT_TTS_CONFIG, TTS_MODEL } from "@/features/tts/constants";
+import { ShieldCheck } from "lucide-react";
+import { QCConfig } from "@/types";
+import {
+  DEFAULT_QC_CONFIG,
+  QC_PLATFORMS,
+  normalizeQCConfig,
+} from "@/features/qc/constants";
 
 function makeInitialDraft(): ProjectDefaultsConfig {
   return {
     subtitle: { ...DEFAULT_SUBTITLE_STYLE },
     watermark: normalizeWatermarkConfig(),
     tts: { ...DEFAULT_TTS_CONFIG },
+    qc: { ...DEFAULT_QC_CONFIG },
   };
 }
 
@@ -55,6 +63,22 @@ export function ProjectDefaultsTab() {
   const [draft, setDraft] = useState<ProjectDefaultsConfig>(makeInitialDraft);
   const [showRawJson, setShowRawJson] = useState(false);
   const [rawJsonText, setRawJsonText] = useState("");
+  const [isTestingQcModel, setIsTestingQcModel] = useState(false);
+
+  // Reuses the active API key & base URL; only the model name is swapped for the judge.
+  const handleTestQcModel = async () => {
+    const model = draft.qc?.qc_model?.trim();
+    if (!model) return;
+    setIsTestingQcModel(true);
+    try {
+      const res = await api.testConnection({ chat_model: model, vision_model: model });
+      showToast(res.message, res.success ? "success" : "error");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Test koneksi gagal", "error");
+    } finally {
+      setIsTestingQcModel(false);
+    }
+  };
 
   const { data: serverDefaults, isLoading } = useQuery({
     queryKey: ["project-defaults"],
@@ -75,6 +99,7 @@ export function ProjectDefaultsTab() {
         ...DEFAULT_TTS_CONFIG,
         ...serverDefaults.tts,
       },
+      qc: normalizeQCConfig(serverDefaults.qc),
     };
     setDraft(normalized);
     setRawJsonText(JSON.stringify(normalized, null, 2));
@@ -171,11 +196,19 @@ export function ProjectDefaultsTab() {
     }
   };
 
+  const updateQc = (patch: Partial<QCConfig>) => {
+    setDraft((prev) => ({
+      ...prev,
+      qc: normalizeQCConfig({ ...prev.qc, ...patch }),
+    }));
+  };
+
   const handleExport = () => {
     const cleanPayload: ProjectDefaultsConfig = {
       subtitle: draft.subtitle,
       watermark: draft.watermark,
       tts: draft.tts,
+      qc: normalizeQCConfig(draft.qc),
     };
     downloadJsonFile(cleanPayload, "config.json");
     showToast("config.json berhasil diekspor!", "success");
@@ -1061,6 +1094,124 @@ export function ProjectDefaultsTab() {
               onChange={(e) => updateTts({ pitch: Number(e.target.value) })}
               className="w-full accent-primary"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 4: AI Quality Control (qc) */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-xs space-y-5">
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <div>
+              <h4 className="text-sm font-bold text-foreground">
+                4. AI Quality Control (QC) Default
+              </h4>
+              <p className="text-[11px] text-muted-foreground">
+                Pengaturan reviewer AI. QC hanya jalan saat kamu klik "Cek QC" di studio — tidak pernah otomatis saat TTS atau render.
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="font-mono text-[10px]">
+            qc
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="default-qc-platform"
+              className="block text-xs font-semibold text-muted-foreground"
+            >
+              Target Platform FYP
+            </label>
+            <NativeSelect
+              id="default-qc-platform"
+              value={draft.qc?.platform || "all"}
+              onChange={(e) =>
+                updateQc({
+                  platform: e.target.value as QCConfig["platform"],
+                })
+              }
+            >
+              {QC_PLATFORMS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="default-qc-threshold"
+              className="flex justify-between text-xs font-semibold text-muted-foreground"
+            >
+              <span>Skor Minimum Lolos</span>
+              <span className="font-mono text-foreground">
+                {(draft.qc?.threshold ?? 7.5).toFixed(1)} / 10
+              </span>
+            </label>
+            <input
+              id="default-qc-threshold"
+              type="range"
+              min={5}
+              max={9.5}
+              step={0.5}
+              value={draft.qc?.threshold ?? 7.5}
+              onChange={(e) => updateQc({ threshold: Number(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="default-qc-rounds"
+              className="block text-xs font-semibold text-muted-foreground"
+            >
+              Maksimal Putaran Auto-Fix
+            </label>
+            <NativeSelect
+              id="default-qc-rounds"
+              value={String(draft.qc?.max_fix_rounds ?? 2)}
+              onChange={(e) =>
+                updateQc({ max_fix_rounds: Number(e.target.value) })
+              }
+            >
+              <option value="1">1 Putaran</option>
+              <option value="2">2 Putaran (Rekomendasi)</option>
+              <option value="3">3 Putaran</option>
+            </NativeSelect>
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="default-qc-model"
+              className="block text-xs font-semibold text-muted-foreground"
+            >
+              Model QC Judge (opsional)
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="default-qc-model"
+                placeholder="Kosong = pakai model chat & vision aktif"
+                value={draft.qc?.qc_model ?? ""}
+                onChange={(e) => updateQc({ qc_model: e.target.value.trim() || null })}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 gap-2"
+                disabled={!draft.qc?.qc_model?.trim() || isTestingQcModel}
+                onClick={handleTestQcModel}
+              >
+                {isTestingQcModel && <Loader2 className="h-4 w-4 animate-spin" />}
+                <span>Test Koneksi</span>
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Pakai model multimodal yang kuat dan beda dari model penulis naskah, agar penilaian jujur.
+            </p>
           </div>
         </div>
       </div>

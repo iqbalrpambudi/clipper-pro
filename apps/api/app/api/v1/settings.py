@@ -302,6 +302,7 @@ def _to_defaults_response(cfg: ProjectDefaultsConfig, path_str: str, from_file: 
         subtitle=cfg.subtitle,
         watermark=cfg.watermark,
         tts=cfg.tts,
+        qc=cfg.qc,
         config_path=path_str,
         from_file=from_file,
     )

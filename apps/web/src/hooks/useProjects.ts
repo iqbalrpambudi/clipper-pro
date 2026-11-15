@@ -99,6 +99,7 @@ export function useUpdateProject() {
           | "background_fill"
           | "watermark"
           | "tts_config"
+          | "qc_config"
           | "language"
         >
       >;

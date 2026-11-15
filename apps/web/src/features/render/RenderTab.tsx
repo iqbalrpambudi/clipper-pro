@@ -30,6 +30,7 @@ import { WatermarkCustomizePanel } from "../watermark/WatermarkCustomizePanel";
 import { toSubtitleStyle } from "../subtitles/constants";
 import { normalizeWatermarkConfig } from "../watermark/constants";
 import { DEFAULT_TTS_CONFIG } from "../tts/constants";
+import { normalizeQCConfig } from "../qc/constants";
 import { RenderHistoryList } from "./RenderHistoryList";
 import { PreviewModalVideoState, VideoPreviewModal } from "./VideoPreviewModal";
 import { formatBytes, getSafeProjectFilename, parseNumericDelta } from "./utils";
@@ -171,6 +172,7 @@ export function RenderTab({ project }: RenderTabProps) {
         subtitle: toSubtitleStyle(project.subtitle_style),
         watermark: normalizeWatermarkConfig(liveWatermark || project.watermark),
         tts: ttsConfig,
+        qc: normalizeQCConfig(project.qc_config),
       });
     },
     onSuccess: () => {

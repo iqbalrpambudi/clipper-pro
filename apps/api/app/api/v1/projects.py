@@ -69,6 +69,11 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         if payload.tts_config is not None
         else defaults.tts.model_dump()
     )
+    qc_data = (
+        payload.qc_config.model_dump()
+        if payload.qc_config is not None
+        else defaults.qc.model_dump()
+    )
     proj = Project(
         name=payload.name,
         description=payload.description,
@@ -79,6 +84,7 @@ async def create_project(payload: ProjectCreate, db: AsyncSession = Depends(get_
         background_fill=payload.background_fill.model_dump(),
         watermark=watermark_data,
         tts_config=tts_data,
+        qc_config=qc_data,
         world_setting=world_cfg,
     )
     db.add(proj)
@@ -120,6 +126,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     bg_fill = proj.background_fill if isinstance(proj.background_fill, dict) else {"mode": "blur", "color": "#000000"}
     watermark_dict = proj.watermark if isinstance(proj.watermark, dict) else None
     tts_dict = proj.tts_config if isinstance(proj.tts_config, dict) else None
+    qc_dict = proj.qc_config if isinstance(proj.qc_config, dict) else None
     resp = ProjectDetailResponse(
         id=proj.id,
         name=proj.name,
@@ -132,6 +139,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         background_fill=bg_fill,
         watermark=watermark_dict,
         tts_config=tts_dict,
+        qc_config=qc_dict,
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         source_video_count=len(proj.source_videos),
@@ -304,6 +312,8 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
         proj.watermark = payload.watermark.model_dump()
     if payload.tts_config is not None:
         proj.tts_config = payload.tts_config.model_dump()
+    if payload.qc_config is not None:
+        proj.qc_config = payload.qc_config.model_dump()
     if payload.status is not None:
         proj.status = payload.status
     if payload.characters is not None:

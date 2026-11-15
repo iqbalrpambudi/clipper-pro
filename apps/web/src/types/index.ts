@@ -17,10 +17,63 @@ export interface TTSConfig {
   model?: string | null;
 }
 
+export interface QCConfig {
+  max_fix_rounds: number;
+  threshold: number;
+  platform: "tiktok" | "reels" | "shorts";
+  qc_model?: string | null;
+}
+
+export interface QCIssue {
+  id: string;
+  dimension: string;
+  severity: "blocker" | "major" | "minor";
+  message: string;
+  segment_index?: number | null;
+  clip_index?: number | null;
+  timestamp_sec?: number | null;
+  auto_fixable: boolean;
+}
+
+export interface QCAppliedFix {
+  round: number;
+  action: string;
+  target: string;
+  summary: string;
+  before?: unknown;
+  after?: unknown;
+}
+
+export interface QCRun {
+  id: string;
+  project_id: string;
+  gate: "script" | "timeline";
+  trigger: "auto" | "manual";
+  status: "passed" | "fixed" | "warning" | "skipped";
+  passed: boolean;
+  overall_score: number;
+  threshold: number;
+  rounds_used: number;
+  dimension_scores: Record<string, number>;
+  issues: QCIssue[];
+  applied_fixes: QCAppliedFix[];
+  can_revert: boolean;
+  reverted: boolean;
+  summary?: string | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface QCLatestResponse {
+  script?: QCRun | null;
+  timeline?: QCRun | null;
+}
+
 export interface ProjectDefaultsConfig {
   subtitle: SubtitleStyle;
   watermark: WatermarkConfig;
   tts: TTSConfig;
+  qc?: QCConfig;
 }
 
 export interface ProjectDefaultsResponse extends ProjectDefaultsConfig {
@@ -39,6 +92,7 @@ export interface Project {
   background_fill: BackgroundFill;
   watermark?: WatermarkConfig | null;
   tts_config?: TTSConfig | null;
+  qc_config?: QCConfig | null;
   created_at: string;
   updated_at: string;
   source_video_count?: number;

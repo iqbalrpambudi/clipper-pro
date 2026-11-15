@@ -152,7 +152,7 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert export_resp.status_code == 200
     assert "attachment; filename=\"config.json\"" in export_resp.headers.get("content-disposition", "")
     exported_data = export_resp.json()
-    assert set(exported_data.keys()) == {"subtitle", "watermark", "tts"}
+    assert set(exported_data.keys()) == {"subtitle", "watermark", "tts", "qc"}
     assert exported_data["subtitle"]["font_family"] == "Bebas Neue"
 
     # 4. Creating a new project without specifying subtitle/watermark/tts applies config.json defaults

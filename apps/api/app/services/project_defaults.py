@@ -9,7 +9,7 @@ from app.services.subtitle_ass import style_to_dict
 
 log = logging.getLogger("cliper-pro.project_defaults")
 
-_SECTION_KEYS = ("subtitle", "watermark", "tts")
+_SECTION_KEYS = ("subtitle", "watermark", "tts", "qc")
 
 
 def resolve_config_json_path() -> Path:
@@ -145,5 +145,8 @@ def build_project_config_snapshot(
             if val is not None:
                 tts_source[attr] = val
     raw["tts"] = tts_source if tts_source else defaults.tts.model_dump()
+
+    proj_qc = getattr(project, "qc_config", None)
+    raw["qc"] = proj_qc if isinstance(proj_qc, dict) else defaults.qc.model_dump()
 
     return merge_project_defaults(raw)

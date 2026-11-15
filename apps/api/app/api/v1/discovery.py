@@ -91,6 +91,7 @@ async def import_discovered_video(
         },
         watermark=defaults.watermark.model_dump(),
         tts_config=defaults.tts.model_dump(),
+        qc_config=defaults.qc.model_dump(),
     )
     db.add(proj)
     await db.flush()

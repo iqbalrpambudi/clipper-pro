@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.qc import QCConfigSchema
 from app.schemas.tts import TTSConfigSchema
 
 
@@ -49,6 +50,7 @@ class ProjectBase(BaseModel):
     background_fill: BackgroundFillSchema = BackgroundFillSchema()
     watermark: Optional[WatermarkSchema] = None
     tts_config: Optional[TTSConfigSchema] = None
+    qc_config: Optional[QCConfigSchema] = None
     world_setting: Optional[Dict[str, Any]] = None
 
 
@@ -66,6 +68,7 @@ class ProjectUpdate(BaseModel):
     background_fill: Optional[BackgroundFillSchema] = None
     watermark: Optional[WatermarkSchema] = None
     tts_config: Optional[TTSConfigSchema] = None
+    qc_config: Optional[QCConfigSchema] = None
     status: Optional[str] = None
     characters: Optional[List[Dict[str, Any]]] = None
     locations: Optional[List[Dict[str, Any]]] = None
