@@ -38,7 +38,7 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
             status="progress",
             progress=5,
             stage="starting",
-            message="Menghubungkan ke YouTube via yt-dlp...",
+            message="Menghubungkan ke sumber video via yt-dlp...",
             data={"video_id": video_id, "filename": video.filename},
         )
 
@@ -47,7 +47,7 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
 
         async def _progress(pct: int):
             if await is_cancelled(video.project_id, video_id=video_id):
-                raise TaskCancelledException("Download video YouTube dibatalkan oleh pengguna.")
+                raise TaskCancelledException("Download video dibatalkan oleh pengguna.")
             bounded_pct = max(5, min(pct, 95))
             async with SessionLocal() as inner_db:
                 v = await inner_db.get(SourceVideo, video_id)
@@ -60,7 +60,7 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 status="progress",
                 progress=bounded_pct,
                 stage="downloading",
-                message=f"Mendownload video YouTube ({bounded_pct}%)...",
+                message=f"Mendownload video ({bounded_pct}%)...",
                 data={"video_id": video_id, "filename": video.filename},
             )
 

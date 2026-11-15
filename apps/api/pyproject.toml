@@ -18,7 +18,8 @@ dependencies = [
     "requests>=2.31.0",
     "av==12.3.0",
     "httpx==0.28.1",
-    "yt-dlp>=2024.0.0",
+    "yt-dlp[default,curl-cffi]>=2024.0.0",
+    "curl-cffi>=0.7.0",
     "cryptography==43.0.3",
     "alembic>=1.14.0",
 ]

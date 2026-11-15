@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PresetCategory(BaseModel):
@@ -14,6 +14,8 @@ class PresetCategory(BaseModel):
 
 class VideoCandidate(BaseModel):
     id: str
+    source: str = "youtube"
+    source_label: str = "YouTube"
     title: str
     url: str
     duration: float
@@ -31,29 +33,40 @@ class VideoCandidate(BaseModel):
 class VideoSearchRequest(BaseModel):
     preset_id: Optional[str] = None
     custom_query: Optional[str] = None
+    sources: List[str] = Field(
+        default_factory=lambda: ["youtube", "dailymotion", "archive_org", "bilibili"]
+    )
+    page: int = Field(1, ge=1, le=50)
     exclude_ai: bool = True
-    min_duration: int = 300  # 5 menit
+    hide_imported: bool = True
+    exclude_urls: List[str] = Field(default_factory=list)
+    min_duration: int = 120  # 2 menit
     max_duration: int = 1800  # 30 menit (batas Cliper Pro)
-    min_views: int = 20000
-    limit: int = 10
+    min_views: int = 0
+    limit: int = Field(12, ge=1, le=40)
 
 
 class VideoSearchResponse(BaseModel):
     query_used: str
     preset_id: Optional[str] = None
     exclude_ai: bool = True
-    candidates: List[VideoCandidate] = []
+    hide_imported: bool = True
+    page: int = 1
+    has_more: bool = True
+    sources_used: List[str] = Field(default_factory=list)
+    skipped_imported_count: int = 0
+    candidates: List[VideoCandidate] = Field(default_factory=list)
 
 
 class VideoImportRequest(BaseModel):
     url: str
     title: str
+    source: Optional[str] = None
     project_name: Optional[str] = None
     aspect_ratio: str = "9:16"
     resolution: str = "1080p"
     download_resolution: Optional[str] = "720p"  # 720p | 1080p | 480p | best
     language: str = "id"
-
 
 
 class VideoImportResponse(BaseModel):

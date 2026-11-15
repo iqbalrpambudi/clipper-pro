@@ -61,10 +61,10 @@ async def get_video_info(url: str) -> YTInfoResponse:
     if proc.returncode != 0:
         err_msg = stderr.decode().strip()
         log.error("yt-dlp failed: %s", err_msg)
-        raise RuntimeError(f"Gagal mengambil info video YouTube: {err_msg[:200]}")
+        raise RuntimeError(f"Gagal mengambil info video: {err_msg[:200]}")
 
     data = json.loads(stdout.decode())
-    title = data.get("title", "YouTube Video")
+    title = data.get("title", "Source Video")
     duration = float(data.get("duration", 0.0))
     thumbnail = data.get("thumbnail")
 
