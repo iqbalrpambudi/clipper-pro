@@ -235,3 +235,57 @@ async def test_generate_speech_audio_gemini_cancels_in_chapter_loop(tmp_path):
                     {"text": "Babak dua kelanjutan.", "chapter_index": 2},
                 ],
             )
+
+
+def _write_voice_wav(path, segments, sr=16000):
+    """Write a voice-like harmonic tone: list of (seconds, f0_hz)."""
+    import wave
+
+    import numpy as np
+
+    parts = []
+    for secs, f0 in segments:
+        t = np.arange(int(secs * sr)) / sr
+        vib = f0 * (1 + 0.06 * np.sin(2 * np.pi * 0.5 * t))  # natural-ish intonation
+        phase = 2 * np.pi * np.cumsum(vib) / sr
+        parts.append(sum(np.sin(k * phase) / k for k in range(1, 6)) * 0.2)
+    pcm = (np.concatenate(parts) * 32767).astype(np.int16)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(pcm.tobytes())
+
+
+def test_voice_drift_detects_speaker_switch_not_intonation(tmp_path):
+    from app.services.tts.audio_utils import count_voice_drift_windows
+
+    steady = tmp_path / "steady.wav"
+    _write_voice_wav(steady, [(20, 115)])
+    assert count_voice_drift_windows(str(steady)) == 0
+
+    switched = tmp_path / "switched.wav"
+    _write_voice_wav(switched, [(6, 230), (16, 115)])  # female-ish start, then male
+    assert count_voice_drift_windows(str(switched)) >= 2
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_regenerates_on_voice_drift(tmp_path):
+    from app.services.tts.providers import gemini as gem
+
+    calls = []
+
+    async def fake_once(text, output_path, **kw):
+        calls.append(output_path)
+        Path(output_path).write_bytes(b"take%d" % len(calls))
+        return 10.0
+
+    drift_by_take = {b"take1": 5, b"take2": 0}
+    with patch.object(gem, "_generate_gemini_tts_once", side_effect=fake_once), \
+         patch.object(gem, "count_voice_drift_windows", side_effect=lambda p: drift_by_take[Path(p).read_bytes()]):
+        out = tmp_path / "out.mp3"
+        await gem.generate_gemini_tts("Halo", str(out), voice="Charon")
+
+    assert len(calls) == 2
+    assert out.read_bytes() == b"take2"
+    assert not (tmp_path / "out.retry.mp3").exists()

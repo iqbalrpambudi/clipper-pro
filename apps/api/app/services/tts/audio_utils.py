@@ -281,3 +281,48 @@ async def _generate_silence_mp3(
     if proc.returncode != 0:
         raise RuntimeError(f"Failed generating chapter silence MP3: {stderr.decode(errors='ignore')[:200]}")
     return output_path
+
+
+def count_voice_drift_windows(file_path: str, sr: int = 16000) -> int:
+    """Count 2 s windows whose median pitch is >1.5x off the clip median (a different speaker, not intonation).
+
+    Gemini TTS sometimes switches voice mid-clip, e.g. Charon starting out as a female voice.
+    Returns 0 when the audio cannot be analysed (fail-open).
+    """
+    import subprocess
+
+    import numpy as np
+
+    try:
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", file_path, "-f", "s16le", "-ac", "1", "-ar", str(sr), "-"],
+            capture_output=True, check=True, timeout=60,
+        ).stdout
+    except Exception:
+        return 0
+    pcm = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    frame = int(0.04 * sr)
+    if len(pcm) < frame * 100:
+        return 0
+
+    # Autocorrelation pitch per 40 ms frame, voiced loud frames only (65-400 Hz covers male to female)
+    lo, hi = sr // 400, sr // 65
+    frames = pcm[: len(pcm) // frame * frame].reshape(-1, frame)
+    frames = frames - frames.mean(axis=1, keepdims=True)
+    energy = (frames ** 2).sum(axis=1)
+    spec = np.fft.rfft(frames, 2 * frame, axis=1)
+    ac = np.fft.irfft(spec * np.conj(spec), axis=1)[:, :frame]
+    lags = lo + ac[:, lo:hi].argmax(axis=1)
+    clarity = ac[np.arange(len(ac)), lags] / (ac[:, 0] + 1e-9)
+    f0 = np.where((energy > np.percentile(energy, 40)) & (clarity > 0.45), sr / lags, np.nan)
+
+    per_win = 50  # 50 x 40 ms = 2 s
+    medians = [
+        float(np.nanmedian(w))
+        for w in (f0[i : i + per_win] for i in range(0, len(f0) - per_win + 1, per_win))
+        if np.count_nonzero(~np.isnan(w)) >= 8
+    ]
+    if len(medians) < 3:
+        return 0
+    clip_median = float(np.median(medians))
+    return sum(1 for m in medians if m > clip_median * 1.5 or m < clip_median / 1.5)

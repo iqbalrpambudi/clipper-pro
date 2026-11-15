@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -13,12 +14,16 @@ from app.services.cancellation import (
     register_process,
     unregister_process,
 )
-from app.services.tts.audio_utils import _build_audio_filter, get_audio_duration
+from app.services.tts.audio_utils import (
+    _build_audio_filter,
+    count_voice_drift_windows,
+    get_audio_duration,
+)
 
 log = logging.getLogger(__name__)
 
 
-async def generate_gemini_tts(
+async def _generate_gemini_tts_once(
     text: str,
     output_path: str,
     api_key: Optional[str] = None,
@@ -29,7 +34,7 @@ async def generate_gemini_tts(
     language: Optional[str] = None,
     project_id: Optional[str] = None,
 ) -> float:
-    """Generate audio via Gemini API multimodal endpoint (:generateContent) with rate & pitch tuning.
+    """One Gemini API (:generateContent) TTS request with rate & pitch tuning.
 
     Fails immediately on error or cancellation without fallback to other models or providers.
     """
@@ -205,4 +210,60 @@ async def generate_gemini_tts(
     if dur <= 0.1:
         raise RuntimeError(f"Audio yang dihasilkan Gemini TTS terlalu pendek ({dur:.2f} detik) atau kosong.")
 
+    return dur
+
+
+# 2+ off-voice windows (>= 4 s) = a different speaker; a single window can be a shout or whisper.
+VOICE_DRIFT_MIN_WINDOWS = 2
+VOICE_DRIFT_MAX_ATTEMPTS = 3
+
+
+async def generate_gemini_tts(
+    text: str,
+    output_path: str,
+    api_key: Optional[str] = None,
+    voice: str = "Puck",
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+    model: str = "gemini-2.5-flash-preview-tts",
+    language: Optional[str] = None,
+    project_id: Optional[str] = None,
+) -> float:
+    """Generate Gemini TTS audio, regenerating when the voice drifts to another speaker mid-clip.
+
+    Prompt notes and temperature cannot pin the voice (both break Gemini TTS), so drift is
+    detected from pitch after the fact. Keeps the cleanest take; retry failures keep the first take.
+    """
+    kwargs = {
+        "api_key": api_key, "voice": voice, "rate": rate, "pitch": pitch,
+        "model": model, "language": language, "project_id": project_id,
+    }
+    out_p = Path(output_path)
+    dur = await _generate_gemini_tts_once(text, output_path, **kwargs)
+    drift = await asyncio.to_thread(count_voice_drift_windows, output_path)
+
+    attempt = 1
+    while drift >= VOICE_DRIFT_MIN_WINDOWS and attempt < VOICE_DRIFT_MAX_ATTEMPTS:
+        attempt += 1
+        log.warning(
+            "Gemini TTS voice drift on '%s' (%d windows off-voice), regenerating (attempt %d/%d)",
+            voice, drift, attempt, VOICE_DRIFT_MAX_ATTEMPTS,
+        )
+        cand = out_p.with_name(f"{out_p.stem}.retry{out_p.suffix}")
+        try:
+            c_dur = await _generate_gemini_tts_once(text, str(cand), **kwargs)
+            c_drift = await asyncio.to_thread(count_voice_drift_windows, str(cand))
+            if c_drift < drift:
+                os.replace(cand, out_p)
+                dur, drift = c_dur, c_drift
+        except TaskCancelledException:
+            raise
+        except Exception as exc:
+            log.warning("Gemini TTS drift retry failed, keeping previous take: %s", exc)
+            break
+        finally:
+            cand.unlink(missing_ok=True)
+
+    if drift >= VOICE_DRIFT_MIN_WINDOWS:
+        log.warning("Gemini TTS voice still drifts after %d attempts (%d windows); keeping best take", attempt, drift)
     return dur
