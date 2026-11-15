@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.project import WatermarkSchema
+from app.schemas.project import BackgroundFillSchema, WatermarkSchema
 from app.schemas.qc import QCConfigSchema
 from app.schemas.subtitle import SubtitleStyleIn
 from app.schemas.tts import TTSConfigSchema
@@ -15,6 +15,8 @@ class ProjectDefaultsConfig(BaseModel):
     watermark: WatermarkSchema = Field(default_factory=WatermarkSchema)
     tts: TTSConfigSchema = Field(default_factory=TTSConfigSchema)
     qc: QCConfigSchema = Field(default_factory=QCConfigSchema)
+    # Video layout: Cover = mode "cover"; Fit = "blur"/"black" at zoom 1.0; Custom = zoom > 1.0
+    background_fill: BackgroundFillSchema = Field(default_factory=BackgroundFillSchema)
 
 
 class ProjectDefaultsResponse(ProjectDefaultsConfig):

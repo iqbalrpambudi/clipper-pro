@@ -173,6 +173,13 @@ export function RenderTab({ project }: RenderTabProps) {
         watermark: normalizeWatermarkConfig(liveWatermark || project.watermark),
         tts: ttsConfig,
         qc: normalizeQCConfig(project.qc_config),
+        ...(project.background_fill && {
+          background_fill: {
+            ...project.background_fill,
+            dynamic_zoom: dynamicZoom,
+            color_grading: colorGrading,
+          },
+        }),
       });
     },
     onSuccess: () => {

@@ -74,6 +74,7 @@ export interface ProjectDefaultsConfig {
   watermark: WatermarkConfig;
   tts: TTSConfig;
   qc?: QCConfig;
+  background_fill?: BackgroundFill;
 }
 
 export interface ProjectDefaultsResponse extends ProjectDefaultsConfig {

@@ -36,6 +36,14 @@
     "pitch": 0,
     "model": null
   },
+  "background_fill": {
+    "mode": "blur",
+    "color": "#000000",
+    "zoom": 1.0,
+    "anti_copyright": true,
+    "dynamic_zoom": true,
+    "color_grading": true
+  },
   "qc": {
     "max_fix_rounds": 2,
     "threshold": 7.5,

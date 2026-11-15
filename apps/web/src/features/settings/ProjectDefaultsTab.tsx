@@ -6,6 +6,7 @@ import {
   Download,
   FileJson,
   Loader2,
+  Maximize2,
   Mic,
   Palette,
   RotateCcw,
@@ -16,6 +17,7 @@ import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { cn, downloadJsonFile } from "@/lib/utils";
 import type {
+  BackgroundFill,
   ProjectDefaultsConfig,
   SubtitleStyle,
   TTSConfig,
@@ -46,12 +48,35 @@ import {
   normalizeQCConfig,
 } from "@/features/qc/constants";
 
+// Mirrors backend BackgroundFillSchema defaults
+const DEFAULT_BACKGROUND_FILL: BackgroundFill = {
+  mode: "blur",
+  color: "#000000",
+  zoom: 1.0,
+  anti_copyright: true,
+  dynamic_zoom: true,
+  color_grading: true,
+};
+
+type LayoutPreset = "cover" | "fit" | "custom";
+
+// Same mapping as VideoLayoutCustomizePanel: Cover = mode cover, Custom = zoom > 1.02, else Fit
+const layoutPresetOf = (fill: BackgroundFill): LayoutPreset =>
+  fill.mode === "cover" ? "cover" : (fill.zoom ?? 1) > 1.02 ? "custom" : "fit";
+
+const LAYOUT_PRESETS: { id: LayoutPreset; label: string; hint: string }[] = [
+  { id: "cover", label: "Cover", hint: "Fullscreen, video di-crop memenuhi layar" },
+  { id: "fit", label: "Fit", hint: "Video utuh, sisa layar diisi background" },
+  { id: "custom", label: "Custom", hint: "Zoom manual + background" },
+];
+
 function makeInitialDraft(): ProjectDefaultsConfig {
   return {
     subtitle: { ...DEFAULT_SUBTITLE_STYLE },
     watermark: normalizeWatermarkConfig(),
     tts: { ...DEFAULT_TTS_CONFIG },
     qc: { ...DEFAULT_QC_CONFIG },
+    background_fill: { ...DEFAULT_BACKGROUND_FILL },
   };
 }
 
@@ -100,6 +125,7 @@ export function ProjectDefaultsTab() {
         ...serverDefaults.tts,
       },
       qc: normalizeQCConfig(serverDefaults.qc),
+      background_fill: { ...DEFAULT_BACKGROUND_FILL, ...serverDefaults.background_fill },
     };
     setDraft(normalized);
     setRawJsonText(JSON.stringify(normalized, null, 2));
@@ -115,6 +141,18 @@ export function ProjectDefaultsTab() {
       ...draft,
       subtitle: { ...draft.subtitle, ...patch },
     });
+  };
+
+  const fill = draft.background_fill ?? DEFAULT_BACKGROUND_FILL;
+  const layoutPreset = layoutPresetOf(fill);
+  const updateFill = (patch: Partial<BackgroundFill>) => {
+    syncRawJson({ ...draft, background_fill: { ...fill, ...patch } });
+  };
+  const selectLayoutPreset = (preset: LayoutPreset) => {
+    const bg = fill.mode === "black" ? "black" : "blur";
+    if (preset === "cover") updateFill({ mode: "cover", zoom: 1.0 });
+    else if (preset === "fit") updateFill({ mode: bg, zoom: 1.0 });
+    else updateFill({ mode: bg, zoom: (fill.zoom ?? 1) > 1.02 ? fill.zoom : 1.35 });
   };
 
   const updateWatermark = (patch: Partial<WatermarkConfig>) => {
@@ -209,6 +247,7 @@ export function ProjectDefaultsTab() {
       watermark: draft.watermark,
       tts: draft.tts,
       qc: normalizeQCConfig(draft.qc),
+      background_fill: fill,
     };
     downloadJsonFile(cleanPayload, "config.json");
     showToast("config.json berhasil diekspor!", "success");
@@ -1214,6 +1253,86 @@ export function ProjectDefaultsTab() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Section 5: Video Layout (background_fill) */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-xs space-y-5">
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <Maximize2 className="h-4 w-4 text-primary" />
+            <div>
+              <h4 className="text-sm font-bold text-foreground">5. Layout Video Default</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Layout awal untuk project baru. Tetap bisa diubah per project di panel Layout.
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="font-mono text-[10px]">
+            background_fill
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Preset layout">
+          {LAYOUT_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={layoutPreset === p.id}
+              onClick={() => selectLayoutPreset(p.id)}
+              className={cn(
+                "rounded-lg border px-3 py-2.5 text-left transition",
+                layoutPreset === p.id
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-background/60 hover:border-primary/40"
+              )}
+            >
+              <span className="block text-xs font-semibold text-foreground">{p.label}</span>
+              <span className="text-[10px] text-muted-foreground">{p.hint}</span>
+            </button>
+          ))}
+        </div>
+
+        {layoutPreset !== "cover" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-background/60 px-3 py-2.5">
+              <div>
+                <span className="block text-xs font-semibold text-foreground">Background Blur</span>
+                <span className="text-[10px] text-muted-foreground">Mati = latar hitam solid</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={fill.mode !== "black"}
+                onChange={(e) => updateFill({ mode: e.target.checked ? "blur" : "black" })}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
+
+            {layoutPreset === "custom" && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="default-layout-zoom"
+                  className="flex justify-between text-xs font-semibold text-muted-foreground"
+                >
+                  <span>Zoom</span>
+                  <span className="font-mono tabular-nums text-foreground">
+                    {Math.round((fill.zoom ?? 1) * 100)}%
+                  </span>
+                </label>
+                <input
+                  id="default-layout-zoom"
+                  type="range"
+                  min={1.05}
+                  max={3}
+                  step={0.05}
+                  value={fill.zoom ?? 1.35}
+                  onChange={(e) => updateFill({ zoom: Number(e.target.value) })}
+                  className="w-full accent-primary"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Save Submit */}

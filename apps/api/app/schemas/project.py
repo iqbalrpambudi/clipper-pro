@@ -55,7 +55,7 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    background_fill: Optional[BackgroundFillSchema] = None  # None = config.json default
 
 
 class ProjectUpdate(BaseModel):

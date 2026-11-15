@@ -83,12 +83,7 @@ async def import_discovered_video(
         aspect_ratio=payload.aspect_ratio or "9:16",
         resolution=payload.resolution or "1080p",
         language=payload.language or "id",
-        background_fill={
-            "mode": "blur",
-            "color": "#000000",
-            "anti_copyright": True,
-            "dynamic_zoom": True,
-        },
+        background_fill=defaults.background_fill.model_dump(),
         watermark=defaults.watermark.model_dump(),
         tts_config=defaults.tts.model_dump(),
         qc_config=defaults.qc.model_dump(),

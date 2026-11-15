@@ -135,6 +135,7 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
             "subtitle": {"font_family": "bebasneue", "font_size": 52, "position": "center"},
             "watermark": {"enabled": True, "text": "@brand_resmi", "position": "top-right"},
             "tts": {"provider": "gemini", "voice": "Alnilam", "rate": "+10%", "pitch": "-3Hz"},
+            "background_fill": {"mode": "cover"},
         },
     )
     assert import_resp.status_code == 200
@@ -152,7 +153,8 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert export_resp.status_code == 200
     assert "attachment; filename=\"config.json\"" in export_resp.headers.get("content-disposition", "")
     exported_data = export_resp.json()
-    assert set(exported_data.keys()) == {"subtitle", "watermark", "tts", "qc"}
+    assert set(exported_data.keys()) == {"subtitle", "watermark", "tts", "qc", "background_fill"}
+    assert exported_data["background_fill"]["mode"] == "cover"
     assert exported_data["subtitle"]["font_family"] == "Bebas Neue"
 
     # 4. Creating a new project without specifying subtitle/watermark/tts applies config.json defaults
@@ -168,6 +170,8 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert created_project["tts_config"]["voice"] == "Alnilam"
     assert created_project["tts_config"]["rate"] == 10
     assert created_project["tts_config"]["pitch"] == -3
+    assert created_project["background_fill"]["mode"] == "cover"
+    assert created_project["background_fill"]["dynamic_zoom"] is True  # untouched keys keep built-ins
 
     # 5. Fetching project returns persisted subtitle_style + watermark + tts_config
     get_resp = await isolated_client.get(f"/api/v1/projects/{project_id}")
@@ -186,6 +190,7 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert proj_exported["subtitle"]["font_family"] == "Bebas Neue"
     assert proj_exported["watermark"]["text"] == "@brand_resmi"
     assert proj_exported["tts"]["voice"] == "Alnilam"
+    assert proj_exported["background_fill"]["mode"] == "cover"
 
     # 7. Reset project defaults
     reset_resp = await isolated_client.post("/api/v1/settings/project-defaults/reset")
