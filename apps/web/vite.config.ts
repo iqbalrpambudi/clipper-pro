@@ -4,8 +4,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const proxyTarget =
-    env.VITE_PROXY_TARGET || env.INTERNAL_API_URL || "http://localhost:8080";
+  // Default: the API started by the Cliper Pro desktop app
+  const proxyTarget = env.VITE_PROXY_TARGET || "http://127.0.0.1:18080";
 
   return {
     plugins: [react()],
@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: "0.0.0.0",
-      port: 3030,
+      port: 3031,
       strictPort: true,
       proxy: {
         "/api": {
@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: "0.0.0.0",
-      port: 3030,
+      port: 3031,
     },
   };
 });

@@ -265,6 +265,8 @@ export const api = {
     request<Narration>(`/api/v1/projects/${projectId}/narration/generate`, {
       method: "POST",
       body: JSON.stringify(data),
+      // Several sequential LLM calls; slow models (e.g. Opus via a gateway) easily exceed the 2-min default
+      timeoutMs: 600_000,
     }),
   updateNarration: (
     projectId: string,

@@ -1,0 +1,14 @@
+{
+  "name": "cliper-pro-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "bash scripts/prepare-resources.sh && tauri build",
+    "dev:web": "npm --prefix ../web run dev",
+    "build:web": "VITE_API_URL=http://127.0.0.1:18080 npm --prefix ../web run build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0"
+  }
+}

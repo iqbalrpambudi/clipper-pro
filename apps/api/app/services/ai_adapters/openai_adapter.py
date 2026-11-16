@@ -27,8 +27,6 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         gemini_key: Optional[str] = None,
     ):
         raw_url = (base_url or "https://api.openai.com/v1").rstrip("/")
-        # In Docker containers, localhost/127.0.0.1 on the host is reached via host.docker.internal
-        raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
         if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
             raw_url = f"{raw_url}/v1"
         self.base_url = raw_url

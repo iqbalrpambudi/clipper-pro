@@ -38,6 +38,15 @@ export function useYouTubeAccount() {
           }
         }, 800);
       } else {
+        // Desktop app: the shell opens this in the system browser; refresh once the user comes back
+        window.addEventListener(
+          "focus",
+          () => {
+            setIsConnecting(false);
+            queryClient.invalidateQueries({ queryKey: YOUTUBE_ACCOUNT_KEY });
+          },
+          { once: true },
+        );
         window.location.href = auth_url;
       }
     } catch (e: unknown) {

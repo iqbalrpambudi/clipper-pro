@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Cliper Pro",
+  "version": "0.1.0",
+  "identifier": "com.cliperpro.desktop",
+  "build": {
+    "devUrl": "http://localhost:3031",
+    "frontendDist": "../../web/dist",
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build:web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "dragDropEnabled": false,
+        "title": "Cliper Pro",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "resources": {
+      "resources/python/": "python/",
+      "resources/api/": "api/",
+      "resources/bin/": "bin/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ]
+  }
+}

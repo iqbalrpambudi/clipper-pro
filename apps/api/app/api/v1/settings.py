@@ -1,5 +1,4 @@
 import logging
-import re
 import time
 from typing import Any, Dict
 
@@ -181,7 +180,7 @@ async def test_model_connection(
             )
 
         # Ping chat model
-        _ = await adapter.generate_chat("Jawab satu kata: OK")
+        _ = await adapter.generate_chat("hi")
         latency = int((time.time() - start_time) * 1000)
 
         return TestConnectionResponse(
@@ -267,7 +266,6 @@ async def list_available_models(
         return {"models": ["gemini-2.0-flash", "gemini-1.5-flash", "gpt-4o", "gpt-4o-mini"]}
 
     raw_url = target_url.rstrip("/")
-    raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
     if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
         raw_url = f"{raw_url}/v1"
 
