@@ -209,9 +209,14 @@ fn main() {
                 menu.insert(&login, 4)?;
             }
 
-            TrayIconBuilder::new()
+            let mut tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("Cliper Pro")
+                .tooltip(&app.package_info().name);
+            // Dev and the installed app often run side by side: label dev's icon in the menu bar
+            if cfg!(debug_assertions) {
+                tray = tray.title("DEV");
+            }
+            tray
                 .menu(&menu)
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "open" => show_main(app),
