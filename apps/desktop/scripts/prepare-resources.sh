@@ -45,7 +45,11 @@ find "$P/lib" -name __pycache__ -prune -exec rm -rf {} +
 # cv2's loader opens config*.py by file name, so it keeps its sources
 find "$P/lib" -name '*.py' ! -path '*/site-packages/cv2/*' -delete
 
-# 4. CLI tools the API calls by name. uv writes absolute shebangs, so yt-dlp gets a relocatable wrapper.
+# 4. Frontend, served by the API in the release app (same origin as /api and /storage)
+npm --prefix "$ROOT/apps/web" run build
+cp -R "$ROOT/apps/web/dist" "$OUT/web"
+
+# 5. CLI tools the API calls by name. uv writes absolute shebangs, so yt-dlp gets a relocatable wrapper.
 cat > "$OUT/bin/yt-dlp" <<'EOF'
 #!/bin/sh
 exec "$(dirname "$0")/../python/bin/python3" -m yt_dlp "$@"

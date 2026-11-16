@@ -38,6 +38,7 @@ import {
   Switch,
 } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useStudioStore } from "@/lib/store";
 import { VideoCandidate } from "@/types";
 
 interface VideoDiscoveryDialogProps {
@@ -65,6 +66,7 @@ const SOURCE_BADGE_STYLES: Record<string, string> = {
 export function VideoDiscoveryDialog({ open, onOpenChange }: VideoDiscoveryDialogProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { showToast } = useStudioStore();
 
   // State
   const [selectedPresetId, setSelectedPresetId] = useState<string>("factory");
@@ -248,7 +250,8 @@ export function VideoDiscoveryDialog({ open, onOpenChange }: VideoDiscoveryDialo
     },
     onError: (err: Error) => {
       setImportingVideoId(null);
-      alert(err.message || "Gagal mengimport video ke project");
+      // Toast, not alert(): the desktop webview silently drops alert()
+      showToast(err.message || "Gagal mengimport video ke project", "error");
     },
   });
 

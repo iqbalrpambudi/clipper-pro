@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::webview::DownloadEvent;
-use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
+use tauri::webview::{DownloadEvent, NewWindowResponse};
+use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 // Dev gets its own port (and identifier/data dir via tauri.dev.json) so it can run next to the installed app
@@ -75,7 +75,12 @@ fn start_api(app: &AppHandle) -> Result<Child, String> {
     let log = File::create(data.join("api.log")).map_err(|e| e.to_string())?;
     let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap_or_default());
 
-    let child = Command::new(python)
+    let mut cmd = Command::new(python);
+    if !cfg!(debug_assertions) {
+        // The API serves the frontend too, see create_main
+        cmd.env("WEB_DIST", api_dir.join("../web"));
+    }
+    let child = cmd
         .args(["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1"])
         .args(["--port", &PORT.to_string(), "--timeout-graceful-shutdown", "5"])
         .current_dir(api_dir)
@@ -85,7 +90,7 @@ fn start_api(app: &AppHandle) -> Result<Child, String> {
         .env("STORAGE_PATH", &data)
         .env("DATABASE_URL", format!("sqlite+aiosqlite:///{}", data.join("cliper.db").display()))
         .env("HF_HOME", data.join("hf"))
-        .env("CORS_ORIGINS", "tauri://localhost,http://localhost:3031")
+        .env("CORS_ORIGINS", "http://localhost:3031")
         .env("PUBLIC_API_URL", format!("http://127.0.0.1:{PORT}"))
         .env("ENCRYPTION_KEY", key)
         .stdout(log.try_clone().map_err(|e| e.to_string())?)
@@ -140,7 +145,13 @@ fn healthy() -> bool {
 /// Built in code, not from config alone: <a download> is cancelled unless a handler exists.
 /// wry already saves to ~/Downloads without overwriting; we just reveal the file.
 fn create_main(app: &AppHandle) -> tauri::Result<()> {
-    WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
+    let mut config = app.config().app.windows[0].clone();
+    if !cfg!(debug_assertions) {
+        // Load the page from the API, not tauri://localhost: media URLs are relative /storage/...
+        // and <a download> needs same origin. Dev gets the same through the Vite proxy.
+        config.url = WebviewUrl::External(format!("http://127.0.0.1:{PORT}").parse().unwrap());
+    }
+    WebviewWindowBuilder::from_config(app, &config)?
         // Google login runs in the system browser: the webview has no back button and window.open is null
         .on_navigation(|url| {
             if url.host_str() == Some("accounts.google.com") {
@@ -148,6 +159,14 @@ fn create_main(app: &AppHandle) -> tauri::Result<()> {
                 return false;
             }
             true
+        })
+        // target="_blank" links (YouTube Studio, docs): wry drops them unless handled
+        .on_new_window(|url, _| {
+            // window.open("") from the YouTube flow arrives as about:blank: deny it, the page then redirects
+            if matches!(url.scheme(), "http" | "https") {
+                let _ = Command::new("open").arg(url.as_str()).status();
+            }
+            NewWindowResponse::Deny
         })
         .on_download(|_, event| {
             if let DownloadEvent::Finished { path: Some(path), success: true, .. } = event {

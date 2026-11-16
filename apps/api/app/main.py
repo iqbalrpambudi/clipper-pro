@@ -21,6 +21,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 log = logging.getLogger("cliper-pro")
+# httpx logs every request URL at INFO, and Gemini calls carry the API key in ?key=
+logging.getLogger("httpx").setLevel(logging.WARNING)
 settings = get_settings()
 
 
@@ -107,10 +109,26 @@ async def healthz():
     )
 
 
-@app.get("/", tags=["health"])
-async def root():
-    return {
-        "name": "Cliper Pro API",
-        "status": "online",
-        "docs_url": "/docs",
-    }
+web_dist = Path(settings.WEB_DIST).resolve() if settings.WEB_DIST else None
+
+if web_dist and (web_dist / "index.html").is_file():
+    # Desktop release: serve the frontend from the API so the page, /api and /storage share one origin.
+    # The API returns relative /storage/... media URLs, and <a download> only works same-origin.
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def web_app(path: str):
+        if path.startswith(("api/", "storage/")):
+            raise HTTPException(status_code=404, detail="Not Found")
+        f = (web_dist / path).resolve()
+        if path and f.is_file() and f.is_relative_to(web_dist):
+            return FileResponse(f)
+        return FileResponse(web_dist / "index.html")  # SPA route
+else:
+
+    @app.get("/", tags=["health"])
+    async def root():
+        return {
+            "name": "Cliper Pro API",
+            "status": "online",
+            "docs_url": "/docs",
+        }

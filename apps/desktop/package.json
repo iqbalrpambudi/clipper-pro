@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "tauri dev --config src-tauri/tauri.dev.json",
     "build": "bash scripts/prepare-resources.sh && tauri build",
-    "dev:web": "VITE_PROXY_TARGET=http://127.0.0.1:18081 npm --prefix ../web run dev",
-    "build:web": "VITE_API_URL=http://127.0.0.1:18080 npm --prefix ../web run build"
+    "dev:web": "VITE_PROXY_TARGET=http://127.0.0.1:18081 npm --prefix ../web run dev"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0"

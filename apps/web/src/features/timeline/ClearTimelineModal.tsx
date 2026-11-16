@@ -6,9 +6,20 @@ interface ClearTimelineModalProps {
   onClose: () => void;
   onConfirm: () => void;
   isPending: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
-export function ClearTimelineModal({ isOpen, onClose, onConfirm, isPending }: ClearTimelineModalProps) {
+export function ClearTimelineModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  isPending,
+  title = "Hapus semua klip video?",
+  description = "Audio narasi dan subtitle tetap di timeline. Bisa dibatalkan dengan Undo.",
+  confirmLabel = "Hapus klip",
+}: ClearTimelineModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -19,10 +30,8 @@ export function ClearTimelineModal({ isOpen, onClose, onConfirm, isPending }: Cl
             <Trash2 className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Hapus semua klip video?</h3>
-            <p className="text-xs text-muted-foreground">
-              Audio narasi dan subtitle tetap di timeline. Bisa dibatalkan dengan Undo.
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
           </div>
         </div>
 
@@ -39,7 +48,7 @@ export function ClearTimelineModal({ isOpen, onClose, onConfirm, isPending }: Cl
             className="gap-2"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            <span>Hapus klip</span>
+            <span>{confirmLabel}</span>
           </Button>
         </div>
       </div>
