@@ -27,7 +27,9 @@ cliper-pro/
 └── Makefile
 ```
 
-Saat app jalan, Tauri menyalakan API di `127.0.0.1:18080` lalu membuka jendela setelah API sehat. Menutup jendela tidak mematikan API; app tetap di menu bar. **Quit** dari menu bar menghentikan semuanya.
+Saat app jalan, Tauri menyalakan API di `127.0.0.1:18080` lalu membuka jendela setelah API sehat. Menutup jendela tidak mematikan API; app tetap di menu bar. **Quit** dari menu bar menghentikan semuanya. **Start at Login** di menu bar membuat app jalan otomatis saat login (langsung ke tray, tanpa jendela). Membuka app saat sudah jalan hanya memunculkan jendela yang ada.
+
+Mode dev (`make dev`) memakai identitas terpisah: "Cliper Pro Dev", API di `127.0.0.1:18081`, dan folder data sendiri. Jadi dev bisa jalan berdampingan dengan app terpasang tanpa menyentuh data aslinya.
 
 ## 🚀 Quick Start
 
@@ -51,7 +53,7 @@ Konfigurasi AI model, TTS, dan YouTube dilakukan di dalam app: **Settings**.
 
 ## 📂 Data
 
-Semua data ada di `~/Library/Application Support/com.cliperpro.desktop/`:
+Semua data ada di `~/Library/Application Support/com.cliperpro.desktop/` (mode dev: `com.cliperpro.desktop.dev/`):
 
 | Path | Isi |
 |------|-----|

@@ -7,12 +7,16 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::webview::DownloadEvent;
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
-const PORT: u16 = 18080;
+// Dev gets its own port (and identifier/data dir via tauri.dev.json) so it can run next to the installed app
+const PORT: u16 = if cfg!(debug_assertions) { 18081 } else { 18080 };
+/// Passed by the login item: start in the tray without opening the window
+const HIDDEN_ARG: &str = "--hidden";
 
 struct Api(Mutex<Option<Child>>);
 
@@ -180,6 +184,9 @@ fn show_main(app: &AppHandle) {
 
 fn main() {
     let app = tauri::Builder::default()
+        // Must be the first plugin: a second launch just brings up the running instance
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![HIDDEN_ARG])))
         .manage(Api(Mutex::new(None)))
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -191,6 +198,12 @@ fn main() {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
             let menu = Menu::with_items(app, &[&status, &toggle, &open, &sep, &quit])?;
+            // Release only: in dev the login item would point at target/debug
+            if !cfg!(debug_assertions) {
+                let on = app.autolaunch().is_enabled().unwrap_or(false);
+                let login = CheckMenuItem::with_id(app, "autostart", "Start at Login", true, on, None::<&str>)?;
+                menu.insert(&login, 3)?;
+            }
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -199,6 +212,13 @@ fn main() {
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "open" => show_main(app),
                     "toggle" => toggle_api(app),
+                    "autostart" => {
+                        let launch = app.autolaunch();
+                        let res = if launch.is_enabled().unwrap_or(false) { launch.disable() } else { launch.enable() };
+                        if let Err(e) = res {
+                            eprintln!("cliper: failed to change login item: {e}");
+                        }
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -207,13 +227,16 @@ fn main() {
             toggle_api(app.handle());
 
             let handle = app.handle().clone();
+            let hidden = std::env::args().any(|a| a == HIDDEN_ARG);
             std::thread::spawn(move || {
                 // Create the window only once the API answers, so the page's first fetches don't fail
                 let mut shown = false;
                 loop {
                     let up = healthy();
                     if up && !shown {
-                        show_main(&handle);
+                        if !hidden {
+                            show_main(&handle);
+                        }
                         shown = true;
                     }
                     let _ = status.set_text(if up { "● API running" } else { "○ API stopped" });
