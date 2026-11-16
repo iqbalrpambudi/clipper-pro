@@ -23,8 +23,10 @@ struct Api(Mutex<Option<Child>>);
 /// (python, api dir, extra bin dir for ffmpeg/ffprobe/yt-dlp)
 fn api_paths(app: &AppHandle) -> (PathBuf, PathBuf, PathBuf) {
     if cfg!(debug_assertions) {
-        let api = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../api");
-        (api.join(".venv/bin/python"), api, PathBuf::from("/opt/homebrew/bin"))
+        // Live API code + venv, but the same staged ffmpeg/yt-dlp as the release build
+        let src = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let api = src.join("../../api");
+        (api.join(".venv/bin/python"), api, src.join("resources/bin"))
     } else {
         let res = app.path().resource_dir().expect("resource dir");
         (res.join("python/bin/python3"), res.join("api"), res.join("bin"))
@@ -195,14 +197,16 @@ fn main() {
             let status = MenuItem::with_id(app, "status", "○ Starting…", false, None::<&str>)?;
             let toggle = MenuItem::with_id(app, "toggle", "Stop API", true, None::<&str>)?;
             let open = MenuItem::with_id(app, "open", "Open Cliper Pro", true, None::<&str>)?;
+            // Where users drop BGM tracks (bgm/<mood>/*.mp3): they are not bundled, the license covers use, not redistribution
+            let data = MenuItem::with_id(app, "data", "Open Data Folder", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
-            let menu = Menu::with_items(app, &[&status, &toggle, &open, &sep, &quit])?;
+            let menu = Menu::with_items(app, &[&status, &toggle, &open, &data, &sep, &quit])?;
             // Release only: in dev the login item would point at target/debug
             if !cfg!(debug_assertions) {
                 let on = app.autolaunch().is_enabled().unwrap_or(false);
                 let login = CheckMenuItem::with_id(app, "autostart", "Start at Login", true, on, None::<&str>)?;
-                menu.insert(&login, 3)?;
+                menu.insert(&login, 4)?;
             }
 
             TrayIconBuilder::new()
@@ -212,6 +216,12 @@ fn main() {
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "open" => show_main(app),
                     "toggle" => toggle_api(app),
+                    "data" => {
+                        if let Ok(dir) = app.path().app_data_dir() {
+                            let _ = fs::create_dir_all(dir.join("bgm"));
+                            let _ = Command::new("open").arg(dir).status();
+                        }
+                    }
                     "autostart" => {
                         let launch = app.autolaunch();
                         let res = if launch.is_enabled().unwrap_or(false) { launch.disable() } else { launch.enable() };

@@ -37,7 +37,7 @@ Mode dev (`make dev`) memakai identitas terpisah: "Cliper Pro Dev", API di `127.
 
 - macOS (Apple Silicon)
 - [Rust](https://rustup.rs), [uv](https://docs.astral.sh/uv/), Node.js 22+
-- FFmpeg dengan libass: `brew install homebrew-ffmpeg/ffmpeg/ffmpeg`
+- FFmpeg tidak perlu dipasang: `make install` mengunduh build statis (terverifikasi checksum) untuk dev dan bundle
 
 ### Setup & jalankan
 
@@ -58,7 +58,8 @@ Semua data ada di `~/Library/Application Support/com.cliperpro.desktop/` (mode d
 | Path | Isi |
 |------|-----|
 | `cliper.db` | Database SQLite |
-| `projects/`, `bgm/`, `presets/` | Media proyek, library BGM, preset gambar |
+| `projects/` | Media proyek |
+| `bgm/<mood>/*.mp3` | Library BGM, diisi sendiri (menu bar → **Open Data Folder**). Nama folder = mood yang bisa dipilih |
 | `hf/` | Cache model Whisper (diunduh saat pertama dipakai) |
 | `encryption.key` | Key enkripsi API key di DB. Jangan dihapus: tanpa key ini semua secret tidak bisa dibuka |
 | `api.log` | Log API |

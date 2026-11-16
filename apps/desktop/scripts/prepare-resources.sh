@@ -4,7 +4,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 API="$ROOT/apps/api"
-OUT="$ROOT/apps/desktop/src-tauri/resources"
+FINAL="$ROOT/apps/desktop/src-tauri/resources"
+# Staged outside src-tauri and swapped in at the end: a running `tauri dev` watches resources/
+OUT="$ROOT/apps/desktop/.cache/resources-staging"
 PY_VERSION=3.12
 
 rm -rf "$OUT"
@@ -41,10 +43,22 @@ cat > "$OUT/bin/yt-dlp" <<'EOF'
 exec "$(dirname "$0")/../python/bin/python3" -m yt_dlp "$@"
 EOF
 chmod +x "$OUT/bin/yt-dlp"
-# shortcut: Homebrew ffmpeg links /opt/homebrew dylibs, so the app only runs on a Mac with Homebrew ffmpeg;
-# swap in a static arm64 build with libass before distributing.
-cp "$(command -v ffmpeg)" "$(command -v ffprobe)" "$OUT/bin/"
-# Homebrew installs them read-only; tauri-build can't overwrite its previous copy in target/ on rebuild
+# Static arm64 ffmpeg/ffprobe (libass, libx264, libmp3lame; system libs only, signed by the builder).
+# Pinned build + checksum; cached so rebuilds don't re-download 54MB.
+FF_URL="https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2"
+FF_CACHE="$ROOT/apps/desktop/.cache/ffmpeg-9.0.2"
+mkdir -p "$FF_CACHE"
+for tool in ffmpeg:c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924 \
+            ffprobe:fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6; do
+  name="${tool%%:*}" sha="${tool##*:}" zip="$FF_CACHE/${tool%%:*}.zip"
+  if ! echo "$sha  $zip" | shasum -a 256 -c --status 2>/dev/null; then
+    curl -fsSL -o "$zip" "$FF_URL/$name.zip"
+    echo "$sha  $zip" | shasum -a 256 -c --quiet
+  fi
+  unzip -o -q "$zip" "$name" -d "$OUT/bin"
+done
 chmod u+w "$OUT"/bin/*
 
-du -sh "$OUT"/*
+rm -rf "$FINAL"
+mv "$OUT" "$FINAL"
+du -sh "$FINAL"/*
