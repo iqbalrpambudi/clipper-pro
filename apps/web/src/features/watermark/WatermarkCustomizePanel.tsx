@@ -1,17 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Type,
-  Layers,
-  Palette,
-  Move,
-  Check,
-  Loader2,
-} from "lucide-react";
+import { Type, Layers, Palette, Move, Check, Loader2 } from "lucide-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, WatermarkConfig } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   WATERMARK_FONTS as AVAILABLE_FONTS,
   WATERMARK_COLOR_SWATCHES as COLOR_SWATCHES,
@@ -114,8 +110,6 @@ export function WatermarkCustomizePanel({
     }
   };
 
-
-
   return (
     <div className="space-y-5 text-foreground text-xs">
       {/* Header & Main Toggle */}
@@ -125,18 +119,15 @@ export function WatermarkCustomizePanel({
             htmlFor="watermark-enable-check"
             className="flex items-center gap-3 cursor-pointer select-none flex-1"
           >
-            <input
+            <Switch
               id="watermark-enable-check"
-              type="checkbox"
               checked={watermark.enabled}
-              onChange={(e) => {
-                const checked = e.target.checked;
+              onCheckedChange={(checked) => {
                 commitWatermark(
                   { ...watermark, enabled: checked },
                   checked ? "Watermark diaktifkan." : "Watermark dinonaktifkan."
                 );
               }}
-              className="w-4 h-4 rounded accent-[#C45B3A] cursor-pointer"
             />
             <div>
               <span className="block text-xs font-semibold text-[#26251F]">
@@ -195,181 +186,172 @@ export function WatermarkCustomizePanel({
 
       {/* Text Watermark Configuration */}
       <div className="space-y-4 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
-          <div className="flex items-center justify-between">
-            <label className="font-semibold text-foreground flex items-center gap-1.5">
-              <Type className="w-3.5 h-3.5 text-primary" />
-              Isi Teks Watermark
-            </label>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => addPrefix("@")}
-                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
-                title="Tambah prefix @"
-              >
-                @
-              </button>
-              <button
-                type="button"
-                onClick={() => addPrefix("© ")}
-                className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
-                title="Tambah simbol ©"
-              >
-                ©
-              </button>
-            </div>
-          </div>
-
-          <input
-            type="text"
-            value={watermark.text}
-            onChange={(e) => commitWatermark({ ...watermark, text: e.target.value })}
-            placeholder="Contoh: @cliperpro atau Nama Channel"
-            className="w-full px-3 py-2 bg-[#F1EEE6] rounded-lg border border-[#E5E1D7] text-foreground text-xs focus:outline-none focus:border-primary transition font-medium"
-          />
-
-          {/* Live Typography Preview Card */}
-          <div className="p-3 rounded-lg bg-[#F1EEE6] border border-[#E5E1D7] flex items-center justify-center min-h-[50px] overflow-hidden">
-            <span
-              style={{
-                fontFamily: `"${watermark.font_family}", sans-serif`,
-                fontSize: `${Math.min(32, Math.max(14, watermark.font_size * 0.75))}px`,
-                color: watermark.font_color,
-                opacity: watermark.opacity,
-                fontWeight: 600,
-                textShadow: watermark.has_shadow ? "0 2px 4px rgba(0,0,0,0.85)" : undefined,
-                backgroundColor: watermark.has_background
-                  ? watermark.background_color
-                  : "transparent",
-                padding: watermark.has_background ? "4px 10px" : "0",
-                borderRadius: "4px",
-              }}
-              className="tracking-wide select-none"
+        <div className="flex items-center justify-between">
+          <label className="font-semibold text-foreground flex items-center gap-1.5">
+            <Type className="w-3.5 h-3.5 text-primary" />
+            Isi Teks Watermark
+          </label>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => addPrefix("@")}
+              className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+              title="Tambah prefix @"
             >
-              {watermark.text || "@watermark"}
-            </span>
-          </div>
-
-          {/* Font Family Selection */}
-          <div className="space-y-2 pt-2">
-            <label className="font-semibold text-foreground flex items-center gap-1.5">
-              <Palette className="w-3.5 h-3.5 text-primary" />
-              Pilihan Font Kustom
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AVAILABLE_FONTS.map((f) => {
-                const isSelected = watermark.font_family === f.name;
-                return (
-                  <button
-                    key={f.name}
-                    type="button"
-                    onClick={() => commitWatermark({ ...watermark, font_family: f.name })}
-                    className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
-                      isSelected
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-[#F3F0E8] border-[#E5E1D7] hover:border-[#D2CDBF] text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span
-                      style={{ fontFamily: `"${f.name}", sans-serif` }}
-                      className="text-sm font-bold truncate block mb-1"
-                    >
-                      {f.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground truncate">{f.style}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Font Size & Opacity Controls */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Ukuran Font</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {watermark.font_size}px
-                </span>
-              </div>
-              <input
-                type="range"
-                min="16"
-                max="72"
-                step="2"
-                value={watermark.font_size}
-                onChange={(e) =>
-                  commitWatermark({ ...watermark, font_size: parseInt(e.target.value) || 34 })
-                }
-                className="w-full accent-primary h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Transparansi / Opacity</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {Math.round(watermark.opacity * 100)}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0.10"
-                max="1.0"
-                step="0.05"
-                value={watermark.opacity}
-                onChange={(e) =>
-                  commitWatermark({ ...watermark, opacity: parseFloat(e.target.value) || 0.85 })
-                }
-                className="w-full accent-primary h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
-              />
-            </div>
-          </div>
-
-          {/* Font Color & Quick Swatches */}
-          <div className="pt-2 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Warna Teks</span>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="color"
-                  value={watermark.font_color}
-                  onChange={(e) => commitWatermark({ ...watermark, font_color: e.target.value })}
-                  className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
-                />
-                <span className="font-mono text-xs text-muted-foreground uppercase">
-                  {watermark.font_color}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {COLOR_SWATCHES.map((sw) => (
-                <button
-                  key={sw.name}
-                  type="button"
-                  onClick={() => commitWatermark({ ...watermark, font_color: sw.color })}
-                  style={{ backgroundColor: sw.color }}
-                  className={`w-6 h-6 rounded-full border transition flex items-center justify-center ${
-                    watermark.font_color.toLowerCase() === sw.color.toLowerCase()
-                      ? "border-primary ring-2 ring-primary/40 scale-110"
-                      : "border-[#D2CDBF] hover:scale-105"
-                  }`}
-                  title={sw.name}
-                >
-                  {watermark.font_color.toLowerCase() === sw.color.toLowerCase() && (
-                    <Check
-                      className={`w-3.5 h-3.5 ${
-                        sw.color === "#FFFFFF" || sw.color === "#FFE600"
-                          ? "text-black"
-                          : "text-white"
-                      }`}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
+              @
+            </button>
+            <button
+              type="button"
+              onClick={() => addPrefix("© ")}
+              className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+              title="Tambah simbol ©"
+            >
+              ©
+            </button>
           </div>
         </div>
+
+        <Input
+          value={watermark.text}
+          onChange={(e) => commitWatermark({ ...watermark, text: e.target.value })}
+          placeholder="Contoh: @cliperpro atau Nama Channel"
+          aria-label="Teks watermark"
+        />
+
+        {/* Live Typography Preview Card */}
+        <div className="p-3 rounded-lg bg-[#F1EEE6] border border-[#E5E1D7] flex items-center justify-center min-h-[50px] overflow-hidden">
+          <span
+            style={{
+              fontFamily: `"${watermark.font_family}", sans-serif`,
+              fontSize: `${Math.min(32, Math.max(14, watermark.font_size * 0.75))}px`,
+              color: watermark.font_color,
+              opacity: watermark.opacity,
+              fontWeight: 600,
+              textShadow: watermark.has_shadow ? "0 2px 4px rgba(0,0,0,0.85)" : undefined,
+              backgroundColor: watermark.has_background
+                ? watermark.background_color
+                : "transparent",
+              padding: watermark.has_background ? "4px 10px" : "0",
+              borderRadius: "4px",
+            }}
+            className="tracking-wide select-none"
+          >
+            {watermark.text || "@watermark"}
+          </span>
+        </div>
+
+        {/* Font Family Selection */}
+        <div className="space-y-2 pt-2">
+          <label className="font-semibold text-foreground flex items-center gap-1.5">
+            <Palette className="w-3.5 h-3.5 text-primary" />
+            Pilihan Font Kustom
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {AVAILABLE_FONTS.map((f) => {
+              const isSelected = watermark.font_family === f.name;
+              return (
+                <button
+                  key={f.name}
+                  type="button"
+                  onClick={() => commitWatermark({ ...watermark, font_family: f.name })}
+                  className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
+                    isSelected
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-[#F3F0E8] border-[#E5E1D7] hover:border-[#D2CDBF] text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span
+                    style={{ fontFamily: `"${f.name}", sans-serif` }}
+                    className="text-sm font-bold truncate block mb-1"
+                  >
+                    {f.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">{f.style}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Font Size & Opacity Controls */}
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-muted-foreground">Ukuran Font</span>
+              <span className="font-mono text-foreground font-semibold">
+                {watermark.font_size}px
+              </span>
+            </div>
+            <Slider
+              min={16}
+              max={72}
+              step={2}
+              value={[watermark.font_size]}
+              onValueChange={([v]) => commitWatermark({ ...watermark, font_size: v || 34 })}
+              aria-label="Ukuran font watermark"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-muted-foreground">Transparansi / Opacity</span>
+              <span className="font-mono text-foreground font-semibold">
+                {Math.round(watermark.opacity * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.1}
+              max={1.0}
+              step={0.05}
+              value={[watermark.opacity]}
+              onValueChange={([v]) => commitWatermark({ ...watermark, opacity: v || 0.85 })}
+              aria-label="Opacity watermark"
+            />
+          </div>
+        </div>
+
+        {/* Font Color & Quick Swatches */}
+        <div className="pt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Warna Teks</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="color"
+                value={watermark.font_color}
+                onChange={(e) => commitWatermark({ ...watermark, font_color: e.target.value })}
+                className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
+              />
+              <span className="font-mono text-xs text-muted-foreground uppercase">
+                {watermark.font_color}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {COLOR_SWATCHES.map((sw) => (
+              <button
+                key={sw.name}
+                type="button"
+                onClick={() => commitWatermark({ ...watermark, font_color: sw.color })}
+                style={{ backgroundColor: sw.color }}
+                className={`w-6 h-6 rounded-full border transition flex items-center justify-center ${
+                  watermark.font_color.toLowerCase() === sw.color.toLowerCase()
+                    ? "border-primary ring-2 ring-primary/40 scale-110"
+                    : "border-[#D2CDBF] hover:scale-105"
+                }`}
+                title={sw.name}
+              >
+                {watermark.font_color.toLowerCase() === sw.color.toLowerCase() && (
+                  <Check
+                    className={`w-3.5 h-3.5 ${
+                      sw.color === "#FFFFFF" || sw.color === "#FFE600" ? "text-black" : "text-white"
+                    }`}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Shared Position Controls (9-Grid) */}
       <div className="space-y-3 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
@@ -466,79 +448,74 @@ export function WatermarkCustomizePanel({
               Meningkatkan keterbacaan di atas video berwarna terang atau ramai
             </div>
           </div>
-          <input
-            type="checkbox"
+          <Switch
             checked={watermark.has_shadow}
-            onChange={(e) => commitWatermark({ ...watermark, has_shadow: e.target.checked })}
-            className="rounded border-[#E5E1D7] text-primary focus:ring-primary/30 w-4 h-4 cursor-pointer"
+            onCheckedChange={(checked) => commitWatermark({ ...watermark, has_shadow: checked })}
           />
         </label>
 
         {/* Background Box Badge Toggle */}
-          <div className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] space-y-2.5">
-            <label className="flex items-center justify-between cursor-pointer">
+        <div className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] space-y-2.5">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <div className="font-semibold text-xs text-foreground">
+                Badge Latar Belakang (Box)
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Menambahkan kotak transparan di belakang teks watermark
+              </div>
+            </div>
+            <Switch
+              checked={watermark.has_background}
+              onCheckedChange={(checked) =>
+                commitWatermark({ ...watermark, has_background: checked })
+              }
+            />
+          </label>
+
+          {watermark.has_background && (
+            <div className="pt-2 border-t border-[#E5E1D7] grid grid-cols-2 gap-3">
               <div>
-                <div className="font-semibold text-xs text-foreground">
-                  Badge Latar Belakang (Box)
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Menambahkan kotak transparan di belakang teks watermark
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={watermark.has_background}
-                onChange={(e) =>
-                  commitWatermark({ ...watermark, has_background: e.target.checked })
-                }
-                className="rounded border-[#E5E1D7] text-primary focus:ring-primary/30 w-4 h-4 cursor-pointer"
-              />
-            </label>
-
-            {watermark.has_background && (
-              <div className="pt-2 border-t border-[#E5E1D7] grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-1">Warna Badge</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={watermark.background_color || "#000000"}
-                      onChange={(e) =>
-                        commitWatermark({ ...watermark, background_color: e.target.value })
-                      }
-                      className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
-                    />
-                    <span className="font-mono text-xs text-muted-foreground uppercase">
-                      {watermark.background_color || "#000000"}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Opacity Badge</span>
-                    <span className="font-mono text-foreground font-semibold">
-                      {Math.round((watermark.background_opacity ?? 0.5) * 100)}%
-                    </span>
-                  </div>
+                <span className="text-xs text-muted-foreground block mb-1">Warna Badge</span>
+                <div className="flex items-center gap-2">
                   <input
-                    type="range"
-                    min="0.1"
-                    max="0.95"
-                    step="0.05"
-                    value={watermark.background_opacity ?? 0.5}
+                    type="color"
+                    value={watermark.background_color || "#000000"}
                     onChange={(e) =>
-                      commitWatermark({
-                        ...watermark,
-                        background_opacity: parseFloat(e.target.value) || 0.5,
-                      })
+                      commitWatermark({ ...watermark, background_color: e.target.value })
                     }
-                    className="w-full accent-primary h-1.5 bg-[#E5E1D7] rounded-lg cursor-pointer"
+                    className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
                   />
+                  <span className="font-mono text-xs text-muted-foreground uppercase">
+                    {watermark.background_color || "#000000"}
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-muted-foreground">Opacity Badge</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {Math.round((watermark.background_opacity ?? 0.5) * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.1}
+                  max={0.95}
+                  step={0.05}
+                  value={[watermark.background_opacity ?? 0.5]}
+                  onValueChange={([v]) =>
+                    commitWatermark({
+                      ...watermark,
+                      background_opacity: v || 0.5,
+                    })
+                  }
+                  aria-label="Opacity box watermark"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

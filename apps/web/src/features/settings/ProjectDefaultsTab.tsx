@@ -23,7 +23,19 @@ import type {
   TTSConfig,
   WatermarkConfig,
 } from "@/types";
-import { Badge, Button, Input, NativeSelect, Textarea } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Slider,
+  Switch,
+  Textarea,
+} from "@/components/ui";
 import {
   DEFAULT_SUBTITLE_STYLE,
   HIGHLIGHT_COLORS,
@@ -42,11 +54,7 @@ import {
 import { DEFAULT_TTS_CONFIG, TTS_MODEL } from "@/features/tts/constants";
 import { ShieldCheck } from "lucide-react";
 import { QCConfig } from "@/types";
-import {
-  DEFAULT_QC_CONFIG,
-  QC_PLATFORMS,
-  normalizeQCConfig,
-} from "@/features/qc/constants";
+import { DEFAULT_QC_CONFIG, QC_PLATFORMS, normalizeQCConfig } from "@/features/qc/constants";
 
 // Mirrors backend BackgroundFillSchema defaults
 const DEFAULT_BACKGROUND_FILL: BackgroundFill = {
@@ -404,22 +412,15 @@ export function ProjectDefaultsTab() {
             <h3 className="text-sm font-bold text-foreground">1. Subtitle Config</h3>
           </div>
           <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
-            <input
-              type="checkbox"
+            <Switch
               checked={draft.subtitle.enabled}
-              onChange={(e) => updateSubtitle({ enabled: e.target.checked })}
-              className="h-4 w-4 accent-primary cursor-pointer"
+              onCheckedChange={(checked) => updateSubtitle({ enabled: checked })}
             />
             Aktifkan Subtitle
           </label>
         </div>
 
-        <div
-          className={cn(
-            "space-y-4",
-            !draft.subtitle.enabled && "opacity-55"
-          )}
-        >
+        <div className={cn("space-y-4", !draft.subtitle.enabled && "opacity-55")}>
           {/* Gaya Preset */}
           <div className="space-y-1.5">
             <span className="block text-xs font-semibold text-muted-foreground">Gaya Preset</span>
@@ -482,17 +483,21 @@ export function ProjectDefaultsTab() {
               >
                 Font Subtitle
               </label>
-              <NativeSelect
-                id="default-sub-font"
+              <Select
                 value={draft.subtitle.font_family}
-                onChange={(e) => updateSubtitle({ font_family: e.target.value })}
+                onValueChange={(v) => updateSubtitle({ font_family: v })}
               >
-                {SUBTITLE_FONTS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger id="default-sub-font">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent appearance="workspace">
+                  {SUBTITLE_FONTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -506,15 +511,14 @@ export function ProjectDefaultsTab() {
                 <span>Ukuran Font</span>
                 <span className="font-mono text-foreground">{draft.subtitle.font_size}px</span>
               </label>
-              <input
+              <Slider
                 id="default-sub-size"
-                type="range"
                 min={24}
                 max={110}
                 step={2}
-                value={draft.subtitle.font_size}
-                onChange={(e) => updateSubtitle({ font_size: Number(e.target.value) })}
-                className="w-full accent-primary"
+                value={[draft.subtitle.font_size]}
+                onValueChange={([v]) => updateSubtitle({ font_size: v })}
+                aria-label="Ukuran font subtitle"
               />
             </div>
 
@@ -628,11 +632,9 @@ export function ProjectDefaultsTab() {
             <h3 className="text-sm font-bold text-foreground">2. Watermark Config</h3>
           </div>
           <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
-            <input
-              type="checkbox"
+            <Switch
               checked={draft.watermark.enabled}
-              onChange={(e) => updateWatermark({ enabled: e.target.checked })}
-              className="h-4 w-4 accent-primary cursor-pointer"
+              onCheckedChange={(checked) => updateWatermark({ enabled: checked })}
             />
             Aktifkan Watermark Secara Default
           </label>
@@ -710,17 +712,21 @@ export function ProjectDefaultsTab() {
             >
               Font Watermark
             </label>
-            <NativeSelect
-              id="default-wm-font"
+            <Select
               value={draft.watermark.font_family}
-              onChange={(e) => updateWatermark({ font_family: e.target.value })}
+              onValueChange={(v) => updateWatermark({ font_family: v })}
             >
-              {WATERMARK_FONTS.map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.label} — {f.style}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger id="default-wm-font">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                {WATERMARK_FONTS.map((f) => (
+                  <SelectItem key={f.name} value={f.name}>
+                    {f.label} — {f.style}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -734,15 +740,14 @@ export function ProjectDefaultsTab() {
               <span>Ukuran Font</span>
               <span className="font-mono text-foreground">{draft.watermark.font_size}px</span>
             </label>
-            <input
+            <Slider
               id="default-wm-size"
-              type="range"
               min={16}
               max={72}
               step={2}
-              value={draft.watermark.font_size}
-              onChange={(e) => updateWatermark({ font_size: Number(e.target.value) })}
-              className="w-full accent-primary"
+              value={[draft.watermark.font_size]}
+              onValueChange={([v]) => updateWatermark({ font_size: v })}
+              aria-label="Ukuran font watermark"
             />
           </div>
 
@@ -757,15 +762,14 @@ export function ProjectDefaultsTab() {
                 {Math.round(draft.watermark.opacity * 100)}%
               </span>
             </label>
-            <input
+            <Slider
               id="default-wm-opacity"
-              type="range"
               min={0.1}
               max={1.0}
               step={0.05}
-              value={draft.watermark.opacity}
-              onChange={(e) => updateWatermark({ opacity: parseFloat(e.target.value) })}
-              className="w-full accent-primary"
+              value={[draft.watermark.opacity]}
+              onValueChange={([v]) => updateWatermark({ opacity: v })}
+              aria-label="Opacity watermark"
             />
           </div>
 
@@ -853,9 +857,7 @@ export function ProjectDefaultsTab() {
                     min={0}
                     max={100}
                     value={draft.watermark.custom_x ?? 50}
-                    onChange={(e) =>
-                      updateWatermark({ custom_x: parseFloat(e.target.value) || 0 })
-                    }
+                    onChange={(e) => updateWatermark({ custom_x: parseFloat(e.target.value) || 0 })}
                     className="font-mono text-xs"
                   />
                 </div>
@@ -872,9 +874,7 @@ export function ProjectDefaultsTab() {
                     min={0}
                     max={100}
                     value={draft.watermark.custom_y ?? 50}
-                    onChange={(e) =>
-                      updateWatermark({ custom_y: parseFloat(e.target.value) || 0 })
-                    }
+                    onChange={(e) => updateWatermark({ custom_y: parseFloat(e.target.value) || 0 })}
                     className="font-mono text-xs"
                   />
                 </div>
@@ -926,22 +926,18 @@ export function ProjectDefaultsTab() {
             <div className="space-y-2 pt-1">
               <label className="flex items-center justify-between rounded-lg border border-border bg-background p-2.5 text-xs cursor-pointer">
                 <span className="font-medium text-foreground">Drop Shadow Kontras</span>
-                <input
-                  type="checkbox"
+                <Switch
                   checked={draft.watermark.has_shadow ?? true}
-                  onChange={(e) => updateWatermark({ has_shadow: e.target.checked })}
-                  className="h-4 w-4 accent-primary cursor-pointer"
+                  onCheckedChange={(checked) => updateWatermark({ has_shadow: checked })}
                 />
               </label>
 
               <div className="rounded-lg border border-border bg-background p-2.5 space-y-2">
                 <label className="flex items-center justify-between text-xs cursor-pointer">
                   <span className="font-medium text-foreground">Badge Latar Belakang (Box)</span>
-                  <input
-                    type="checkbox"
+                  <Switch
                     checked={draft.watermark.has_background ?? false}
-                    onChange={(e) => updateWatermark({ has_background: e.target.checked })}
-                    className="h-4 w-4 accent-primary cursor-pointer"
+                    onCheckedChange={(checked) => updateWatermark({ has_background: checked })}
                   />
                 </label>
                 {draft.watermark.has_background && (
@@ -959,16 +955,12 @@ export function ProjectDefaultsTab() {
                       </span>
                     </div>
                     <div>
-                      <input
-                        type="range"
+                      <Slider
                         min={0.1}
                         max={0.95}
                         step={0.05}
-                        value={draft.watermark.background_opacity ?? 0.5}
-                        onChange={(e) =>
-                          updateWatermark({ background_opacity: parseFloat(e.target.value) })
-                        }
-                        className="w-full accent-primary"
+                        value={[draft.watermark.background_opacity ?? 0.5]}
+                        onValueChange={([v]) => updateWatermark({ background_opacity: v })}
                         aria-label="Opacity box watermark"
                       />
                     </div>
@@ -990,9 +982,7 @@ export function ProjectDefaultsTab() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Provider */}
           <div className="space-y-1.5">
-            <span className="block text-xs font-semibold text-muted-foreground">
-              Provider TTS
-            </span>
+            <span className="block text-xs font-semibold text-muted-foreground">Provider TTS</span>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
@@ -1051,22 +1041,28 @@ export function ProjectDefaultsTab() {
             >
               Karakter Suara Default
             </label>
-            <NativeSelect
-              id="default-tts-voice"
+            <Select
               value={isCustomVoice ? "__custom__" : draft.tts.voice}
-              onChange={(e) => {
-                if (e.target.value !== "__custom__") {
-                  updateTts({ voice: e.target.value });
+              onValueChange={(v) => {
+                if (v !== "__custom__") {
+                  updateTts({ voice: v });
                 }
               }}
             >
-              {providerVoices.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name} ({v.gender})
-                </option>
-              ))}
-              {isCustomVoice && <option value="__custom__">Custom: {draft.tts.voice}</option>}
-            </NativeSelect>
+              <SelectTrigger id="default-tts-voice">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                {providerVoices.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name} ({v.gender})
+                  </SelectItem>
+                ))}
+                {isCustomVoice && (
+                  <SelectItem value="__custom__">Custom: {draft.tts.voice}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Custom Voice ID input */}
@@ -1100,15 +1096,14 @@ export function ProjectDefaultsTab() {
                 {draft.tts.rate >= 0 ? `+${draft.tts.rate}` : draft.tts.rate}%
               </span>
             </label>
-            <input
+            <Slider
               id="default-tts-rate"
-              type="range"
               min={-20}
               max={30}
               step={5}
-              value={draft.tts.rate}
-              onChange={(e) => updateTts({ rate: Number(e.target.value) })}
-              className="w-full accent-primary"
+              value={[draft.tts.rate]}
+              onValueChange={([v]) => updateTts({ rate: v })}
+              aria-label="Kecepatan suara"
             />
           </div>
 
@@ -1123,15 +1118,14 @@ export function ProjectDefaultsTab() {
                 {draft.tts.pitch >= 0 ? `+${draft.tts.pitch}` : draft.tts.pitch}Hz
               </span>
             </label>
-            <input
+            <Slider
               id="default-tts-pitch"
-              type="range"
               min={-15}
               max={15}
               step={3}
-              value={draft.tts.pitch}
-              onChange={(e) => updateTts({ pitch: Number(e.target.value) })}
-              className="w-full accent-primary"
+              value={[draft.tts.pitch]}
+              onValueChange={([v]) => updateTts({ pitch: v })}
+              aria-label="Pitch suara"
             />
           </div>
         </div>
@@ -1147,7 +1141,8 @@ export function ProjectDefaultsTab() {
                 4. AI Quality Control (QC) Default
               </h4>
               <p className="text-[11px] text-muted-foreground">
-                Pengaturan reviewer AI. QC hanya jalan saat kamu klik "Cek QC" di studio — tidak pernah otomatis saat TTS atau render.
+                Pengaturan reviewer AI. QC hanya jalan saat kamu klik "Cek QC" di studio — tidak
+                pernah otomatis saat TTS atau render.
               </p>
             </div>
           </div>
@@ -1164,21 +1159,25 @@ export function ProjectDefaultsTab() {
             >
               Target Platform FYP
             </label>
-            <NativeSelect
-              id="default-qc-platform"
+            <Select
               value={draft.qc?.platform || "all"}
-              onChange={(e) =>
+              onValueChange={(v) =>
                 updateQc({
-                  platform: e.target.value as QCConfig["platform"],
+                  platform: v as QCConfig["platform"],
                 })
               }
             >
-              {QC_PLATFORMS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger id="default-qc-platform">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                {QC_PLATFORMS.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
@@ -1191,15 +1190,14 @@ export function ProjectDefaultsTab() {
                 {(draft.qc?.threshold ?? 7.5).toFixed(1)} / 10
               </span>
             </label>
-            <input
+            <Slider
               id="default-qc-threshold"
-              type="range"
               min={5}
               max={9.5}
               step={0.5}
-              value={draft.qc?.threshold ?? 7.5}
-              onChange={(e) => updateQc({ threshold: Number(e.target.value) })}
-              className="w-full accent-primary"
+              value={[draft.qc?.threshold ?? 7.5]}
+              onValueChange={([v]) => updateQc({ threshold: v })}
+              aria-label="Ambang skor QC"
             />
           </div>
 
@@ -1210,17 +1208,19 @@ export function ProjectDefaultsTab() {
             >
               Maksimal Putaran Auto-Fix
             </label>
-            <NativeSelect
-              id="default-qc-rounds"
+            <Select
               value={String(draft.qc?.max_fix_rounds ?? 2)}
-              onChange={(e) =>
-                updateQc({ max_fix_rounds: Number(e.target.value) })
-              }
+              onValueChange={(v) => updateQc({ max_fix_rounds: Number(v) })}
             >
-              <option value="1">1 Putaran</option>
-              <option value="2">2 Putaran (Rekomendasi)</option>
-              <option value="3">3 Putaran</option>
-            </NativeSelect>
+              <SelectTrigger id="default-qc-rounds">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent appearance="workspace">
+                <SelectItem value="1">1 Putaran</SelectItem>
+                <SelectItem value="2">2 Putaran (Rekomendasi)</SelectItem>
+                <SelectItem value="3">3 Putaran</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
@@ -1249,7 +1249,8 @@ export function ProjectDefaultsTab() {
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Pakai model multimodal yang kuat dan beda dari model penulis naskah, agar penilaian jujur.
+              Pakai model multimodal yang kuat dan beda dari model penulis naskah, agar penilaian
+              jujur.
             </p>
           </div>
         </div>
@@ -1272,7 +1273,11 @@ export function ProjectDefaultsTab() {
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Preset layout">
+        <div
+          className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+          role="radiogroup"
+          aria-label="Preset layout"
+        >
           {LAYOUT_PRESETS.map((p) => (
             <button
               key={p.id}
@@ -1300,11 +1305,9 @@ export function ProjectDefaultsTab() {
                 <span className="block text-xs font-semibold text-foreground">Background Blur</span>
                 <span className="text-[10px] text-muted-foreground">Mati = latar hitam solid</span>
               </div>
-              <input
-                type="checkbox"
+              <Switch
                 checked={fill.mode !== "black"}
-                onChange={(e) => updateFill({ mode: e.target.checked ? "blur" : "black" })}
-                className="h-4 w-4 accent-primary"
+                onCheckedChange={(checked) => updateFill({ mode: checked ? "blur" : "black" })}
               />
             </label>
 
@@ -1319,15 +1322,14 @@ export function ProjectDefaultsTab() {
                     {Math.round((fill.zoom ?? 1) * 100)}%
                   </span>
                 </label>
-                <input
+                <Slider
                   id="default-layout-zoom"
-                  type="range"
                   min={1.05}
                   max={3}
                   step={0.05}
-                  value={fill.zoom ?? 1.35}
-                  onChange={(e) => updateFill({ zoom: Number(e.target.value) })}
-                  className="w-full accent-primary"
+                  value={[fill.zoom ?? 1.35]}
+                  onValueChange={([v]) => updateFill({ zoom: v })}
+                  aria-label="Zoom layout"
                 />
               </div>
             )}
@@ -1337,12 +1339,7 @@ export function ProjectDefaultsTab() {
 
       {/* Save Submit */}
       <div className="flex items-center justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="gap-2"
-          onClick={handleExport}
-        >
+        <Button type="button" variant="outline" className="gap-2" onClick={handleExport}>
           <Download className="h-4 w-4" />
           <span>Export config.json</span>
         </Button>

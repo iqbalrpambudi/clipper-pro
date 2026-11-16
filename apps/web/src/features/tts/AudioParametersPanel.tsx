@@ -1,6 +1,7 @@
 import { Sliders, Loader2, StopCircle, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 
 interface AudioParametersPanelProps {
@@ -56,14 +57,13 @@ export function AudioParametersPanel({
               <span className="font-medium text-foreground">Kecepatan (Rate)</span>
               <span className="font-mono text-primary">{rate >= 0 ? `+${rate}` : rate}%</span>
             </div>
-            <input
-              type="range"
+            <Slider
               min={-20}
               max={30}
               step={5}
-              value={rate}
-              onChange={(e) => setRate(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+              value={[rate]}
+              onValueChange={([v]) => setRate(v)}
+              aria-label="Kecepatan suara"
             />
           </div>
 
@@ -72,14 +72,13 @@ export function AudioParametersPanel({
               <span className="font-medium text-foreground">Tinggi Nada (Pitch)</span>
               <span className="font-mono text-primary">{pitch >= 0 ? `+${pitch}` : pitch}Hz</span>
             </div>
-            <input
-              type="range"
+            <Slider
               min={-15}
               max={15}
               step={3}
-              value={pitch}
-              onChange={(e) => setPitch(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+              value={[pitch]}
+              onValueChange={([v]) => setPitch(v)}
+              aria-label="Pitch suara"
             />
           </div>
         </div>

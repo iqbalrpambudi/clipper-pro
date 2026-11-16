@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Scene } from "@/types";
 import { SCENE_DRAG_MIME } from "./timelineFormat";
+import { Input } from "@/components/ui/input";
 
 interface TimelineMediaPoolProps {
   scenes: Scene[];
@@ -63,12 +64,13 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
       <div className="flex items-center gap-2 border-b border-surface-border bg-background px-3 py-2">
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input
+          <Input
             id="timeline-pool-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari scene, deskripsi, tag, #"
-            className="h-7 w-full rounded-lg border border-input bg-control-background pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground transition focus:border-primary focus:outline-none"
+            aria-label="Cari scene"
+            className="h-7 pl-8 pr-6"
           />
           {query && (
             <button

@@ -1,6 +1,7 @@
 import React from "react";
 import { Volume2, VolumeX, Play, Pause, RotateCcw, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { formatAudioTime } from "./constants";
 
 interface AudioPlayerCardProps {
@@ -173,14 +174,14 @@ export function AudioPlayerCard({
                 <Volume2 className="w-4 h-4" />
               )}
             </button>
-            <input
-              type="range"
+            <Slider
               min={0}
               max={1}
               step={0.05}
-              value={isMuted ? 0 : volume}
-              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              className="h-1.5 w-20 cursor-pointer rounded-lg bg-muted accent-primary"
+              value={[isMuted ? 0 : volume]}
+              onValueChange={([v]) => onVolumeChange(v)}
+              aria-label="Volume"
+              className="w-20"
             />
           </div>
         </div>

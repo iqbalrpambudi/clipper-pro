@@ -24,6 +24,7 @@ import {
   tlDur,
 } from "@/lib/timeline/editOps";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const SPEEDS = [1, 1.25, 1.5];
 
@@ -158,7 +159,9 @@ function SelectedInspector({
       <div className="flex items-center justify-between border-b border-surface-border px-3.5 py-2">
         <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
           <SlidersHorizontal className="w-3.5 h-3.5 text-primary" /> Klip #{index + 1}
-          <span className="text-muted-foreground font-mono font-normal tabular-nums">/ {total}</span>
+          <span className="text-muted-foreground font-mono font-normal tabular-nums">
+            / {total}
+          </span>
         </span>
         <div className="flex items-center gap-1">
           <Button
@@ -237,12 +240,12 @@ function SelectedInspector({
         >
           <div className="flex items-center gap-1">
             <StepBtn onClick={() => onSetDuration(dur - 0.5)}>-0.5</StepBtn>
-            <input
+            <Input
               value={durDraft}
               onChange={(e) => setDurDraft(e.target.value)}
               onBlur={commitDuration}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              className="h-7 min-w-0 flex-1 rounded-lg border border-input bg-control-background text-center font-mono text-xs text-foreground transition focus:border-primary focus:outline-none"
+              className="h-7 min-w-0 flex-1 px-2 text-center font-mono"
               aria-label="Durasi klip (detik)"
             />
             <StepBtn onClick={() => onSetDuration(dur + 0.5)}>+0.5</StepBtn>
@@ -329,13 +332,18 @@ function SelectedInspector({
               {cutsInWindow.length ? (
                 <span>
                   Bagian terpilih melewati cut di{" "}
-                  <span className="font-mono">{cutsInWindow.map((t) => `${t.toFixed(2)}s`).join(", ")}</span>{" "}
+                  <span className="font-mono">
+                    {cutsInWindow.map((t) => `${t.toFixed(2)}s`).join(", ")}
+                  </span>{" "}
                   → shot lain ikut tampil (flash). Geser kotak agar tidak memotong garis merah.
                 </span>
               ) : (
                 <span>
                   Garis kuning = perpindahan shot di{" "}
-                  <span className="font-mono">{cuts.map((t) => `${t.toFixed(2)}s`).join(", ")}</span>. Bagian terpilih aman.
+                  <span className="font-mono">
+                    {cuts.map((t) => `${t.toFixed(2)}s`).join(", ")}
+                  </span>
+                  . Bagian terpilih aman.
                 </span>
               )}
             </p>

@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, Loader2, BookOpen, Edit3, CheckCircle2, FileText, ArrowRight, Copy, Check } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  BookOpen,
+  Edit3,
+  CheckCircle2,
+  FileText,
+  ArrowRight,
+  Copy,
+  Check,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { useEditorConfigStore } from "@/lib/store";
 import { StudioTabHeader } from "@/components/layout";
 import { Project, Narration, Scene } from "@/types";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Button, Input, Slider, Textarea } from "@/components/ui";
 import { SectionPanel, EmptyState } from "@/components/fragments";
 import { cn } from "@/lib/utils";
 
@@ -122,9 +132,13 @@ export function NarrationTab({ project }: NarrationTabProps) {
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center justify-between gap-2">
                           <h4 className="truncate text-xs font-bold text-foreground">{tpl.name}</h4>
-                          {isSelected && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                          {isSelected && (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          )}
                         </div>
-                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{tpl.description}</p>
+                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                          {tpl.description}
+                        </p>
                       </div>
                     </button>
                   );
@@ -140,7 +154,10 @@ export function NarrationTab({ project }: NarrationTabProps) {
             >
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="narration-topic" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  <label
+                    htmlFor="narration-topic"
+                    className="mb-1.5 block text-xs font-semibold text-foreground"
+                  >
                     Topik (opsional)
                   </label>
                   <Input
@@ -153,21 +170,24 @@ export function NarrationTab({ project }: NarrationTabProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="narration-duration" className="mb-1.5 flex justify-between text-xs font-semibold text-foreground">
+                  <label
+                    htmlFor="narration-duration"
+                    className="mb-1.5 flex justify-between text-xs font-semibold text-foreground"
+                  >
                     <span>Durasi</span>
                     <span className="font-mono text-muted-foreground">
-                      {duration} detik · ≈ {Math.max(4, Math.round(duration / SEC_PER_LINE))} kalimat
+                      {duration} detik · ≈ {Math.max(4, Math.round(duration / SEC_PER_LINE))}{" "}
+                      kalimat
                     </span>
                   </label>
-                  <input
+                  <Slider
                     id="narration-duration"
-                    type="range"
                     min={15}
                     max={90}
                     step={5}
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full accent-primary"
+                    value={[duration]}
+                    onValueChange={([v]) => setDuration(v)}
+                    aria-label="Durasi narasi"
                   />
                 </div>
 
@@ -182,7 +202,8 @@ export function NarrationTab({ project }: NarrationTabProps) {
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>
-                        Menyusun naskah… {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
+                        Menyusun naskah… {Math.floor(elapsed / 60)}:
+                        {String(elapsed % 60).padStart(2, "0")}
                       </span>
                     </>
                   ) : (
@@ -206,8 +227,17 @@ export function NarrationTab({ project }: NarrationTabProps) {
               actions={
                 rawText ? (
                   <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="sm" onClick={handleCopy} className="h-7 gap-1 text-xs">
-                      {hasCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopy}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      {hasCopied ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                       <span>{hasCopied ? "Tersalin" : "Salin"}</span>
                     </Button>
                     <Button
@@ -293,7 +323,12 @@ export function NarrationTab({ project }: NarrationTabProps) {
                   )}
 
                   <div className="flex items-center justify-end border-t border-border pt-3">
-                    <Button onClick={() => setActiveTab("tts")} variant="workspace-primary" size="sm" className="gap-2">
+                    <Button
+                      onClick={() => setActiveTab("tts")}
+                      variant="workspace-primary"
+                      size="sm"
+                      className="gap-2"
+                    >
                       <span>Lanjut ke suara</span>
                       <ArrowRight className="h-4 w-4" />
                     </Button>

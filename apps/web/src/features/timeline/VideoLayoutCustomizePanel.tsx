@@ -4,7 +4,7 @@ import { Maximize2, Scan, ZoomIn } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { Project, BackgroundFill } from "@/types";
-import { Switch } from "@/components/ui";
+import { Slider, Switch } from "@/components/ui";
 
 type LayoutPreset = "cover" | "fit" | "custom";
 
@@ -73,6 +73,7 @@ export function VideoLayoutCustomizePanel({
     nextZoom: number
   ) => {
     const nextFill = {
+      ...project.background_fill, // keep fields this panel does not edit (e.g. bgm_mood)
       mode: nextMode,
       zoom: nextZoom,
       color: project.background_fill?.color || "#000000",
@@ -229,9 +230,7 @@ export function VideoLayoutCustomizePanel({
               </div>
               <div>
                 <div className="text-xs font-semibold leading-tight">Fit</div>
-                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
-                  100% Utuh
-                </div>
+                <div className="text-xs text-muted-foreground leading-tight mt-0.5">100% Utuh</div>
               </div>
             </button>
 
@@ -282,14 +281,13 @@ export function VideoLayoutCustomizePanel({
             </div>
 
             <div className="space-y-1">
-              <input
-                type="range"
-                min="1.0"
-                max="3.0"
-                step="0.05"
-                value={customZoom}
-                onChange={(e) => handleZoomSliderChange(parseFloat(e.target.value))}
-                className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+              <Slider
+                min={1.0}
+                max={3.0}
+                step={0.05}
+                value={[customZoom]}
+                onValueChange={([v]) => handleZoomSliderChange(v)}
+                aria-label="Zoom video"
               />
               <div className="flex items-center justify-between text-[11px] font-mono tabular-nums text-muted-foreground">
                 <span>100%</span>

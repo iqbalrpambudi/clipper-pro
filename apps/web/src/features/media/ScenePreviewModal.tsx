@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   X,
   Play,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Scene } from "@/types";
 
 export interface ScenePreviewModalProps {
@@ -168,8 +169,7 @@ export function ScenePreviewModal({
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const offset = parseFloat(e.target.value);
+  const handleSeek = (offset: number) => {
     const targetTime = startTime + offset;
     setCurrentTime(targetTime);
     if (videoRef.current) {
@@ -264,7 +264,9 @@ export function ScenePreviewModal({
                       className="border-amber-500/40 bg-amber-500/10 text-amber-500 text-xs gap-1 font-mono py-0"
                       title={`${shotInfo.internal_cuts.length} cut internal. AI hanya mengambil irisan dari shot utuh (usable: ${shotInfo.usable_duration || 0}s).`}
                     >
-                      <Scissors className="w-3 h-3 text-amber-400" /> {shotInfo.internal_cuts.length} Internal Cut ({shotInfo.shot_count || shotInfo.internal_cuts.length + 1} Shots)
+                      <Scissors className="w-3 h-3 text-amber-400" />{" "}
+                      {shotInfo.internal_cuts.length} Internal Cut (
+                      {shotInfo.shot_count || shotInfo.internal_cuts.length + 1} Shots)
                     </Badge>
                   ) : (
                     <Badge
@@ -272,7 +274,8 @@ export function ScenePreviewModal({
                       className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-xs gap-1 font-mono py-0"
                       title="Scene ini adalah 1 shot visual tunggal tanpa pergantian cut di dalamnya."
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 1 Clean Shot (Utuh)
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 1 Clean Shot
+                      (Utuh)
                     </Badge>
                   )
                 ) : null}
@@ -381,14 +384,13 @@ export function ScenePreviewModal({
                   </div>
                 );
               })}
-              <input
-                type="range"
+              <Slider
                 min={0}
                 max={duration}
                 step={0.05}
-                value={currentOffset}
-                onChange={handleSeek}
-                className="h-1.5 w-full cursor-pointer rounded-lg bg-muted accent-primary"
+                value={[currentOffset]}
+                onValueChange={([v]) => handleSeek(v)}
+                aria-label="Posisi scene"
               />
             </div>
           </div>

@@ -18,6 +18,7 @@ import {
 } from "@/lib/timeline/frameMath";
 import { MonitorTransportToolbar } from "./monitor/MonitorTransportToolbar";
 import { SubtitleDragHandle } from "./monitor/SubtitleDragHandle";
+import { Slider } from "@/components/ui/slider";
 
 export interface SeekRequest {
   t: number;
@@ -285,7 +286,9 @@ export function TimelineMonitor({
         const vW = source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
         const vH = source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
         // Burned-in subtitles: same crop/blur rule as the renderer (lib/timeline/hardsub.ts)
-        const hardsub = curClip ? hardsubTreatment(hardsubBySource?.[curClip.source_video_id]) : null;
+        const hardsub = curClip
+          ? hardsubTreatment(hardsubBySource?.[curClip.source_video_id])
+          : null;
         const srcH = hardsub?.kind === "crop" ? vH * hardsub.top : vH;
         const videoAspect = vW / srcH;
         const canvasAspect = cW / cH;
@@ -383,8 +386,7 @@ export function TimelineMonitor({
       }
 
       const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
-      const idx =
-        seekIdx !== -1 ? seekIdx : t >= duration ? Math.max(0, clips.length - 1) : 0;
+      const idx = seekIdx !== -1 ? seekIdx : t >= duration ? Math.max(0, clips.length - 1) : 0;
       currentClipIndexRef.current = idx;
       const seekClip = clips[idx];
 
@@ -647,7 +649,12 @@ export function TimelineMonitor({
               if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.25) {
                 activeVid.currentTime = expectedVidTime;
               }
-              if (activeVid.paused && playingRef.current && curTime < duration && !activeVid.ended) {
+              if (
+                activeVid.paused &&
+                playingRef.current &&
+                curTime < duration &&
+                !activeVid.ended
+              ) {
                 activeVid.play().catch(() => {});
               }
             }
@@ -949,14 +956,12 @@ export function TimelineMonitor({
 
       {/* Scrubber line */}
       <div className="px-3 pt-1">
-        <input
-          type="range"
+        <Slider
           min={0}
           max={Math.max(0.1, duration)}
           step={1 / 30}
-          value={Math.min(time, duration)}
-          onChange={(e) => onSeek(parseFloat(e.target.value))}
-          className="w-full h-1 bg-surface accent-primary cursor-pointer"
+          value={[Math.min(time, duration)]}
+          onValueChange={([v]) => onSeek(v)}
           aria-label="Posisi playhead"
         />
       </div>

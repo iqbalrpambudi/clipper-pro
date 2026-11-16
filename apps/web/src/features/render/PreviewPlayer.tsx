@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 
 const EMPTY_SEGMENTS: never[] = [];
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   snapToFrame,
 } from "@/lib/timeline/frameMath";
 import { WatermarkOverlay } from "../watermark/WatermarkOverlay";
+import { Slider } from "@/components/ui/slider";
 
 export function hexToRgba(hex: string, alpha: number = 1.0): string {
   const clean = hex.replace("#", "");
@@ -79,8 +80,15 @@ export function PreviewPlayer({
   const [frameWidth, setFrameWidth] = useState(320);
   const [isJassubReady, setIsJassubReady] = useState(false);
   const clips = project.timeline?.clips || [];
-  const subtitleStyle = useMemo(() => toSubtitleStyle(project.subtitle_style), [project.subtitle_style]);
-  const subtitleAss = useAssPreview(project.id, subtitleStyle, project.narration?.segments || EMPTY_SEGMENTS);
+  const subtitleStyle = useMemo(
+    () => toSubtitleStyle(project.subtitle_style),
+    [project.subtitle_style]
+  );
+  const subtitleAss = useAssPreview(
+    project.id,
+    subtitleStyle,
+    project.narration?.segments || EMPTY_SEGMENTS
+  );
   const subtitleAssRef = useRef(subtitleAss);
   subtitleAssRef.current = subtitleAss;
 
@@ -116,8 +124,6 @@ export function PreviewPlayer({
   useEffect(() => {
     currentTimeRef.current = currentTimeSec;
   }, [currentTimeSec]);
-
-
 
   // Initial & Clips-Change Setup for Video Elements
   useEffect(() => {
@@ -628,7 +634,12 @@ export function PreviewPlayer({
                 if (Math.abs(activeVid.currentTime - expectedVidTime) > 0.15) {
                   activeVid.currentTime = expectedVidTime;
                 }
-                if (activeVid.paused && !audio.paused && !activeVid.ended && curTime < durationSec) {
+                if (
+                  activeVid.paused &&
+                  !audio.paused &&
+                  !activeVid.ended &&
+                  curTime < durationSec
+                ) {
                   activeVid.play().catch(() => {});
                 }
               }
@@ -872,8 +883,7 @@ export function PreviewPlayer({
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawT = parseFloat(e.target.value);
+  const handleSeek = (rawT: number) => {
     const t = snapToFrame(rawT);
     setCurrentTimeSec(t);
     lastPublishedTimeRef.current = t;
@@ -882,8 +892,7 @@ export function PreviewPlayer({
     }
 
     const seekIdx = clips.findIndex((c) => t >= c.timeline_start && t < c.timeline_end);
-    const idx =
-      seekIdx !== -1 ? seekIdx : t >= durationSec ? Math.max(0, clips.length - 1) : 0;
+    const idx = seekIdx !== -1 ? seekIdx : t >= durationSec ? Math.max(0, clips.length - 1) : 0;
     currentClipIndexRef.current = idx;
     const seekClip = clips[idx];
 
@@ -1062,14 +1071,14 @@ export function PreviewPlayer({
         {/* Scrubber */}
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
           <span>{formatTime(currentTimeSec)}</span>
-          <input
-            type="range"
-            min="0"
+          <Slider
+            min={0}
             max={durationSec || 1}
-            step="0.0333"
-            value={currentTimeSec}
-            onChange={handleSeek}
-            className="h-1.5 flex-1 cursor-pointer rounded-lg bg-muted accent-primary"
+            step={0.0333}
+            value={[currentTimeSec]}
+            onValueChange={([v]) => handleSeek(v)}
+            aria-label="Posisi video"
+            className="flex-1"
           />
           <span>{formatTime(durationSec)}</span>
         </div>
@@ -1108,12 +1117,14 @@ export function PreviewPlayer({
                   ? "border-primary/40 bg-primary/10 text-primary font-medium"
                   : "border-border bg-background text-muted-foreground hover:text-foreground"
               }`}
-              title={isLooping ? "Loop aktif (Klik untuk matikan)" : "Loop nonaktif (Klik untuk nyalakan)"}
+              title={
+                isLooping
+                  ? "Loop aktif (Klik untuk matikan)"
+                  : "Loop nonaktif (Klik untuk nyalakan)"
+              }
             >
               <Repeat className="w-4 h-4" />
-              <span className="text-xs hidden sm:inline">
-                {isLooping ? "Loop On" : "Loop"}
-              </span>
+              <span className="text-xs hidden sm:inline">{isLooping ? "Loop On" : "Loop"}</span>
             </button>
             <button
               type="button"

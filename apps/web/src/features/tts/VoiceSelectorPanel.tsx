@@ -1,15 +1,8 @@
-import {
-  Mic,
-  Loader2,
-  RefreshCw,
-  ExternalLink,
-  Pause,
-  Play,
-  CheckCircle2,
-} from "lucide-react";
+import { Mic, Loader2, RefreshCw, ExternalLink, Pause, Play, CheckCircle2 } from "lucide-react";
 import { VoiceInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 
 interface VoiceSelectorPanelProps {
@@ -126,12 +119,12 @@ export function VoiceSelectorPanel({
               </a>
             </div>
             <div className="flex items-center gap-1.5">
-              <input
-                type="text"
+              <Input
                 value={customVoiceInput}
                 onChange={(e) => setCustomVoiceInput(e.target.value)}
                 placeholder="Contoh: pNInz6obpgDQGcFmaJgB"
-                className="flex-1 rounded-lg border border-input bg-control-background px-2.5 py-1 font-mono text-xs text-foreground focus:border-primary focus:outline-none"
+                aria-label="Voice ID ElevenLabs"
+                className="h-8 flex-1 font-mono"
               />
               <Button
                 type="button"
@@ -171,7 +164,10 @@ export function VoiceSelectorPanel({
                 <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
                 Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
               </span>
-              <Badge variant="outline" className="text-xs py-0 px-1 border-[#E9C9BD] text-[#A9472C]">
+              <Badge
+                variant="outline"
+                className="text-xs py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
+              >
                 Custom ID
               </Badge>
             </div>

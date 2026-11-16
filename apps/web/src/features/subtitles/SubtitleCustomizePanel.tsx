@@ -1,14 +1,9 @@
 import { Download } from "lucide-react";
-import { Button, Switch } from "@/components/ui";
+import { Button, Slider, Switch } from "@/components/ui";
 import { api } from "@/lib/api";
 import { SubtitleStyle } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  HIGHLIGHT_COLORS,
-  POSITION_OFFSET,
-  SUBTITLE_FONTS,
-  SUBTITLE_PRESETS,
-} from "./constants";
+import { HIGHLIGHT_COLORS, POSITION_OFFSET, SUBTITLE_FONTS, SUBTITLE_PRESETS } from "./constants";
 
 interface Props {
   projectId: string;
@@ -71,13 +66,23 @@ export function SubtitleCustomizePanel({ projectId, style, onChange }: Props) {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="xs" asChild className="h-6 gap-1 px-2 text-[11px] font-mono">
+          <Button
+            variant="ghost"
+            size="xs"
+            asChild
+            className="h-6 gap-1 px-2 text-[11px] font-mono"
+          >
             <a href={api.getSubtitleExportUrl(projectId, "ass")} download>
               <Download className="h-3 w-3 text-primary" />
               .ASS
             </a>
           </Button>
-          <Button variant="ghost" size="xs" asChild className="h-6 gap-1 px-2 text-[11px] font-mono">
+          <Button
+            variant="ghost"
+            size="xs"
+            asChild
+            className="h-6 gap-1 px-2 text-[11px] font-mono"
+          >
             <a href={api.getSubtitleExportUrl(projectId, "srt")} download>
               <Download className="h-3 w-3 text-primary" />
               .SRT
@@ -139,15 +144,15 @@ export function SubtitleCustomizePanel({ projectId, style, onChange }: Props) {
             <label htmlFor="sub-size" className="text-[11px] text-muted-foreground shrink-0">
               Ukuran
             </label>
-            <input
+            <Slider
               id="sub-size"
-              type="range"
               min={40}
               max={90}
               step={2}
-              value={style.font_size}
-              onChange={(e) => set({ font_size: Number(e.target.value) }, false)}
-              className="flex-1 accent-primary"
+              value={[style.font_size]}
+              onValueChange={([v]) => set({ font_size: v }, false)}
+              aria-label="Ukuran font subtitle"
+              className="flex-1"
             />
             <span className="w-7 text-right font-mono text-xs tabular-nums text-foreground">
               {style.font_size}

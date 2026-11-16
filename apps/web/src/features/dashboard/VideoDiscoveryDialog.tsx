@@ -30,6 +30,11 @@ import {
   DialogDescription,
   Button,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
 } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -57,10 +62,7 @@ const SOURCE_BADGE_STYLES: Record<string, string> = {
   bilibili: "bg-pink-600/90 text-white",
 };
 
-export function VideoDiscoveryDialog({
-  open,
-  onOpenChange,
-}: VideoDiscoveryDialogProps) {
+export function VideoDiscoveryDialog({ open, onOpenChange }: VideoDiscoveryDialogProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -142,8 +144,7 @@ export function VideoDiscoveryDialog({
     const targetPage = overrides?.targetPage ?? page;
     const nextExcludeAi = overrides?.nextExcludeAi ?? excludeAi;
     const nextHideImported = overrides?.nextHideImported ?? hideImported;
-    const nextExcludeUrls =
-      overrides?.excludeUrls ?? (targetPage > 1 ? seenUrlsRef.current : []);
+    const nextExcludeUrls = overrides?.excludeUrls ?? (targetPage > 1 ? seenUrlsRef.current : []);
 
     if (useCustom && !targetQuery) return;
 
@@ -297,7 +298,8 @@ export function VideoDiscoveryDialog({
                 Cari Sumber Video Multi-Platform
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
-                Eksplor video dokumenter &amp; proses (2–25 menit) dari YouTube, Dailymotion, Archive.org, dan Bilibili.
+                Eksplor video dokumenter &amp; proses (2–25 menit) dari YouTube, Dailymotion,
+                Archive.org, dan Bilibili.
               </DialogDescription>
             </div>
 
@@ -306,17 +308,21 @@ export function VideoDiscoveryDialog({
               {/* Default Resolution Selector */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/60 text-xs">
                 <span className="text-muted-foreground text-xs font-medium">Resolusi:</span>
-                <select
-                  value={defaultResolution}
-                  onChange={(e) => setDefaultResolution(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
-                  title="Default Resolusi Download untuk Semua Video"
-                >
-                  <option value="720p">720p (Cepat)</option>
-                  <option value="1080p">1080p (Full HD)</option>
-                  <option value="480p">480p (Ringan)</option>
-                  <option value="best">Auto (Maks)</option>
-                </select>
+                <Select value={defaultResolution} onValueChange={(v) => setDefaultResolution(v)}>
+                  <SelectTrigger
+                    className="h-6 w-auto px-2 py-0 font-semibold"
+                    title="Default Resolusi Download untuk Semua Video"
+                    aria-label="Resolusi download default"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent appearance="workspace">
+                    <SelectItem value="720p">720p (Cepat)</SelectItem>
+                    <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                    <SelectItem value="480p">480p (Ringan)</SelectItem>
+                    <SelectItem value="best">Auto (Maks)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Hide Already Imported Toggle (Default ON) */}
@@ -423,8 +429,17 @@ export function VideoDiscoveryDialog({
                   autoFocus
                 />
               </div>
-              <Button type="submit" size="sm" className="h-9 px-4 text-xs font-semibold gap-1.5" disabled={isSearching}>
-                {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              <Button
+                type="submit"
+                size="sm"
+                className="h-9 px-4 text-xs font-semibold gap-1.5"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Search className="h-3.5 w-3.5" />
+                )}
                 Cari
               </Button>
             </form>
@@ -489,7 +504,10 @@ export function VideoDiscoveryDialog({
           {isSearching ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="rounded-xl border border-border/60 bg-card p-3 space-y-3 animate-pulse">
+                <div
+                  key={i}
+                  className="rounded-xl border border-border/60 bg-card p-3 space-y-3 animate-pulse"
+                >
                   <div className="w-full aspect-video rounded-lg bg-muted/80" />
                   <div className="h-4 bg-muted/80 rounded w-5/6" />
                   <div className="h-3 bg-muted/60 rounded w-1/2" />
@@ -518,12 +536,20 @@ export function VideoDiscoveryDialog({
           ) : candidates.length === 0 ? (
             <div className="py-12 text-center space-y-3">
               <Globe className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
-              <p className="text-sm font-semibold text-foreground">Tidak ada video baru pada variasi ini</p>
+              <p className="text-sm font-semibold text-foreground">
+                Tidak ada video baru pada variasi ini
+              </p>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Coba muat variasi berikutnya, ganti sumber platform, atau matikan filter &ldquo;Sembunyikan Terpakai&rdquo;.
+                Coba muat variasi berikutnya, ganti sumber platform, atau matikan filter
+                &ldquo;Sembunyikan Terpakai&rdquo;.
               </p>
               <div className="flex items-center justify-center gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(page + 1)} className="text-xs gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(page + 1)}
+                  className="text-xs gap-1"
+                >
                   Muat Variasi Berikutnya
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
@@ -564,7 +590,9 @@ export function VideoDiscoveryDialog({
                       </span>
 
                       {/* Source Platform Badge */}
-                      <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-md text-[11px] font-semibold backdrop-blur-sm ${badgeClass}`}>
+                      <span
+                        className={`absolute top-2 right-2 px-2 py-0.5 rounded-md text-[11px] font-semibold backdrop-blur-sm ${badgeClass}`}
+                      >
                         {candidate.source_label}
                       </span>
 
@@ -632,27 +660,38 @@ export function VideoDiscoveryDialog({
                               disabled={isImporting}
                               onClick={() => handleImport(candidate)}
                             >
-                              {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                              {isImporting ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3.5 w-3.5" />
+                              )}
                             </Button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <select
+                            <Select
                               value={currentRes}
-                              onChange={(e) =>
+                              onValueChange={(v) =>
                                 setCardResolutions((prev) => ({
                                   ...prev,
-                                  [candidate.id]: e.target.value,
+                                  [candidate.id]: v,
                                 }))
                               }
-                              className="h-8 px-2 text-xs font-semibold rounded-md border border-border/80 bg-background text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer shrink-0"
-                              title="Pilih Resolusi Download (720p dianjurkan agar cepat)"
                             >
-                              <option value="720p">720p</option>
-                              <option value="1080p">1080p</option>
-                              <option value="480p">480p</option>
-                              <option value="best">Auto</option>
-                            </select>
+                              <SelectTrigger
+                                className="h-8 w-auto shrink-0 px-2 font-semibold"
+                                title="Pilih Resolusi Download (720p dianjurkan agar cepat)"
+                                aria-label="Resolusi download"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent appearance="workspace">
+                                <SelectItem value="720p">720p</SelectItem>
+                                <SelectItem value="1080p">1080p</SelectItem>
+                                <SelectItem value="480p">480p</SelectItem>
+                                <SelectItem value="best">Auto</SelectItem>
+                              </SelectContent>
+                            </Select>
 
                             <Button
                               size="sm"

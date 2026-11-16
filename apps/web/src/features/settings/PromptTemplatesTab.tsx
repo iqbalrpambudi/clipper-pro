@@ -4,7 +4,17 @@ import { FileText, Copy, Loader2, Trash2, Check, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { NarrationTemplate } from "@/types";
-import { Badge, Button, Input, NativeSelect, Textarea } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 // Tone is only a word put into the prompt ("nada santai"), so a short fixed list is enough.
@@ -19,7 +29,12 @@ export function PromptTemplatesTab() {
 
   const [selectedId, setSelectedId] = useState("");
   const current = templates.find((t) => t.id === selectedId) || templates[0];
-  const [form, setForm] = useState<Form>({ name: "", description: "", system_prompt: "", default_tone: "informatif" });
+  const [form, setForm] = useState<Form>({
+    name: "",
+    description: "",
+    system_prompt: "",
+    default_tone: "informatif",
+  });
 
   useEffect(() => {
     if (current) {
@@ -87,7 +102,9 @@ export function PromptTemplatesTab() {
             onClick={() => setSelectedId(tpl.id)}
             className={cn(
               "flex w-full items-center justify-between gap-2 rounded-lg border p-3 text-left text-xs transition",
-              current?.id === tpl.id ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-muted"
+              current?.id === tpl.id
+                ? "border-primary bg-primary/10"
+                : "border-border bg-background hover:bg-muted"
             )}
           >
             <span className="truncate font-semibold text-foreground">{tpl.name}</span>
@@ -108,7 +125,9 @@ export function PromptTemplatesTab() {
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="tpl-name" className="mb-1.5 block text-xs font-semibold">Nama</label>
+              <label htmlFor="tpl-name" className="mb-1.5 block text-xs font-semibold">
+                Nama
+              </label>
               <Input
                 id="tpl-name"
                 value={form.name}
@@ -117,23 +136,31 @@ export function PromptTemplatesTab() {
               />
             </div>
             <div>
-              <label htmlFor="tpl-tone" className="mb-1.5 block text-xs font-semibold">Nada</label>
-              <NativeSelect
-                id="tpl-tone"
+              <label htmlFor="tpl-tone" className="mb-1.5 block text-xs font-semibold">
+                Nada
+              </label>
+              <Select
                 value={form.default_tone}
+                onValueChange={(v) => setForm({ ...form, default_tone: v })}
                 disabled={readOnly}
-                onChange={(e) => setForm({ ...form, default_tone: e.target.value })}
               >
-                {[...new Set([...TONES, form.default_tone])].map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger id="tpl-tone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent appearance="workspace">
+                  {[...new Set([...TONES, form.default_tone])].map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div>
-            <label htmlFor="tpl-desc" className="mb-1.5 block text-xs font-semibold">Deskripsi</label>
+            <label htmlFor="tpl-desc" className="mb-1.5 block text-xs font-semibold">
+              Deskripsi
+            </label>
             <Input
               id="tpl-desc"
               value={form.description || ""}
@@ -142,7 +169,9 @@ export function PromptTemplatesTab() {
             />
           </div>
           <div>
-            <label htmlFor="tpl-style" className="mb-1.5 block text-xs font-semibold">Gaya</label>
+            <label htmlFor="tpl-style" className="mb-1.5 block text-xs font-semibold">
+              Gaya
+            </label>
             <Textarea
               id="tpl-style"
               rows={7}
@@ -152,8 +181,9 @@ export function PromptTemplatesTab() {
               className="font-mono text-xs"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Tulis 3-5 baris pendek: kalimat pertama seperti apa, isi tiap kalimat, dan kalimat terakhir. Aturan
-              format (jumlah baris, satu kalimat per potongan video) ditambahkan otomatis.
+              Tulis 3-5 baris pendek: kalimat pertama seperti apa, isi tiap kalimat, dan kalimat
+              terakhir. Aturan format (jumlah baris, satu kalimat per potongan video) ditambahkan
+              otomatis.
             </p>
           </div>
           <div className="flex justify-end gap-2">
@@ -185,7 +215,11 @@ export function PromptTemplatesTab() {
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending}
               >
-                {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                {saveMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
                 Simpan
               </Button>
             )}

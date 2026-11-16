@@ -5,7 +5,17 @@ import { ExternalLink, Link2, Loader2, Send, Youtube } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStudioStore } from "@/lib/store";
 import { StudioTabHeader } from "@/components/layout";
-import { Badge, Button, Input, NativeSelect, Textarea } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@/components/ui";
 import { SectionPanel } from "@/components/fragments/SectionPanel";
 import { Narration, Project, RenderJob, YouTubePrivacy, YouTubeUpload } from "@/types";
 import { useYouTubeAccount } from "./useYouTubeAccount";
@@ -73,7 +83,10 @@ export function PublishTab({ project }: PublishTabProps) {
         render_job_id: renderJobId || undefined,
         title: title.trim(),
         description: description.trim(),
-        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
         privacy: visibility === "scheduled" ? "private" : visibility,
         publish_at: visibility === "scheduled" ? new Date(scheduleAt).toISOString() : null,
       }),
@@ -115,7 +128,11 @@ export function PublishTab({ project }: PublishTabProps) {
                   onClick={connect}
                   disabled={isConnecting}
                 >
-                  {isConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                  {isConnecting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Link2 className="w-3.5 h-3.5" />
+                  )}
                   Hubungkan Channel
                 </Button>
               ) : (
@@ -144,30 +161,50 @@ export function PublishTab({ project }: PublishTabProps) {
                 </p>
               ) : (
                 <div>
-                  <label htmlFor="pub-render" className="block text-xs font-semibold text-muted-foreground mb-1">
+                  <label
+                    htmlFor="pub-render"
+                    className="block text-xs font-semibold text-muted-foreground mb-1"
+                  >
                     Video
                   </label>
-                  <NativeSelect id="pub-render" value={renderJobId} onChange={(e) => setRenderJobId(e.target.value)}>
-                    {finalJobs.map((j, i) => (
-                      <option key={j.id} value={j.id}>
-                        {i === 0 ? "Render terbaru" : "Render"} ·{" "}
-                        {new Date(j.completed_at ?? j.created_at).toLocaleString("id-ID")}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <Select value={renderJobId} onValueChange={(v) => setRenderJobId(v)}>
+                    <SelectTrigger id="pub-render">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent appearance="workspace">
+                      {finalJobs.map((j, i) => (
+                        <SelectItem key={j.id} value={j.id}>
+                          {i === 0 ? "Render terbaru" : "Render"} ·{" "}
+                          {new Date(j.completed_at ?? j.created_at).toLocaleString("id-ID")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               <div>
-                <label htmlFor="pub-title" className="flex justify-between text-xs font-semibold text-muted-foreground mb-1">
+                <label
+                  htmlFor="pub-title"
+                  className="flex justify-between text-xs font-semibold text-muted-foreground mb-1"
+                >
                   <span>Judul</span>
                   <span className="font-mono">{title.length}/100</span>
                 </label>
-                <Input id="pub-title" required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} />
+                <Input
+                  id="pub-title"
+                  required
+                  maxLength={100}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
 
               <div>
-                <label htmlFor="pub-desc" className="flex justify-between text-xs font-semibold text-muted-foreground mb-1">
+                <label
+                  htmlFor="pub-desc"
+                  className="flex justify-between text-xs font-semibold text-muted-foreground mb-1"
+                >
                   <span>Deskripsi</span>
                   <span className="font-mono">{description.length}/5000</span>
                 </label>
@@ -181,7 +218,10 @@ export function PublishTab({ project }: PublishTabProps) {
               </div>
 
               <div>
-                <label htmlFor="pub-tags" className="block text-xs font-semibold text-muted-foreground mb-1">
+                <label
+                  htmlFor="pub-tags"
+                  className="block text-xs font-semibold text-muted-foreground mb-1"
+                >
                   Tag (pisahkan dengan koma)
                 </label>
                 <Input
@@ -194,23 +234,30 @@ export function PublishTab({ project }: PublishTabProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="pub-visibility" className="block text-xs font-semibold text-muted-foreground mb-1">
+                  <label
+                    htmlFor="pub-visibility"
+                    className="block text-xs font-semibold text-muted-foreground mb-1"
+                  >
                     Visibilitas
                   </label>
-                  <NativeSelect
-                    id="pub-visibility"
-                    value={visibility}
-                    onChange={(e) => setVisibility(e.target.value as Visibility)}
-                  >
-                    <option value="public">Publik sekarang</option>
-                    <option value="scheduled">Jadwalkan</option>
-                    <option value="unlisted">Unlisted</option>
-                    <option value="private">Private</option>
-                  </NativeSelect>
+                  <Select value={visibility} onValueChange={(v) => setVisibility(v as Visibility)}>
+                    <SelectTrigger id="pub-visibility">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent appearance="workspace">
+                      <SelectItem value="public">Publik sekarang</SelectItem>
+                      <SelectItem value="scheduled">Jadwalkan</SelectItem>
+                      <SelectItem value="unlisted">Unlisted</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {visibility === "scheduled" && (
                   <div>
-                    <label htmlFor="pub-schedule" className="block text-xs font-semibold text-muted-foreground mb-1">
+                    <label
+                      htmlFor="pub-schedule"
+                      className="block text-xs font-semibold text-muted-foreground mb-1"
+                    >
                       Tayang pada
                     </label>
                     <Input
@@ -247,7 +294,10 @@ export function PublishTab({ project }: PublishTabProps) {
           <SectionPanel title="Riwayat publish">
             <ul className="divide-y divide-border">
               {uploads.map((u) => (
-                <li key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3">
+                <li
+                  key={u.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-foreground">{u.title}</p>
                     <p className="text-xs text-muted-foreground">
