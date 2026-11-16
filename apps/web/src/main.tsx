@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import "./styles/index.css";
 import "./styles/base.css";
 import "./styles/workspace.css";
-import "./styles/dark-compat.css";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(

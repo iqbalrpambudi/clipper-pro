@@ -218,3 +218,9 @@ input[type="range"] {
 .dark input[type="range"] {
   accent-color: #d97757;
 }
+
+.dark select,
+.dark option {
+  background-color: hsl(var(--control-background));
+  color: hsl(var(--foreground));
+}

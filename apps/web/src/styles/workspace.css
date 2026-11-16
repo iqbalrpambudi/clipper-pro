@@ -129,7 +129,7 @@
   min-width: 0;
   width: min(100%, 1480px);
   margin: 0 auto;
-  padding: 36px clamp(24px, 5vw, 76px) 60px;
+  padding: 28px clamp(20px, 4vw, 56px) 48px;
 }
 
 .workspace-page-eyebrow {
@@ -183,7 +183,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 38px;
+  margin-bottom: 24px;
 }
 
 .workspace-dashboard-intro .workspace-page-title {
@@ -208,7 +208,7 @@
 }
 
 .workspace-featured-section {
-  margin-bottom: 42px;
+  margin-bottom: 28px;
 }
 
 .workspace-section-heading {
@@ -789,13 +789,8 @@
   min-height: 220px;
 }
 
-.workspace-settings {
-  width: min(100%, 980px);
-  margin: 0 auto;
-}
-
 .workspace-settings-intro {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .workspace-settings-tabs {
@@ -847,7 +842,7 @@
 }
 
 .workspace-settings-panel {
-  padding-top: 22px;
+  padding-top: 16px;
 }
 
 @media (max-width: 760px) {
