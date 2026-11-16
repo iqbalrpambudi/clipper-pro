@@ -10,6 +10,7 @@ from app.core.db import Base, get_db
 from app.main import app
 from app.models.project import SourceVideo
 from app.services import hardsub as hs
+from app.services.media_probe import probe
 
 
 def test_band_needs_two_frames_and_is_padded():
@@ -32,11 +33,8 @@ def test_treatment_crops_low_band_and_blurs_high_band():
 
 
 def _probe_wh(path):
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
-         "-of", "json", str(path)], capture_output=True, text=True, check=True).stdout
-    s = json.loads(out)["streams"][0]
-    return s["width"], s["height"]
+    info = probe(path)
+    return info["width"], info["height"]
 
 
 @pytest.mark.parametrize("band, expected_h", [

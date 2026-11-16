@@ -3,24 +3,13 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.services.media_probe import probe
+
 
 async def get_audio_duration(file_path: str) -> float:
-    """Accurately probe audio duration in seconds using ffprobe."""
-    cmd = [
-        "ffprobe",
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        file_path,
-    ]
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, _ = await proc.communicate()
+    """Accurately probe audio duration in seconds."""
     try:
-        return round(float(stdout.decode().strip()), 3)
+        return round((await asyncio.to_thread(probe, file_path))["duration"], 3)
     except Exception:
         return 0.0
 
@@ -248,22 +237,14 @@ async def _generate_silence_mp3(
     ch_layout = "mono"
 
     if reference_mp3_path and Path(reference_mp3_path).exists():
-        probe_proc = await asyncio.create_subprocess_exec(
-            "ffprobe",
-            "-v", "error",
-            "-select_streams", "a:0",
-            "-show_entries", "stream=sample_rate,channels",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            reference_mp3_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await probe_proc.communicate()
-        lines = [ln.strip() for ln in stdout.decode(errors="ignore").splitlines() if ln.strip()]
-        if len(lines) >= 1 and lines[0].isdigit():
-            sample_rate = int(lines[0])
-        if len(lines) >= 2 and lines[1].isdigit():
-            ch_layout = "stereo" if int(lines[1]) >= 2 else "mono"
+        try:
+            info = await asyncio.to_thread(probe, reference_mp3_path)
+            if info["sample_rate"]:
+                sample_rate = info["sample_rate"]
+            if info["channels"]:
+                ch_layout = "stereo" if info["channels"] >= 2 else "mono"
+        except Exception:
+            pass  # keep the 24k mono defaults, as before when ffprobe failed
 
     proc = await asyncio.create_subprocess_exec(
         "ffmpeg",

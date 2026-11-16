@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import re
@@ -11,6 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import cv2
 from scenedetect import AdaptiveDetector, ContentDetector
 
+from app.services.media_probe import probe
+
 log = logging.getLogger(__name__)
 
 # Executor dedicated untuk deteksi scene agar tidak kelaparan thread asyncio lain
@@ -18,54 +19,17 @@ _DETECT_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 
 async def get_video_metadata(video_path: str) -> Dict[str, Any]:
-    """Inspect video file width, height, duration, and fps using ffprobe."""
-    cmd = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=width,height,r_frame_rate,duration:format=duration",
-        "-of",
-        "json",
-        video_path,
-    ]
-
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"Gagal membaca metadata video: {stderr.decode()}")
-
-    data = json.loads(stdout.decode())
-    streams = data.get("streams") or [{}]
-    stream = streams[0] if streams else {}
-    fmt = data.get("format", {})
-
-    width = int(stream.get("width", 1920))
-    height = int(stream.get("height", 1080))
-
-    duration_str = stream.get("duration") or fmt.get("duration") or "0"
-    duration = float(duration_str)
-
-    # Frame rate e.g. "30/1" or "29.97"
-    fps_str = stream.get("r_frame_rate", "30/1")
-    if "/" in fps_str:
-        num, den = fps_str.split("/")
-        fps = round(float(num) / float(den), 2) if float(den) > 0 else 30.0
-    else:
-        fps = float(fps_str)
+    """Inspect video file width, height, duration, and fps."""
+    try:
+        info = await asyncio.to_thread(probe, video_path)
+    except Exception as e:
+        raise RuntimeError(f"Gagal membaca metadata video: {e}")
 
     return {
-        "width": width,
-        "height": height,
-        "duration": duration,
-        "fps": fps,
+        "width": info["width"] or 1920,
+        "height": info["height"] or 1080,
+        "duration": info["duration"],
+        "fps": round(info["fps"], 2) or 30.0,
     }
 
 
@@ -154,14 +118,7 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
 
     # fps video untuk snap frame
     try:
-        probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", video_path],
-            capture_output=True, timeout=30,
-        )
-        rate = probe.stdout.decode().strip()
-        num, den = (rate.split("/") + ["1"])[:2]
-        fps = float(num) / float(den) if float(den) else 30.0
+        fps = probe(video_path)["fps"] or 30.0
     except Exception:
         fps = 30.0
     if fps <= 0:

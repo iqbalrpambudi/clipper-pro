@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from app.core.frame_math import frame_to_sec, sec_to_frame, snap_to_frame
+from app.services.bgm import pick_track
 from app.services.cancellation import (
     TaskCancelledException,
     is_cancelled,
     register_process,
     unregister_process,
 )
-from app.services.bgm import pick_track
 from app.services.hardsub import ffmpeg_chain
+from app.services.media_probe import probe
 from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -181,24 +182,10 @@ async def run_ffmpeg_with_timeout(cmd: List[str], timeout_seconds: float = 30.0)
 
 
 async def _probe_has_audio(file_path: str) -> bool:
-    """Check via ffprobe whether the media file contains at least one audio stream."""
+    """Check whether the media file contains at least one audio stream."""
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffprobe",
-            "-v",
-            "error",
-            "-select_streams",
-            "a:0",
-            "-show_entries",
-            "stream=codec_type",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(file_path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8.0)
-        return b"audio" in (stdout or b"").lower()
+        info = await asyncio.wait_for(asyncio.to_thread(probe, file_path), timeout=8.0)
+        return info["has_audio"]
     except Exception:
         return False
 
