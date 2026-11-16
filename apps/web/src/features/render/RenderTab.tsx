@@ -243,7 +243,7 @@ export function RenderTab({ project }: RenderTabProps) {
         description="Cek pratinjau, klik render, lalu download video final."
       />
 
-      <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6">
+      <div className="mx-auto w-full max-w-[1920px] px-4 py-5 sm:px-6">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
           {/* Left: Clean Live Preview */}
           <div className="flex flex-col items-center lg:sticky lg:top-4 lg:col-span-5">
@@ -278,7 +278,7 @@ export function RenderTab({ project }: RenderTabProps) {
           {/* Right: 1) Render Now, 2) Quick Toggles, 3) Outputs */}
           <div className="space-y-5 lg:col-span-7">
             {/* Primary Action Bar */}
-            <div className="rounded-2xl border border-surface-border bg-card p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">

@@ -113,7 +113,7 @@ export function WatermarkCustomizePanel({
   return (
     <div className="space-y-5 text-foreground text-xs">
       {/* Header & Main Toggle */}
-      <div className="bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7] shadow-sm space-y-3">
+      <div className="bg-card rounded-xl p-4 border border-border shadow-sm space-y-3">
         <div className="flex items-center justify-between gap-3">
           <label
             htmlFor="watermark-enable-check"
@@ -130,7 +130,7 @@ export function WatermarkCustomizePanel({
               }}
             />
             <div>
-              <span className="block text-xs font-semibold text-[#26251F]">
+              <span className="block text-xs font-semibold text-foreground">
                 Gunakan Watermark pada Video
               </span>
               <span className="text-xs text-muted-foreground block">
@@ -144,7 +144,7 @@ export function WatermarkCustomizePanel({
           <div className="flex items-center gap-2 shrink-0">
             {saveMutation.isPending && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
-                <Loader2 className="w-3 h-3 animate-spin text-[#C45B3A]" />
+                <Loader2 className="w-3 h-3 animate-spin text-primary" />
                 <span className="hidden sm:inline">Menyimpan...</span>
               </span>
             )}
@@ -152,8 +152,8 @@ export function WatermarkCustomizePanel({
               variant={watermark.enabled ? "default" : "secondary"}
               className={`text-xs font-mono px-2 py-0.5 shrink-0 ${
                 watermark.enabled
-                  ? "bg-[#F8EEEA] text-[#A9472C] border border-[#C45B3A]/40"
-                  : "bg-[#F1EEE6] text-[#77766D] border border-[#E5E1D7]"
+                  ? "bg-accent text-accent-foreground border border-primary/40"
+                  : "bg-muted text-muted-foreground border border-border"
               }`}
             >
               {watermark.enabled ? "AKTIF" : "NONAKTIF"}
@@ -172,7 +172,7 @@ export function WatermarkCustomizePanel({
                 key={p.name}
                 type="button"
                 onClick={() => applyPreset(p)}
-                className="p-2 rounded-lg bg-[#F3F0E8] hover:bg-[#EAE6DD] border border-[#E5E1D7] hover:border-primary/40 text-left transition flex flex-col justify-between group"
+                className="p-2 rounded-lg bg-background hover:bg-muted border border-border hover:border-primary/40 text-left transition flex flex-col justify-between group"
               >
                 <div className="font-semibold text-xs text-foreground group-hover:text-primary transition truncate">
                   {p.name}
@@ -185,7 +185,7 @@ export function WatermarkCustomizePanel({
       </div>
 
       {/* Text Watermark Configuration */}
-      <div className="space-y-4 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
+      <div className="space-y-4 bg-card rounded-xl p-4 border border-border">
         <div className="flex items-center justify-between">
           <label className="font-semibold text-foreground flex items-center gap-1.5">
             <Type className="w-3.5 h-3.5 text-primary" />
@@ -195,7 +195,7 @@ export function WatermarkCustomizePanel({
             <button
               type="button"
               onClick={() => addPrefix("@")}
-              className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+              className="px-2 py-0.5 rounded bg-muted hover:bg-input text-xs text-muted-foreground hover:text-foreground border border-input transition"
               title="Tambah prefix @"
             >
               @
@@ -203,7 +203,7 @@ export function WatermarkCustomizePanel({
             <button
               type="button"
               onClick={() => addPrefix("© ")}
-              className="px-2 py-0.5 rounded bg-[#EAE6DD] hover:bg-[#D2CDBF] text-xs text-muted-foreground hover:text-foreground border border-[#D2CDBF] transition"
+              className="px-2 py-0.5 rounded bg-muted hover:bg-input text-xs text-muted-foreground hover:text-foreground border border-input transition"
               title="Tambah simbol ©"
             >
               ©
@@ -219,7 +219,7 @@ export function WatermarkCustomizePanel({
         />
 
         {/* Live Typography Preview Card */}
-        <div className="p-3 rounded-lg bg-[#F1EEE6] border border-[#E5E1D7] flex items-center justify-center min-h-[50px] overflow-hidden">
+        <div className="p-3 rounded-lg bg-muted border border-border flex items-center justify-center min-h-[50px] overflow-hidden">
           <span
             style={{
               fontFamily: `"${watermark.font_family}", sans-serif`,
@@ -257,7 +257,7 @@ export function WatermarkCustomizePanel({
                   className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
                     isSelected
                       ? "bg-primary/10 border-primary text-primary"
-                      : "bg-[#F3F0E8] border-[#E5E1D7] hover:border-[#D2CDBF] text-muted-foreground hover:text-foreground"
+                      : "bg-background border-border hover:border-input text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <span
@@ -336,7 +336,7 @@ export function WatermarkCustomizePanel({
                 className={`w-6 h-6 rounded-full border transition flex items-center justify-center ${
                   watermark.font_color.toLowerCase() === sw.color.toLowerCase()
                     ? "border-primary ring-2 ring-primary/40 scale-110"
-                    : "border-[#D2CDBF] hover:scale-105"
+                    : "border-input hover:scale-105"
                 }`}
                 title={sw.name}
               >
@@ -354,7 +354,7 @@ export function WatermarkCustomizePanel({
       </div>
 
       {/* Shared Position Controls (9-Grid) */}
-      <div className="space-y-3 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
+      <div className="space-y-3 bg-card rounded-xl p-4 border border-border">
         <label className="font-semibold text-foreground flex items-center gap-1.5">
           <Move className="w-3.5 h-3.5 text-primary" />
           Posisi Layar Video
@@ -364,7 +364,7 @@ export function WatermarkCustomizePanel({
         </p>
 
         {/* Interactive 3x3 Grid Visualizer */}
-        <div className="bg-[#F1EEE6] p-3 rounded-lg border border-[#E5E1D7] flex justify-center">
+        <div className="bg-muted p-3 rounded-lg border border-border flex justify-center">
           <div className="grid grid-cols-3 gap-2 w-full max-w-[280px]">
             {POSITION_GRID.map((pos) => {
               const isSelected = watermark.position === pos.id;
@@ -376,7 +376,7 @@ export function WatermarkCustomizePanel({
                   className={`h-11 rounded-lg border text-center transition flex flex-col items-center justify-center gap-1 ${
                     isSelected
                       ? "bg-primary/20 border-primary text-primary font-bold shadow-sm shadow-primary/20"
-                      : "bg-[#FBFAF7] border-[#E5E1D7] hover:border-[#D2CDBF] text-muted-foreground hover:text-foreground"
+                      : "bg-card border-border hover:border-input text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <div className={`w-3 h-3 rounded-sm border border-current flex ${pos.iconCoord}`}>
@@ -396,7 +396,7 @@ export function WatermarkCustomizePanel({
           className={`w-full p-2.5 rounded-lg border text-left transition flex items-center justify-between group ${
             watermark.position === "custom"
               ? "bg-primary/15 border-primary text-primary shadow-sm"
-              : "bg-[#F3F0E8] border-[#E5E1D7] hover:border-[#D2CDBF] text-muted-foreground hover:text-foreground"
+              : "bg-background border-border hover:border-input text-muted-foreground hover:text-foreground"
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -404,7 +404,7 @@ export function WatermarkCustomizePanel({
               className={`w-7 h-7 rounded-md flex items-center justify-center transition ${
                 watermark.position === "custom"
                   ? "bg-primary text-primary-foreground font-bold"
-                  : "bg-[#EAE6DD] text-muted-foreground group-hover:text-foreground"
+                  : "bg-muted text-muted-foreground group-hover:text-foreground"
               }`}
             >
               <Move className="w-3.5 h-3.5" />
@@ -432,14 +432,14 @@ export function WatermarkCustomizePanel({
       </div>
 
       {/* Style Enhancements (Shadow & Background Badge) */}
-      <div className="space-y-3 bg-[#FBFAF7] rounded-xl p-4 border border-[#E5E1D7]">
+      <div className="space-y-3 bg-card rounded-xl p-4 border border-border">
         <label className="font-semibold text-foreground flex items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-primary" />
           Efek & Visual Kontras
         </label>
 
         {/* Shadow & Outline Toggle */}
-        <label className="flex items-center justify-between p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] cursor-pointer hover:border-[#DCD6C8] transition">
+        <label className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border cursor-pointer hover:border-input transition">
           <div>
             <div className="font-semibold text-xs text-foreground">
               Bayangan Kontras (Drop Shadow)
@@ -455,7 +455,7 @@ export function WatermarkCustomizePanel({
         </label>
 
         {/* Background Box Badge Toggle */}
-        <div className="p-2.5 rounded-lg bg-[#F3F0E8] border border-[#E5E1D7] space-y-2.5">
+        <div className="p-2.5 rounded-lg bg-background border border-border space-y-2.5">
           <label className="flex items-center justify-between cursor-pointer">
             <div>
               <div className="font-semibold text-xs text-foreground">
@@ -474,7 +474,7 @@ export function WatermarkCustomizePanel({
           </label>
 
           {watermark.has_background && (
-            <div className="pt-2 border-t border-[#E5E1D7] grid grid-cols-2 gap-3">
+            <div className="pt-2 border-t border-border grid grid-cols-2 gap-3">
               <div>
                 <span className="text-xs text-muted-foreground block mb-1">Warna Badge</span>
                 <div className="flex items-center gap-2">

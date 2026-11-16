@@ -89,7 +89,7 @@ export function PromptTemplatesTab() {
   const readOnly = !!current?.is_builtin;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div className="grid grid-cols-1 gap-6 rounded-xl border border-border bg-card p-5 shadow-xs lg:grid-cols-12">
       <div className="space-y-2 lg:col-span-4">
         <div className="mb-3 flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />

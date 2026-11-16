@@ -4,22 +4,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50 select-none",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50 select-none",
   {
     variants: {
       variant: {
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 font-semibold active:scale-[0.98] transition-transform",
         "workspace-primary":
-          "rounded-xl border border-[#C45B3A] dark:border-primary bg-[#C45B3A] dark:bg-primary font-semibold text-[#FFFAF6] shadow-xs hover:border-[#A9472C] dark:hover:border-primary/90 hover:bg-[#A9472C] dark:hover:bg-primary/90 active:scale-[0.98]",
+          "rounded-xl border border-primary bg-primary font-semibold text-primary-foreground shadow-xs hover:border-primary dark:hover:border-primary/90 hover:bg-primary/90 active:scale-[0.98]",
         "workspace-secondary":
-          "rounded-xl border border-[#E5E1D7] dark:border-border bg-[#FBFAF7] dark:bg-card font-semibold text-[#4D4A42] dark:text-foreground shadow-xs hover:bg-[#F1EEE6] dark:hover:bg-muted active:scale-[0.98]",
+          "rounded-xl border border-border bg-card font-semibold text-secondary-foreground dark:text-foreground shadow-xs hover:bg-muted active:scale-[0.98]",
         "workspace-outline":
-          "rounded-xl border border-[#D2CDBF] dark:border-border bg-transparent font-semibold text-[#4D4A42] dark:text-foreground hover:bg-[#F1EEE6] dark:hover:bg-muted active:scale-[0.98]",
+          "rounded-xl border border-input dark:border-border bg-transparent font-semibold text-secondary-foreground dark:text-foreground hover:bg-muted active:scale-[0.98]",
         "workspace-quiet":
-          "rounded-lg font-semibold text-[#5E5C54] dark:text-muted-foreground hover:bg-[#F1EEE6] dark:hover:bg-muted hover:text-[#26251F] dark:hover:text-foreground",
+          "rounded-lg font-semibold text-secondary-foreground dark:text-muted-foreground hover:bg-muted hover:text-foreground",
         "workspace-destructive":
-          "rounded-lg border border-[#E9C9BD] dark:border-destructive/30 bg-[#F8EEEA] dark:bg-destructive/15 font-semibold text-[#A9472C] dark:text-rose-400 hover:bg-[#F3E1D9] dark:hover:bg-destructive/25",
+          "rounded-lg border border-primary/30 dark:border-destructive/30 bg-accent dark:bg-destructive/15 font-semibold text-accent-foreground dark:text-rose-400 hover:bg-primary/15 dark:hover:bg-destructive/25",
         destructive:
           "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 font-semibold active:scale-[0.98] transition-transform",
         outline:

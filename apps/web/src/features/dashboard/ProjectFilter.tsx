@@ -131,7 +131,7 @@ export function ProjectFilter({
           <button
             type="button"
             onClick={onResetFilters}
-            className="flex items-center gap-1.5 text-xs font-medium text-[#A9472C] transition hover:underline"
+            className="flex items-center gap-1.5 text-xs font-medium text-accent-foreground transition hover:underline"
           >
             <RotateCcw className="w-3 h-3" />
             <span>Reset Filter</span>

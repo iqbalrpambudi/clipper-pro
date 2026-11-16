@@ -112,7 +112,7 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
       onClick={() => setIsYTOpen(true)}
       className="gap-1.5"
     >
-      <Youtube className="h-4 w-4 text-[#A9472C]" />
+      <Youtube className="h-4 w-4 text-accent-foreground" />
       <span>Impor dari URL</span>
     </Button>
   );

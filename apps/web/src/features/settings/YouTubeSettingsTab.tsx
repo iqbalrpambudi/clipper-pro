@@ -56,11 +56,11 @@ export function YouTubeSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Section 1: OAuth client */}
       <form
         onSubmit={handleSave}
-        className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs"
+        className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ export function YouTubeSettingsTab() {
       </form>
 
       {/* Section 2: channel connection */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center gap-2">
           <Youtube className="w-4 h-4 text-brand-400" />
           <h3 className="text-sm font-bold text-foreground">2. Channel YouTube</h3>

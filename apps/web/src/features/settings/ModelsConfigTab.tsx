@@ -174,9 +174,9 @@ export function ModelsConfigTab() {
   };
 
   return (
-    <form onSubmit={handleSaveModel} className="space-y-6">
+    <form onSubmit={handleSaveModel} className="space-y-4">
       {/* Section 1: LLM & Vision Config */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-brand-400" />
@@ -401,7 +401,7 @@ export function ModelsConfigTab() {
       </div>
 
       {/* Section 2: TTS API Keys */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center gap-2">
           <Volume2 className="w-4 h-4 text-emerald-600" />
           <h3 className="text-sm font-bold text-foreground">2. API Key Text-to-Speech</h3>

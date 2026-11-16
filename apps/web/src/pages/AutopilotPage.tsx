@@ -212,7 +212,7 @@ export function AutopilotPage() {
 
   return (
     <WorkspaceShell activePage="autopilot">
-      <div className="workspace-settings">
+      <div className="workspace-settings space-y-4">
         <header className="workspace-settings-intro">
           <p className="workspace-page-eyebrow">Channel otomatis</p>
           <h1 className="workspace-page-title">Autopilot YouTube Shorts</h1>
@@ -238,7 +238,7 @@ export function AutopilotPage() {
         )}
 
         {/* Power + live status */}
-        <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-xs">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-4">
             <Switch
               id="autopilot-enabled"
@@ -315,7 +315,7 @@ export function AutopilotPage() {
           ) : (
             <ol className="divide-y divide-border">
               {pool.map((r) => (
-                <li key={r.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li key={r.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-foreground">
                       {r.title || r.topic || "Mencari ide..."}
@@ -368,7 +368,7 @@ export function AutopilotPage() {
         </SectionPanel>
 
         {/* Config */}
-        <form onSubmit={handleSave} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-xs">
+        <form onSubmit={handleSave} className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-xs">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <p className="mb-2 text-xs font-semibold text-muted-foreground">Jam posting ({offsetLabel(offset)})</p>
@@ -548,7 +548,7 @@ export function AutopilotPage() {
           ) : (
             <ul className="divide-y divide-border">
               {history.map((r) => (
-                <li key={r.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li key={r.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-foreground">{r.title || r.topic || "-"}</p>
                     <p className="text-xs text-muted-foreground">

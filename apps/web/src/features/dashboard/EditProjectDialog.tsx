@@ -42,7 +42,7 @@ export function EditProjectDialog({
       <DialogContent className="workspace-dialog max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-[#C45B3A]" />
+            <Edit3 className="w-5 h-5 text-primary" />
             <DialogTitle>Edit Nama Project</DialogTitle>
           </div>
           <DialogDescription>
@@ -86,8 +86,8 @@ export function EditProjectDialog({
                 onClick={() => setLanguage("id")}
                 className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
                   language === "id"
-                    ? "border-[#E9C9BD] bg-[#F8EEEA] text-[#A9472C] shadow-xs font-semibold"
-                    : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
+                    ? "border-primary/30 bg-accent text-accent-foreground shadow-xs font-semibold"
+                    : "border-border bg-card text-muted-foreground hover:border-input"
                 }`}
               >
                 <span className="text-base">🇮🇩</span>
@@ -98,8 +98,8 @@ export function EditProjectDialog({
                 onClick={() => setLanguage("en")}
                 className={`flex h-9 items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
                   language === "en"
-                    ? "border-[#CFDDE9] bg-[#EAF0F5] text-[#41627F] shadow-xs font-semibold"
-                    : "border-border bg-card text-muted-foreground hover:border-[#C9BCAF]"
+                    ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400 shadow-xs font-semibold"
+                    : "border-border bg-card text-muted-foreground hover:border-input"
                 }`}
               >
                 <span className="text-base">🇬🇧</span>

@@ -110,7 +110,7 @@ export function PublishTab({ project }: PublishTabProps) {
         description="Upload video final langsung ke channel YouTube, sekarang atau terjadwal."
       />
 
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-5 sm:px-6 space-y-6">
+      <div className="mx-auto grid w-full max-w-[1920px] items-start gap-6 px-4 py-5 sm:px-6 lg:grid-cols-2">
         {accountLoading ? null : !account?.connected ? (
           <SectionPanel
             icon={<Youtube className="w-4 h-4 text-brand-400" />}
@@ -154,7 +154,7 @@ export function PublishTab({ project }: PublishTabProps) {
               </Badge>
             }
           >
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {finalJobs.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Belum ada render final yang selesai. Render dulu di tab Render & Export.
@@ -296,7 +296,7 @@ export function PublishTab({ project }: PublishTabProps) {
               {uploads.map((u) => (
                 <li
                   key={u.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-foreground">{u.title}</p>

@@ -94,8 +94,8 @@ export function WordAlignmentBreakdown({
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-[#456A4E]" />
-                <span className="font-semibold text-[#456A4E]">Tersalin!</span>
+                <Check className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">Tersalin!</span>
               </>
             ) : (
               <>

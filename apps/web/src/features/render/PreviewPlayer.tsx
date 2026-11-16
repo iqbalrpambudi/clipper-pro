@@ -1047,10 +1047,10 @@ export function PreviewPlayer({
 
         {/* Top Watermark Overlay */}
         <div className="absolute top-4 left-4 z-30 flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-sm text-xs text-white/90 font-mono shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-[#F8EEEA] animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           <span>{project.aspect_ratio || "9:16"} LIVE PREVIEW</span>
           <span className="text-white/30">•</span>
-          <span className="text-[#8A6A2F] font-semibold uppercase">
+          <span className="text-amber-700 dark:text-amber-400 font-semibold uppercase">
             {project.background_fill?.mode === "cover"
               ? "Cover 9:16"
               : project.background_fill?.zoom && project.background_fill.zoom > 1.05

@@ -281,12 +281,12 @@ export function ProjectDefaultsTab() {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <form onSubmit={handleSave} className="space-y-4">
       <input
         ref={fileInputRef}
         type="file"
         accept=".json,application/json"
-        className="hidden"
+        hidden
         onChange={(e) => {
           handleImportFile(e.target.files?.[0] ?? null);
           e.target.value = "";
@@ -405,7 +405,7 @@ export function ProjectDefaultsTab() {
       </div>
 
       {/* Section 1: Subtitle Config */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Palette className="h-4 w-4 text-primary" />
@@ -625,7 +625,7 @@ export function ProjectDefaultsTab() {
       </div>
 
       {/* Section 2: Watermark Config */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Stamp className="h-4 w-4 text-primary" />
@@ -973,7 +973,7 @@ export function ProjectDefaultsTab() {
       </div>
 
       {/* Section 3: TTS Config */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-xs">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-xs">
         <div className="flex items-center gap-2">
           <Mic className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-bold text-foreground">3. TTS Config (Suara Narasi)</h3>

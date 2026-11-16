@@ -137,7 +137,7 @@ export const TimelineMediaPool = memo(function TimelineMediaPool({
                       {sc.duration.toFixed(1)}s
                     </span>
                     {used && (
-                      <span className="absolute top-1 right-1 px-1 rounded bg-primary/20 border border-primary/40 text-xs font-bold text-primary flex items-center gap-0.5">
+                      <span className="absolute top-1 right-1 px-1 rounded bg-primary text-xs font-bold text-primary-foreground shadow-sm flex items-center gap-0.5">
                         <Check className="w-2.5 h-2.5" />
                         {used.length > 1 ? `${used.length}×` : `#${used[0]}`}
                       </span>

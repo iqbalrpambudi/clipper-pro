@@ -205,7 +205,7 @@ export function RenderHistoryList({
                         {job.status === "rendering" && (
                           <Badge
                             variant="outline"
-                            className="gap-1 border-[#E8D9BC] text-[11px] font-semibold tabular-nums text-[#8A6A2F]"
+                            className="gap-1 border-amber-500/30 text-[11px] font-semibold tabular-nums text-amber-700 dark:text-amber-400"
                           >
                             <Loader2 className="h-3 w-3 animate-spin" /> {currentProgress}%
                           </Badge>

@@ -70,7 +70,7 @@ export function ImportUrlDialog({ project, open, onOpenChange }: ImportUrlDialog
       <DialogContent appearance="workspace" className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Youtube className="h-5 w-5 text-[#A9472C]" />
+            <Youtube className="h-5 w-5 text-accent-foreground" />
             Impor Video dari URL
           </DialogTitle>
           <DialogDescription>

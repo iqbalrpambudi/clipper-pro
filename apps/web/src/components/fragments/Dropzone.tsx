@@ -52,8 +52,8 @@ export function Dropzone({
       className={cn(
         "relative group cursor-pointer border border-dashed rounded-xl p-4 text-center transition-all duration-200 select-none",
         isDragging
-          ? "border-[#C45B3A] bg-[#F8EEEA]"
-          : "border-[#D2CDBF] bg-[#FFFEFA] hover:border-[#C45B3A] hover:bg-[#F8EEEA]",
+          ? "border-primary bg-accent"
+          : "border-input bg-card hover:border-primary hover:bg-accent",
         className
       )}
     >
@@ -67,27 +67,27 @@ export function Dropzone({
       />
 
       <div className="flex items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-[#F8EEEA] border border-[#E9C9BD] flex items-center justify-center text-[#C45B3A] shrink-0 group-hover:scale-105 transition-transform">
+        <div className="w-8 h-8 rounded-lg bg-accent border border-primary/30 flex items-center justify-center text-primary shrink-0 group-hover:scale-105 transition-transform">
           <UploadCloud className="w-4 h-4" />
         </div>
         <div className="text-left">
           <p className="text-xs font-medium text-foreground">
             {label}{" "}
-            <span className="text-[#A9472C] group-hover:underline font-semibold">pilih file</span>
+            <span className="text-accent-foreground group-hover:underline font-semibold">pilih file</span>
           </p>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
 
       {isUploading && (
-        <div className="w-full mt-3 bg-[#E5E1D7] rounded-full h-1 overflow-hidden">
+        <div className="w-full mt-3 bg-border rounded-full h-1 overflow-hidden">
           {uploadProgress !== undefined ? (
             <div
-              className="bg-[#C45B3A] h-full rounded-full transition-all duration-300"
+              className="bg-primary h-full rounded-full transition-all duration-300"
               style={{ width: `${Math.max(5, uploadProgress)}%` }}
             />
           ) : (
-            <div className="w-1/3 bg-[#C45B3A] h-full rounded-full animate-progress-indeterminate" />
+            <div className="w-1/3 bg-primary h-full rounded-full animate-progress-indeterminate" />
           )}
         </div>
       )}

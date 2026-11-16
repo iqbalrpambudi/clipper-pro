@@ -101,7 +101,7 @@ export function VoiceSelectorPanel({
           </div>
 
           {syncError && (
-            <div className="p-2 rounded-lg bg-[#F7EFE0] border border-[#E8D9BC] text-xs text-[#8A6A2F]">
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
               {syncError}
             </div>
           )}
@@ -113,7 +113,7 @@ export function VoiceSelectorPanel({
                 href="https://elevenlabs.io/voice-library"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#C45B3A] hover:underline flex items-center gap-0.5"
+                className="text-primary hover:underline flex items-center gap-0.5"
               >
                 Voice Library <ExternalLink className="w-2.5 h-2.5" />
               </a>
@@ -159,14 +159,14 @@ export function VoiceSelectorPanel({
           </div>
 
           {isCustomVoice && (
-            <div className="p-2 rounded-lg border border-[#E9C9BD] bg-[#F8EEEA] flex items-center justify-between gap-2 text-xs">
+            <div className="p-2 rounded-lg border border-primary/30 bg-accent flex items-center justify-between gap-2 text-xs">
               <span className="flex items-center gap-1.5 min-w-0 truncate">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#C45B3A] shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
                 Voice ID Aktif: <span className="font-mono">{selectedVoice}</span>
               </span>
               <Badge
                 variant="outline"
-                className="text-xs py-0 px-1 border-[#E9C9BD] text-[#A9472C]"
+                className="text-xs py-0 px-1 border-primary/30 text-accent-foreground"
               >
                 Custom ID
               </Badge>
