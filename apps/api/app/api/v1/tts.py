@@ -27,11 +27,17 @@ from app.schemas.tts import (
     VoiceInfo,
 )
 from app.services.alignment import align_audio_with_text
+from app.services.bgm import available_moods
 from app.services.project_defaults import load_project_defaults
 from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.workers.tasks import generate_tts_and_align_job
 
 router = APIRouter(tags=["tts"])
+
+
+@router.get("/tts/bgm/moods", response_model=List[str])
+async def list_bgm_moods():
+    return available_moods()
 
 
 @router.get("/tts/voices", response_model=List[VoiceInfo])

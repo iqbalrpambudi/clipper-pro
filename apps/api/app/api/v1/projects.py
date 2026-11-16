@@ -19,6 +19,7 @@ from app.schemas.project import (
     SceneResponse,
     SourceVideoResponse,
 )
+from app.services.bgm import pick_track, track_credit
 from app.services.project_defaults import (
     build_project_config_snapshot,
     export_project_defaults_json,
@@ -148,6 +149,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         characters=proj.characters or [],
         locations=proj.locations or [],
         world_setting=proj.world_setting or {},
+        bgm_credit=track_credit(pick_track(bg_fill.get("bgm_mood"), proj.id)),
     )
 
     # Map file urls

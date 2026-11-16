@@ -27,6 +27,7 @@ from app.models.autopilot import AutopilotConfig, AutopilotRun
 from app.models.project import SourceVideo
 from app.models.youtube import YouTubeUpload
 from app.services.ai_adapters.factory import get_active_llm_adapter
+from app.services.bgm import available_moods, pick_track, track_credit
 from app.services.discovery import get_preset_categories
 
 log = logging.getLogger("cliper-autopilot")
@@ -161,6 +162,7 @@ async def _llm_json(prompt: str) -> dict:
 
 async def _generate_idea(cfg: AutopilotConfig, category: str, recent_topics: List[str]) -> dict:
     preset = next((p for p in get_preset_categories() if p.id == category), None)
+    moods = available_moods()
     data = await _llm_json(f"""Kamu kurator ide untuk channel YouTube Shorts.
 Niche channel: {cfg.niche}
 Kategori video kali ini: {preset.title if preset else category} ({preset.description if preset else ""})
@@ -171,19 +173,23 @@ Topik yang SUDAH dipakai (jangan diulang, cari sudut lain):
 Berikan SATU ide fakta unik yang benar dan memancing rasa penasaran, yang footage-nya mudah dicari.
 Balas JSON saja:
 {{"topic": "sudut cerita dalam Bahasa Indonesia, maks 100 karakter",
-  "query": "kata kunci footage bahasa Inggris, spesifik, akhiri dengan 'process no talking'"}}""")
+  "query": "kata kunci footage bahasa Inggris, spesifik, akhiri dengan 'process no talking'",
+  "bgm_mood": "suasana musik latar yang paling cocok dengan topik, pilih SATU dari: {", ".join(moods) or "-"}"}}""")
     if not data.get("topic") or not data.get("query"):
         raise AutopilotError(f"Ide dari LLM tidak lengkap: {data}")
-    return {"topic": str(data["topic"])[:250], "query": str(data["query"])[:200]}
+    mood = data.get("bgm_mood")
+    return {"topic": str(data["topic"])[:250], "query": str(data["query"])[:200],
+            "bgm_mood": mood if mood in moods else (moods[0] if moods else None)}
 
 
-def _build_metadata(meta: dict, topic: str, src: dict) -> dict:
+def _build_metadata(meta: dict, topic: str, src: dict, music_credit: str | None = None) -> dict:
     title = clean_title(str(meta.get("title") or topic))
     hashtags = " ".join(h if h.startswith("#") else f"#{h}" for h in (meta.get("hashtags") or [])[:5])
     # Source credit is added by code, never left to the LLM
     description = re.sub(r"[<>]", "", "\n\n".join(filter(None, [
         str(meta.get("summary") or "").strip(),
         f"Sumber footage: {src['title']} — {src['channel']} ({src['url']})",
+        music_credit,
         hashtags,
     ])))[:5000]
     tags, total = [], 0
@@ -221,6 +227,9 @@ async def _build(run_id: str, cfg: AutopilotConfig) -> None:
             "project_name": idea["topic"],
         })).json()["project_id"]
         await _store(run_id, project_id=pid, stage="processing")
+        if idea["bgm_mood"]:
+            fill = (await _call(c, "GET", f"/projects/{pid}")).json()["background_fill"]
+            await _call(c, "PATCH", f"/projects/{pid}", json={"background_fill": {**fill, "bgm_mood": idea["bgm_mood"]}})
 
         async def media_ready():
             vids = (await _call(c, "GET", f"/projects/{pid}/media")).json()
@@ -278,7 +287,7 @@ Naskah narasi:
 Aturan: judul maks 70 karakter, memancing rasa penasaran tapi tidak bohong, tanpa karakter < atau >.
 Balas JSON saja:
 {{"title": "...", "summary": "2-3 kalimat ringkasan", "hashtags": ["#faktaunik", "..."], "tags": ["8-12 tag pendek"]}}"""),
-        idea["topic"], src)
+        idea["topic"], src, track_credit(pick_track(idea["bgm_mood"], pid)))
     await _store(run_id, status="ready", stage="ready", finished_at=datetime.utcnow(), **meta)
 
 

@@ -9,6 +9,7 @@ import { formatAudioTime } from "./constants";
 import { VoiceSelectorPanel } from "./VoiceSelectorPanel";
 import { AudioParametersPanel } from "./AudioParametersPanel";
 import { AudioPlayerCard } from "./AudioPlayerCard";
+import { BgmPanel } from "./BgmPanel";
 import { WordAlignmentBreakdown } from "./WordAlignmentBreakdown";
 import { useTTSState } from "./hooks";
 
@@ -85,6 +86,8 @@ export function TTSTab({ project, header, nextLabel, onNavigateNext, extra }: TT
               hasNarrationText={!!state.narrationText}
               onCancel={state.handleCancelTTS}
             />
+
+            <BgmPanel project={project} />
           </div>
 
           {/* ========================================================================= */}

@@ -14,6 +14,7 @@ class BackgroundFillSchema(BaseModel):
     anti_copyright: bool = True
     dynamic_zoom: bool = True
     color_grading: bool = True
+    bgm_mood: Optional[str] = None  # folder name in storage/bgm; None = synthesized drone
 
 
 class WatermarkSchema(BaseModel):
@@ -182,3 +183,4 @@ class ProjectDetailResponse(ProjectResponse):
     timeline: Optional[Dict[str, Any]] = None
     subtitle_style: Optional[Dict[str, Any]] = None
     render_jobs: List[RenderJobResponse] = []
+    bgm_credit: Optional[str] = None  # attribution the BGM license requires in the video description

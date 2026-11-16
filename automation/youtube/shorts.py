@@ -6,7 +6,8 @@
 
 The YouTube channel must be connected once in cliper-pro: Settings -> Publish YouTube.
 
-  uv run shorts.py make --query "..." --topic "..."      # build one short, prints JSON
+  uv run shorts.py make --query "..." --topic "..." --bgm calm   # build one short, prints JSON
+  (--bgm = folder name in storage/bgm, royalty-free tracks, e.g. freetouse.com)
   uv run shorts.py upload --project <id> --title ... --description ... --tags a,b --publish-at 2026-11-16T07:00:00+07:00
 """
 
@@ -61,6 +62,9 @@ def make(a):
         "url": src["url"], "title": src["title"], "source": src["source"],
         "project_name": a.topic[:250],
     }).json()["project_id"]
+    if a.bgm:
+        fill = call("GET", f"/projects/{pid}").json()["background_fill"]
+        call("PATCH", f"/projects/{pid}", json={"background_fill": {**fill, "bgm_mood": a.bgm}})
 
     def media_ready():
         vids = call("GET", f"/projects/{pid}/media").json()
@@ -96,7 +100,8 @@ def make(a):
 
     print(json.dumps({"ok": True, "project_id": pid, "topic": a.topic,
                       "source_url": src["url"], "source_title": src["title"],
-                      "source_channel": src["channel"], "narration": narration}, ensure_ascii=False))
+                      "source_channel": src["channel"], "narration": narration,
+                      "bgm_credit": call("GET", f"/projects/{pid}").json().get("bgm_credit")}, ensure_ascii=False))
 
 
 def upload(a):
@@ -128,6 +133,7 @@ m.add_argument("--topic", required=True, help="Indonesian narration topic/angle"
 m.add_argument("--preset", default=None)
 m.add_argument("--template", default="fakta", choices=["auto", "kenapa", "proses", "fakta"])
 m.add_argument("--duration", type=int, default=50)
+m.add_argument("--bgm", default=None, help="BGM mood folder in storage/bgm (e.g. calm, folk)")
 u = sub.add_parser("upload")
 for f in ("project", "title", "description", "tags", "publish-at"):
     u.add_argument(f"--{f}", required=True)

@@ -282,6 +282,7 @@ export const api = {
 
   // Voice & TTS
   getVoices: () => request<VoiceInfo[]>("/api/v1/tts/voices"),
+  getBgmMoods: () => request<string[]>("/api/v1/tts/bgm/moods"),
   getElevenLabsVoices: (apiKey?: string) =>
     request<VoiceInfo[]>(
       `/api/v1/tts/elevenlabs/voices${apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : ""}`

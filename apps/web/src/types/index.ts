@@ -7,6 +7,7 @@ export interface BackgroundFill {
   anti_copyright?: boolean;
   dynamic_zoom?: boolean;
   color_grading?: boolean;
+  bgm_mood?: string | null;
 }
 
 export interface TTSConfig {
@@ -91,6 +92,7 @@ export interface Project {
   aspect_ratio: string;
   resolution: string;
   background_fill: BackgroundFill;
+  bgm_credit?: string | null;
   watermark?: WatermarkConfig | null;
   tts_config?: TTSConfig | null;
   qc_config?: QCConfig | null;

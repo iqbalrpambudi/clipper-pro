@@ -13,6 +13,7 @@ from app.services.cancellation import (
     register_process,
     unregister_process,
 )
+from app.services.bgm import pick_track
 from app.services.hardsub import ffmpeg_chain
 from app.services.tts import get_audio_duration
 
@@ -410,6 +411,7 @@ async def render_timeline_video(
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
     enable_source_asmr = bool((background_fill or {}).get("source_asmr", True))
     enable_curiosity_bgm = bool((background_fill or {}).get("curiosity_bgm", True))
+    bgm_track = pick_track((background_fill or {}).get("bgm_mood"), project_id or out_p.stem) if enable_curiosity_bgm else None
 
     # Check target audio duration if audio provided
     audio_dur = 0.0
@@ -709,6 +711,8 @@ async def render_timeline_video(
 
         if use_3layer_mix:
             cmd_final.extend(["-i", str(audio_path)])
+            bgm_inputs = ["-stream_loop", "-1", "-i", str(bgm_track)] if bgm_track else []
+            cmd_final.extend(bgm_inputs)
             bgm_dur = max(audio_dur + 2.0, 15.0)
             asmr_vol = "1.0" if enable_source_asmr else "0.0"
             bgm_vol = "1.0" if enable_curiosity_bgm else "0.0"
@@ -720,14 +724,19 @@ async def render_timeline_video(
             else:
                 v_map = "0:v:0"
 
-            fc_parts.extend([
+            audio_fc = [
                 "[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=2[vo_sc][vo_out]",
                 f"[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={asmr_vol}[asmr]",
+                # Music file sits low under the voice; fades hide the loop start and the hard cut at the end
+                f"[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=0.35,"
+                f"afade=t=in:d=1.5,afade=t=out:st={max(audio_dur - 2.0, 0):.2f}:d=2,atrim=duration={bgm_dur:.2f}[bgm]"
+                if bgm_track else
                 f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
                 "[asmr][bgm]amix=inputs=2:duration=first:dropout_transition=0,volume=2.0[bed_raw]",
                 "[bed_raw][vo_sc]sidechaincompress=threshold=0.035:ratio=5:attack=15:release=260:makeup=1.0[bed_ducked]",
                 "[vo_out][bed_ducked]amix=inputs=2:duration=first:dropout_transition=0:weights='1.0 0.85',volume=1.85,alimiter=limit=0.95:attack=5:release=50[a_final]",
-            ])
+            ]
+            fc_parts.extend(audio_fc)
 
             cmd_final.extend([
                 "-filter_complex",
@@ -803,14 +812,6 @@ async def render_timeline_video(
                 log.warning(
                     "Host FFmpeg lacks ass/drawtext filter; retrying 3-layer audio mix without text filter..."
                 )
-                fc_audio_only = [
-                    "[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=2[vo_sc][vo_out]",
-                    f"[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={asmr_vol}[asmr]",
-                    f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
-                    "[asmr][bgm]amix=inputs=2:duration=first:dropout_transition=0,volume=2.0[bed_raw]",
-                    "[bed_raw][vo_sc]sidechaincompress=threshold=0.035:ratio=5:attack=15:release=260:makeup=1.0[bed_ducked]",
-                    "[vo_out][bed_ducked]amix=inputs=2:duration=first:dropout_transition=0:weights='1.0 0.85',volume=1.85,alimiter=limit=0.95:attack=5:release=50[a_final]",
-                ]
                 cmd_3layer_nofilter = [
                     "ffmpeg",
                     "-y",
@@ -818,8 +819,9 @@ async def render_timeline_video(
                     str(concatenated_video),
                     "-i",
                     str(audio_path),
+                    *bgm_inputs,
                     "-filter_complex",
-                    ";".join(fc_audio_only),
+                    ";".join(audio_fc),
                     "-map",
                     "0:v:0",
                     "-map",
