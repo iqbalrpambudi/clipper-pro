@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Film, FileText, Volume2, Layers, Download, Loader2 } from "lucide-react";
+import { Film, FileText, Volume2, Layers, Download, Loader2, Send } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
 import { useProjectEvents } from "@/hooks/useProjectEvents";
 import { useProject, useUpdateProject } from "@/hooks/useProjects";
@@ -12,6 +12,7 @@ import { NarrationTab } from "@/features/narration/NarrationTab";
 import { TTSTab } from "@/features/tts/TTSTab";
 import { TimelineTab } from "@/features/timeline/TimelineTab";
 import { RenderTab } from "@/features/render/RenderTab";
+import { PublishTab } from "@/features/publish/PublishTab";
 
 export function StudioPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -235,6 +236,11 @@ export function StudioPage() {
       icon: Download,
       badge: project.render_jobs?.length ? `${project.render_jobs.length} Job` : undefined,
     },
+    {
+      id: "publish",
+      label: "6. Publish",
+      icon: Send,
+    },
   ];
 
   const handleRenameProject = async (newName: string) => {
@@ -261,12 +267,13 @@ export function StudioPage() {
         <TimelineTab project={project} />
       ) : (
         <>
-          {(activeTab === "media" || !["narration", "tts", "render"].includes(activeTab)) && (
+          {(activeTab === "media" || !["narration", "tts", "render", "publish"].includes(activeTab)) && (
             <MediaPoolTab project={project} />
           )}
           {activeTab === "narration" && <NarrationTab project={project} />}
           {activeTab === "tts" && <TTSTab project={project} />}
           {activeTab === "render" && <RenderTab project={project} />}
+          {activeTab === "publish" && <PublishTab project={project} />}
         </>
       )}
     </StudioLayout>

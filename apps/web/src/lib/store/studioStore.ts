@@ -7,7 +7,8 @@ export type StudioTab =
   | "tts"
   | "timeline"
   | "subtitles"
-  | "render";
+  | "render"
+  | "publish";
 
 export interface TaskEvent {
   project_id: string;
