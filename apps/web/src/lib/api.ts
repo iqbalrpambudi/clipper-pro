@@ -28,6 +28,12 @@ import {
   VideoSearchResponse,
   VideoImportRequest,
   VideoImportResponse,
+  YouTubeAccountStatus,
+  AutopilotConfig,
+  AutopilotStatus,
+  AutopilotRun,
+  YouTubePrivacy,
+  YouTubeUpload,
 } from "@/types";
 import { API_BASE_URL, resolveApiUrl } from "@/env";
 
@@ -490,5 +496,44 @@ export const api = {
   revertQCRun: (projectId: string, runId: string) =>
     request<QCRun>(`/api/v1/projects/${projectId}/qc/runs/${runId}/revert`, {
       method: "POST",
+    }),
+
+  // Autopilot
+  getAutopilot: () => request<AutopilotStatus>("/api/v1/autopilot"),
+  saveAutopilot: (data: AutopilotConfig) =>
+    request<AutopilotStatus>("/api/v1/autopilot", { method: "PUT", body: JSON.stringify(data) }),
+  getAutopilotRuns: () => request<AutopilotRun[]>("/api/v1/autopilot/runs"),
+  produceAutopilotNow: () =>
+    request<{ status: string }>("/api/v1/autopilot/produce-now", { method: "POST" }),
+  discardPoolVideo: (runId: string) =>
+    request<AutopilotRun>(`/api/v1/autopilot/runs/${runId}`, { method: "DELETE" }),
+
+  // Publish (YouTube)
+  getYouTubeAccount: () => request<YouTubeAccountStatus>("/api/v1/youtube/account"),
+  saveYouTubeCredentials: (data: { client_id: string; client_secret?: string }) =>
+    request<YouTubeAccountStatus>("/api/v1/youtube/account/credentials", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  startYouTubeOAuth: () =>
+    request<{ auth_url: string }>("/api/v1/youtube/oauth/start", { method: "POST" }),
+  disconnectYouTube: () =>
+    request<YouTubeAccountStatus>("/api/v1/youtube/account/connection", { method: "DELETE" }),
+  getYouTubeUploads: (projectId: string) =>
+    request<YouTubeUpload[]>(`/api/v1/projects/${projectId}/publish/youtube`),
+  publishToYouTube: (
+    projectId: string,
+    data: {
+      render_job_id?: string;
+      title: string;
+      description: string;
+      tags: string[];
+      privacy: YouTubePrivacy;
+      publish_at?: string | null;
+    }
+  ) =>
+    request<YouTubeUpload>(`/api/v1/projects/${projectId}/publish/youtube`, {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };

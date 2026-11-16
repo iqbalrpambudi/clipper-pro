@@ -453,3 +453,74 @@ export type JassubInstance = JASSUB;
 
 export * from "./editorConfig";
 
+
+export interface YouTubeAccountStatus {
+  configured: boolean;
+  connected: boolean;
+  client_id?: string | null;
+  client_secret_masked?: string | null;
+  redirect_uri: string;
+  channel_id?: string | null;
+  channel_title?: string | null;
+  channel_thumbnail?: string | null;
+  connected_at?: string | null;
+}
+
+export type YouTubePrivacy = "public" | "unlisted" | "private";
+
+export interface YouTubeUpload {
+  id: string;
+  project_id: string;
+  render_job_id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  privacy: YouTubePrivacy;
+  publish_at?: string | null;
+  status: "queued" | "uploading" | "uploaded" | "failed";
+  progress: number;
+  video_id?: string | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface ProductionWindow {
+  time: string;
+  count: number;
+}
+
+export interface AutopilotConfig {
+  enabled: boolean;
+  niche: string;
+  categories: string[];
+  slots: string[];
+  utc_offset_minutes: number;
+  pool_size: number;
+  production_windows: ProductionWindow[];
+  publish_ahead_hours: number;
+  template_id: string;
+  target_duration: number;
+}
+
+export interface AutopilotStatus extends AutopilotConfig {
+  producing: boolean;
+  pool_count: number;
+  youtube_connected: boolean;
+}
+
+export interface AutopilotRun {
+  id: string;
+  status: "running" | "ready" | "scheduled" | "failed" | "discarded";
+  stage: string;
+  category?: string | null;
+  topic?: string | null;
+  project_id?: string | null;
+  render_job_id?: string | null;
+  title?: string | null;
+  slot_at?: string | null;
+  video_id?: string | null;
+  error_message?: string | null;
+  publish_error?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+}

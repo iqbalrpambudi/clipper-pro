@@ -36,6 +36,8 @@ async def lifespan(app: FastAPI):
         await start_cancellation_listener()
         from app.workers.tasks import cleanup_stuck_render_jobs
         await cleanup_stuck_render_jobs()
+        from app.services.autopilot import start_autopilot_scheduler
+        await start_autopilot_scheduler()
     except Exception as e:
         # Fail fast: serving traffic with no DB only produces confusing 500s.
         log.error("Database initialization failed: %s", e)

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Film, LayoutGrid, Settings } from "lucide-react";
+import { Bot, Film, LayoutGrid, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
-export type WorkspacePage = "projects" | "settings";
+export type WorkspacePage = "projects" | "autopilot" | "settings";
 
 const navigation = [
   { href: "/", label: "Project", id: "projects", icon: LayoutGrid },
+  { href: "/autopilot", label: "Autopilot", id: "autopilot", icon: Bot },
   { href: "/settings", label: "Pengaturan", id: "settings", icon: Settings },
 ] as const;
 

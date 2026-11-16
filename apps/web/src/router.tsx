@@ -1,6 +1,7 @@
 import { Navigate, createBrowserRouter, useParams } from "react-router-dom";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { AutopilotPage } from "@/pages/AutopilotPage";
 import { StudioPage } from "@/pages/StudioPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -14,6 +15,10 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <DashboardPage />,
+  },
+  {
+    path: "/autopilot",
+    element: <AutopilotPage />,
   },
   {
     path: "/settings",
