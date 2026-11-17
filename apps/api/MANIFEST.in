@@ -1,0 +1,2 @@
+recursive-include app/assets *
+recursive-include app/web_dist *

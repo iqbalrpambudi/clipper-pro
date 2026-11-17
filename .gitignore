@@ -102,3 +102,6 @@ Thumbs.db
 *.swo
 *~
 *.log
+apps/api/app/web_dist/
+apps/api/dist/
+apps/api/build/

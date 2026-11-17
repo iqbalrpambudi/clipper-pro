@@ -1,6 +1,6 @@
 # Cliper Pro — AI Short Video Maker
 
-> Otomatisasi pembuatan short video viral (TikTok / Reels / Shorts) dari video mentah menggunakan AI scene detection, template narasi LLM, Gemini TTS, subtitle karaoke ASS, dan render FFmpeg. Berjalan sebagai aplikasi desktop macOS (Tauri) dengan ikon di menu bar.
+> Otomatisasi pembuatan short video viral (TikTok / Reels / Shorts) dari video mentah menggunakan AI scene detection, template narasi LLM, Gemini TTS, subtitle karaoke ASS, dan render FFmpeg. Berjalan sebagai **background service** dengan **Web UI** dan **ikon system tray** (`pystray`).
 
 ## ✨ Fitur Utama
 
@@ -18,67 +18,80 @@
 ```
 cliper-pro/
 ├── apps/
-│   ├── desktop/      # Tauri v2 shell: tray, window, menjalankan API sebagai proses anak
-│   │   ├── src-tauri/        # Rust (main.rs), tauri.conf.json, icons
-│   │   └── scripts/          # prepare-resources.sh: Python + deps + ffmpeg/yt-dlp untuk bundle
-│   ├── api/          # FastAPI backend (Python 3.12, SQLite)
+│   ├── api/          # Package `cliper-pro`: FastAPI backend, CLI service, pystray system tray, & bundled Web UI
 │   └── web/          # React 19 + Vite frontend
-├── automation/       # Script channel YouTube (memanggil API desktop)
+├── automation/       # Script channel YouTube (memanggil API service)
 └── Makefile
 ```
 
-Saat app jalan, Tauri menyalakan API di `127.0.0.1:18080` lalu membuka jendela setelah API sehat. Menutup jendela tidak mematikan API; app tetap di menu bar. **Quit** dari menu bar menghentikan semuanya. **Start at Login** di menu bar membuat app jalan otomatis saat login (langsung ke tray, tanpa jendela). Membuka app saat sudah jalan hanya memunculkan jendela yang ada.
-
-Mode dev (`make dev`) memakai identitas terpisah: "Cliper Pro Dev", API di `127.0.0.1:18081`, dan folder data sendiri. Jadi dev bisa jalan berdampingan dengan app terpasang tanpa menyentuh data aslinya.
+Saat service dijalankan (`cliper-pro start`), API FastAPI menyala di background pada `http://127.0.0.1:18080` sekaligus menyajikan Web UI, dan ikon system tray muncul di menu bar untuk membuka UI di browser, melihat status/log, start/stop service, dan mengaktifkan *Start at Login*. Untuk server/headless tanpa GUI, gunakan `--headless`.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- macOS (Apple Silicon)
-- [Rust](https://rustup.rs), [uv](https://docs.astral.sh/uv/), Node.js 22+
-- FFmpeg tidak perlu dipasang: `make install` mengunduh build statis (terverifikasi checksum) untuk dev dan bundle
+- Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 22+
+- `ffmpeg` (`brew install ffmpeg` di macOS, atau `sudo apt install ffmpeg` di Linux)
 
-### Setup & jalankan
+### Instalasi sebagai Package & Jalankan Service
 
 ```bash
-make install   # venv API, npm deps, dan resources bundle (sekali)
-make dev       # app desktop mode dev (hot reload frontend & Rust)
-make build     # buat "Cliper Pro.app"
+make install        # install deps API & web + build frontend bundle
+make install-tool   # install CLI `cliper-pro` secara global via uv tool
 ```
 
-Hasil build: `apps/desktop/src-tauri/target/release/bundle/macos/Cliper Pro.app`.
+Atau install langsung lewat `uv` / `pipx` setelah `make build-web`:
 
-Konfigurasi AI model, TTS, dan YouTube dilakukan di dalam app: **Settings**.
+```bash
+uv tool install ./apps/api
+# atau
+pipx install ./apps/api
+```
+
+### Perintah CLI `cliper-pro`
+
+| Command | Deskripsi |
+|---------|-----------|
+| `cliper-pro start` | Jalankan service di background + ikon system tray |
+| `cliper-pro start --headless` | Jalankan service di background tanpa tray (mode server) |
+| `cliper-pro start --open` | Jalankan service lalu buka Web UI di browser |
+| `cliper-pro stop` | Hentikan service & tray |
+| `cliper-pro restart` | Restart service |
+| `cliper-pro status` | Cek status service, PID, path data, & dependensi |
+| `cliper-pro open` | Buka Web UI (`http://127.0.0.1:18080`) di browser |
+| `cliper-pro logs -f` | Pantau log service secara live |
+| `cliper-pro service install` | Aktifkan auto-start saat login (`launchd` / `systemd --user`) |
+| `cliper-pro service uninstall` | Nonaktifkan auto-start saat login |
+| `cliper-pro doctor` | Cek kesiapan Python, `ffmpeg`, `yt-dlp`, dan Web UI bundle |
+
+Konfigurasi AI model, TTS, dan YouTube dilakukan melalui Web UI di halaman **Settings**.
 
 ## 📂 Data
 
-Semua data ada di `~/Library/Application Support/com.cliperpro.desktop/` (mode dev: `com.cliperpro.desktop.dev/`):
+Secara default semua data service disimpan di `~/.cliper-pro/` (bisa diubah lewat env `CLIPER_DATA_DIR`):
 
 | Path | Isi |
 |------|-----|
 | `cliper.db` | Database SQLite |
 | `projects/` | Media proyek |
-| `bgm/<mood>/*.mp3` | Library BGM, diisi sendiri (menu bar → **Open Data Folder**). Nama folder = mood yang bisa dipilih |
+| `bgm/<mood>/*.mp3` | Library BGM (menu tray → **Open Data Folder**). Nama folder = mood yang bisa dipilih |
 | `hf/` | Cache model Whisper (diunduh saat pertama dipakai) |
 | `encryption.key` | Key enkripsi API key di DB. Jangan dihapus: tanpa key ini semua secret tidak bisa dibuka |
-| `api.log` | Log API |
+| `api.log` / `tray.log` | Log API dan tray |
 
-## 📋 Makefile Commands
+## 🛠️ Development
 
-| Command | Deskripsi |
-|---------|-----------|
-| `make install` | Setup pertama kali |
-| `make resources` | Siapkan ulang Python/ffmpeg/yt-dlp untuk bundle (setelah dependency API berubah) |
-| `make dev` | Jalankan app desktop mode dev |
-| `make build` | Build `Cliper Pro.app` |
-| `make test` | Pytest API + typecheck web |
-| `make lint` / `make format` | Lint / format web dan API |
+```bash
+make dev     # API (127.0.0.1:18080 --reload) + Vite (localhost:3031)
+make test    # Pytest API + typecheck web
+make lint    # Ruff + ESLint + TypeScript check
+make package # Build wheel/tarball di apps/api/dist/
+```
 
 ## 🛠️ Tech Stack
 
-- **Desktop:** Tauri v2 (Rust, WKWebView), tray menu bar
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0 (async) + SQLite, PySceneDetect, FFmpeg, yt-dlp, faster-whisper
+- **Service & Tray:** Python 3.12, Uvicorn, `pystray`, `Pillow`
+- **Backend:** FastAPI, SQLAlchemy 2.0 (async) + SQLite, PySceneDetect, FFmpeg, yt-dlp, faster-whisper
 - **Frontend:** React 19, Vite, TypeScript, TailwindCSS 3, Zustand, TanStack Query, JASSUB
 
 ## 📄 License

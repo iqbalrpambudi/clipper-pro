@@ -14,6 +14,7 @@ from app.api.v1.router import api_router
 from app.api.v1.templates import seed_templates
 from app.core.config import get_settings
 from app.core.db import SessionLocal, init_db
+from app.service_runtime import resolve_web_dist
 from app.services.scene_detector import resolve_or_extract_scene_thumbnail
 
 logging.basicConfig(
@@ -35,10 +36,13 @@ async def lifespan(app: FastAPI):
             await seed_templates(db)
         log.info("Database initialized, templates seeded.")
         from app.services.cancellation import start_cancellation_listener
+
         await start_cancellation_listener()
         from app.workers.tasks import cleanup_stuck_render_jobs
+
         await cleanup_stuck_render_jobs()
         from app.services.autopilot import start_autopilot_scheduler
+
         await start_autopilot_scheduler()
     except Exception as e:
         # Fail fast: serving traffic with no DB only produces confusing 500s.
@@ -66,6 +70,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Dynamic Self-Healing Route for Scene Thumbnails (On-the-fly extraction if file is missing)
 @app.get("/storage/projects/{project_id}/scenes/{filename}")
@@ -109,10 +114,10 @@ async def healthz():
     )
 
 
-web_dist = Path(settings.WEB_DIST).resolve() if settings.WEB_DIST else None
+web_dist = resolve_web_dist()
 
 if web_dist and (web_dist / "index.html").is_file():
-    # Desktop release: serve the frontend from the API so the page, /api and /storage share one origin.
+    # Service mode: serve the built frontend from the API so the page, /api and /storage share one origin.
     # The API returns relative /storage/... media URLs, and <a download> only works same-origin.
 
     @app.get("/{path:path}", include_in_schema=False)

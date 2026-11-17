@@ -21,7 +21,7 @@ from pathlib import Path
 import httpx
 
 HERE = Path(__file__).parent
-API = "http://127.0.0.1:18080/api/v1"  # Cliper Pro desktop app (must be running)
+API = "http://127.0.0.1:18080/api/v1"  # Cliper Pro service (must be running)
 LOG = HERE / "log.jsonl"
 
 http = httpx.Client(base_url=API, timeout=600)
