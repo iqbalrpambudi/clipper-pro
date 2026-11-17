@@ -94,6 +94,7 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
             BATCH_SIZE = 24
             BATCH_CONCURRENCY = 4
             processed_count = 0
+            untagged_count = 0
             batches = [scenes_data[i : i + BATCH_SIZE] for i in range(0, total_scenes, BATCH_SIZE)]
 
             for bi in range(0, len(batches), BATCH_CONCURRENCY):
@@ -108,7 +109,8 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 )
 
                 for batch_slice, batch_analysis in zip(wave, wave_results, strict=False):
-                    for item, (description, tags, embedding, analysis) in zip(batch_slice, batch_analysis, strict=False):
+                    for item, (description, tags, embedding, analysis, ok) in zip(batch_slice, batch_analysis, strict=False):
+                        untagged_count += not ok
                         sc = Scene(
                             project_id=video.project_id,
                             source_video_id=video.id,
@@ -122,7 +124,8 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                             analysis=analysis,
                             shot_info=item.get("shot_info"),
                             embedding=embedding,
-                            status="ready",
+                            # untagged = vision failed; retag picks these up, matching/narration skip them
+                            status="ready" if ok else "untagged",
                         )
                         db.add(sc)
 
@@ -170,10 +173,12 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 message=(
                     f"Deteksi scene selesai! {total_scenes} scene visual siap digunakan di Media Pool."
                     + (" ⚠️ Embedding fallback hash — kualitas matching scene turun." if getattr(adapter, "_embedding_degraded", False) else "")
+                    + (f" ⚠️ {untagged_count} scene gagal ditag AI Vision — jalankan Tagging Ulang." if untagged_count else "")
                 ),
                 data={
                     "video_id": video_id,
                     "total_scenes": total_scenes,
+                    "untagged_scenes": untagged_count,
                     "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
                 },
             )

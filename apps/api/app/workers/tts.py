@@ -192,6 +192,7 @@ async def generate_tts_and_align_job(
                     "transcript": s.transcript,
                     "shot_info": s.shot_info,
                     "embedding": s.embedding,
+                    "status": s.status,
                 }
                 for s in scenes_res.scalars().all()
             ]

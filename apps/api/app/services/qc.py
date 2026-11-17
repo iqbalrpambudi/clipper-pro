@@ -184,6 +184,7 @@ def _scene_to_dict(sc: Scene) -> Dict[str, Any]:
         "tags": list(sc.tags or []),
         "analysis": sc.analysis or {},
         "thumbnail_path": sc.thumbnail_path,
+        "status": sc.status,
     }
 
 

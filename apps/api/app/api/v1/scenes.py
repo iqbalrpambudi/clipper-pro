@@ -14,7 +14,13 @@ from app.models.project import Scene, SourceVideo
 from app.models.timeline import Timeline
 from app.schemas.project import SceneResponse
 from app.services.ai_adapters.factory import get_active_vision_adapter
-from app.services.vision_tagger import analyze_scene, parse_scene_analysis
+from app.services.vision_tagger import (
+    PLACEHOLDER_DESCRIPTION,
+    analyze_scene,
+    build_scene_embedding_text,
+    is_real_vision_result,
+    parse_scene_analysis,
+)
 from app.workers.tasks import detect_scenes_job
 
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
@@ -143,8 +149,9 @@ async def retag_project_scenes(
     if payload.mode == "quick":
         scenes_to_process = [
             s for s in all_scenes
-            if not s.description
-            or s.description == "Cuplikan video aksi/aktivitas"
+            if s.status == "untagged"
+            or not s.description
+            or s.description == PLACEHOLDER_DESCRIPTION
             or s.tags == ["video", "scene", "aktivitas"]
         ]
         if not scenes_to_process:
@@ -160,6 +167,7 @@ async def retag_project_scenes(
 
     batch_size = max(2, min(payload.batch_size, 8))
     processed_count = 0
+    last_error = ""
 
     # Process in batches of 5-8 thumbnails per request
     for i in range(0, len(scenes_to_process), batch_size):
@@ -175,29 +183,44 @@ async def retag_project_scenes(
         if not batch_items:
             continue
 
-        if hasattr(adapter, "analyze_vision_batch"):
-            batch_results = await adapter.analyze_vision_batch(batch_items)
-            results_by_id = {r["scene_id"]: r for r in batch_results}
-            for s in batch:
-                res_item = results_by_id.get(s.id)
-                if res_item:
-                    s.description = res_item["description"]
-                    s.tags = res_item["tags"]
-                    if res_item.get("analysis"):
-                        s.analysis = parse_scene_analysis(res_item["analysis"])
-                    text_emb = f"{s.description}. Kata kunci: {", ".join(s.tags)}"
-                    s.embedding = await adapter.generate_embedding(text_emb)
-                    processed_count += 1
-        else:
-            for s_id, p_str in batch_items:
-                s = next((sc for sc in batch if sc.id == s_id), None)
-                if s:
-                    desc, tags, emb, analysis = await analyze_scene(adapter, [p_str])
-                    s.description = desc
-                    s.tags = tags
-                    s.embedding = emb
-                    s.analysis = analysis
-                    processed_count += 1
+        # One failed batch must not abort the rest; the caller gets the last error (e.g. quota)
+        try:
+            if hasattr(adapter, "analyze_vision_batch"):
+                batch_results = await adapter.analyze_vision_batch(batch_items)
+                results_by_id = {r["scene_id"]: r for r in batch_results}
+                for s in batch:
+                    res_item = results_by_id.get(s.id)
+                    if is_real_vision_result(res_item):
+                        s.description = res_item["description"]
+                        s.tags = res_item["tags"]
+                        if res_item.get("analysis"):
+                            s.analysis = parse_scene_analysis(res_item["analysis"])
+                        s.embedding = await adapter.generate_embedding(
+                            build_scene_embedding_text(s.description, s.tags, s.transcript)
+                        )
+                        s.status = "ready"
+                        processed_count += 1
+            else:
+                for s_id, p_str in batch_items:
+                    s = next((sc for sc in batch if sc.id == s_id), None)
+                    if s:
+                        desc, tags, emb, analysis = await analyze_scene(adapter, [p_str], s.transcript)
+                        if desc == PLACEHOLDER_DESCRIPTION:
+                            continue
+                        s.description = desc
+                        s.tags = tags
+                        s.embedding = emb
+                        s.analysis = analysis
+                        s.status = "ready"
+                        processed_count += 1
+        except Exception as e:
+            last_error = str(e)
+
+    # Adapters fail soft (placeholder tags), so their sticky flags are the only trace of quota / outage
+    if not last_error and getattr(adapter, "_quota_exhausted", False):
+        last_error = "AI Vision quota exhausted (RESOURCE_EXHAUSTED)"
+    elif not last_error and getattr(adapter, "_service_unavailable", False):
+        last_error = "AI Vision tidak tersedia (auth/quota/koneksi gagal)"
 
         await db.commit()
 
@@ -248,6 +271,8 @@ async def retag_project_scenes(
         "total": len(all_scenes),
         "model": vision_model_name,
         "mode": payload.mode,
+        "failed": len(scenes_to_process) - processed_count,
+        "error": last_error,
     }
 
 

@@ -449,7 +449,9 @@ async def match_scenes_to_segments(
     recent_scene_ids: List[str] = []
     global_used_ids = set()
     scene_by_id = {sc["id"]: sc for sc in scenes}
-    pool = [sc for sc in scenes if not is_filler_scene(sc)] or scenes
+    # Untagged scenes (vision failed) all share one placeholder embedding, so their score is noise;
+    # they stay in `scenes` so a chosen shot can still play on into them.
+    pool = [sc for sc in scenes if not is_filler_scene(sc) and sc.get("status") != "untagged"] or scenes
     # The script's tagged shots mark the story's footage (one chapter of a compilation);
     # follow-up cuts stay inside it instead of borrowing another subject's shot.
     tagged_scenes = list({w["scene_id"]: scene_by_id[w["scene_id"]] for w in windows if w.get("scene_id") in scene_by_id}.values())

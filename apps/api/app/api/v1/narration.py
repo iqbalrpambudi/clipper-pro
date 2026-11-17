@@ -41,6 +41,8 @@ async def generate_narration(
     scenes_res = await db.execute(
         select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
+    all_scenes = scenes_res.scalars().all()
+    # Placeholder descriptions of untagged scenes would only mislead the script writer
     scenes = [
         {
             "id": s.id,
@@ -52,7 +54,7 @@ async def generate_narration(
             "analysis": s.analysis,
             "shot_info": s.shot_info,
         }
-        for s in scenes_res.scalars().all()
+        for s in [s for s in all_scenes if s.status != "untagged"] or all_scenes
     ]
 
     # Source video titles (YouTube downloads keep the title as filename) tell the model what the video is about

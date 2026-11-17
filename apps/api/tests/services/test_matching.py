@@ -155,3 +155,13 @@ async def test_no_fresh_shot_left_plays_on_instead_of_repeating():
     ids = [c["scene_id"] for c in clips]
     assert len(ids) == len(set(ids))
     assert clips[-1]["timeline_end"] == pytest.approx(12.0, abs=0.05)
+
+
+@pytest.mark.asyncio
+async def test_untagged_scenes_are_never_picked():
+    scenes = [_scene(f"S{i}", i * 6.0, i * 6.0 + 6.0) for i in range(6)]
+    for sc in scenes[1::2]:
+        sc["status"] = "untagged"
+    segments = [{"id": "seg-1", "text": "x", "start_ms": 0, "end_ms": 12000}]
+    clips = await match_scenes_to_segments(_FakeAdapter(), segments, scenes, total_audio_duration_sec=12.0)
+    assert clips and {c["scene_id"] for c in clips} <= {"S0", "S2", "S4"}
