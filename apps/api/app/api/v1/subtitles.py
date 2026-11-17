@@ -20,7 +20,9 @@ router = APIRouter(tags=["subtitles"])
 
 async def _latest_segments(db: AsyncSession, project_id: str) -> list:
     res = await db.execute(
-        select(Narration).where(Narration.project_id == project_id).order_by(Narration.created_at.desc())
+        select(Narration)
+        .where(Narration.project_id == project_id)
+        .order_by(Narration.created_at.desc())
     )
     narration = res.scalars().first()
     return (narration.segments or []) if narration else []
@@ -67,7 +69,9 @@ async def preview_ass_subtitles(project_id: str, db: AsyncSession = Depends(get_
 
 
 @router.get("/projects/{project_id}/subtitles/export")
-async def export_subtitles(project_id: str, format: str = "ass", db: AsyncSession = Depends(get_db)):
+async def export_subtitles(
+    project_id: str, format: str = "ass", db: AsyncSession = Depends(get_db)
+):
     if not await db.get(Project, project_id):
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
     segments = await _latest_segments(db, project_id)
@@ -77,7 +81,10 @@ async def export_subtitles(project_id: str, format: str = "ass", db: AsyncSessio
     if format.lower().strip() == "srt":
         content, ext = generate_srt_subtitles(segments), "srt"
     else:
-        content, ext = generate_ass_subtitles(segments, style_to_dict(await _style_row(db, project_id))), "ass"
+        content, ext = (
+            generate_ass_subtitles(segments, style_to_dict(await _style_row(db, project_id))),
+            "ass",
+        )
     return Response(
         content=content,
         media_type="text/plain; charset=utf-8",

@@ -103,7 +103,9 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                     yt_meta = await get_video_info(video.youtube_url)
                     if yt_meta.title:
                         clean_t = yt_meta.title.strip()
-                        video.filename = clean_t if clean_t.lower().endswith(".mp4") else f"{clean_t}.mp4"
+                        video.filename = (
+                            clean_t if clean_t.lower().endswith(".mp4") else f"{clean_t}.mp4"
+                        )
                     # Save heatmap if available
                     if yt_meta.heatmap:
                         video.heatmap_data = [b.model_dump() for b in yt_meta.heatmap]
@@ -134,7 +136,11 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 progress=100,
                 stage="completed",
                 message=f"Video '{video.filename}' berhasil didownload! Melanjutkan ke analisis scene...",
-                data={"video_id": video_id, "duration": meta["duration"], "filename": video.filename},
+                data={
+                    "video_id": video_id,
+                    "duration": meta["duration"],
+                    "filename": video.filename,
+                },
             )
 
             await publish_project_event(
@@ -144,7 +150,11 @@ async def download_youtube_job(ctx: Dict[str, Any], video_id: str) -> None:
                 progress=10,
                 stage="detecting_cuts",
                 message=f"Memulai analisis scene untuk '{video.filename}'...",
-                data={"video_id": video_id, "duration": meta["duration"], "filename": video.filename},
+                data={
+                    "video_id": video_id,
+                    "duration": meta["duration"],
+                    "filename": video.filename,
+                },
             )
 
             # Auto trigger scene detection for downloaded video

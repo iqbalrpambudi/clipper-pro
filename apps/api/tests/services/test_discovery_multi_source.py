@@ -11,7 +11,9 @@ from app.services.discovery import (
 )
 
 
-def _cand(vid: str, source: str, url: str, views: int = 50000, title: str = "Factory process") -> VideoCandidate:
+def _cand(
+    vid: str, source: str, url: str, views: int = 50000, title: str = "Factory process"
+) -> VideoCandidate:
     return VideoCandidate(
         id=vid,
         source=source,
@@ -29,7 +31,15 @@ def _cand(vid: str, source: str, url: str, views: int = 50000, title: str = "Fac
 def test_presets_and_query_rotation():
     presets = get_preset_categories()
     ids = {p.id for p in presets}
-    assert {"factory", "farming", "food", "craft", "restoration", "engineering", "nature_harvest"}.issubset(ids)
+    assert {
+        "factory",
+        "farming",
+        "food",
+        "craft",
+        "restoration",
+        "engineering",
+        "nature_harvest",
+    }.issubset(ids)
 
     q1, p1 = resolve_query_for_page("factory", None, page=1)
     q2, p2 = resolve_query_for_page("factory", None, page=2)
@@ -48,8 +58,14 @@ def test_normalize_video_key():
     assert normalize_video_key("https://www.youtube.com/watch?v=abc123") == "youtube:abc123"
     assert normalize_video_key("https://youtu.be/abc123") == "youtube:abc123"
     assert normalize_video_key("https://www.dailymotion.com/video/x8abcde") == "dailymotion:x8abcde"
-    assert normalize_video_key("https://www.bilibili.com/video/BV1xx411c7mD/") == "bilibili:BV1xx411c7mD"
-    assert normalize_video_key("https://archive.org/details/factory-film-1950") == "archive_org:factory-film-1950"
+    assert (
+        normalize_video_key("https://www.bilibili.com/video/BV1xx411c7mD/")
+        == "bilibili:BV1xx411c7mD"
+    )
+    assert (
+        normalize_video_key("https://archive.org/details/factory-film-1950")
+        == "archive_org:factory-film-1950"
+    )
 
 
 @pytest.mark.asyncio
@@ -64,7 +80,12 @@ async def test_multi_source_interleaving_and_hide_imported():
     yt_batch = [
         _cand("yt_used_yt", "youtube", "https://www.youtube.com/watch?v=used_yt", views=90000),
         _cand("yt_fresh", "youtube", "https://www.youtube.com/watch?v=fresh_yt", views=70000),
-        _cand("yt_ai", "youtube", "https://www.youtube.com/watch?v=ai_vid", title="OpenAI Sora AI Video Factory"),
+        _cand(
+            "yt_ai",
+            "youtube",
+            "https://www.youtube.com/watch?v=ai_vid",
+            title="OpenAI Sora AI Video Factory",
+        ),
     ]
     dm_batch = [
         _cand("dm_1", "dailymotion", "https://www.dailymotion.com/video/x11111", views=60000),
@@ -101,7 +122,11 @@ async def test_multi_source_interleaving_and_hide_imported():
         assert "https://www.dailymotion.com/video/x11111" in urls
         assert "https://archive.org/details/steel-mill-doc" in urls
         # Interleaved order: youtube -> dailymotion -> archive_org
-        assert [c.source for c in res_hidden.candidates] == ["youtube", "dailymotion", "archive_org"]
+        assert [c.source for c in res_hidden.candidates] == [
+            "youtube",
+            "dailymotion",
+            "archive_org",
+        ]
 
         # 2. hide_imported=False: surfaces previously imported video with badge metadata
         res_shown = await search_candidates(

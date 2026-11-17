@@ -89,11 +89,7 @@ def load_project_defaults(*, strict: bool = False) -> Tuple[ProjectDefaultsConfi
 
 def save_project_defaults(payload: ProjectDefaultsConfig | Dict[str, Any]) -> ProjectDefaultsConfig:
     """Validate and persist default project configuration to config.json."""
-    cfg = (
-        payload
-        if isinstance(payload, ProjectDefaultsConfig)
-        else merge_project_defaults(payload)
-    )
+    cfg = payload if isinstance(payload, ProjectDefaultsConfig) else merge_project_defaults(payload)
     target = resolve_config_json_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = target.with_suffix(".json.tmp")
@@ -150,6 +146,8 @@ def build_project_config_snapshot(
     raw["qc"] = proj_qc if isinstance(proj_qc, dict) else defaults.qc.model_dump()
 
     fill = getattr(project, "background_fill", None)
-    raw["background_fill"] = fill if isinstance(fill, dict) else defaults.background_fill.model_dump()
+    raw["background_fill"] = (
+        fill if isinstance(fill, dict) else defaults.background_fill.model_dump()
+    )
 
     return merge_project_defaults(raw)

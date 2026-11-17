@@ -23,8 +23,21 @@ def _gateway(monkeypatch, status_by_model):
         model = kw["json"]["model"]
         calls.append(model)
         status = status_by_model[model]
-        body = {"choices": [{"message": {"content": json.dumps(
-            {"description": f"tagged by {model}", "tags": ["x"], "action": "a"})}}]} if status == 200 else {"error": "busy"}
+        body = (
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"description": f"tagged by {model}", "tags": ["x"], "action": "a"}
+                            )
+                        }
+                    }
+                ]
+            }
+            if status == 200
+            else {"error": "busy"}
+        )
         return httpx.Response(status, json=body, request=httpx.Request("POST", url))
 
     monkeypatch.setattr(httpx.AsyncClient, "post", post)

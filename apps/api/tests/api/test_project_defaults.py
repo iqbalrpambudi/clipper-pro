@@ -120,7 +120,9 @@ def test_save_and_reset_project_defaults(isolated_config_path):
 
 
 @pytest.mark.asyncio
-async def test_project_defaults_settings_and_project_creation_flow(isolated_client, isolated_config_path):
+async def test_project_defaults_settings_and_project_creation_flow(
+    isolated_client, isolated_config_path
+):
     # 1. Initial GET returns built-in defaults
     resp = await isolated_client.get("/api/v1/settings/project-defaults")
     assert resp.status_code == 200
@@ -147,14 +149,18 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert imported["tts"]["voice"] == "Alnilam"
     assert imported["tts"]["rate"] == 10
     assert imported["tts"]["pitch"] == -3
-    assert imported["background_fill"]["zoom"] == 2.0  # every section reaches Settings, not just the first four
+    assert (
+        imported["background_fill"]["zoom"] == 2.0
+    )  # every section reaches Settings, not just the first four
     get_back = (await isolated_client.get("/api/v1/settings/project-defaults")).json()
     assert get_back["background_fill"] == imported["background_fill"]
 
     # 3. Export global config.json
     export_resp = await isolated_client.get("/api/v1/settings/project-defaults/export")
     assert export_resp.status_code == 200
-    assert "attachment; filename=\"config.json\"" in export_resp.headers.get("content-disposition", "")
+    assert 'attachment; filename="config.json"' in export_resp.headers.get(
+        "content-disposition", ""
+    )
     exported_data = export_resp.json()
     assert set(exported_data.keys()) == {"subtitle", "watermark", "tts", "qc", "background_fill"}
     assert exported_data["background_fill"]["mode"] == "cover"
@@ -174,7 +180,9 @@ async def test_project_defaults_settings_and_project_creation_flow(isolated_clie
     assert created_project["tts_config"]["rate"] == 10
     assert created_project["tts_config"]["pitch"] == -3
     assert created_project["background_fill"]["mode"] == "cover"
-    assert created_project["background_fill"]["dynamic_zoom"] is True  # untouched keys keep built-ins
+    assert (
+        created_project["background_fill"]["dynamic_zoom"] is True
+    )  # untouched keys keep built-ins
 
     # 5. Fetching project returns persisted subtitle_style + watermark + tts_config
     get_resp = await isolated_client.get(f"/api/v1/projects/{project_id}")

@@ -103,10 +103,18 @@ export function ProjectFilter({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent appearance="workspace">
-                <SelectItem value="newest" className="text-xs">Terbaru</SelectItem>
-                <SelectItem value="oldest" className="text-xs">Terlama</SelectItem>
-                <SelectItem value="name_asc" className="text-xs">Nama (A-Z)</SelectItem>
-                <SelectItem value="name_desc" className="text-xs">Nama (Z-A)</SelectItem>
+                <SelectItem value="newest" className="text-xs">
+                  Terbaru
+                </SelectItem>
+                <SelectItem value="oldest" className="text-xs">
+                  Terlama
+                </SelectItem>
+                <SelectItem value="name_asc" className="text-xs">
+                  Nama (A-Z)
+                </SelectItem>
+                <SelectItem value="name_desc" className="text-xs">
+                  Nama (Z-A)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -55,8 +55,17 @@ export function useTTSState({ project }: UseTTSStateProps) {
     };
 
     setVoiceDraft(project.id, voicePayload);
-  }, [project.id, provider, selectedVoice, rate, pitch, projTts?.provider, projTts?.model, draft?.customVoiceInput, setVoiceDraft]);
-
+  }, [
+    project.id,
+    provider,
+    selectedVoice,
+    rate,
+    pitch,
+    projTts?.provider,
+    projTts?.model,
+    draft?.customVoiceInput,
+    setVoiceDraft,
+  ]);
 
   // Fetch active config & project defaults for older projects without tts_config
   const { data: appConfig } = useQuery({

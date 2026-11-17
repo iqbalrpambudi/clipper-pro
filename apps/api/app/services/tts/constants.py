@@ -299,7 +299,6 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
         sample_audio_url=None,
         description="Penuh intrik, ekspresif, memikat untuk thriller dan konspirasi.",
     ),
-
     # =========================================================================
     # 2. ElevenLabs Voices (Industry Gold Standard for Zero Tone Drift)
     # =========================================================================
@@ -488,5 +487,3 @@ AVAILABLE_VOICES: List[VoiceInfo] = [
 for _v in AVAILABLE_VOICES:
     _v.language = "multi"
     _v.languages = ["id", "en"]
-
-

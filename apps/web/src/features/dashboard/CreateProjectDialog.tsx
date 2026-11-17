@@ -92,8 +92,12 @@ export function CreateProjectDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent appearance="workspace">
-                  <SelectItem value="9:16" className="text-xs">9:16 (TikTok/Reels/Shorts)</SelectItem>
-                  <SelectItem value="1:1" className="text-xs">1:1 (Square Feed)</SelectItem>
+                  <SelectItem value="9:16" className="text-xs">
+                    9:16 (TikTok/Reels/Shorts)
+                  </SelectItem>
+                  <SelectItem value="1:1" className="text-xs">
+                    1:1 (Square Feed)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -104,8 +108,12 @@ export function CreateProjectDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent appearance="workspace">
-                  <SelectItem value="1080p" className="text-xs">1080p (Full HD)</SelectItem>
-                  <SelectItem value="720p" className="text-xs">720p (Fast Render)</SelectItem>
+                  <SelectItem value="1080p" className="text-xs">
+                    1080p (Full HD)
+                  </SelectItem>
+                  <SelectItem value="720p" className="text-xs">
+                    720p (Fast Render)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -179,10 +187,20 @@ export function CreateProjectDialog({
           )}
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" className="h-9 px-4 text-xs rounded-xl font-medium" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 px-4 text-xs rounded-xl font-medium"
+              onClick={() => onOpenChange(false)}
+            >
               Batal
             </Button>
-            <Button type="submit" variant="workspace-primary" className="h-9 px-4 text-xs rounded-xl font-medium" disabled={isPending}>
+            <Button
+              type="submit"
+              variant="workspace-primary"
+              className="h-9 px-4 text-xs rounded-xl font-medium"
+              disabled={isPending}
+            >
               {isPending ? "Membuat..." : "Buat Project"}
             </Button>
           </DialogFooter>

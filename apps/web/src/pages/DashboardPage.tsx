@@ -255,12 +255,10 @@ export function DashboardPage() {
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-amber-900">
-                  API Key belum dikonfigurasi
-                </p>
+                <p className="text-sm font-semibold text-amber-900">API Key belum dikonfigurasi</p>
                 <p className="mt-0.5 text-xs text-amber-700">
-                  Fitur AI (narasi, TTS, gambar) membutuhkan API key. Atur di Pengaturan untuk
-                  mulai membuat video.
+                  Fitur AI (narasi, TTS, gambar) membutuhkan API key. Atur di Pengaturan untuk mulai
+                  membuat video.
                 </p>
               </div>
               <Button
@@ -299,8 +297,7 @@ export function DashboardPage() {
                 <div className="workspace-featured-footer">
                   <div className="workspace-project-facts">
                     <span>
-                      <Video aria-hidden="true" /> {featuredProject.source_video_count || 0}{" "}
-                      media
+                      <Video aria-hidden="true" /> {featuredProject.source_video_count || 0} media
                     </span>
                     <span>
                       <Film aria-hidden="true" /> {featuredProject.scene_count || 0} scene

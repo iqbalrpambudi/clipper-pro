@@ -33,7 +33,11 @@ def test_upcoming_slots_handles_local_date_ahead_of_utc():
 
 def test_free_publish_slots_window_and_taken():
     now = datetime(2026, 11, 15, 23, 55)  # 06:55 WIB
-    s_soon, s2, s3 = datetime(2026, 11, 16, 0, 0), datetime(2026, 11, 16, 10, 0), datetime(2026, 11, 17, 0, 0)
+    s_soon, s2, s3 = (
+        datetime(2026, 11, 16, 0, 0),
+        datetime(2026, 11, 16, 10, 0),
+        datetime(2026, 11, 17, 0, 0),
+    )
     slots = [s_soon, s2, s3]
     # s_soon is 5 min away: too late for publishAt; s3 is beyond 24h
     assert free_publish_slots(slots, set(), now, 24) == [s2]
@@ -51,7 +55,9 @@ def test_due_production_windows_once_per_day_with_catch_up():
     evening = datetime(2026, 11, 16, 13, 0)
     assert due_production_windows(WINDOWS, {}, evening, WIB) == WINDOWS
     # yesterday's marker does not block today
-    assert due_production_windows(WINDOWS, {"12:00": "2026-11-15", "18:00": "2026-11-16"}, evening, WIB) == [WINDOWS[0]]
+    assert due_production_windows(
+        WINDOWS, {"12:00": "2026-11-15", "18:00": "2026-11-16"}, evening, WIB
+    ) == [WINDOWS[0]]
 
 
 def test_quota_error_detection():
@@ -73,9 +79,17 @@ def test_clean_title():
 
 
 def test_config_validation():
-    base = {"enabled": True, "niche": "fakta unik pertanian", "categories": ["farming"],
-            "utc_offset_minutes": WIB, "pool_size": 4, "publish_ahead_hours": 24}
-    cfg = AutopilotConfigIn(**base, slots=["17:00", "07:00", "07:00"], production_windows=WINDOWS[::-1])
+    base = {
+        "enabled": True,
+        "niche": "fakta unik pertanian",
+        "categories": ["farming"],
+        "utc_offset_minutes": WIB,
+        "pool_size": 4,
+        "publish_ahead_hours": 24,
+    }
+    cfg = AutopilotConfigIn(
+        **base, slots=["17:00", "07:00", "07:00"], production_windows=WINDOWS[::-1]
+    )
     assert cfg.slots == ["07:00", "17:00"]
     assert [w.time for w in cfg.production_windows] == ["12:00", "18:00"]
     with pytest.raises(ValidationError):

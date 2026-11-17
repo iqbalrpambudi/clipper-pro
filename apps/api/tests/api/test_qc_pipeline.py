@@ -141,7 +141,9 @@ async def test_gate1_script_autofix_and_revert(qc_client):
     )
     project_id = create_resp.json()["id"]
 
-    original_seg0 = "[Hook] **Halo semuanya kembali lagi**, di video kali ini kita bahas mesin kopi espresso!"
+    original_seg0 = (
+        "[Hook] **Halo semuanya kembali lagi**, di video kali ini kita bahas mesin kopi espresso!"
+    )
     async with session_factory() as db:
         video = SourceVideo(
             id="vid-2",
@@ -366,7 +368,9 @@ async def test_gate2_timeline_autofix_duplicates_and_flash_cuts_and_revert(qc_cl
     assert len(reverted_clips) == 3
     assert reverted_clips[0]["scene_id"] == "tl-scene-1"
     assert reverted_clips[1]["scene_id"] == "tl-scene-1"
-    assert abs((reverted_clips[2]["timeline_end"] - reverted_clips[2]["timeline_start"]) - 0.4) < 0.05
+    assert (
+        abs((reverted_clips[2]["timeline_end"] - reverted_clips[2]["timeline_start"]) - 0.4) < 0.05
+    )
 
 
 def test_split_long_sentence_never_drops_words():
@@ -396,14 +400,22 @@ async def test_review_only_run_reports_but_never_changes_script(qc_client):
     project_id = (await client.post("/api/v1/projects", json={"name": "Review Only"})).json()["id"]
     dirty = "[Hook] **Halo semuanya**, kita bahas mesin kopi espresso hari ini!"
     async with session_factory() as db:
-        db.add(Narration(
-            id="narr-review", project_id=project_id, tone="santai", target_duration=15,
-            raw_text=dirty, segments=[{"id": "seg-1", "text": dirty, "start_ms": 0, "end_ms": 4000}],
-            status="generated",
-        ))
+        db.add(
+            Narration(
+                id="narr-review",
+                project_id=project_id,
+                tone="santai",
+                target_duration=15,
+                raw_text=dirty,
+                segments=[{"id": "seg-1", "text": dirty, "start_ms": 0, "end_ms": 4000}],
+                status="generated",
+            )
+        )
         await db.commit()
 
-    run = (await client.post(f"/api/v1/projects/{project_id}/qc/run", json={"gate": "script"})).json()
+    run = (
+        await client.post(f"/api/v1/projects/{project_id}/qc/run", json={"gate": "script"})
+    ).json()
     assert run["issues"], "review must still report problems"
     assert run["applied_fixes"] == [] and run["rounds_used"] == 0
 

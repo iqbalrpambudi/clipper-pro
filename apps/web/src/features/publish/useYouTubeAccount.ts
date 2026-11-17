@@ -45,7 +45,7 @@ export function useYouTubeAccount() {
             setIsConnecting(false);
             queryClient.invalidateQueries({ queryKey: YOUTUBE_ACCOUNT_KEY });
           },
-          { once: true },
+          { once: true }
         );
         window.location.href = auth_url;
       }

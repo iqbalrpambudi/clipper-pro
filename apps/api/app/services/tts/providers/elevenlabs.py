@@ -24,7 +24,9 @@ async def generate_elevenlabs_tts(
     settings = get_settings()
     key = (api_key or "").strip() or (settings.ELEVENLABS_API_KEY or "").strip()
     if not key:
-        raise RuntimeError("ElevenLabs API Key belum dikonfigurasi. Silakan simpan ElevenLabs API Key pada menu Pengaturan.")
+        raise RuntimeError(
+            "ElevenLabs API Key belum dikonfigurasi. Silakan simpan ElevenLabs API Key pada menu Pengaturan."
+        )
 
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
@@ -81,11 +83,18 @@ async def generate_elevenlabs_tts(
             # Deteksi khusus jika response adalah error limit karakter / request size
             combined_err = f"{err_msg} {detail_status}".lower()
             char_limit_keywords = [
-                "character limit", "too_large", "request_too_large",
-                "max_characters", "maximum text length", "quota_exceeded",
-                "exceeds the maximum", "characters allowed"
+                "character limit",
+                "too_large",
+                "request_too_large",
+                "max_characters",
+                "maximum text length",
+                "quota_exceeded",
+                "exceeds the maximum",
+                "characters allowed",
             ]
-            if resp.status_code in (400, 413, 422) and any(k in combined_err for k in char_limit_keywords):
+            if resp.status_code in (400, 413, 422) and any(
+                k in combined_err for k in char_limit_keywords
+            ):
                 raise ElevenLabsCharacterLimitError(
                     f"ElevenLabs Character Limit Terlampaui ({resp.status_code}): {err_msg}. "
                     f"Teks naskah melebihi kapasitas karakter per request model {model_id}."
@@ -99,7 +108,19 @@ async def generate_elevenlabs_tts(
 
         audio_filter = _build_audio_filter(rate=rate, pitch=pitch, base_sample_rate=44100)
         if audio_filter:
-            cmd = ["ffmpeg", "-y", "-i", "-", "-af", audio_filter, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                "-",
+                "-af",
+                audio_filter,
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "192k",
+                str(out_p),
+            ]
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,

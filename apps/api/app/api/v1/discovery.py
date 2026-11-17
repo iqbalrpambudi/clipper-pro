@@ -30,7 +30,6 @@ async def _enqueue_download(video_id: str):
     run_background_task(download_youtube_job, {}, video_id)
 
 
-
 @router.get("/presets", response_model=List[PresetCategory])
 async def list_presets():
     """Mengembalikan daftar preset kategori video sumber yang relevan."""
@@ -110,7 +109,9 @@ async def import_discovered_video(
     elif res_key in ("best", "max", "auto"):
         format_spec = "bestvideo+bestaudio/best"
     else:
-        format_spec = payload.download_resolution or "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+        format_spec = (
+            payload.download_resolution or "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+        )
 
     clean_title = (payload.title or "Mendownload sumber video").strip()
     if not clean_title.lower().endswith(".mp4"):
@@ -119,7 +120,6 @@ async def import_discovered_video(
         filename = clean_title
 
     video = SourceVideo(
-
         project_id=proj.id,
         origin="ytdlp",
         filename=filename,

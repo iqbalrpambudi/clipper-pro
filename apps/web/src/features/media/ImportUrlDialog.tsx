@@ -73,9 +73,7 @@ export function ImportUrlDialog({ project, open, onOpenChange }: ImportUrlDialog
             <Youtube className="h-5 w-5 text-accent-foreground" />
             Impor Video dari URL
           </DialogTitle>
-          <DialogDescription>
-            YouTube, Bilibili, Douyin, TikTok, VK, atau Rutube.
-          </DialogDescription>
+          <DialogDescription>YouTube, Bilibili, Douyin, TikTok, VK, atau Rutube.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleInspect} className="space-y-2">
@@ -150,7 +148,10 @@ export function ImportUrlDialog({ project, open, onOpenChange }: ImportUrlDialog
                     <div
                       key={i}
                       className="flex-1 rounded-t-sm bg-primary"
-                      style={{ height: `${Math.max(4, b.value * 100)}%`, opacity: 0.25 + b.value * 0.75 }}
+                      style={{
+                        height: `${Math.max(4, b.value * 100)}%`,
+                        opacity: 0.25 + b.value * 0.75,
+                      }}
                     />
                   ))}
                 </div>

@@ -53,7 +53,12 @@ async def generate_tts_and_align_job(
             progress=15,
             stage="tts_synthesizing",
             message=f"Mensintesis audio narasi AI dengan {provider.upper()} ({display_target})...",
-            data={"narration_id": narration_id, "provider": provider, "voice": voice, "model": model},
+            data={
+                "narration_id": narration_id,
+                "provider": provider,
+                "voice": voice,
+                "model": model,
+            },
         )
 
         audio_dir = storage.get_audio_dir(project_id)
@@ -64,11 +69,17 @@ async def generate_tts_and_align_job(
                 raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
 
             # Retrieve active ModelConfig for decrypted API key & model
-            res_cfg = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
+            res_cfg = await db.execute(
+                select(ModelConfig).where(ModelConfig.is_active == True).limit(1)
+            )
             cfg = res_cfg.scalar_one_or_none()
             api_key = None
             if clean_prov == "elevenlabs":
-                tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
+                tts_model = model or (
+                    getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+                    if cfg
+                    else "eleven_multilingual_v2"
+                )
                 if cfg and cfg.elevenlabs_api_key_encrypted:
                     api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
             elif clean_prov == "gemini":
@@ -118,6 +129,7 @@ async def generate_tts_and_align_job(
             target_segments = narration.segments
             if not target_segments:
                 from app.services.narrative import split_into_sentence_segments
+
                 target_segments = split_into_sentence_segments(narration.raw_text or "")
 
             aligned_segments = await align_audio_with_text(
@@ -207,10 +219,14 @@ async def generate_tts_and_align_job(
                         total_audio_duration_sec=duration,
                     )
                     clips_count = len(clips)
-                    t_res = await db.execute(select(Timeline).where(Timeline.project_id == project_id))
+                    t_res = await db.execute(
+                        select(Timeline).where(Timeline.project_id == project_id)
+                    )
                     timeline = t_res.scalar_one_or_none()
                     if not timeline:
-                        timeline = Timeline(project_id=project_id, clips=clips, total_duration=duration)
+                        timeline = Timeline(
+                            project_id=project_id, clips=clips, total_duration=duration
+                        )
                         db.add(timeline)
                     else:
                         timeline.clips = clips
@@ -227,7 +243,11 @@ async def generate_tts_and_align_job(
                 stage="completed",
                 message=(
                     "Suara, transkrip karaoke kata, dan susunan klip timeline siap!"
-                    + (" ⚠️ Embedding fallback hash — pencocokan scene ke narasi kurang akurat." if getattr(adapter, "_embedding_degraded", False) else "")
+                    + (
+                        " ⚠️ Embedding fallback hash — pencocokan scene ke narasi kurang akurat."
+                        if getattr(adapter, "_embedding_degraded", False)
+                        else ""
+                    )
                 ),
                 data={
                     "narration_id": narration_id,

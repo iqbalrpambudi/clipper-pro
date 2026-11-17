@@ -121,7 +121,6 @@ export interface ProjectDetail extends Project {
   render_jobs?: RenderJob[];
 }
 
-
 export interface WatermarkConfig {
   enabled: boolean;
   watermark_type?: "text";
@@ -350,7 +349,6 @@ export interface ModelConfig {
   is_active: boolean;
 }
 
-
 export interface YTFormatOption {
   format_id: string;
   resolution: string;
@@ -444,7 +442,6 @@ export interface VideoImportRequest {
   language?: string;
 }
 
-
 export interface VideoImportResponse {
   project_id: string;
   project_name: string;
@@ -455,7 +452,6 @@ export interface VideoImportResponse {
 export type JassubInstance = JASSUB;
 
 export * from "./editorConfig";
-
 
 export interface YouTubeAccountStatus {
   configured: boolean;

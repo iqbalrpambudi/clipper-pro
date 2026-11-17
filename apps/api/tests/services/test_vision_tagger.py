@@ -8,8 +8,17 @@ class _FlakyVisionAdapter:
 
     async def analyze_vision_batch(self, batch_items):
         return [
-            {"scene_id": "0", "description": "Mesin memotong baja.", "tags": ["baja"], "analysis": {"action": "potong"}},
-            {"scene_id": "1", "description": PLACEHOLDER_DESCRIPTION, "tags": ["video", "scene", "aktivitas"]},
+            {
+                "scene_id": "0",
+                "description": "Mesin memotong baja.",
+                "tags": ["baja"],
+                "analysis": {"action": "potong"},
+            },
+            {
+                "scene_id": "1",
+                "description": PLACEHOLDER_DESCRIPTION,
+                "tags": ["video", "scene", "aktivitas"],
+            },
         ]
 
     async def analyze_vision(self, keyframe_paths, prompt):

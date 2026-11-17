@@ -16,7 +16,7 @@ def _normalize_gemini_model(model_name: str) -> str:
     if m in ("gemini", "gemini-flash", "gemini-2.0-flash", "gemini-1.5-flash"):
         return "gemini-2.5-flash-lite"
     if m.startswith("models/"):
-        return m[len("models/"):]
+        return m[len("models/") :]
     return model_name or "gemini-2.5-flash-lite"
 
 
@@ -62,8 +62,13 @@ def _build_adapter(
 
     # Priority 1: custom base_url that is NOT googleapis.com (InferHub, LiteLLM, Ollama, OpenRouter)
     if base_url and not is_google:
-        if inferhub_override and ("20128" in base_url or "inferhub" in base_url.lower()) and (
-            not vision_model or vision_model.strip().lower() in ("gemini", "gemini-flash", "gemini-pro")
+        if (
+            inferhub_override
+            and ("20128" in base_url or "inferhub" in base_url.lower())
+            and (
+                not vision_model
+                or vision_model.strip().lower() in ("gemini", "gemini-flash", "gemini-pro")
+            )
         ):
             chat_model = vision_model = "inferhub/gemini-3.6-flash"
 
@@ -77,7 +82,11 @@ def _build_adapter(
 
     # Priority 2: Gemini model or explicit Google endpoint
     if "gemini" in (trigger_model or "").lower() or is_google:
-        gemini_key = api_key if (api_key and ("AIza" in api_key or "AQ." in api_key)) else (tts_key or settings.GEMINI_API_KEY or api_key)
+        gemini_key = (
+            api_key
+            if (api_key and ("AIza" in api_key or "AQ." in api_key))
+            else (tts_key or settings.GEMINI_API_KEY or api_key)
+        )
         return GeminiAdapter(
             api_key=gemini_key,
             chat_model=_normalize_gemini_model(chat_model),
@@ -99,10 +108,17 @@ async def get_active_vision_adapter(db: AsyncSession) -> BaseLLMAdapter:
     """Get adapter specifically configured for scene vision analysis."""
     api_key, tts_key, base_url, _chat_model, vision_model = await _resolve_config(db)
     adapter = _build_adapter(
-        api_key, tts_key, base_url, vision_model, vision_model, vision_model,
+        api_key,
+        tts_key,
+        base_url,
+        vision_model,
+        vision_model,
+        vision_model,
         inferhub_override=True,
     )
-    res = await db.execute(select(ModelConfig.vision_fallback_model).where(ModelConfig.is_active == True).limit(1))
+    res = await db.execute(
+        select(ModelConfig.vision_fallback_model).where(ModelConfig.is_active == True).limit(1)
+    )
     adapter.vision_fallback_model = res.scalar_one_or_none() or ""
     return adapter
 

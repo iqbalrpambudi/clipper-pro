@@ -49,13 +49,16 @@ async def test_render_job_thumbnail_resolution(tmp_path, monkeypatch):
     fake_thumb.parent.mkdir(parents=True, exist_ok=True)
     fake_thumb.touch()
 
-    resolved = await resolve_or_extract_scene_thumbnail("p1", "thumb_0001_1000.jpg", str(tmp_path), None)
+    resolved = await resolve_or_extract_scene_thumbnail(
+        "p1", "thumb_0001_1000.jpg", str(tmp_path), None
+    )
     assert resolved == fake_thumb
 
 
 @pytest.mark.asyncio
 async def test_trigger_final_render_resolution(monkeypatch):
     from app.api.v1.render import enqueue_render_task
+
     with patch("app.api.v1.render.run_background_task") as mock_task:
         await enqueue_render_task("job-123")
         assert mock_task.called

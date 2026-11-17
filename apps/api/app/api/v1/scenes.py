@@ -26,11 +26,12 @@ from app.workers.tasks import detect_scenes_job
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
 
 
-
 @router.get("", response_model=List[SceneResponse])
 async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db)):
     v_res = await db.execute(
-        select(SourceVideo).where(SourceVideo.project_id == project_id).order_by(SourceVideo.created_at.asc())
+        select(SourceVideo)
+        .where(SourceVideo.project_id == project_id)
+        .order_by(SourceVideo.created_at.asc())
     )
     source_videos = v_res.scalars().all()
     video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in source_videos}
@@ -91,7 +92,9 @@ async def transcribe_project_scenes(
     res = await db.execute(select(Scene).where(Scene.project_id == project_id))
     scenes = res.scalars().all()
     if not scenes:
-        raise HTTPException(status_code=400, detail="Belum ada scene di project ini untuk ditranskripsikan")
+        raise HTTPException(
+            status_code=400, detail="Belum ada scene di project ini untuk ditranskripsikan"
+        )
 
     asyncio.create_task(
         transcribe_scenes_job(
@@ -101,8 +104,10 @@ async def transcribe_project_scenes(
             language=payload.language,
         )
     )
-    return {"message": "Transkripsi dialog audio dijadwalkan di background", "total_scenes": len(scenes)}
-
+    return {
+        "message": "Transkripsi dialog audio dijadwalkan di background",
+        "total_scenes": len(scenes),
+    }
 
 
 @router.post("/re-detect/{video_id}")
@@ -135,20 +140,21 @@ async def retag_project_scenes(
     - force: re-analyzes all scenes from scratch.
     """
     res = await db.execute(
-        select(Scene)
-        .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
     all_scenes = res.scalars().all()
     if not all_scenes:
-        raise HTTPException(status_code=400, detail="Belum ada scene di project ini untuk di-tagging ulang")
+        raise HTTPException(
+            status_code=400, detail="Belum ada scene di project ini untuk di-tagging ulang"
+        )
 
     adapter = await get_active_vision_adapter(db)
     vision_model_name = getattr(adapter, "vision_model", "AI Vision")
 
     if payload.mode == "quick":
         scenes_to_process = [
-            s for s in all_scenes
+            s
+            for s in all_scenes
             if s.status == "untagged"
             or not s.description
             or s.description == PLACEHOLDER_DESCRIPTION
@@ -171,7 +177,7 @@ async def retag_project_scenes(
 
     # Process in batches of 5-8 thumbnails per request
     for i in range(0, len(scenes_to_process), batch_size):
-        batch = scenes_to_process[i:i + batch_size]
+        batch = scenes_to_process[i : i + batch_size]
         batch_items = []
         for s in batch:
             p = Path(s.thumbnail_path) if s.thumbnail_path else None
@@ -204,7 +210,9 @@ async def retag_project_scenes(
                 for s_id, p_str in batch_items:
                     s = next((sc for sc in batch if sc.id == s_id), None)
                     if s:
-                        desc, tags, emb, analysis = await analyze_scene(adapter, [p_str], s.transcript)
+                        desc, tags, emb, analysis = await analyze_scene(
+                            adapter, [p_str], s.transcript
+                        )
                         if desc == PLACEHOLDER_DESCRIPTION:
                             continue
                         s.description = desc
@@ -283,9 +291,7 @@ async def repair_project_thumbnails(
 ):
     """Scan and regenerate any missing or 0-byte thumbnail files for project scenes."""
     res = await db.execute(
-        select(Scene)
-        .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
     scenes = res.scalars().all()
     if not scenes:
@@ -321,5 +327,3 @@ async def repair_project_thumbnails(
         "repaired": repaired_count,
         "total": len(scenes),
     }
-
-

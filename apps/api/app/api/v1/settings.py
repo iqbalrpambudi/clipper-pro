@@ -53,7 +53,9 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
             vision_model=settings.AI_VISION_MODEL,
             api_key_encrypted=encrypt_secret(settings.AI_API_KEY) if settings.AI_API_KEY else None,
             tts_provider=settings.TTS_PROVIDER,
-            tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None,
+            tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY)
+            if settings.GEMINI_API_KEY
+            else None,
         )
         db.add(cfg)
         await db.commit()
@@ -61,8 +63,9 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
-    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-
+    raw_elevenlabs_key = (
+        decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    )
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -78,7 +81,8 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         has_tts_api_key=bool(raw_tts_key),
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
-        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+        or "eleven_multilingual_v2",
         is_active=cfg.is_active,
     )
 
@@ -119,8 +123,9 @@ async def save_model_configuration(
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
-    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-
+    raw_elevenlabs_key = (
+        decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    )
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -136,7 +141,8 @@ async def save_model_configuration(
         has_tts_api_key=bool(raw_tts_key),
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
-        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+        or "eleven_multilingual_v2",
         is_active=cfg.is_active,
     )
 
@@ -230,7 +236,7 @@ async def test_tts_model_connection(
             if not model:
                 if provider == "elevenlabs":
                     model = getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
-    
+
     res = await test_tts_connection(
         provider=provider,
         api_key=api_key,
@@ -247,6 +253,7 @@ async def test_tts_model_connection(
 
 _MODELS_CACHE: dict = {}
 _MODELS_CACHE_TTL: float = 300.0  # 5 minutes
+
 
 @router.get("/models")
 async def list_available_models(
@@ -289,7 +296,11 @@ async def list_available_models(
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{raw_url}/models", headers=headers)
             if resp.status_code == 200:
-                models = [m["id"] for m in resp.json().get("data", []) if isinstance(m, dict) and "id" in m]
+                models = [
+                    m["id"]
+                    for m in resp.json().get("data", [])
+                    if isinstance(m, dict) and "id" in m
+                ]
                 res_data = {"models": models}
                 _MODELS_CACHE[cache_key] = (now, res_data)
                 return res_data
@@ -299,7 +310,9 @@ async def list_available_models(
     return {"models": []}
 
 
-def _to_defaults_response(cfg: ProjectDefaultsConfig, path_str: str, from_file: bool) -> ProjectDefaultsResponse:
+def _to_defaults_response(
+    cfg: ProjectDefaultsConfig, path_str: str, from_file: bool
+) -> ProjectDefaultsResponse:
     # Every section of the config, so a newly added one (e.g. background_fill) is never dropped.
     return ProjectDefaultsResponse(**cfg.model_dump(), config_path=path_str, from_file=from_file)
 

@@ -123,13 +123,15 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
         return {
           label: "Render Video FFmpeg",
           icon: Download,
-          badgeColor: "text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+          badgeColor:
+            "text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
         };
       default:
         return {
           label: "Worker Task",
           icon: Sparkles,
-          badgeColor: "text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+          badgeColor:
+            "text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
         };
     }
   };
@@ -320,7 +322,9 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
                   {currentTask.stage || "processing"}
                 </span>
               </span>
-              <span className="font-bold text-accent-foreground dark:text-primary">{currentTask.progress}%</span>
+              <span className="font-bold text-accent-foreground dark:text-primary">
+                {currentTask.progress}%
+              </span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full border border-border bg-muted">
               <div
@@ -353,7 +357,9 @@ export function GlobalTaskIndicator({ projectId }: GlobalTaskIndicatorProps) {
               <Layers className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
               <span>Project lain di background:</span>
             </span>
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">{otherProjectsCount} job berjalan</span>
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+              {otherProjectsCount} job berjalan
+            </span>
           </div>
         )}
       </div>

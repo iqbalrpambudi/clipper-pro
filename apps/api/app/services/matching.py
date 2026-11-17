@@ -8,9 +8,37 @@ from app.core.frame_math import snap_to_frame
 from app.services.ai_adapters.base import BaseLLMAdapter
 
 STOPWORDS = {
-    "dan", "di", "ke", "dari", "yang", "ini", "itu", "untuk", "pada", "adalah",
-    "cuma", "bisa", "lewat", "saat", "lalu", "akan", "jadi", "juga", "dengan",
-    "the", "and", "in", "to", "of", "a", "is", "for", "on", "at", "by", "with",
+    "dan",
+    "di",
+    "ke",
+    "dari",
+    "yang",
+    "ini",
+    "itu",
+    "untuk",
+    "pada",
+    "adalah",
+    "cuma",
+    "bisa",
+    "lewat",
+    "saat",
+    "lalu",
+    "akan",
+    "jadi",
+    "juga",
+    "dengan",
+    "the",
+    "and",
+    "in",
+    "to",
+    "of",
+    "a",
+    "is",
+    "for",
+    "on",
+    "at",
+    "by",
+    "with",
 }
 
 
@@ -85,14 +113,16 @@ def build_visual_shot_windows(
             else:
                 span_end = snap_to_frame(raw_end)
 
-        seg_spans.append({
-            "seg_id": seg.get("id", f"seg-{i+1}"),
-            "scene_id": seg.get("scene_id"),
-            "text": seg.get("text", ""),
-            "start_sec": span_start,
-            "end_sec": span_end,
-            "duration": round(span_end - span_start, 4),
-        })
+        seg_spans.append(
+            {
+                "seg_id": seg.get("id", f"seg-{i + 1}"),
+                "scene_id": seg.get("scene_id"),
+                "text": seg.get("text", ""),
+                "start_sec": span_start,
+                "end_sec": span_end,
+                "duration": round(span_end - span_start, 4),
+            }
+        )
 
     # Step 2: Group spans shorter than min_dur, and split spans longer than max_dur
     windows: List[Dict[str, Any]] = []
@@ -108,31 +138,41 @@ def build_visual_shot_windows(
         if dur > max_dur and dur >= 2 * min_dur:
             if curr_spans:
                 flush_end = snap_to_frame(curr_spans[-1]["end_sec"])
-                windows.append({
-                    "start_sec": snap_to_frame(w_start),
-                    "end_sec": flush_end,
-                    "duration": round(flush_end - snap_to_frame(w_start), 4),
-                    "text": " ".join(s["text"] for s in curr_spans),
-                    "primary_segment_id": curr_spans[0]["seg_id"],
-                    "scene_id": curr_spans[0].get("scene_id"),
-                })
+                windows.append(
+                    {
+                        "start_sec": snap_to_frame(w_start),
+                        "end_sec": flush_end,
+                        "duration": round(flush_end - snap_to_frame(w_start), 4),
+                        "text": " ".join(s["text"] for s in curr_spans),
+                        "primary_segment_id": curr_spans[0]["seg_id"],
+                        "scene_id": curr_spans[0].get("scene_id"),
+                    }
+                )
                 w_start = flush_end
                 curr_spans = []
 
             # Divide long span into balanced chunks between min_dur and max_dur
-            num_chunks = min(int(dur // min_dur), max(2, int(round(dur / ((min_dur + max_dur) / 2)))))
+            num_chunks = min(
+                int(dur // min_dur), max(2, int(round(dur / ((min_dur + max_dur) / 2))))
+            )
             chunk_len = dur / num_chunks
             c_start = span["start_sec"]
             for c_idx in range(num_chunks):
-                c_end = span["end_sec"] if c_idx == num_chunks - 1 else snap_to_frame(c_start + chunk_len)
-                windows.append({
-                    "start_sec": snap_to_frame(c_start),
-                    "end_sec": snap_to_frame(c_end),
-                    "duration": round(c_end - c_start, 4),
-                    "text": span["text"],
-                    "primary_segment_id": span["seg_id"],
-                    "scene_id": span.get("scene_id") if c_idx == 0 else None,
-                })
+                c_end = (
+                    span["end_sec"]
+                    if c_idx == num_chunks - 1
+                    else snap_to_frame(c_start + chunk_len)
+                )
+                windows.append(
+                    {
+                        "start_sec": snap_to_frame(c_start),
+                        "end_sec": snap_to_frame(c_end),
+                        "duration": round(c_end - c_start, 4),
+                        "text": span["text"],
+                        "primary_segment_id": span["seg_id"],
+                        "scene_id": span.get("scene_id") if c_idx == 0 else None,
+                    }
+                )
                 c_start = c_end
             w_start = span["end_sec"]
             continue
@@ -146,14 +186,16 @@ def build_visual_shot_windows(
             and curr_spans[-1]["end_sec"] - w_start >= min(3.0, min_dur)
         ):
             flush_end = snap_to_frame(curr_spans[-1]["end_sec"])
-            windows.append({
-                "start_sec": snap_to_frame(w_start),
-                "end_sec": flush_end,
-                "duration": round(flush_end - snap_to_frame(w_start), 4),
-                "text": " ".join(s["text"] for s in curr_spans),
-                "primary_segment_id": curr_spans[0]["seg_id"],
-                "scene_id": curr_spans[0].get("scene_id"),
-            })
+            windows.append(
+                {
+                    "start_sec": snap_to_frame(w_start),
+                    "end_sec": flush_end,
+                    "duration": round(flush_end - snap_to_frame(w_start), 4),
+                    "text": " ".join(s["text"] for s in curr_spans),
+                    "primary_segment_id": curr_spans[0]["seg_id"],
+                    "scene_id": curr_spans[0].get("scene_id"),
+                }
+            )
             w_start = flush_end
             curr_spans = []
 
@@ -161,14 +203,16 @@ def build_visual_shot_windows(
         accum_dur = round(span["end_sec"] - w_start, 4)
 
         if accum_dur >= min_dur:
-            windows.append({
-                "start_sec": snap_to_frame(w_start),
-                "end_sec": snap_to_frame(span["end_sec"]),
-                "duration": round(span["end_sec"] - w_start, 4),
-                "text": " ".join(s["text"] for s in curr_spans),
-                "primary_segment_id": curr_spans[0]["seg_id"],
-                "scene_id": curr_spans[0].get("scene_id"),
-            })
+            windows.append(
+                {
+                    "start_sec": snap_to_frame(w_start),
+                    "end_sec": snap_to_frame(span["end_sec"]),
+                    "duration": round(span["end_sec"] - w_start, 4),
+                    "text": " ".join(s["text"] for s in curr_spans),
+                    "primary_segment_id": curr_spans[0]["seg_id"],
+                    "scene_id": curr_spans[0].get("scene_id"),
+                }
+            )
             w_start = span["end_sec"]
             curr_spans = []
 
@@ -180,21 +224,25 @@ def build_visual_shot_windows(
             windows[-1]["duration"] = round(trailing_end - windows[-1]["start_sec"], 4)
             windows[-1]["text"] += " " + " ".join(s["text"] for s in curr_spans)
         else:
-            windows.append({
-                "start_sec": snap_to_frame(w_start),
-                "end_sec": trailing_end,
-                "duration": round(trailing_end - w_start, 4),
-                "text": " ".join(s["text"] for s in curr_spans),
-                "primary_segment_id": curr_spans[0]["seg_id"],
-                "scene_id": curr_spans[0].get("scene_id"),
-            })
+            windows.append(
+                {
+                    "start_sec": snap_to_frame(w_start),
+                    "end_sec": trailing_end,
+                    "duration": round(trailing_end - w_start, 4),
+                    "text": " ".join(s["text"] for s in curr_spans),
+                    "primary_segment_id": curr_spans[0]["seg_id"],
+                    "scene_id": curr_spans[0].get("scene_id"),
+                }
+            )
 
     # Guarantee strict mathematical continuity between all adjacent windows
     if windows:
         windows[0]["start_sec"] = 0.0
         for k in range(len(windows) - 1):
             windows[k + 1]["start_sec"] = windows[k]["end_sec"]
-            windows[k + 1]["duration"] = round(windows[k + 1]["end_sec"] - windows[k + 1]["start_sec"], 4)
+            windows[k + 1]["duration"] = round(
+                windows[k + 1]["end_sec"] - windows[k + 1]["start_sec"], 4
+            )
 
     return windows
 
@@ -250,7 +298,8 @@ def _run_end(
     _, end, _, _ = _get_scene_usable_range(scene, need)
     following = sorted(
         (
-            sc for sc in scenes
+            sc
+            for sc in scenes
             if sc.get("source_video_id") == scene.get("source_video_id")
             and float(sc.get("start_time", 0.0)) >= float(scene.get("end_time", 0.0)) - 0.05
         ),
@@ -260,14 +309,20 @@ def _run_end(
     for sc in following:
         if end - safe_start >= need:
             break
-        if float(sc.get("start_time", 0.0)) - prev_end > 0.2 or (sc.get("shot_info") or {}).get("montage") or is_filler_scene(sc):
+        if (
+            float(sc.get("start_time", 0.0)) - prev_end > 0.2
+            or (sc.get("shot_info") or {}).get("montage")
+            or is_filler_scene(sc)
+        ):
             break
         prev_end = float(sc.get("end_time", prev_end))
         end = round(prev_end - 0.15, 3)
     return end
 
 
-def _absorb(prev: Dict[str, Any], c: Dict[str, Any], scenes: Optional[List[Dict[str, Any]]] = None) -> None:
+def _absorb(
+    prev: Dict[str, Any], c: Dict[str, Any], scenes: Optional[List[Dict[str, Any]]] = None
+) -> None:
     prev["timeline_end"] = snap_to_frame(c.get("timeline_end", prev["timeline_end"]))
     if c.get("text") and c["text"] not in prev.get("text", ""):
         prev["text"] = f"{prev.get('text', '')} {c['text']}".strip()
@@ -278,7 +333,12 @@ def _absorb(prev: Dict[str, Any], c: Dict[str, Any], scenes: Optional[List[Dict[
     scene = next((sc for sc in scenes or [] if sc["id"] == prev.get("scene_id")), None)
     if want_end > safe_end and scene is not None:
         # Own shot too short for the grown slot: play on into the following shots, not slow-mo.
-        safe_end = max(safe_end, _run_end(scene, scenes, float(prev["clip_start"]), want_end - float(prev["clip_start"])))
+        safe_end = max(
+            safe_end,
+            _run_end(
+                scene, scenes, float(prev["clip_start"]), want_end - float(prev["clip_start"])
+            ),
+        )
         prev["_safe_end"] = safe_end
     prev["clip_end"] = snap_to_frame(min(safe_end, want_end))
     src_dur = round(float(prev.get("clip_end", 0.0)) - float(prev.get("clip_start", 0.0)), 3)
@@ -336,22 +396,72 @@ def verify_and_heal_timeline_clips(
 
 
 SATISFYING_ACTION_KEYWORDS = {
-    "percikan", "laser", "potong", "memotong", "leleh", "meleleh", "cair", "presisi",
-    "mesin", "api", "tekan", "menekan", "hancur", "poles", "memoles", "kilau", "berkilau",
-    "transformasi", "rakit", "merakit", "bor", "mengebor", "tempa", "menempa", "karat",
-    "sparks", "molten", "press", "cutting", "forging", "cnc", "grinding", "polishing",
-    "satisfying", "hydraulic", "welding", "las", "mengelas", "ukir", "mengukir",
+    "percikan",
+    "laser",
+    "potong",
+    "memotong",
+    "leleh",
+    "meleleh",
+    "cair",
+    "presisi",
+    "mesin",
+    "api",
+    "tekan",
+    "menekan",
+    "hancur",
+    "poles",
+    "memoles",
+    "kilau",
+    "berkilau",
+    "transformasi",
+    "rakit",
+    "merakit",
+    "bor",
+    "mengebor",
+    "tempa",
+    "menempa",
+    "karat",
+    "sparks",
+    "molten",
+    "press",
+    "cutting",
+    "forging",
+    "cnc",
+    "grinding",
+    "polishing",
+    "satisfying",
+    "hydraulic",
+    "welding",
+    "las",
+    "mengelas",
+    "ukir",
+    "mengukir",
 }
 
 STATIC_BORING_KEYWORDS = {
-    "kamera statis", "layar kosong", "layar hitam", "berbicara", "wawancara", "duduk diam",
-    "talking head", "static shot", "blank screen",
+    "kamera statis",
+    "layar kosong",
+    "layar hitam",
+    "berbicara",
+    "wawancara",
+    "duduk diam",
+    "talking head",
+    "static shot",
+    "blank screen",
 }
 
 # Channel branding, not the process: intro logo, ad/title card, outro end screen.
 FILLER_TAGS = {
-    "logo", "branding", "iklan", "intro", "outro", "end screen", "endscreen", "subscribe",
-    "title card", "kartu judul",
+    "logo",
+    "branding",
+    "iklan",
+    "intro",
+    "outro",
+    "end screen",
+    "endscreen",
+    "subscribe",
+    "title card",
+    "kartu judul",
 }
 
 
@@ -451,16 +561,25 @@ async def match_scenes_to_segments(
     scene_by_id = {sc["id"]: sc for sc in scenes}
     # Untagged scenes (vision failed) all share one placeholder embedding, so their score is noise;
     # they stay in `scenes` so a chosen shot can still play on into them.
-    pool = [sc for sc in scenes if not is_filler_scene(sc) and sc.get("status") != "untagged"] or scenes
+    pool = [
+        sc for sc in scenes if not is_filler_scene(sc) and sc.get("status") != "untagged"
+    ] or scenes
     # The script's tagged shots mark the story's footage (one chapter of a compilation);
     # follow-up cuts stay inside it instead of borrowing another subject's shot.
-    tagged_scenes = list({w["scene_id"]: scene_by_id[w["scene_id"]] for w in windows if w.get("scene_id") in scene_by_id}.values())
+    tagged_scenes = list(
+        {
+            w["scene_id"]: scene_by_id[w["scene_id"]]
+            for w in windows
+            if w.get("scene_id") in scene_by_id
+        }.values()
+    )
     if len(tagged_scenes) >= 2:  # one tagged shot is a point, not a span
         lo = min(float(sc.get("start_time", 0.0)) for sc in tagged_scenes)
         hi = max(float(sc.get("end_time", 0.0)) for sc in tagged_scenes)
         sources = {sc.get("source_video_id") for sc in tagged_scenes}
         pool = [
-            sc for sc in pool
+            sc
+            for sc in pool
             if sc.get("source_video_id") in sources and lo <= float(sc.get("start_time", 0.0)) < hi
         ] or pool
     reserved_ids = {w["scene_id"] for w in windows if w.get("scene_id")}
@@ -487,13 +606,19 @@ async def match_scenes_to_segments(
         # 3. Score all candidate scenes with Hybrid Search + Heatmap + Vision Satisfaction + Strict Chrono Flow
         # Follow-up cuts never take a shot the script wrote another line for; with no free
         # scene left the previous clip simply plays on.
-        candidates = pool if tagged is not None else [sc for sc in pool if sc["id"] not in reserved_ids]
+        candidates = (
+            pool if tagged is not None else [sc for sc in pool if sc["id"] not in reserved_ids]
+        )
         if not candidates and clips:
             _absorb(clips[-1], {"timeline_end": end_sec, "text": win["text"]}, scenes)
             continue
         # Follow-up cut inside the same line: the shots right after the previous one are the
         # next moves of the same step (reference channel cuts 2-4 shots per step sentence).
-        prev_sc = scene_by_id.get(clips[-1]["scene_id"]) if clips and clips[-1]["segment_id"] == win["primary_segment_id"] else None
+        prev_sc = (
+            scene_by_id.get(clips[-1]["scene_id"])
+            if clips and clips[-1]["segment_id"] == win["primary_segment_id"]
+            else None
+        )
         scored_scenes = []
         for sc in candidates or pool:
             sc_emb = sc.get("embedding")
@@ -510,7 +635,9 @@ async def match_scenes_to_segments(
             if recent_scene_ids and sc["id"] == recent_scene_ids[-1]:
                 recency_penalty = 0.01  # Never duplicate immediately consecutive scene
             elif sc["id"] in global_used_ids:
-                recency_penalty = 0.03  # any unused shot beats a reused one; when all are used they tie
+                recency_penalty = (
+                    0.03  # any unused shot beats a reused one; when all are used they tie
+                )
             elif len(recent_scene_ids) >= 2 and sc["id"] == recent_scene_ids[-2]:
                 recency_penalty = 0.25
             else:
@@ -557,8 +684,18 @@ async def match_scenes_to_segments(
             heatmap_boost = _calc_heatmap_boost(sc)
             satisfaction_boost = _calc_visual_satisfaction_boost(sc)
 
-            gap = float(sc.get("start_time", 0.0)) - float(prev_sc.get("end_time", 0.0)) if prev_sc else -1.0
-            continuity = 1.5 if prev_sc and sc.get("source_video_id") == prev_sc.get("source_video_id") and -0.05 <= gap <= 15.0 else 1.0
+            gap = (
+                float(sc.get("start_time", 0.0)) - float(prev_sc.get("end_time", 0.0))
+                if prev_sc
+                else -1.0
+            )
+            continuity = (
+                1.5
+                if prev_sc
+                and sc.get("source_video_id") == prev_sc.get("source_video_id")
+                and -0.05 <= gap <= 15.0
+                else 1.0
+            )
 
             score = (
                 relevance
@@ -573,7 +710,9 @@ async def match_scenes_to_segments(
 
         scored_scenes.sort(key=lambda x: x[0], reverse=True)
         if tagged is not None:
-            scored_scenes = [(10.0, tagged)] + [p for p in scored_scenes if p[1]["id"] != tagged["id"]]
+            scored_scenes = [(10.0, tagged)] + [
+                p for p in scored_scenes if p[1]["id"] != tagged["id"]
+            ]
         best_scene = scored_scenes[0][1]
         if tagged is None and clips and best_scene["id"] in global_used_ids:
             # No fresh shot fits here: let the previous clip play on instead of repeating footage.
@@ -602,39 +741,43 @@ async def match_scenes_to_segments(
             center_offset = round(slack / 2.0, 3)
             clip_start = round(safe_scene_start + center_offset, 3)
             clip_end = min(round(clip_start + source_slice_dur, 3), safe_scene_end)
-            clips.append({
-                "id": str(uuid.uuid4()),
-                "segment_id": win["primary_segment_id"],
-                "scene_id": best_scene["id"],
-                "source_video_id": best_scene["source_video_id"],
-                "timeline_start": snap_to_frame(start_sec),
-                "timeline_end": snap_to_frame(end_sec),
-                "clip_start": snap_to_frame(clip_start),
-                "clip_end": snap_to_frame(clip_end),
-                "speed": snappy_speed,
-                "text": win["text"],
-                "thumbnail_url": best_scene.get("thumbnail_url"),
-                "_safe_end": safe_scene_end,
-            })
+            clips.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "segment_id": win["primary_segment_id"],
+                    "scene_id": best_scene["id"],
+                    "source_video_id": best_scene["source_video_id"],
+                    "timeline_start": snap_to_frame(start_sec),
+                    "timeline_end": snap_to_frame(end_sec),
+                    "clip_start": snap_to_frame(clip_start),
+                    "clip_end": snap_to_frame(clip_end),
+                    "speed": snappy_speed,
+                    "text": win["text"],
+                    "thumbnail_url": best_scene.get("thumbnail_url"),
+                    "_safe_end": safe_scene_end,
+                }
+            )
         else:
             # Scene shorter than the slot: keep playing the source into the next scene(s)
             # instead of stretching a short slice into slow-mo.
             run_end = _run_end(best_scene, scenes, safe_scene_start, target_duration)
             clip_end = min(round(safe_scene_start + target_duration, 3), run_end)
-            clips.append({
-                "id": str(uuid.uuid4()),
-                "segment_id": win["primary_segment_id"],
-                "scene_id": best_scene["id"],
-                "source_video_id": best_scene["source_video_id"],
-                "timeline_start": snap_to_frame(start_sec),
-                "timeline_end": snap_to_frame(end_sec),
-                "clip_start": snap_to_frame(safe_scene_start),
-                "clip_end": snap_to_frame(clip_end),
-                "speed": min(1.0, round((clip_end - safe_scene_start) / target_duration, 3)),
-                "text": win["text"],
-                "thumbnail_url": best_scene.get("thumbnail_url"),
-                "_safe_end": run_end,
-            })
+            clips.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "segment_id": win["primary_segment_id"],
+                    "scene_id": best_scene["id"],
+                    "source_video_id": best_scene["source_video_id"],
+                    "timeline_start": snap_to_frame(start_sec),
+                    "timeline_end": snap_to_frame(end_sec),
+                    "clip_start": snap_to_frame(safe_scene_start),
+                    "clip_end": snap_to_frame(clip_end),
+                    "speed": min(1.0, round((clip_end - safe_scene_start) / target_duration, 3)),
+                    "text": win["text"],
+                    "thumbnail_url": best_scene.get("thumbnail_url"),
+                    "_safe_end": run_end,
+                }
+            )
 
     # Layer 3: Post-match verification guard ensuring no timeline clip < 2.0s
     healed_clips = verify_and_heal_timeline_clips(clips, min_clip_dur=2.0, scenes=scenes)

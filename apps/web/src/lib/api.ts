@@ -195,7 +195,11 @@ export const api = {
     }),
   deleteMedia: (projectId: string, videoId: string) =>
     request<void>(`/api/v1/projects/${projectId}/media/${videoId}`, { method: "DELETE" }),
-  updateSourceVideo: (projectId: string, videoId: string, data: { hardsub: Omit<Hardsub, "source"> }) =>
+  updateSourceVideo: (
+    projectId: string,
+    videoId: string,
+    data: { hardsub: Omit<Hardsub, "source"> }
+  ) =>
     request<SourceVideo>(`/api/v1/projects/${projectId}/media/${videoId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -374,12 +378,17 @@ export const api = {
     }),
   /** Same ASS generator as the final render, fed the unsaved style for the live preview. */
   renderAss: (projectId: string, style: SubtitleStyle, segments: SentenceSegment[]) =>
-    request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/render-ass`, {
-      method: "POST",
-      body: JSON.stringify({ style, segments }),
-    }),
+    request<{ ass_content: string; line_count: number }>(
+      `/api/v1/projects/${projectId}/subtitles/render-ass`,
+      {
+        method: "POST",
+        body: JSON.stringify({ style, segments }),
+      }
+    ),
   previewASS: (projectId: string) =>
-    request<{ ass_content: string; line_count: number }>(`/api/v1/projects/${projectId}/subtitles/preview-ass`),
+    request<{ ass_content: string; line_count: number }>(
+      `/api/v1/projects/${projectId}/subtitles/preview-ass`
+    ),
   getSubtitleExportUrl: (projectId: string, format: "ass" | "srt") =>
     resolveApiUrl(`/api/v1/projects/${projectId}/subtitles/export?format=${format}`),
 
@@ -456,12 +465,9 @@ export const api = {
   getAvailableModels: (baseUrl?: string, apiKey?: string) => {
     const query = baseUrl ? `?base_url=${encodeURIComponent(baseUrl)}` : "";
     // Key travels in a header, not the query string, so it stays out of logs.
-    return request<{ models: string[] }>(
-      `/api/v1/settings/models${query}`,
-      {
-        headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
-      }
-    );
+    return request<{ models: string[] }>(`/api/v1/settings/models${query}`, {
+      headers: apiKey ? { "X-Api-Key": apiKey } : undefined,
+    });
   },
 
   // Project Defaults (config.json)
@@ -489,10 +495,7 @@ export const api = {
     ),
   getLatestQC: (projectId: string) =>
     request<QCLatestResponse>(`/api/v1/projects/${projectId}/qc/latest`),
-  runProjectQC: (
-    projectId: string,
-    data: { gate: "script" | "timeline"; auto_fix?: boolean }
-  ) =>
+  runProjectQC: (projectId: string, data: { gate: "script" | "timeline"; auto_fix?: boolean }) =>
     request<QCRun>(`/api/v1/projects/${projectId}/qc/run`, {
       method: "POST",
       body: JSON.stringify(data),

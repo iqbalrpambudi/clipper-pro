@@ -26,11 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import {
-  QC_DIMENSION_LABELS,
-  QC_PLATFORMS,
-  normalizeQCConfig,
-} from "./constants";
+import { QC_DIMENSION_LABELS, QC_PLATFORMS, normalizeQCConfig } from "./constants";
 
 type QCGate = "script" | "timeline";
 
@@ -115,13 +111,10 @@ export function QCReportDialog({
     enabled: Boolean(projectId) && open,
   });
 
-  const effectiveConfig: QCConfig = normalizeQCConfig(
-    project?.qc_config ?? defaults?.qc
-  );
+  const effectiveConfig: QCConfig = normalizeQCConfig(project?.qc_config ?? defaults?.qc);
 
   const updateQCConfigMutation = useMutation({
-    mutationFn: (nextConfig: QCConfig) =>
-      api.updateProject(projectId, { qc_config: nextConfig }),
+    mutationFn: (nextConfig: QCConfig) => api.updateProject(projectId, { qc_config: nextConfig }),
     onSuccess: (updated) => {
       queryClient.setQueryData<ProjectDetail>(["project", projectId], (old) =>
         old ? { ...old, qc_config: updated.qc_config } : old
@@ -151,7 +144,8 @@ export function QCReportDialog({
         return;
       }
       showToast(
-        run.summary || `QC ${GATE_LABELS[run.gate as QCGate]} selesai (skor ${run.overall_score.toFixed(1)})`,
+        run.summary ||
+          `QC ${GATE_LABELS[run.gate as QCGate]} selesai (skor ${run.overall_score.toFixed(1)})`,
         run.passed ? "success" : "info"
       );
     },
@@ -178,14 +172,13 @@ export function QCReportDialog({
     updateQCConfigMutation.mutate(next);
   };
 
-  const activeRun =
-    selectedGate === "script" ? latestQC?.script : latestQC?.timeline;
+  const activeRun = selectedGate === "script" ? latestQC?.script : latestQC?.timeline;
   const canFix = Boolean(
     activeRun &&
-      !activeRun.passed &&
-      activeRun.issues.some(
-        (i) => i.auto_fixable && (i.severity === "major" || i.severity === "blocker")
-      )
+    !activeRun.passed &&
+    activeRun.issues.some(
+      (i) => i.auto_fixable && (i.severity === "major" || i.severity === "blocker")
+    )
   );
   const pendingFix = runQCMutation.isPending && runQCMutation.variables?.fix;
   const pendingAll = runQCMutation.isPending && (runQCMutation.variables?.gates.length ?? 0) > 1;
@@ -217,7 +210,9 @@ export function QCReportDialog({
             </Button>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Reviewer AI untuk narasi, pemilihan scene, dan visual. Hanya jalan saat kamu klik. <strong>Cek</strong> = laporan saja, tidak mengubah apa pun. <strong>Perbaiki</strong> = terapkan perbaikan, tiap perubahan terlihat &amp; bisa dikembalikan.
+            Reviewer AI untuk narasi, pemilihan scene, dan visual. Hanya jalan saat kamu klik.{" "}
+            <strong>Cek</strong> = laporan saja, tidak mengubah apa pun. <strong>Perbaiki</strong> =
+            terapkan perbaikan, tiap perubahan terlihat &amp; bisa dikembalikan.
           </DialogDescription>
         </DialogHeader>
 
@@ -486,9 +481,7 @@ export function QCReportDialog({
                               variant="ghost"
                               size="xs"
                               onClick={() => {
-                                setActiveTab(
-                                  selectedGate === "script" ? "narration" : "timeline"
-                                );
+                                setActiveTab(selectedGate === "script" ? "narration" : "timeline");
                                 onOpenChange(false);
                               }}
                               className="h-6 shrink-0 gap-1 px-2 font-mono text-[11px] text-primary"

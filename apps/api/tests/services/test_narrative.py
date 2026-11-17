@@ -4,10 +4,10 @@ import pytest
 
 from app.services.ai_adapters.openai_adapter import OpenAICompatibleAdapter
 from app.services.narrative import (
+    align_lines_to_shots,
     build_script_prompt,
     generate_narration_script,
     line_count_for,
-    align_lines_to_shots,
     parse_script_lines,
     pick_story_range,
     pick_story_shots,
@@ -24,7 +24,10 @@ def _scene(i, start, dur=5.0, montage=False, desc=None):
         "description": desc or f"tangan mengaduk adonan {i}",
         "tags": [],
         "analysis": {},
-        "shot_info": {"usable_ranges": [] if montage else [[start + 0.1, start + dur - 0.1]], "montage": montage},
+        "shot_info": {
+            "usable_ranges": [] if montage else [[start + 0.1, start + dur - 0.1]],
+            "montage": montage,
+        },
     }
 
 
@@ -39,7 +42,9 @@ def test_split_flat_text_by_sentence():
 
 
 def test_split_line_script_one_segment_per_line():
-    segs = split_into_sentence_segments("1. Kalimat satu. Masih satu baris.\n2. Kalimat dua di sini.")
+    segs = split_into_sentence_segments(
+        "1. Kalimat satu. Masih satu baris.\n2. Kalimat dua di sini."
+    )
     assert [s["text"] for s in segs] == ["Kalimat satu. Masih satu baris.", "Kalimat dua di sini."]
 
 
@@ -76,7 +81,11 @@ def test_pick_story_shots_opens_with_most_satisfying_shot():
 def test_pick_story_shots_skips_logo_and_outro():
     scenes = [_scene(i, i * 5.0) for i in range(20)]
     scenes[0]["tags"] = ["logo", "branding"]
-    scenes[-1].update(tags=["outro", "end screen", "subscribe"], duration=12.0, end_time=scenes[-1]["start_time"] + 12.0)
+    scenes[-1].update(
+        tags=["outro", "end screen", "subscribe"],
+        duration=12.0,
+        end_time=scenes[-1]["start_time"] + 12.0,
+    )
     shots = pick_story_shots(scenes, 4)
     assert scenes[0] not in shots and scenes[-1] not in shots
 
@@ -105,8 +114,13 @@ def test_prompt_has_one_challenge_line_with_its_shot():
 
 def test_parse_drops_inti_brief():
     raw = "Inti: petani mengubur sawi supaya kimchi awet.\n1. Kenapa sawi ini dikubur?\n2. Ini adalah cara menyimpan kimchi."
-    assert parse_script_lines(raw) == ["Kenapa sawi ini dikubur?", "Ini adalah cara menyimpan kimchi."]
-    assert parse_script_lines("**Inti:** pokoknya begitu.\nKenapa sawi dikubur? Supaya awet sampai musim semi.") == [
+    assert parse_script_lines(raw) == [
+        "Kenapa sawi ini dikubur?",
+        "Ini adalah cara menyimpan kimchi.",
+    ]
+    assert parse_script_lines(
+        "**Inti:** pokoknya begitu.\nKenapa sawi dikubur? Supaya awet sampai musim semi."
+    ) == [
         "Kenapa sawi dikubur?",
         "Supaya awet sampai musim semi.",
     ]
@@ -131,7 +145,9 @@ async def test_generate_maps_line_k_to_shot_k():
     adapter = AsyncMock()
     script = "\n".join(f"{k}. Baris nomor {k} tentang proses ini." for k in range(1, 8))
     adapter.generate_chat.side_effect = ['{"start": 0, "end": 29, "topic": "adonan"}', script]
-    raw, segs = await generate_narration_script(adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30)
+    raw, segs = await generate_narration_script(
+        adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30
+    )
     shots = pick_story_shots(scenes, 7)
     assert raw.count("\n") == 6
     assert [s["scene_id"] for s in segs] == [s["id"] for s in shots]
@@ -144,33 +160,52 @@ async def test_generate_retries_once_on_bad_format_then_fails():
     adapter = AsyncMock()
     adapter.generate_chat.return_value = "Oke."
     with pytest.raises(ValueError):
-        await generate_narration_script(adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30)
-    assert adapter.generate_chat.call_count == 3  # range (unparsable -> whole video) + script + retry
+        await generate_narration_script(
+            adapter, "Gaya.", "santai", "", "Judul", scenes, target_duration=30
+        )
+    assert (
+        adapter.generate_chat.call_count == 3
+    )  # range (unparsable -> whole video) + script + retry
 
 
 _ITEMS = ["brokoli", "kubis", "wortel", "bawang", "kentang", "tebu"]
 
 
 def _item_shots():
-    return [_scene(i, i * 5.0, desc=f"mesin memanen {item} di ladang") for i, item in enumerate(_ITEMS)]
+    return [
+        _scene(i, i * 5.0, desc=f"mesin memanen {item} di ladang") for i, item in enumerate(_ITEMS)
+    ]
 
 
 def test_align_keeps_order_when_lines_match():
-    lines = ["Kenapa sayur ini dipanen mesin?"] + [f"Lalu {item} diangkat mesin." for item in _ITEMS[1:]]
+    lines = ["Kenapa sayur ini dipanen mesin?"] + [
+        f"Lalu {item} diangkat mesin." for item in _ITEMS[1:]
+    ]
     assert align_lines_to_shots(lines, _item_shots()) == [0, 1, 2, 3, 4, 5]
 
 
 def test_align_absorbs_extra_line_instead_of_shifting():
     # Model slipped in an extra line after 'wortel': without alignment every later shot shifts by one.
-    lines = ["Kenapa sayur ini dipanen mesin?", "Lalu kubis diangkat.", "Lalu wortel dicabut.",
-             "Namun, tanah basah membuat pekerjaan lambat.", "Lalu bawang dituang.", "Lalu kentang dikumpulkan."]
+    lines = [
+        "Kenapa sayur ini dipanen mesin?",
+        "Lalu kubis diangkat.",
+        "Lalu wortel dicabut.",
+        "Namun, tanah basah membuat pekerjaan lambat.",
+        "Lalu bawang dituang.",
+        "Lalu kentang dikumpulkan.",
+    ]
     picks = align_lines_to_shots(lines, _item_shots())
     assert [picks[i] for i in (1, 2, 4, 5)] == [1, 2, 3, 4]
     assert picks[3] in (2, 3)
 
 
 def test_align_skips_shot_of_dropped_line():
-    lines = ["Kenapa sayur ini dipanen mesin?", "Lalu kubis diangkat.", "Lalu bawang dituang.", "Akhirnya tebu dipotong."]
+    lines = [
+        "Kenapa sayur ini dipanen mesin?",
+        "Lalu kubis diangkat.",
+        "Lalu bawang dituang.",
+        "Akhirnya tebu dipotong.",
+    ]
     assert align_lines_to_shots(lines, _item_shots()) == [0, 1, 3, 5]
 
 

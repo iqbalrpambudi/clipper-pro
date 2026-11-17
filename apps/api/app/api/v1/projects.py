@@ -124,7 +124,11 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
 
-    bg_fill = proj.background_fill if isinstance(proj.background_fill, dict) else {"mode": "blur", "color": "#000000"}
+    bg_fill = (
+        proj.background_fill
+        if isinstance(proj.background_fill, dict)
+        else {"mode": "blur", "color": "#000000"}
+    )
     watermark_dict = proj.watermark if isinstance(proj.watermark, dict) else None
     tts_dict = proj.tts_config if isinstance(proj.tts_config, dict) else None
     qc_dict = proj.qc_config if isinstance(proj.qc_config, dict) else None
@@ -177,8 +181,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
     video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in proj.source_videos}
     video_order_map = {
-        v.id: idx
-        for idx, v in enumerate(sorted(proj.source_videos, key=lambda x: x.created_at))
+        v.id: idx for idx, v in enumerate(sorted(proj.source_videos, key=lambda x: x.created_at))
     }
 
     sorted_scenes = sorted(
@@ -256,7 +259,9 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             if not c_copy.get("thumbnail_url"):
                 c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
             if not c_copy.get("video_url"):
-                c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+                c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(
+                    c.get("source_video_id")
+                )
             clips.append(c_copy)
 
         resp.timeline = {
@@ -278,7 +283,9 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
             status=j.status,
             progress=j.progress,
             output_url=storage.to_relative_url(j.output_file_path),
-            thumbnail_url=storage.resolve_render_job_thumbnail_url(j.thumbnail_path, j.output_file_path),
+            thumbnail_url=storage.resolve_render_job_thumbnail_url(
+                j.thumbnail_path, j.output_file_path
+            ),
             file_size_bytes=storage.get_file_size(j.output_file_path),
             log_output=j.log_output,
             error_message=j.error_message,
@@ -292,7 +299,9 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
-async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSession = Depends(get_db)):
+async def update_project(
+    project_id: str, payload: ProjectUpdate, db: AsyncSession = Depends(get_db)
+):
     proj = await db.get(Project, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project tidak ditemukan")
@@ -329,6 +338,7 @@ async def update_project(project_id: str, payload: ProjectUpdate, db: AsyncSessi
     await db.commit()
     await db.refresh(proj)
     return ProjectResponse.model_validate(proj)
+
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):

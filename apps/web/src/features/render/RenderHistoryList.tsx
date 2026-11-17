@@ -150,7 +150,9 @@ export function RenderHistoryList({
               isCurrentActive && activeTask?.status === "progress"
                 ? activeTask.message
                 : job.log_output;
-            const downloadUrl = resolveApiUrl(`/api/v1/projects/${projectId}/render/download/${job.id}`);
+            const downloadUrl = resolveApiUrl(
+              `/api/v1/projects/${projectId}/render/download/${job.id}`
+            );
 
             return (
               <div key={job.id} className="flex flex-col gap-2.5 py-3 first:pt-0 last:pb-0">
@@ -329,7 +331,9 @@ export function RenderHistoryList({
                 )}
 
                 {currentLog && (job.status === "rendering" || job.status === "failed") && (
-                  <p className="truncate font-mono text-[11px] text-muted-foreground">{currentLog}</p>
+                  <p className="truncate font-mono text-[11px] text-muted-foreground">
+                    {currentLog}
+                  </p>
                 )}
               </div>
             );

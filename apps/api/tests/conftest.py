@@ -14,6 +14,7 @@ def test_env_setup(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "STORAGE_PATH", str(isolated_storage))
     return isolated_storage
 
+
 @pytest.fixture
 async def async_client():
     """Async HTTP test client bound to FastAPI ASGI app."""

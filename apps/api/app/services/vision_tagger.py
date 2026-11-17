@@ -78,7 +78,9 @@ PLACEHOLDER_DESCRIPTION = "Cuplikan video aksi/aktivitas"
 
 def is_real_vision_result(r: Optional[Dict[str, Any]]) -> bool:
     """Adapters swallow errors and hand back placeholder tags; only a parsed analysis counts as tagged."""
-    return bool(r and r.get("analysis") and r.get("description") not in (None, "", PLACEHOLDER_DESCRIPTION))
+    return bool(
+        r and r.get("analysis") and r.get("description") not in (None, "", PLACEHOLDER_DESCRIPTION)
+    )
 
 
 def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
@@ -104,6 +106,7 @@ def build_scene_embedding_text(
     if transcript and transcript.strip():
         parts.append(f'Dialog: "{transcript.strip()}"')
     return " ".join(parts)
+
 
 async def analyze_scene(
     adapter: BaseLLMAdapter,
@@ -147,6 +150,7 @@ async def analyze_scenes_batch(
     # Scene yang tidak tercakup batch: fallback ke analyze_vision tunggal, secara paralel
     missing = [item for item in items if str(item["scene_index"]) not in results_map]
     if missing:
+
         async def _single(item: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
             try:
                 kfs = item.get("keyframe_paths", [item["thumbnail_path"]])
@@ -180,9 +184,7 @@ async def analyze_scenes_batch(
 
         descriptions.append(desc)
         tags_list.append(tags)
-        texts_to_embed.append(
-            build_scene_embedding_text(desc, tags, item.get("transcript"))
-        )
+        texts_to_embed.append(build_scene_embedding_text(desc, tags, item.get("transcript")))
         analyses.append(analysis)
         tagged.append(bool(r))
 
@@ -195,6 +197,7 @@ async def analyze_scenes_batch(
         embeddings = [hash_embedding(txt) for txt in texts_to_embed]
 
     return list(zip(descriptions, tags_list, embeddings, analyses, tagged, strict=False))
+
 
 def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) -> str:
     """Rule-based relationship scene sekarang vs scene sebelumnya dari overlap entitas."""
@@ -211,7 +214,9 @@ def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) ->
     cur_loc = (cur.get("location") or "").lower()
 
     same_chars = bool(prev_chars & cur_chars) if (prev_chars and cur_chars) else None
-    same_loc = bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    same_loc = (
+        bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    )
 
     if same_chars and same_loc:
         return "lanjutan adegan yang sama"

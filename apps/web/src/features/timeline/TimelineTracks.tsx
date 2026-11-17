@@ -1,12 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Film,
-  Volume2,
-  Subtitles,
-  AlertTriangle,
-  Gauge,
-  ArrowRight,
-} from "lucide-react";
+import { Film, Volume2, Subtitles, AlertTriangle, Gauge, ArrowRight } from "lucide-react";
 import { SentenceSegment, TimelineClip } from "@/types";
 import { Bounds, cutPoints, tlDur } from "@/lib/timeline/editOps";
 import { SCENE_DRAG_MIME, formatRuler, formatSec } from "./timelineFormat";
@@ -294,8 +287,8 @@ export function TimelineTracks({
             <Film className="w-3.5 h-3.5 text-primary" /> Tracks
           </span>
           <span className="text-xs text-muted-foreground hidden lg:inline">
-            Alt saat seret = tanpa snap • Seret handle kanan klip untuk <b className="text-foreground">extrude / roll</b> • Seret
-            scene untuk ganti
+            Alt saat seret = tanpa snap • Seret handle kanan klip untuk{" "}
+            <b className="text-foreground">extrude / roll</b> • Seret scene untuk ganti
           </span>
         </div>
       </div>
@@ -522,7 +515,9 @@ export function TimelineTracks({
                       <div className="absolute top-1 left-1 right-1 flex items-center gap-1">
                         <span
                           className={`px-1 rounded text-xs font-bold ${
-                            isSel ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground shadow-sm"
+                            isSel
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background/90 text-foreground shadow-sm"
                           }`}
                         >
                           {idx + 1}

@@ -83,5 +83,3 @@ class TestTtsConnectionResponse(BaseModel):
     provider_status: str
     latency_ms: int
     message: str
-
-

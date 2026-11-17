@@ -68,9 +68,7 @@ async def search_bilibili(
 
         views = int(data.get("view_count") or 0)
         url = (
-            data.get("webpage_url")
-            or data.get("url")
-            or f"https://www.bilibili.com/video/{vid_id}"
+            data.get("webpage_url") or data.get("url") or f"https://www.bilibili.com/video/{vid_id}"
         )
 
         thumbnail = data.get("thumbnail")

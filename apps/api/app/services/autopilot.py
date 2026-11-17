@@ -55,11 +55,14 @@ class QuotaExhausted(AutopilotError):
 
 # ---------- pure scheduling helpers ----------
 
+
 def _local_now(now_utc: datetime, offset_minutes: int) -> datetime:
     return now_utc + timedelta(minutes=offset_minutes)
 
 
-def upcoming_slots(slots: Iterable[str], utc_offset_minutes: int, now_utc: datetime, days: int = 3) -> List[datetime]:
+def upcoming_slots(
+    slots: Iterable[str], utc_offset_minutes: int, now_utc: datetime, days: int = 3
+) -> List[datetime]:
     """Naive-UTC times for local HH:MM slots over the next `days` days, sorted, future only."""
     offset = timedelta(minutes=utc_offset_minutes)
     local_today = (now_utc + offset).date()
@@ -77,7 +80,8 @@ def free_publish_slots(
 ) -> List[datetime]:
     """Slots inside the publish window that have no video yet."""
     return [
-        s for s in slots
+        s
+        for s in slots
         if s not in taken and MIN_PUBLISH_LEAD <= s - now_utc <= timedelta(hours=ahead_hours)
     ]
 
@@ -126,6 +130,7 @@ def clean_title(title: str) -> str:
 
 # ---------- plumbing ----------
 
+
 async def _store(run_id: str, **fields) -> None:
     async with SessionLocal() as db:
         await db.execute(update(AutopilotRun).where(AutopilotRun.id == run_id).values(**fields))
@@ -170,6 +175,7 @@ async def _llm_json(prompt: str) -> dict:
 
 # ---------- producer ----------
 
+
 async def _generate_idea(cfg: AutopilotConfig, category: str, recent_topics: List[str]) -> dict:
     preset = next((p for p in get_preset_categories() if p.id == category), None)
     moods = available_moods()
@@ -188,20 +194,34 @@ Balas JSON saja:
     if not data.get("topic") or not data.get("query"):
         raise AutopilotError(f"Ide dari LLM tidak lengkap: {data}")
     mood = data.get("bgm_mood")
-    return {"topic": str(data["topic"])[:250], "query": str(data["query"])[:200],
-            "bgm_mood": mood if mood in moods else (moods[0] if moods else None)}
+    return {
+        "topic": str(data["topic"])[:250],
+        "query": str(data["query"])[:200],
+        "bgm_mood": mood if mood in moods else (moods[0] if moods else None),
+    }
 
 
 def _build_metadata(meta: dict, topic: str, src: dict, music_credit: str | None = None) -> dict:
     title = clean_title(str(meta.get("title") or topic))
-    hashtags = " ".join(h if h.startswith("#") else f"#{h}" for h in (meta.get("hashtags") or [])[:5])
+    hashtags = " ".join(
+        h if h.startswith("#") else f"#{h}" for h in (meta.get("hashtags") or [])[:5]
+    )
     # Source credit is added by code, never left to the LLM
-    description = re.sub(r"[<>]", "", "\n\n".join(filter(None, [
-        str(meta.get("summary") or "").strip(),
-        f"Sumber footage: {src['title']} — {src['channel']} ({src['url']})",
-        music_credit,
-        hashtags,
-    ])))[:5000]
+    description = re.sub(
+        r"[<>]",
+        "",
+        "\n\n".join(
+            filter(
+                None,
+                [
+                    str(meta.get("summary") or "").strip(),
+                    f"Sumber footage: {src['title']} — {src['channel']} ({src['url']})",
+                    music_credit,
+                    hashtags,
+                ],
+            )
+        ),
+    )[:5000]
     tags, total = [], 0
     for t in meta.get("tags") or []:
         t = re.sub(r"[<>,]", "", str(t)).strip()
@@ -220,8 +240,11 @@ async def _ensure_tagged(c: httpx.AsyncClient, pid: str, target_duration: float)
         if tag_coverage(scenes) >= 1 or is_quota_error(error):
             break
         await asyncio.sleep(wait)
-        error = (await _call(c, "POST", f"/projects/{pid}/scenes/retag",
-                             json={"mode": "quick", "batch_size": 8})).json().get("error") or error
+        error = (
+            await _call(
+                c, "POST", f"/projects/{pid}/scenes/retag", json={"mode": "quick", "batch_size": 8}
+            )
+        ).json().get("error") or error
         scenes = (await _call(c, "GET", f"/projects/{pid}/scenes")).json()
 
     coverage = tag_coverage(scenes)
@@ -231,15 +254,25 @@ async def _ensure_tagged(c: httpx.AsyncClient, pid: str, target_duration: float)
         reason += f": {error}" if error else ""
         raise (QuotaExhausted if is_quota_error(error) else AutopilotError)(reason)
     if coverage < 1:
-        log.warning("Project %s: %.0f%% of footage untagged, continuing without it", pid, (1 - coverage) * 100)
+        log.warning(
+            "Project %s: %.0f%% of footage untagged, continuing without it",
+            pid,
+            (1 - coverage) * 100,
+        )
 
 
 async def _build(run_id: str, cfg: AutopilotConfig) -> None:
     """Make one video and leave it in the pool (status=ready). Upload happens later in the publisher."""
     async with SessionLocal() as db:
-        recent = (await db.execute(
-            select(AutopilotRun).order_by(AutopilotRun.created_at.desc()).limit(60)
-        )).scalars().all()
+        recent = (
+            (
+                await db.execute(
+                    select(AutopilotRun).order_by(AutopilotRun.created_at.desc()).limit(60)
+                )
+            )
+            .scalars()
+            .all()
+        )
     category = pick_category(cfg.categories, list(recent))
     await _store(run_id, category=category)
 
@@ -247,37 +280,73 @@ async def _build(run_id: str, cfg: AutopilotConfig) -> None:
     await _store(run_id, topic=idea["topic"], query=idea["query"], stage="sourcing")
 
     async with _client() as c:
-        found = (await _call(c, "POST", "/discovery/search", json={
-            "custom_query": idea["query"], "preset_id": category, "limit": 12,
-            "max_duration": 900, "hide_imported": True, "exclude_ai": True,
-        })).json()["candidates"]
+        found = (
+            await _call(
+                c,
+                "POST",
+                "/discovery/search",
+                json={
+                    "custom_query": idea["query"],
+                    "preset_id": category,
+                    "limit": 12,
+                    "max_duration": 900,
+                    "hide_imported": True,
+                    "exclude_ai": True,
+                },
+            )
+        ).json()["candidates"]
         if not found:
             raise AutopilotError(f"Tidak ada footage untuk query: {idea['query']}")
         src = found[0]
 
-        pid = (await _call(c, "POST", "/discovery/import", json={
-            "url": src["url"], "title": src["title"], "source": src["source"],
-            "project_name": idea["topic"],
-        })).json()["project_id"]
+        pid = (
+            await _call(
+                c,
+                "POST",
+                "/discovery/import",
+                json={
+                    "url": src["url"],
+                    "title": src["title"],
+                    "source": src["source"],
+                    "project_name": idea["topic"],
+                },
+            )
+        ).json()["project_id"]
         await _store(run_id, project_id=pid, stage="processing")
         if idea["bgm_mood"]:
             fill = (await _call(c, "GET", f"/projects/{pid}")).json()["background_fill"]
-            await _call(c, "PATCH", f"/projects/{pid}", json={"background_fill": {**fill, "bgm_mood": idea["bgm_mood"]}})
+            await _call(
+                c,
+                "PATCH",
+                f"/projects/{pid}",
+                json={"background_fill": {**fill, "bgm_mood": idea["bgm_mood"]}},
+            )
 
         async def media_ready():
             vids = (await _call(c, "GET", f"/projects/{pid}/media")).json()
             if any(v["status"] == "failed" for v in vids):
                 raise AutopilotError("Download / deteksi scene gagal")
             return bool(vids) and all(v["status"] == "ready" for v in vids)
+
         await _poll("download & tagging scene", media_ready, 60, every=15)
         await _ensure_tagged(c, pid, cfg.target_duration)
 
         await _store(run_id, stage="script")
-        await _call(c, "POST", f"/projects/{pid}/narration/generate", json={
-            "template_id": cfg.template_id, "topic": idea["topic"], "target_duration": cfg.target_duration,
-        })
+        await _call(
+            c,
+            "POST",
+            f"/projects/{pid}/narration/generate",
+            json={
+                "template_id": cfg.template_id,
+                "topic": idea["topic"],
+                "target_duration": cfg.target_duration,
+            },
+        )
         # QC auto-fix improves the script but must never block the run
-        await c.post(f"/projects/{pid}/qc/run", json={"gate": "script", "auto_fix": True, "trigger": "manual"})
+        await c.post(
+            f"/projects/{pid}/qc/run",
+            json={"gate": "script", "auto_fix": True, "trigger": "manual"},
+        )
         narration = (await _call(c, "GET", f"/projects/{pid}/narration")).json()["raw_text"]
 
         await _store(run_id, stage="voice")
@@ -296,13 +365,16 @@ async def _build(run_id: str, cfg: AutopilotConfig) -> None:
                     if ev.get("status") == "error":
                         reason = f"TTS gagal: {ev.get('error') or ev.get('message')}"
                 raise (QuotaExhausted if is_quota_error(reason) else AutopilotError)(reason)
+
             await _poll("TTS", audio_ready, 20)
         finally:
             event_bus.unsubscribe(pid, events)
 
         await _store(run_id, stage="render")
         await _call(c, "POST", f"/projects/{pid}/timeline/auto-match")
-        job_id = (await _call(c, "POST", f"/projects/{pid}/render", json={"resolution": "1080p"})).json()["id"]
+        job_id = (
+            await _call(c, "POST", f"/projects/{pid}/render", json={"resolution": "1080p"})
+        ).json()["id"]
 
         async def rendered():
             jobs = (await _call(c, "GET", f"/projects/{pid}/render/jobs")).json()
@@ -310,10 +382,12 @@ async def _build(run_id: str, cfg: AutopilotConfig) -> None:
             if not job or job["status"] == "failed":
                 raise AutopilotError(f"Render gagal: {job and job.get('error_message')}")
             return job["status"] == "completed"
+
         await _poll("render", rendered, 60, every=15)
 
     await _store(run_id, stage="metadata", render_job_id=job_id)
-    meta = _build_metadata(await _llm_json(f"""Buat metadata YouTube Shorts berbahasa Indonesia.
+    meta = _build_metadata(
+        await _llm_json(f"""Buat metadata YouTube Shorts berbahasa Indonesia.
 Topik: {idea["topic"]}
 Naskah narasi:
 {narration}
@@ -321,14 +395,21 @@ Naskah narasi:
 Aturan: judul maks 70 karakter, memancing rasa penasaran tapi tidak bohong, tanpa karakter < atau >.
 Balas JSON saja:
 {{"title": "...", "summary": "2-3 kalimat ringkasan", "hashtags": ["#faktaunik", "..."], "tags": ["8-12 tag pendek"]}}"""),
-        idea["topic"], src, track_credit(pick_track(idea["bgm_mood"], pid)))
+        idea["topic"],
+        src,
+        track_credit(pick_track(idea["bgm_mood"], pid)),
+    )
     await _store(run_id, status="ready", stage="ready", finished_at=datetime.utcnow(), **meta)
 
 
 async def pool_count(db) -> int:
-    return (await db.execute(
-        select(func.count()).select_from(AutopilotRun).where(AutopilotRun.status.in_(POOL_STATUSES))
-    )).scalar_one()
+    return (
+        await db.execute(
+            select(func.count())
+            .select_from(AutopilotRun)
+            .where(AutopilotRun.status.in_(POOL_STATUSES))
+        )
+    ).scalar_one()
 
 
 async def produce(count: int) -> None:
@@ -356,17 +437,29 @@ async def produce(count: int) -> None:
                 made += 1
             except QuotaExhausted as e:
                 log.warning("Autopilot quota exhausted, stopping batch: %s", e)
-                await _store(run.id, status="failed", finished_at=datetime.utcnow(),
-                             error_message=f"Kuota AI habis, lanjut di jadwal produksi berikutnya. {e}"[:1000])
+                await _store(
+                    run.id,
+                    status="failed",
+                    finished_at=datetime.utcnow(),
+                    error_message=f"Kuota AI habis, lanjut di jadwal produksi berikutnya. {e}"[
+                        :1000
+                    ],
+                )
                 return
             except Exception as e:
                 log.exception("Autopilot build %s failed", run.id)
-                await _store(run.id, status="failed", error_message=str(e)[:1000], finished_at=datetime.utcnow())
+                await _store(
+                    run.id,
+                    status="failed",
+                    error_message=str(e)[:1000],
+                    finished_at=datetime.utcnow(),
+                )
     finally:
         _producing = False
 
 
 # ---------- publisher ----------
+
 
 def _delete_source_footage_sync(paths: List[str]) -> None:
     for p in paths:
@@ -378,11 +471,21 @@ def _delete_source_footage_sync(paths: List[str]) -> None:
 
 async def _publish(run: AutopilotRun, slot_utc: datetime) -> None:
     async with _client() as c:
-        up = (await _call(c, "POST", f"/projects/{run.project_id}/publish/youtube", json={
-            "render_job_id": run.render_job_id, "title": run.title, "description": run.description or "",
-            "tags": run.tags or [], "privacy": "private",
-            "publish_at": slot_utc.replace(tzinfo=timezone.utc).isoformat(),
-        })).json()
+        up = (
+            await _call(
+                c,
+                "POST",
+                f"/projects/{run.project_id}/publish/youtube",
+                json={
+                    "render_job_id": run.render_job_id,
+                    "title": run.title,
+                    "description": run.description or "",
+                    "tags": run.tags or [],
+                    "privacy": "private",
+                    "publish_at": slot_utc.replace(tzinfo=timezone.utc).isoformat(),
+                },
+            )
+        ).json()
 
         async def uploaded():
             ups = (await _call(c, "GET", f"/projects/{run.project_id}/publish/youtube")).json()
@@ -390,15 +493,28 @@ async def _publish(run: AutopilotRun, slot_utc: datetime) -> None:
             if u["status"] == "failed":
                 raise AutopilotError(f"Upload YouTube gagal: {u.get('error_message')}")
             return u if u["status"] == "uploaded" else None
+
         u = await _poll("upload YouTube", uploaded, 30, every=5)
 
-    await _store(run.id, status="scheduled", stage="done", slot_at=slot_utc, video_id=u["video_id"],
-                 publish_error=None)
+    await _store(
+        run.id,
+        status="scheduled",
+        stage="done",
+        slot_at=slot_utc,
+        video_id=u["video_id"],
+        publish_error=None,
+    )
     # Footage is only needed to re-edit; once the video is on YouTube, free the space
     async with SessionLocal() as db:
-        paths = (await db.execute(
-            select(SourceVideo.file_path).where(SourceVideo.project_id == run.project_id)
-        )).scalars().all()
+        paths = (
+            (
+                await db.execute(
+                    select(SourceVideo.file_path).where(SourceVideo.project_id == run.project_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
     await asyncio.to_thread(_delete_source_footage_sync, [p for p in paths if p])
 
 
@@ -410,22 +526,52 @@ async def publish_due(cfg: AutopilotConfig) -> None:
     try:
         now = datetime.utcnow()
         async with SessionLocal() as db:
-            taken = set((await db.execute(
-                select(AutopilotRun.slot_at).where(AutopilotRun.status == "scheduled", AutopilotRun.slot_at >= now)
-            )).scalars().all())
-            # Videos scheduled by hand from the Publish tab occupy their slot too
-            taken |= set((await db.execute(
-                select(YouTubeUpload.publish_at).where(
-                    YouTubeUpload.publish_at >= now, YouTubeUpload.status != "failed"
+            taken = set(
+                (
+                    await db.execute(
+                        select(AutopilotRun.slot_at).where(
+                            AutopilotRun.status == "scheduled", AutopilotRun.slot_at >= now
+                        )
+                    )
                 )
-            )).scalars().all())
-            ready = list((await db.execute(
-                select(AutopilotRun).where(AutopilotRun.status == "ready").order_by(AutopilotRun.created_at)
-            )).scalars().all())
-        ready = [r for r in ready if not r.publish_attempted_at or now - r.publish_attempted_at > PUBLISH_RETRY_AFTER]
+                .scalars()
+                .all()
+            )
+            # Videos scheduled by hand from the Publish tab occupy their slot too
+            taken |= set(
+                (
+                    await db.execute(
+                        select(YouTubeUpload.publish_at).where(
+                            YouTubeUpload.publish_at >= now, YouTubeUpload.status != "failed"
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            ready = list(
+                (
+                    await db.execute(
+                        select(AutopilotRun)
+                        .where(AutopilotRun.status == "ready")
+                        .order_by(AutopilotRun.created_at)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        ready = [
+            r
+            for r in ready
+            if not r.publish_attempted_at or now - r.publish_attempted_at > PUBLISH_RETRY_AFTER
+        ]
 
-        for slot in free_publish_slots(upcoming_slots(cfg.slots, cfg.utc_offset_minutes, now), taken, now,
-                                       cfg.publish_ahead_hours):
+        for slot in free_publish_slots(
+            upcoming_slots(cfg.slots, cfg.utc_offset_minutes, now),
+            taken,
+            now,
+            cfg.publish_ahead_hours,
+        ):
             if not ready:
                 break
             run = ready.pop(0)
@@ -442,6 +588,7 @@ async def publish_due(cfg: AutopilotConfig) -> None:
 
 
 # ---------- control ----------
+
 
 async def get_config(db) -> AutopilotConfig:
     cfg = (await db.execute(select(AutopilotConfig).limit(1))).scalar_one_or_none()
@@ -468,15 +615,19 @@ async def _tick() -> None:
     if _producing:
         return
     now = datetime.utcnow()
-    due = due_production_windows(cfg.production_windows, cfg.production_last_runs or {}, now,
-                                 cfg.utc_offset_minutes)
+    due = due_production_windows(
+        cfg.production_windows, cfg.production_last_runs or {}, now, cfg.utc_offset_minutes
+    )
     if not due:
         return
     today = _local_now(now, cfg.utc_offset_minutes).date().isoformat()
     # Mark windows as fired before running, so a failed batch waits for the next window
     async with SessionLocal() as db:
         live = await get_config(db)
-        live.production_last_runs = {**(live.production_last_runs or {}), **{w["time"]: today for w in due}}
+        live.production_last_runs = {
+            **(live.production_last_runs or {}),
+            **{w["time"]: today for w in due},
+        }
         await db.commit()
     run_background_task(produce, sum(int(w["count"]) for w in due))
 
@@ -494,20 +645,24 @@ async def start_autopilot_scheduler() -> None:
     # Builds/uploads that were mid-flight when the server stopped will never finish
     async with SessionLocal() as db:
         await db.execute(
-            update(AutopilotRun).where(AutopilotRun.status == "running").values(
-                status="failed", error_message="Server berhenti saat proses berjalan",
+            update(AutopilotRun)
+            .where(AutopilotRun.status == "running")
+            .values(
+                status="failed",
+                error_message="Server berhenti saat proses berjalan",
                 finished_at=datetime.utcnow(),
             )
         )
         await db.execute(
-            update(AutopilotRun).where(AutopilotRun.status == "ready", AutopilotRun.stage == "upload")
+            update(AutopilotRun)
+            .where(AutopilotRun.status == "ready", AutopilotRun.stage == "upload")
             .values(stage="ready")
         )
         # An interrupted upload would otherwise keep its publish_at slot "taken" forever
         await db.execute(
-            update(YouTubeUpload).where(YouTubeUpload.status.in_(["queued", "uploading"])).values(
-                status="failed", error_message="Server berhenti saat upload berjalan"
-            )
+            update(YouTubeUpload)
+            .where(YouTubeUpload.status.in_(["queued", "uploading"]))
+            .values(status="failed", error_message="Server berhenti saat upload berjalan")
         )
         await db.commit()
     run_background_task(_loop)

@@ -25,8 +25,10 @@ class _Client:
         return False
 
     async def post(self, *a, **k):
-        return _Resp('{"description": "Pisau memotong kubis.", "tags": ["kubis"], "action": "memotong", '
-                     '"visual_satisfaction": 0.91, "focal_point": "left", "confidence": 0.8}')
+        return _Resp(
+            '{"description": "Pisau memotong kubis.", "tags": ["kubis"], "action": "memotong", '
+            '"visual_satisfaction": 0.91, "focal_point": "left", "confidence": 0.8}'
+        )
 
 
 @pytest.mark.asyncio

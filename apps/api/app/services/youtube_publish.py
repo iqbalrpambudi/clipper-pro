@@ -33,24 +33,36 @@ def _google_error(resp: httpx.Response) -> YouTubeError:
 
 
 def build_auth_url(client_id: str, redirect_uri: str, state: str) -> str:
-    return AUTH_URL + "?" + urlencode({
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "response_type": "code",
-        "scope": " ".join(SCOPES),
-        "access_type": "offline",
-        "prompt": "consent",  # always return a refresh token, even on re-connect
-        "include_granted_scopes": "true",
-        "state": state,
-    })
+    return (
+        AUTH_URL
+        + "?"
+        + urlencode(
+            {
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": " ".join(SCOPES),
+                "access_type": "offline",
+                "prompt": "consent",  # always return a refresh token, even on re-connect
+                "include_granted_scopes": "true",
+                "state": state,
+            }
+        )
+    )
 
 
 async def exchange_code(client_id: str, client_secret: str, code: str, redirect_uri: str) -> dict:
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(TOKEN_URL, data={
-            "code": code, "client_id": client_id, "client_secret": client_secret,
-            "redirect_uri": redirect_uri, "grant_type": "authorization_code",
-        })
+        resp = await client.post(
+            TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
     if resp.status_code != 200:
         raise _google_error(resp)
     return resp.json()
@@ -58,10 +70,15 @@ async def exchange_code(client_id: str, client_secret: str, code: str, redirect_
 
 async def refresh_access_token(client_id: str, client_secret: str, refresh_token: str) -> str:
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(TOKEN_URL, data={
-            "client_id": client_id, "client_secret": client_secret,
-            "refresh_token": refresh_token, "grant_type": "refresh_token",
-        })
+        resp = await client.post(
+            TOKEN_URL,
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            },
+        )
     if resp.status_code != 200:
         raise _google_error(resp)
     return resp.json()["access_token"]
@@ -74,8 +91,11 @@ async def revoke_token(token: str) -> None:
 
 async def get_my_channel(access_token: str) -> dict:
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(CHANNELS_URL, params={"part": "snippet", "mine": "true"},
-                                headers={"Authorization": f"Bearer {access_token}"})
+        resp = await client.get(
+            CHANNELS_URL,
+            params={"part": "snippet", "mine": "true"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
     if resp.status_code != 200:
         raise _google_error(resp)
     items = resp.json().get("items") or []
@@ -103,7 +123,11 @@ async def upload_video(
         init = await client.post(
             UPLOAD_URL,
             params={"uploadType": "resumable", "part": "snippet,status"},
-            headers={**auth, "X-Upload-Content-Type": "video/mp4", "X-Upload-Content-Length": str(size)},
+            headers={
+                **auth,
+                "X-Upload-Content-Type": "video/mp4",
+                "X-Upload-Content-Length": str(size),
+            },
             json=metadata,
         )
         if init.status_code != 200 or "location" not in init.headers:
@@ -116,9 +140,14 @@ async def upload_video(
                 f.seek(offset)
                 chunk = f.read(CHUNK_SIZE)
                 end = offset + len(chunk) - 1
-                resp = await client.put(session_url, content=chunk, headers={
-                    **auth, "Content-Range": f"bytes {offset}-{end}/{size}",
-                })
+                resp = await client.put(
+                    session_url,
+                    content=chunk,
+                    headers={
+                        **auth,
+                        "Content-Range": f"bytes {offset}-{end}/{size}",
+                    },
+                )
                 if resp.status_code in (200, 201):
                     if on_progress:
                         await on_progress(100)

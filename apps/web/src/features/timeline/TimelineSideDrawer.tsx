@@ -48,15 +48,17 @@ interface TimelineSideDrawerProps {
   handleSwapNeighbor: (dir: -1 | 1) => void;
   handlePreviewSelectedClipSource: () => void;
   toggleLoop: () => void;
-  setPreviewData: (data: {
-    videoUrl?: string | null;
-    thumbnailUrl?: string | null;
-    startTime: number;
-    endTime: number;
-    title: string;
-    description?: string | null;
-    tags?: string[];
-  } | null) => void;
+  setPreviewData: (
+    data: {
+      videoUrl?: string | null;
+      thumbnailUrl?: string | null;
+      startTime: number;
+      endTime: number;
+      title: string;
+      description?: string | null;
+      tags?: string[];
+    } | null
+  ) => void;
   setLiveAspectRatio: (ratio: string) => void;
   setLiveBackgroundFill: (fill: BackgroundFill | null) => void;
   liveSubtitleStyle?: SubtitleStyle | null;

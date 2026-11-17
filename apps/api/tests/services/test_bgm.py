@@ -19,9 +19,12 @@ def test_pick_track_by_mood():
 
 def test_track_credit():
     from pathlib import Path
+
     from app.services.bgm import track_credit
 
-    assert track_credit(Path("Limujii - Cloud (freetouse.com).mp3")) == \
-        "Music from Free To Use\nSource: https://freetouse.com/music\nCloud by Limujii"
+    assert (
+        track_credit(Path("Limujii - Cloud (freetouse.com).mp3"))
+        == "Music from Free To Use\nSource: https://freetouse.com/music\nCloud by Limujii"
+    )
     assert track_credit(Path("pixabay-track.mp3")) is None
     assert track_credit(None) is None

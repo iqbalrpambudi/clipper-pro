@@ -73,7 +73,9 @@ export function Dropzone({
         <div className="text-left">
           <p className="text-xs font-medium text-foreground">
             {label}{" "}
-            <span className="text-accent-foreground group-hover:underline font-semibold">pilih file</span>
+            <span className="text-accent-foreground group-hover:underline font-semibold">
+              pilih file
+            </span>
           </p>
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>

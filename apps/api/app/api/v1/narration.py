@@ -35,7 +35,9 @@ async def generate_narration(
     if template:
         style, tone = template.system_prompt, template.default_tone or "informatif"
     else:
-        t = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
+        t = next(
+            (t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0]
+        )
         style, tone = t["system_prompt"], t["default_tone"]
 
     scenes_res = await db.execute(
@@ -58,7 +60,9 @@ async def generate_narration(
     ]
 
     # Source video titles (YouTube downloads keep the title as filename) tell the model what the video is about
-    names_res = await db.execute(select(SourceVideo.filename).where(SourceVideo.project_id == project_id))
+    names_res = await db.execute(
+        select(SourceVideo.filename).where(SourceVideo.project_id == project_id)
+    )
     source_names = list(dict.fromkeys(n.rsplit(".", 1)[0] for n in names_res.scalars().all() if n))
 
     adapter = await get_active_llm_adapter(db)
@@ -172,11 +176,12 @@ async def update_narration_segments(
 
     narration.segments = payload.segments
     # Keep raw_text synchronized
-    reconstructed = " ".join(seg.get("text", "").strip() for seg in payload.segments if seg.get("text"))
+    reconstructed = " ".join(
+        seg.get("text", "").strip() for seg in payload.segments if seg.get("text")
+    )
     if reconstructed:
         narration.raw_text = reconstructed
 
     await db.commit()
     await db.refresh(narration)
     return NarrationResponse.model_validate(narration)
-

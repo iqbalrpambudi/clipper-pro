@@ -94,7 +94,9 @@ async def get_video_info(url: str) -> YTInfoResponse:
             # Prefer mp4 container or higher filesize
             if ext == "mp4" and existing[1].get("ext") != "mp4":
                 tier_map[tier_name] = (sort_order, f, filesize_mb)
-            elif ext == existing[1].get("ext") and (filesize or 0) > (existing[1].get("filesize") or existing[1].get("filesize_approx") or 0):
+            elif ext == existing[1].get("ext") and (filesize or 0) > (
+                existing[1].get("filesize") or existing[1].get("filesize_approx") or 0
+            ):
                 tier_map[tier_name] = (sort_order, f, filesize_mb)
 
     sorted_tiers = sorted(tier_map.items(), key=lambda x: x[1][0], reverse=True)
@@ -130,6 +132,7 @@ async def get_video_info(url: str) -> YTInfoResponse:
     heatmap = None
     if raw_heatmap and isinstance(raw_heatmap, list):
         from app.schemas.media import HeatmapBucket
+
         heatmap = [
             HeatmapBucket(
                 start_time=b["start_time"],

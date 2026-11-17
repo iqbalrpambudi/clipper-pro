@@ -162,10 +162,16 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
     has_updated = False
     for j in jobs:
         if j.status in ("rendering", "queued") and j.created_at:
-            created_at_dt = j.created_at.replace(tzinfo=None) if getattr(j.created_at, "tzinfo", None) else j.created_at
+            created_at_dt = (
+                j.created_at.replace(tzinfo=None)
+                if getattr(j.created_at, "tzinfo", None)
+                else j.created_at
+            )
             if (now - created_at_dt).total_seconds() > 900:
                 j.status = "failed"
-                j.error_message = "Rendering terhenti otomatis karena melebihi batas waktu (timeout)."
+                j.error_message = (
+                    "Rendering terhenti otomatis karena melebihi batas waktu (timeout)."
+                )
                 j.completed_at = now
                 has_updated = True
     if has_updated:
@@ -178,7 +184,9 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
             status=j.status,
             progress=j.progress,
             output_url=storage.to_relative_url(j.output_file_path),
-            thumbnail_url=storage.resolve_render_job_thumbnail_url(j.thumbnail_path, j.output_file_path),
+            thumbnail_url=storage.resolve_render_job_thumbnail_url(
+                j.thumbnail_path, j.output_file_path
+            ),
             file_size_bytes=storage.get_file_size(j.output_file_path),
             log_output=j.log_output,
             error_message=j.error_message,
@@ -219,9 +227,7 @@ async def clear_render_jobs(
     project_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    res = await db.execute(
-        select(RenderJob).where(RenderJob.project_id == project_id)
-    )
+    res = await db.execute(select(RenderJob).where(RenderJob.project_id == project_id))
     jobs = res.scalars().all()
     if not jobs:
         return {
@@ -289,6 +295,7 @@ async def cancel_render_job(
 
     from app.core.events import publish_project_event
     from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, job_id=job_id)
 
     job.status = "failed"
@@ -308,4 +315,3 @@ async def cancel_render_job(
     )
 
     return {"status": "cancelled", "message": "Rendering video berhasil dibatalkan."}
-

@@ -32,7 +32,9 @@ async def test_upload_resumes_from_server_range(tmp_path, monkeypatch):
     async def on_progress(p):
         progress.append(p)
 
-    vid = await yt.upload_video("tok", video, {"snippet": {}}, on_progress, httpx.MockTransport(handler))
+    vid = await yt.upload_video(
+        "tok", video, {"snippet": {}}, on_progress, httpx.MockTransport(handler)
+    )
     assert vid == "vid123"
     assert puts == ["bytes 0-3/10", "bytes 3-6/10", "bytes 7-9/10"]
     assert progress[-1] == 100
@@ -56,7 +58,9 @@ def test_schedule_forces_private_and_rejects_past():
     assert p.privacy == "private"
 
     with pytest.raises(ValidationError):
-        YouTubePublishIn(title="Judul", publish_at=datetime.now(timezone.utc) - timedelta(minutes=1))
+        YouTubePublishIn(
+            title="Judul", publish_at=datetime.now(timezone.utc) - timedelta(minutes=1)
+        )
     with pytest.raises(ValidationError):
         YouTubePublishIn(title="a <b>")
 

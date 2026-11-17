@@ -88,13 +88,19 @@ class StorageManager:
                     return self.to_relative_url(thumb_p)
                 try:
                     import subprocess
+
                     subprocess.run(
                         [
-                            "ffmpeg", "-y",
-                            "-ss", "00:00:00.500",
-                            "-i", str(out_p),
-                            "-vframes", "1",
-                            "-q:v", "2",
+                            "ffmpeg",
+                            "-y",
+                            "-ss",
+                            "00:00:00.500",
+                            "-i",
+                            str(out_p),
+                            "-vframes",
+                            "1",
+                            "-q:v",
+                            "2",
                             str(thumb_p),
                         ],
                         capture_output=True,
@@ -178,4 +184,3 @@ class StorageManager:
 
 
 storage = StorageManager()
-

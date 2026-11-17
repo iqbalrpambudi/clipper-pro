@@ -8,6 +8,7 @@ log = logging.getLogger("cliper-cancellation")
 
 class TaskCancelledException(Exception):
     """Raised when a background worker task is explicitly cancelled by the user."""
+
     pass
 
 
@@ -35,7 +36,9 @@ def kill_registered_process(key: str) -> bool:
     proc = _active_processes.pop(key, None)
     if proc:
         try:
-            log.info("Killing registered process for key: %s (pid: %s)", key, getattr(proc, "pid", None))
+            log.info(
+                "Killing registered process for key: %s (pid: %s)", key, getattr(proc, "pid", None)
+            )
             proc.kill()
             return True
         except ProcessLookupError:
@@ -45,7 +48,9 @@ def kill_registered_process(key: str) -> bool:
     return False
 
 
-def kill_all_matching_processes(project_id: str, video_id: Optional[str] = None, job_id: Optional[str] = None) -> int:
+def kill_all_matching_processes(
+    project_id: str, video_id: Optional[str] = None, job_id: Optional[str] = None
+) -> int:
     """Kill all in-memory processes associated with a project, video, or render job."""
     killed = 0
     keys_to_kill = []
@@ -77,7 +82,9 @@ async def request_cancellation(
     elif project_id:
         _cancellation_flags[f"cancel:project:{project_id}"] = expiry
 
-    log.info("Requested cancellation for project %s (video=%s, job=%s)", project_id, video_id, job_id)
+    log.info(
+        "Requested cancellation for project %s (video=%s, job=%s)", project_id, video_id, job_id
+    )
     # Immediately kill any matching subprocesses running in-process
     kill_all_matching_processes(project_id, video_id, job_id)
 

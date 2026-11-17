@@ -85,8 +85,12 @@ export function YouTubeSettingsTab() {
             </a>{" "}
             pada project yang mengaktifkan YouTube Data API v3.
           </li>
-          <li>Buat atau buka OAuth client ID bertipe <b>Web application</b>.</li>
-          <li>Tambahkan Redirect URI di bawah ke daftar <b>Authorized redirect URIs</b>.</li>
+          <li>
+            Buat atau buka OAuth client ID bertipe <b>Web application</b>.
+          </li>
+          <li>
+            Tambahkan Redirect URI di bawah ke daftar <b>Authorized redirect URIs</b>.
+          </li>
           <li>Salin Client ID & Client Secret ke form ini, simpan, lalu klik Hubungkan.</li>
         </ol>
 
@@ -110,7 +114,10 @@ export function YouTubeSettingsTab() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="yt-client-id" className="block text-xs font-semibold text-muted-foreground mb-1">
+            <label
+              htmlFor="yt-client-id"
+              className="block text-xs font-semibold text-muted-foreground mb-1"
+            >
               Client ID
             </label>
             <Input
@@ -124,7 +131,10 @@ export function YouTubeSettingsTab() {
             />
           </div>
           <div>
-            <label htmlFor="yt-client-secret" className="block text-xs font-semibold text-muted-foreground mb-1">
+            <label
+              htmlFor="yt-client-secret"
+              className="block text-xs font-semibold text-muted-foreground mb-1"
+            >
               Client Secret
             </label>
             <Input
@@ -145,7 +155,12 @@ export function YouTubeSettingsTab() {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit" variant="workspace-primary" size="workspace-sm" disabled={saveMutation.isPending}>
+          <Button
+            type="submit"
+            variant="workspace-primary"
+            size="workspace-sm"
+            disabled={saveMutation.isPending}
+          >
             {saveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             Simpan Kredensial
           </Button>

@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type { Project, ProjectDetail, ShortsConfig } from "@/types";
 
-export function createDefaultShortsConfig(project?: Partial<ProjectDetail | Project>): ShortsConfig {
+export function createDefaultShortsConfig(
+  project?: Partial<ProjectDetail | Project>
+): ShortsConfig {
   const narration = (project as Partial<ProjectDetail> | undefined)?.narration;
   return {
     mediaPool: { ytUrl: "" },
@@ -16,7 +18,11 @@ export function createDefaultShortsConfig(project?: Partial<ProjectDetail | Proj
 interface EditorConfigState {
   shortsConfigs: Record<string, ShortsConfig>;
   getShortsConfig: (projectId: string, fallbackProject?: ProjectDetail | Project) => ShortsConfig;
-  setShortsStepConfig: <K extends keyof ShortsConfig>(projectId: string, step: K, patch: Partial<ShortsConfig[K]>) => void;
+  setShortsStepConfig: <K extends keyof ShortsConfig>(
+    projectId: string,
+    step: K,
+    patch: Partial<ShortsConfig[K]>
+  ) => void;
 }
 
 export const useEditorConfigStore = create<EditorConfigState>((set, get) => ({
@@ -34,7 +40,10 @@ export const useEditorConfigStore = create<EditorConfigState>((set, get) => ({
     set((state) => {
       const current = state.shortsConfigs[projectId] || createDefaultShortsConfig();
       return {
-        shortsConfigs: { ...state.shortsConfigs, [projectId]: { ...current, [step]: { ...current[step], ...patch } } },
+        shortsConfigs: {
+          ...state.shortsConfigs,
+          [projectId]: { ...current, [step]: { ...current[step], ...patch } },
+        },
       };
     });
   },

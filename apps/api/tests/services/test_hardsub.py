@@ -14,14 +14,19 @@ from app.services.media_probe import probe
 
 
 def test_band_needs_two_frames_and_is_padded():
-    one = [{"has_burned_subtitles": True, "top": 0.8, "bottom": 0.9}, {"has_burned_subtitles": False}]
+    one = [
+        {"has_burned_subtitles": True, "top": 0.8, "bottom": 0.9},
+        {"has_burned_subtitles": False},
+    ]
     assert hs.band_from_frames(one) is None
 
-    band = hs.band_from_frames([
-        {"has_burned_subtitles": True, "top": 0.82, "bottom": 0.90},
-        {"has_burned_subtitles": True, "top": 0.80, "bottom": 0.93},
-        {"has_burned_subtitles": True, "top": "bad"},
-    ])
+    band = hs.band_from_frames(
+        [
+            {"has_burned_subtitles": True, "top": 0.82, "bottom": 0.90},
+            {"has_burned_subtitles": True, "top": 0.80, "bottom": 0.93},
+            {"has_burned_subtitles": True, "top": "bad"},
+        ]
+    )
     assert band == {"enabled": True, "top": 0.78, "bottom": 0.95, "source": "auto"}
 
 
@@ -37,18 +42,33 @@ def _probe_wh(path):
     return info["width"], info["height"]
 
 
-@pytest.mark.parametrize("band, expected_h", [
-    ({"enabled": True, "top": 0.8, "bottom": 0.95}, 288),   # crop keeps top 80% of 360
-    ({"enabled": True, "top": 0.5, "bottom": 0.6}, 360),    # blur keeps full frame
-    ({"enabled": True, "top": 0.6, "bottom": 0.62}, 360),   # thin band: blur radius must fit
-    (None, 360),
-])
+@pytest.mark.parametrize(
+    "band, expected_h",
+    [
+        ({"enabled": True, "top": 0.8, "bottom": 0.95}, 288),  # crop keeps top 80% of 360
+        ({"enabled": True, "top": 0.5, "bottom": 0.6}, 360),  # blur keeps full frame
+        ({"enabled": True, "top": 0.6, "bottom": 0.62}, 360),  # thin band: blur radius must fit
+        (None, 360),
+    ],
+)
 def test_ffmpeg_chain_runs_in_real_ffmpeg(tmp_path, band, expected_h):
     out = tmp_path / "out.mp4"
     graph = hs.ffmpeg_chain(band, "[0:v]", "[v_src]") + "[v_src]null[v_out]"
     subprocess.run(
-        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=640x360:duration=1:rate=10",
-         "-filter_complex", graph, "-map", "[v_out]", str(out)],
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=640x360:duration=1:rate=10",
+            "-filter_complex",
+            graph,
+            "-map",
+            "[v_out]",
+            str(out),
+        ],
         check=True,
     )
     assert _probe_wh(out) == (640, expected_h)
@@ -57,14 +77,30 @@ def test_ffmpeg_chain_runs_in_real_ffmpeg(tmp_path, band, expected_h):
 @pytest.mark.asyncio
 async def test_detect_hardsub_with_fake_vision(tmp_path):
     video = tmp_path / "src.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:duration=4:rate=10",
-                    str(video)], check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=320x180:duration=4:rate=10",
+            str(video),
+        ],
+        check=True,
+    )
     seen = {}
 
     class FakeVision:
         async def analyze_multimodal(self, prompt, image_paths, json_mode=True, system_prompt=None):
             seen["n"] = len(image_paths)
-            return json.dumps({"frames": [{"has_burned_subtitles": True, "top": 0.8, "bottom": 0.9}] * len(image_paths)})
+            return json.dumps(
+                {
+                    "frames": [{"has_burned_subtitles": True, "top": 0.8, "bottom": 0.9}]
+                    * len(image_paths)
+                }
+            )
 
     band = await hs.detect_hardsub(FakeVision(), str(video), 4.0)
     assert seen["n"] == hs.SAMPLE_FRAMES
@@ -100,15 +136,27 @@ async def test_patch_hardsub_marks_manual_and_validates(client_db):
     client, factory = client_db
     pid = (await client.post("/api/v1/projects", json={"name": "HS"})).json()["id"]
     async with factory() as db:
-        db.add(SourceVideo(id="v1", project_id=pid, filename="a.mp4", duration=10, status="ready",
-                           hardsub={"enabled": True, "top": 0.8, "bottom": 0.9, "source": "auto"}))
+        db.add(
+            SourceVideo(
+                id="v1",
+                project_id=pid,
+                filename="a.mp4",
+                duration=10,
+                status="ready",
+                hardsub={"enabled": True, "top": 0.8, "bottom": 0.9, "source": "auto"},
+            )
+        )
         await db.commit()
 
-    r = await client.patch(f"/api/v1/projects/{pid}/media/v1",
-                           json={"hardsub": {"enabled": True, "top": 0.7, "bottom": 0.92}})
+    r = await client.patch(
+        f"/api/v1/projects/{pid}/media/v1",
+        json={"hardsub": {"enabled": True, "top": 0.7, "bottom": 0.92}},
+    )
     assert r.status_code == 200
     assert r.json()["hardsub"] == {"enabled": True, "top": 0.7, "bottom": 0.92, "source": "manual"}
 
-    bad = await client.patch(f"/api/v1/projects/{pid}/media/v1",
-                             json={"hardsub": {"enabled": True, "top": 0.9, "bottom": 0.8}})
+    bad = await client.patch(
+        f"/api/v1/projects/{pid}/media/v1",
+        json={"hardsub": {"enabled": True, "top": 0.9, "bottom": 0.8}},
+    )
     assert bad.status_code == 422

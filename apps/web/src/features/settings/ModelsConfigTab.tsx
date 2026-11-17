@@ -193,7 +193,9 @@ export function ModelsConfigTab() {
 
         <div className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">API Base URL</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              API Base URL
+            </label>
             <Input
               type="text"
               autoComplete="off"
@@ -380,8 +382,8 @@ export function ModelsConfigTab() {
               </AutocompleteContent>
             </Autocomplete>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dipakai per scene saat Vision Model error atau timeout, agar scene tidak berakhir tanpa
-              deskripsi.
+              Dipakai per scene saat Vision Model error atau timeout, agar scene tidak berakhir
+              tanpa deskripsi.
             </p>
           </div>
 
@@ -452,14 +454,22 @@ export function ModelsConfigTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-muted-foreground">Gemini TTS API Key</label>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Gemini TTS API Key
+              </label>
               {config?.has_tts_api_key && (
-                <span className="text-xs text-emerald-600 font-mono">Tersimpan: {config.tts_api_key_masked}</span>
+                <span className="text-xs text-emerald-600 font-mono">
+                  Tersimpan: {config.tts_api_key_masked}
+                </span>
               )}
             </div>
             <Input
               type="password"
-              placeholder={config?.has_tts_api_key ? "Ketik untuk mengganti..." : "Opsional jika sama dengan key LLM"}
+              placeholder={
+                config?.has_tts_api_key
+                  ? "Ketik untuk mengganti..."
+                  : "Opsional jika sama dengan key LLM"
+              }
               value={ttsApiKey}
               onChange={(e) => setTtsApiKey(e.target.value)}
               className="font-mono"
@@ -467,14 +477,22 @@ export function ModelsConfigTab() {
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-muted-foreground">ElevenLabs API Key</label>
+              <label className="block text-xs font-semibold text-muted-foreground">
+                ElevenLabs API Key
+              </label>
               {config?.has_elevenlabs_api_key && (
-                <span className="text-xs text-emerald-600 font-mono">Tersimpan: {config.elevenlabs_api_key_masked}</span>
+                <span className="text-xs text-emerald-600 font-mono">
+                  Tersimpan: {config.elevenlabs_api_key_masked}
+                </span>
               )}
             </div>
             <Input
               type="password"
-              placeholder={config?.has_elevenlabs_api_key ? "Ketik untuk mengganti..." : "xi-api-key dari elevenlabs.io"}
+              placeholder={
+                config?.has_elevenlabs_api_key
+                  ? "Ketik untuk mengganti..."
+                  : "xi-api-key dari elevenlabs.io"
+              }
               value={elevenlabsApiKey}
               onChange={(e) => setElevenlabsApiKey(e.target.value)}
               className="font-mono"

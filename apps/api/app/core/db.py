@@ -17,7 +17,9 @@ connect_args = {}
 if is_sqlite:
     connect_args["check_same_thread"] = False
     # If using relative path like sqlite+aiosqlite:///storage/cliper.db
-    db_path_str = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+    db_path_str = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace(
+        "sqlite:///", ""
+    )
     if db_path_str and not db_path_str.startswith(":memory:"):
         db_file = Path(db_path_str)
         db_file.parent.mkdir(parents=True, exist_ok=True)
@@ -29,6 +31,7 @@ engine = create_async_engine(
 )
 
 if is_sqlite:
+
     @event.listens_for(engine.sync_engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
@@ -37,6 +40,7 @@ if is_sqlite:
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA busy_timeout=60000")
         cursor.close()
+
 
 SessionLocal = async_sessionmaker(
     bind=engine,
@@ -84,16 +88,18 @@ async def init_db() -> None:
             sub_cols = {c["name"] for c in inspector.get_columns("subtitle_styles")}
             if "text_case" not in sub_cols:
                 sync_conn.execute(
-                    text("ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'")
+                    text(
+                        "ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'"
+                    )
                 )
         if "model_configs" in table_names:
             mc_cols = {c["name"] for c in inspector.get_columns("model_configs")}
             if "vision_fallback_model" not in mc_cols:
-                sync_conn.execute(text("ALTER TABLE model_configs ADD COLUMN vision_fallback_model VARCHAR(100)"))
+                sync_conn.execute(
+                    text("ALTER TABLE model_configs ADD COLUMN vision_fallback_model VARCHAR(100)")
+                )
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_incremental_columns)
     logger.info("Database initialized successfully.")
-
-

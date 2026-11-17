@@ -158,7 +158,8 @@ export function useTimelineState(project: TimelineProjectData) {
 
   // Adopt server changes only when nothing is waiting to be saved
   useEffect(() => {
-    if (!subtitleAutosaveTimerRef.current) setLiveSubtitleStyle(toSubtitleStyle(project.subtitle_style));
+    if (!subtitleAutosaveTimerRef.current)
+      setLiveSubtitleStyle(toSubtitleStyle(project.subtitle_style));
   }, [project.subtitle_style]);
 
   const handleSubtitleChange = useCallback(
@@ -182,7 +183,8 @@ export function useTimelineState(project: TimelineProjectData) {
   );
 
   const handleCustomSubtitlePositionChange = useCallback(
-    (offsetY: number) => handleSubtitleChange({ ...liveSubtitleStyleRef.current, offset_y: offsetY }, false),
+    (offsetY: number) =>
+      handleSubtitleChange({ ...liveSubtitleStyleRef.current, offset_y: offsetY }, false),
     [handleSubtitleChange]
   );
 
@@ -257,17 +259,18 @@ export function useTimelineState(project: TimelineProjectData) {
 
   const handleCustomWatermarkPositionChange = useCallback(
     (pos: { custom_x: number; custom_y: number }) => {
-      const base: WatermarkConfig = liveWatermarkRef.current || project.watermark || {
-        enabled: true,
-        text: project.name || "Watermark",
-        font_family: "Poppins",
-        font_size: 24,
-        font_color: "#FFFFFF",
-        opacity: 0.8,
-        position: "bottom-right",
-        offset_x: 30,
-        offset_y: 30,
-      };
+      const base: WatermarkConfig = liveWatermarkRef.current ||
+        project.watermark || {
+          enabled: true,
+          text: project.name || "Watermark",
+          font_family: "Poppins",
+          font_size: 24,
+          font_color: "#FFFFFF",
+          opacity: 0.8,
+          position: "bottom-right",
+          offset_x: 30,
+          offset_y: 30,
+        };
       const updated: WatermarkConfig = {
         ...base,
         position: "custom",
@@ -748,7 +751,8 @@ export function useTimelineState(project: TimelineProjectData) {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Form fields and sliders own their keys; a focused button owns Space/Enter
       const target = e.target as HTMLElement;
-      if (target?.isContentEditable || target?.closest?.("input, textarea, select, [role=slider]")) return;
+      if (target?.isContentEditable || target?.closest?.("input, textarea, select, [role=slider]"))
+        return;
       if (target?.tagName === "BUTTON" && (e.code === "Space" || e.key === "Enter")) return;
 
       // Undo / Redo

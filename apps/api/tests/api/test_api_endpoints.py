@@ -1,13 +1,5 @@
-import json
-from unittest.mock import AsyncMock, patch
-
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-from app.core.db import SessionLocal, engine
-from app.main import app
-from app.models.narration import Narration
-from app.models.project import Project
 from app.models.timeline import Timeline
 from app.schemas.project import ProjectWatermarkUpdate
 from app.schemas.timeline import TimelineSaveRequest
@@ -19,7 +11,9 @@ async def test_publish_project_event():
     from app.core.events import event_bus, publish_project_event
 
     q = event_bus.subscribe("p1")
-    await publish_project_event("p1", "test_event", "progress", 50, "rendering", "Rendering video...")
+    await publish_project_event(
+        "p1", "test_event", "progress", 50, "rendering", "Rendering video..."
+    )
     event_bus.unsubscribe("p1", q)
     assert q.qsize() > 0
 
@@ -67,5 +61,3 @@ async def test_project_watermark_update():
     assert up.watermark_enabled is True
     assert up.watermark_position == "bottom_left"
     assert up.watermark_opacity == 0.9
-
-

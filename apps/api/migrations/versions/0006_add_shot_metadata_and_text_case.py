@@ -30,4 +30,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("subtitle_styles", "text_case")
     op.drop_column("storyboard_items", "shot_metadata")
-

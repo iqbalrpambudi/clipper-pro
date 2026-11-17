@@ -22,6 +22,7 @@ def _build_audio_filter(
     broadcast_eq: bool = True,
 ) -> str:
     """Build FFmpeg audio filter string for rate (speed/tempo), pitch, silence-tightening, and broadcast vocal EQ."""
+
     def parse_rate(s: Optional[str]) -> float:
         if not s:
             return 1.0
@@ -164,9 +165,21 @@ async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
     list_file.write_text("".join(f"file '{p}'\n" for p in part_paths), encoding="utf-8")
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
-            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
-            "-c:a", "libmp3lame", "-b:a", "192k", output_path,
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(list_file),
+            "-af",
+            "loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            output_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -174,8 +187,19 @@ async def _concat_mp3s(part_paths: List[str], output_path: str) -> float:
         if proc.returncode != 0:
             # Fallback without loudnorm if audio is too short or filter fails
             proc2 = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
-                "-c:a", "libmp3lame", "-b:a", "192k", output_path,
+                "ffmpeg",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(list_file),
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "192k",
+                output_path,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -249,18 +273,25 @@ async def _generate_silence_mp3(
     proc = await asyncio.create_subprocess_exec(
         "ffmpeg",
         "-y",
-        "-f", "lavfi",
-        "-i", f"anullsrc=r={sample_rate}:cl={ch_layout}",
-        "-t", f"{duration_sec:.2f}",
-        "-c:a", "libmp3lame",
-        "-b:a", "192k",
+        "-f",
+        "lavfi",
+        "-i",
+        f"anullsrc=r={sample_rate}:cl={ch_layout}",
+        "-t",
+        f"{duration_sec:.2f}",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "192k",
         output_path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
-        raise RuntimeError(f"Failed generating chapter silence MP3: {stderr.decode(errors='ignore')[:200]}")
+        raise RuntimeError(
+            f"Failed generating chapter silence MP3: {stderr.decode(errors='ignore')[:200]}"
+        )
     return output_path
 
 
@@ -276,8 +307,23 @@ def count_voice_drift_windows(file_path: str, sr: int = 16000) -> int:
 
     try:
         raw = subprocess.run(
-            ["ffmpeg", "-v", "error", "-i", file_path, "-f", "s16le", "-ac", "1", "-ar", str(sr), "-"],
-            capture_output=True, check=True, timeout=60,
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-i",
+                file_path,
+                "-f",
+                "s16le",
+                "-ac",
+                "1",
+                "-ar",
+                str(sr),
+                "-",
+            ],
+            capture_output=True,
+            check=True,
+            timeout=60,
         ).stdout
     except Exception:
         return 0
@@ -290,7 +336,7 @@ def count_voice_drift_windows(file_path: str, sr: int = 16000) -> int:
     lo, hi = sr // 400, sr // 65
     frames = pcm[: len(pcm) // frame * frame].reshape(-1, frame)
     frames = frames - frames.mean(axis=1, keepdims=True)
-    energy = (frames ** 2).sum(axis=1)
+    energy = (frames**2).sum(axis=1)
     spec = np.fft.rfft(frames, 2 * frame, axis=1)
     ac = np.fft.irfft(spec * np.conj(spec), axis=1)[:, :frame]
     lags = lo + ac[:, lo:hi].argmax(axis=1)

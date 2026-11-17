@@ -363,8 +363,12 @@ async def _evaluate_script_gate(
             seg_lines = []
             for idx, seg in enumerate(segments):
                 sc = scene_by_id.get(seg.get("scene_id") or "")
-                sc_desc = (sc.get("description") or "Tanpa deskripsi visual")[:120] if sc else "Belum ada scene"
-                seg_lines.append(f"[{idx}] Teks: \"{seg.get('text', '')}\" | Visual: {sc_desc}")
+                sc_desc = (
+                    (sc.get("description") or "Tanpa deskripsi visual")[:120]
+                    if sc
+                    else "Belum ada scene"
+                )
+                seg_lines.append(f'[{idx}] Teks: "{seg.get("text", "")}" | Visual: {sc_desc}')
 
             prompt = (
                 f"Anda adalah reviewer & analis konten senior untuk video short-form vertikal ({qc_cfg.platform.upper()}).\n"
@@ -421,7 +425,11 @@ async def _evaluate_script_gate(
                     if dim not in scores:
                         dim = "flow_retention"
                     seg_idx = item.get("segment_index")
-                    seg_idx_int = int(seg_idx) if isinstance(seg_idx, int) and 0 <= seg_idx < len(segments) else None
+                    seg_idx_int = (
+                        int(seg_idx)
+                        if isinstance(seg_idx, int) and 0 <= seg_idx < len(segments)
+                        else None
+                    )
                     issues.append(
                         {
                             "id": f"llm-script-{raw_idx}",
@@ -429,7 +437,9 @@ async def _evaluate_script_gate(
                             "severity": sev,
                             "message": str(item["message"]).strip(),
                             "segment_index": seg_idx_int,
-                            "auto_fixable": bool(seg_idx_int is not None and sev in ("blocker", "major")),
+                            "auto_fixable": bool(
+                                seg_idx_int is not None and sev in ("blocker", "major")
+                            ),
                         }
                     )
         except Exception as exc:
@@ -454,7 +464,13 @@ def _split_long_sentence(text: str, max_words: int = 20) -> List[str]:
             continue
         # Last natural break: after a comma, or before a connector word
         cut = max((i + 1 for i, x in enumerate(cur[:-1]) if x.endswith(",")), default=0)
-        cut = max(cut, max((i for i, x in enumerate(cur) if i > 0 and x.lower() in CLAUSE_CONNECTORS), default=0))
+        cut = max(
+            cut,
+            max(
+                (i for i, x in enumerate(cur) if i > 0 and x.lower() in CLAUSE_CONNECTORS),
+                default=0,
+            ),
+        )
         if cut >= 4:
             chunks.append(cur[:cut])
             cur = cur[cut:]
@@ -595,7 +611,9 @@ async def _apply_script_fixes(
 
     if applied:
         narration.segments = segments
-        narration.raw_text = "\n\n".join(str(s.get("text") or "").strip() for s in segments if s.get("text"))
+        narration.raw_text = "\n\n".join(
+            str(s.get("text") or "").strip() for s in segments if s.get("text")
+        )
 
     return applied
 
@@ -811,7 +829,9 @@ async def _evaluate_timeline_gate(
             image_paths: List[str] = []
             for idx, c in enumerate(clips[:18]):
                 sc = scene_by_id.get(str(c.get("scene_id") or ""))
-                sc_desc = (sc.get("description") or "Tanpa deskripsi")[:100] if sc else "Scene hilang"
+                sc_desc = (
+                    (sc.get("description") or "Tanpa deskripsi")[:100] if sc else "Scene hilang"
+                )
                 t0 = float(c.get("timeline_start", 0.0) or 0.0)
                 t1 = float(c.get("timeline_end", 0.0) or 0.0)
                 thumb = sc.get("thumbnail_path") if sc else None
@@ -889,8 +909,14 @@ async def _evaluate_timeline_gate(
                     if dim not in scores:
                         dim = "visual_relevance"
                     c_idx = item.get("clip_index")
-                    c_idx_int = int(c_idx) if isinstance(c_idx, int) and 0 <= c_idx < len(clips) else None
-                    ts_sec = float(clips[c_idx_int].get("timeline_start", 0.0)) if c_idx_int is not None else None
+                    c_idx_int = (
+                        int(c_idx) if isinstance(c_idx, int) and 0 <= c_idx < len(clips) else None
+                    )
+                    ts_sec = (
+                        float(clips[c_idx_int].get("timeline_start", 0.0))
+                        if c_idx_int is not None
+                        else None
+                    )
                     issues.append(
                         {
                             "id": f"llm-timeline-{raw_idx}",
@@ -955,9 +981,16 @@ def _pick_replacement_scene(
     if segments:
         # Match by time: one segment often spans several clips, so clip index != segment index
         clip = clips[clip_idx]
-        mid_ms = 500 * (float(clip.get("timeline_start", 0.0) or 0.0) + float(clip.get("timeline_end", 0.0) or 0.0))
+        mid_ms = 500 * (
+            float(clip.get("timeline_start", 0.0) or 0.0)
+            + float(clip.get("timeline_end", 0.0) or 0.0)
+        )
         seg = next(
-            (s for s in segments if int(s.get("start_ms") or 0) <= mid_ms < int(s.get("end_ms") or 0)),
+            (
+                s
+                for s in segments
+                if int(s.get("start_ms") or 0) <= mid_ms < int(s.get("end_ms") or 0)
+            ),
             segments[min(clip_idx, len(segments) - 1)],
         )
         seg_text = str(seg.get("text") or "")
@@ -970,7 +1003,7 @@ def _pick_replacement_scene(
             continue
         desc = f"{sc.get('description', '')} {' '.join(sc.get('tags') or [])}".lower()
         has_bad_frame = any(kw in desc for kw in LOW_QUALITY_FRAME_KEYWORDS) or is_filler_scene(sc)
-        score =_calc_lexical_overlap(seg_text, desc) * 2.0 + _calc_visual_satisfaction_boost(sc)
+        score = _calc_lexical_overlap(seg_text, desc) * 2.0 + _calc_visual_satisfaction_boost(sc)
         score -= used_counts.get(sid, 0) * 0.6
         if has_bad_frame:
             score -= 2.5
@@ -1100,7 +1133,9 @@ async def _apply_timeline_fixes(
                 # Renderer reads at most clip_end - clip_start of source, so the source range must follow
                 # the slot, capped at the scene end to avoid bleeding into the next shot.
                 src_start = float(c.get("clip_start", 0.0) or 0.0)
-                want_end = src_start + (cursor - c["timeline_start"]) * float(c.get("speed", 1.0) or 1.0)
+                want_end = src_start + (cursor - c["timeline_start"]) * float(
+                    c.get("speed", 1.0) or 1.0
+                )
                 sc = scene_by_id.get(str(c.get("scene_id") or ""))
                 if sc and sc.get("end_time"):
                     want_end = min(want_end, float(sc["end_time"]))
@@ -1209,9 +1244,7 @@ async def run_project_qc(
         timeline = t_res.scalar_one_or_none()
 
         s_res = await db.execute(
-            select(Scene)
-            .where(Scene.project_id == project_id)
-            .order_by(Scene.scene_index.asc())
+            select(Scene).where(Scene.project_id == project_id).order_by(Scene.scene_index.asc())
         )
         scenes = [_scene_to_dict(sc) for sc in s_res.scalars().all()]
 
@@ -1312,15 +1345,18 @@ async def run_project_qc(
         else:
             status_val = "warning"
             major_cnt = sum(1 for i in issues if i.get("severity") in ("blocker", "major"))
-            summary = (
-                f"Skor QC {overall_score:.1f}/{threshold:.1f} ({major_cnt} catatan utama)."
-            )
+            summary = f"Skor QC {overall_score:.1f}/{threshold:.1f} ({major_cnt} catatan utama)."
         if verdict:
             summary = f"{summary} Review AI: {verdict}"
-        if gate == "script" and applied_fixes and audio_track and audio_track.narration_id == (
-            narration.id if narration else None
+        if (
+            gate == "script"
+            and applied_fixes
+            and audio_track
+            and audio_track.narration_id == (narration.id if narration else None)
         ):
-            summary = f"{summary} Naskah berubah: generate ulang audio TTS agar suara & subtitle sesuai."
+            summary = (
+                f"{summary} Naskah berubah: generate ulang audio TTS agar suara & subtitle sesuai."
+            )
 
         qc_run = QCRun(
             project_id=project_id,
@@ -1440,7 +1476,9 @@ async def revert_qc_run(
                 nar.segments = copy.deepcopy(list(snap["segments"]))
 
     qc_run.reverted = True
-    qc_run.summary = f"{qc_run.summary or ''} (Perbaikan telah dikembalikan ke versi sebelumnya)".strip()
+    qc_run.summary = (
+        f"{qc_run.summary or ''} (Perbaikan telah dikembalikan ke versi sebelumnya)".strip()
+    )
     await db.commit()
     await db.refresh(qc_run)
     return qc_run

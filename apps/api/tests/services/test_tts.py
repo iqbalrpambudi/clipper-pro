@@ -9,7 +9,6 @@ from app.services.tts import (
     estimate_tts_cost,
     generate_gemini_tts,
     generate_speech_audio,
-    test_tts_connection,
 )
 from app.services.tts.audio_utils import _split_text_for_tts
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
@@ -70,9 +69,11 @@ async def test_gemini_tts_payload_structure_omits_temperature(tmp_path, monkeypa
     mock_proc.returncode = 0
     mock_proc.communicate.return_value = (b"", b"")
 
-    with patch("httpx.AsyncClient.post", return_value=mock_resp) as mock_post, \
-         patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         patch("app.services.tts.providers.gemini.get_audio_duration", return_value=1.5):
+    with (
+        patch("httpx.AsyncClient.post", return_value=mock_resp) as mock_post,
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("app.services.tts.providers.gemini.get_audio_duration", return_value=1.5),
+    ):
         await generate_gemini_tts(
             text="Halo dunia",
             voice="Puck",
@@ -96,7 +97,6 @@ def test_tts_generate_request_accepts_model():
     assert req.model == "gemini-2.5-flash-preview-tts"
 
 
-
 @pytest.mark.asyncio
 async def test_generate_speech_audio_empty_text():
     with pytest.raises(ValueError, match="Teks narasi tidak boleh kosong"):
@@ -105,7 +105,10 @@ async def test_generate_speech_audio_empty_text():
 
 @pytest.mark.asyncio
 async def test_generate_speech_audio_provider_error_propagates_without_fallback():
-    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota error")):
+    with patch(
+        "app.services.tts.dispatcher.generate_gemini_tts",
+        side_effect=RuntimeError("Gemini quota error"),
+    ):
         with pytest.raises(RuntimeError, match="Gemini quota error"):
             await generate_speech_audio(
                 text="Halo dunia",
@@ -114,6 +117,7 @@ async def test_generate_speech_audio_provider_error_propagates_without_fallback(
                 provider="gemini",
                 api_key="valid-key",
             )
+
 
 def test_only_gemini_and_elevenlabs_voices():
     assert {v.provider for v in AVAILABLE_VOICES} == {"gemini", "elevenlabs"}
@@ -128,7 +132,9 @@ def test_tts_cost_estimates_all_providers():
 @pytest.mark.asyncio
 async def test_elevenlabs_tts_missing_key_throws_error():
     with pytest.raises(ValueError, match="ELEVENLABS_API_KEY"):
-        await generate_elevenlabs_tts(text="Halo", voice="Adam", output_path="/tmp/el.mp3", api_key="")
+        await generate_elevenlabs_tts(
+            text="Halo", voice="Adam", output_path="/tmp/el.mp3", api_key=""
+        )
 
 
 @pytest.mark.asyncio
@@ -155,8 +161,6 @@ async def test_elevenlabs_character_limit_blocks_fallback(monkeypatch):
             provider="elevenlabs",
             api_key="mock",
         )
-
-
 
 
 @pytest.mark.asyncio
@@ -205,7 +209,10 @@ async def test_gemini_tts_respects_cancellation(tmp_path):
 async def test_generate_speech_audio_gemini_propagates_error_without_silent_fallback(tmp_path):
     out_file = tmp_path / "test_no_fb.mp3"
 
-    with patch("app.services.tts.dispatcher.generate_gemini_tts", side_effect=RuntimeError("Gemini quota exceeded")):
+    with patch(
+        "app.services.tts.dispatcher.generate_gemini_tts",
+        side_effect=RuntimeError("Gemini quota exceeded"),
+    ):
         with pytest.raises(RuntimeError, match="Gemini quota exceeded"):
             await generate_speech_audio(
                 text="Halo dari naskah narasi",
@@ -281,8 +288,14 @@ async def test_gemini_tts_regenerates_on_voice_drift(tmp_path):
         return 10.0
 
     drift_by_take = {b"take1": 5, b"take2": 0}
-    with patch.object(gem, "_generate_gemini_tts_once", side_effect=fake_once), \
-         patch.object(gem, "count_voice_drift_windows", side_effect=lambda p: drift_by_take[Path(p).read_bytes()]):
+    with (
+        patch.object(gem, "_generate_gemini_tts_once", side_effect=fake_once),
+        patch.object(
+            gem,
+            "count_voice_drift_windows",
+            side_effect=lambda p: drift_by_take[Path(p).read_bytes()],
+        ),
+    ):
         out = tmp_path / "out.mp3"
         await gem.generate_gemini_tts("Halo", str(out), voice="Charon")
 
