@@ -338,6 +338,7 @@ export interface ModelConfig {
   base_url?: string | null;
   chat_model: string;
   vision_model: string;
+  vision_fallback_model?: string | null;
   api_key_masked?: string | null;
   has_api_key: boolean;
   tts_provider: string;

@@ -416,6 +416,7 @@ export const api = {
     base_url?: string | null;
     chat_model?: string;
     vision_model?: string;
+    vision_fallback_model?: string;
     api_key?: string;
     tts_provider?: string;
     tts_api_key?: string;

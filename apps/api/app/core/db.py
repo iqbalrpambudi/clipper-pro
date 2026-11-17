@@ -86,6 +86,10 @@ async def init_db() -> None:
                 sync_conn.execute(
                     text("ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'")
                 )
+        if "model_configs" in table_names:
+            mc_cols = {c["name"] for c in inspector.get_columns("model_configs")}
+            if "vision_fallback_model" not in mc_cols:
+                sync_conn.execute(text("ALTER TABLE model_configs ADD COLUMN vision_fallback_model VARCHAR(100)"))
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

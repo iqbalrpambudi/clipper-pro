@@ -28,6 +28,7 @@ class ModelConfigUpdate(BaseModel):
     base_url: Optional[str] = None
     chat_model: Optional[str] = None
     vision_model: Optional[str] = None
+    vision_fallback_model: Optional[str] = None  # "" clears it
     api_key: Optional[str] = None  # Plaintext from user, will be encrypted
     tts_provider: Optional[str] = None
     tts_api_key: Optional[str] = None  # Plaintext from user, will be encrypted
@@ -43,6 +44,7 @@ class ModelConfigResponse(BaseModel):
     base_url: Optional[str] = None
     chat_model: str
     vision_model: str
+    vision_fallback_model: Optional[str] = None
     api_key_masked: Optional[str] = None
     has_api_key: bool = False
     tts_provider: str

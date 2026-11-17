@@ -70,6 +70,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         base_url=cfg.base_url,
         chat_model=cfg.chat_model,
         vision_model=cfg.vision_model,
+        vision_fallback_model=cfg.vision_fallback_model,
         api_key_masked=mask_secret(raw_api_key),
         has_api_key=bool(raw_api_key),
         tts_provider=cfg.tts_provider,
@@ -100,6 +101,8 @@ async def save_model_configuration(
         cfg.chat_model = payload.chat_model
     if payload.vision_model is not None:
         cfg.vision_model = payload.vision_model
+    if payload.vision_fallback_model is not None:
+        cfg.vision_fallback_model = payload.vision_fallback_model.strip() or None
     if payload.api_key is not None and payload.api_key.strip():
         cfg.api_key_encrypted = encrypt_secret(payload.api_key.strip())
     if payload.tts_provider is not None:
@@ -125,6 +128,7 @@ async def save_model_configuration(
         base_url=cfg.base_url,
         chat_model=cfg.chat_model,
         vision_model=cfg.vision_model,
+        vision_fallback_model=cfg.vision_fallback_model,
         api_key_masked=mask_secret(raw_api_key),
         has_api_key=bool(raw_api_key),
         tts_provider=cfg.tts_provider,

@@ -37,6 +37,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         self.embedding_model = embedding_model
         self._service_unavailable = False
         self._embedding_degraded = False
+        self.vision_fallback_model = ""  # set by get_active_vision_adapter from ModelConfig
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -168,16 +169,32 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
 
             return self._extract_content_from_response(resp.text)
 
+    async def _vision_fallback(self, image_paths: List[str], prompt: str, failed_model: str) -> Dict[str, Any]:
+        """Retry once on the configured fallback model; placeholder tags when there is none."""
+        fallback = getattr(self, "vision_fallback_model", "")
+        if fallback and fallback != failed_model:
+            log.info("Vision model %s failed, retrying scene with fallback %s", failed_model, fallback)
+            primary_disabled = getattr(self, "_service_unavailable", False)
+            try:
+                return await self.analyze_vision(image_paths, prompt, model=fallback)
+            finally:
+                # A fallback outage must not disable the primary model for the rest of the video
+                self._service_unavailable = primary_disabled
+        return {
+            "description": "Cuplikan video aksi/aktivitas",
+            "tags": ["video", "scene", "aktivitas"],
+        }
+
     async def analyze_vision(
         self,
         image_paths: List[str],
         prompt: str,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if getattr(self, "_service_unavailable", False):
-            return {
-                "description": "Cuplikan video aksi/aktivitas",
-                "tags": ["video", "scene", "aktivitas"],
-            }
+        model = model or self.vision_model
+        # The sticky flag disables only the primary model; the fallback may still be served
+        if getattr(self, "_service_unavailable", False) and model == self.vision_model:
+            return await self._vision_fallback(image_paths, prompt, model)
 
         content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
 
@@ -216,7 +233,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             })
 
         payload = {
-            "model": self.vision_model,
+            "model": model,
             "messages": [
                 {
                     "role": "system",
@@ -230,7 +247,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         }
 
         try:
-            timeout_cfg = httpx.Timeout(30.0, connect=5.0)
+            # Thinking vision models (e.g. gemini-*-flash-high) take 40-70 s under parallel load
+            timeout_cfg = httpx.Timeout(90.0, connect=5.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 resp = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -284,11 +302,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 "tags": ["video", "scene", "aktivitas"],
             }
         except Exception as e:
-            log.warning("Vision analysis failed, using fallback tags: %s", e)
-            return {
-                "description": "Cuplikan video aksi/aktivitas",
-                "tags": ["video", "scene", "aktivitas"],
-            }
+            log.warning("Vision analysis with %s failed: %r", model, e)
+            return await self._vision_fallback(image_paths, prompt, model)
 
     async def analyze_vision_batch(
         self,

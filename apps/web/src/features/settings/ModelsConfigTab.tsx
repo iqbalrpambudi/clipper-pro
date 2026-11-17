@@ -75,6 +75,8 @@ export function ModelsConfigTab() {
   // LLM Chat & Vision Model Dropdown State
   const [isChatDropdownOpen, setIsChatDropdownOpen] = useState(false);
   const [isVisionDropdownOpen, setIsVisionDropdownOpen] = useState(false);
+  const [visionFallbackModel, setVisionFallbackModel] = useState("");
+  const [isFallbackDropdownOpen, setIsFallbackDropdownOpen] = useState(false);
 
   const [ttsApiKey, setTtsApiKey] = useState("");
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
@@ -95,6 +97,7 @@ export function ModelsConfigTab() {
       setBaseUrl(config.base_url || "");
       setChatModel(config.chat_model || "gemini-2.5-flash");
       setVisionModel(config.vision_model || "gemini-2.5-flash");
+      setVisionFallbackModel(config.vision_fallback_model || "");
     }
   }, [config]);
 
@@ -167,6 +170,7 @@ export function ModelsConfigTab() {
       base_url: baseUrl.trim() || null,
       chat_model: chatModel.trim(),
       vision_model: visionModel.trim(),
+      vision_fallback_model: visionFallbackModel.trim(),
       api_key: apiKey.trim() || undefined,
       tts_api_key: ttsApiKey.trim() || undefined,
       elevenlabs_api_key: elevenlabsApiKey.trim() || undefined,
@@ -341,6 +345,44 @@ export function ModelsConfigTab() {
                 </AutocompleteContent>
               </Autocomplete>
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="vision-fallback-model"
+              className="block text-xs font-semibold text-muted-foreground mb-1"
+            >
+              Vision Fallback Model (opsional)
+            </label>
+            <Autocomplete
+              value={visionFallbackModel}
+              onValueChange={setVisionFallbackModel}
+              open={isFallbackDropdownOpen}
+              onOpenChange={setIsFallbackDropdownOpen}
+              items={availableModels.length > 0 ? availableModels : DEFAULT_VISION_MODELS}
+            >
+              <AutocompleteInput
+                id="vision-fallback-model"
+                placeholder="Kosongkan jika tidak perlu, misal: inferhub/deepseek-v4.1-flash"
+                className="font-mono"
+              />
+              <AutocompleteContent>
+                <AutocompleteEmpty>
+                  Tidak ada model yang cocok. Anda tetap dapat mengetik nama model sendiri.
+                </AutocompleteEmpty>
+                <AutocompleteList>
+                  {(m: string) => (
+                    <AutocompleteItem key={m} value={m}>
+                      <span className="truncate">{m}</span>
+                    </AutocompleteItem>
+                  )}
+                </AutocompleteList>
+              </AutocompleteContent>
+            </Autocomplete>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dipakai per scene saat Vision Model error atau timeout, agar scene tidak berakhir tanpa
+              deskripsi.
+            </p>
           </div>
 
           <div>

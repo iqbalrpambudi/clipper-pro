@@ -98,10 +98,13 @@ def _build_adapter(
 async def get_active_vision_adapter(db: AsyncSession) -> BaseLLMAdapter:
     """Get adapter specifically configured for scene vision analysis."""
     api_key, tts_key, base_url, _chat_model, vision_model = await _resolve_config(db)
-    return _build_adapter(
+    adapter = _build_adapter(
         api_key, tts_key, base_url, vision_model, vision_model, vision_model,
         inferhub_override=True,
     )
+    res = await db.execute(select(ModelConfig.vision_fallback_model).where(ModelConfig.is_active == True).limit(1))
+    adapter.vision_fallback_model = res.scalar_one_or_none() or ""
+    return adapter
 
 
 async def get_active_llm_adapter(db: AsyncSession) -> BaseLLMAdapter:
