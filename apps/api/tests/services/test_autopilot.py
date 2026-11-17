@@ -11,6 +11,7 @@ from app.services.autopilot import (
     free_publish_slots,
     is_quota_error,
     pick_category,
+    tag_coverage,
     upcoming_slots,
 )
 
@@ -81,3 +82,13 @@ def test_config_validation():
         AutopilotConfigIn(**base, slots=["25:00"], production_windows=WINDOWS)
     with pytest.raises(ValidationError):
         AutopilotConfigIn(**base, slots=["07:00"], production_windows=[WINDOWS[0], WINDOWS[0]])
+
+
+def test_tag_coverage_weights_by_duration():
+    scenes = [
+        {"duration": 9.0, "status": "ready"},
+        {"duration": 1.0, "status": "untagged"},
+        {"duration": 0.5, "status": "untagged"},
+    ]
+    assert tag_coverage(scenes) == pytest.approx(9 / 10.5)
+    assert tag_coverage([]) == 0.0

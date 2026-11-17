@@ -37,6 +37,9 @@ MIN_PUBLISH_LEAD = timedelta(minutes=10)  # YouTube needs publishAt comfortably 
 PUBLISH_RETRY_AFTER = timedelta(minutes=15)
 QUOTA_RE = re.compile(r"\b429\b|resource[_ ]exhausted|quota|rate.?limit|too many requests", re.I)
 POOL_STATUSES = ("running", "ready")
+# Below this share of footage (by duration) described by AI Vision, the script and cuts are guesswork
+TAG_MIN_COVERAGE = 0.7
+TAG_RETRY_WAITS = (30, 90)  # seconds before each retag attempt; transient timeouts usually clear
 
 _producing = False
 _publishing = False
@@ -99,6 +102,13 @@ def pick_category(categories: List[str], recent: List[AutopilotRun]) -> str:
 
 def is_quota_error(message: str) -> bool:
     return bool(QUOTA_RE.search(message or ""))
+
+
+def tag_coverage(scenes: List[dict]) -> float:
+    """Share of footage duration whose scenes have a real AI Vision description."""
+    total = sum(s["duration"] or 0 for s in scenes)
+    tagged = sum(s["duration"] or 0 for s in scenes if s["status"] != "untagged")
+    return tagged / total if total else 0.0
 
 
 def _extract_json(raw: str) -> dict:
@@ -201,6 +211,29 @@ def _build_metadata(meta: dict, topic: str, src: dict, music_credit: str | None 
     return {"title": title, "description": description, "tags": tags}
 
 
+async def _ensure_tagged(c: httpx.AsyncClient, pid: str, target_duration: float) -> None:
+    """Retry scenes AI Vision failed on; give up on footage that stays mostly undescribed.
+    Publishing unattended, a skipped video beats one whose shots don't match the narration."""
+    scenes = (await _call(c, "GET", f"/projects/{pid}/scenes")).json()
+    error = ""
+    for wait in TAG_RETRY_WAITS:
+        if tag_coverage(scenes) >= 1 or is_quota_error(error):
+            break
+        await asyncio.sleep(wait)
+        error = (await _call(c, "POST", f"/projects/{pid}/scenes/retag",
+                             json={"mode": "quick", "batch_size": 8})).json().get("error") or error
+        scenes = (await _call(c, "GET", f"/projects/{pid}/scenes")).json()
+
+    coverage = tag_coverage(scenes)
+    tagged_sec = sum(s["duration"] or 0 for s in scenes if s["status"] != "untagged")
+    if coverage < TAG_MIN_COVERAGE or tagged_sec < target_duration * 1.2:
+        reason = f"Tagging scene hanya {coverage:.0%} ({tagged_sec:.0f} dtk footage terdeskripsi)"
+        reason += f": {error}" if error else ""
+        raise (QuotaExhausted if is_quota_error(error) else AutopilotError)(reason)
+    if coverage < 1:
+        log.warning("Project %s: %.0f%% of footage untagged, continuing without it", pid, (1 - coverage) * 100)
+
+
 async def _build(run_id: str, cfg: AutopilotConfig) -> None:
     """Make one video and leave it in the pool (status=ready). Upload happens later in the publisher."""
     async with SessionLocal() as db:
@@ -237,6 +270,7 @@ async def _build(run_id: str, cfg: AutopilotConfig) -> None:
                 raise AutopilotError("Download / deteksi scene gagal")
             return bool(vids) and all(v["status"] == "ready" for v in vids)
         await _poll("download & tagging scene", media_ready, 60, every=15)
+        await _ensure_tagged(c, pid, cfg.target_duration)
 
         await _store(run_id, stage="script")
         await _call(c, "POST", f"/projects/{pid}/narration/generate", json={
