@@ -38,6 +38,8 @@ git branch -d feat/<nama>
 
 ### Rilis
 
+Otomatis: setiap push ke `main` menjalankan `release.yml`, yang menghitung versi dari Conventional Commits sejak tag terakhir (`scripts/next-version.sh`: `feat!`/`BREAKING CHANGE` → major, `feat` → minor, `fix`/`perf` → patch; selain itu tidak rilis), lalu build dan membuat tag + GitHub Release. Versi tampil di sidebar aplikasi. Langkah manual di bawah hanya untuk kasus khusus.
+
 ```bash
 git checkout main && git pull
 git merge --no-ff development

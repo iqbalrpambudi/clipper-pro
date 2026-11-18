@@ -2,6 +2,8 @@ name: Release Cliper Pro
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -18,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # butuh riwayat commit + tag untuk hitung versi
 
       - uses: actions/setup-node@v4
         with:
@@ -34,18 +38,26 @@ jobs:
           cd apps/api && uv sync --extra dev
           cd ../web && npm ci
 
-      - name: Export production artifacts
+      - name: Resolve version
+        id: ver
         run: |
-          TAG_VER="${{ github.event.inputs.version || github.ref_name }}"
-          TAG_VER="${TAG_VER#v}"
-          if [ -n "$TAG_VER" ] && [ "$TAG_VER" != "main" ]; then
-            bash scripts/release.sh --version "$TAG_VER"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VER="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            VER="${{ github.event.inputs.version }}"
           else
-            bash scripts/release.sh
+            VER=$(bash scripts/next-version.sh)
           fi
+          echo "version=${VER#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Export production artifacts
+        if: steps.ver.outputs.version != ''
+        run: bash scripts/release.sh --version "${{ steps.ver.outputs.version }}"
 
       - name: Publish GitHub Release
+        if: steps.ver.outputs.version != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
           files: dist/*
           generate_release_notes: true

@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Bot, Film, LayoutGrid, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { resolveApiUrl } from "@/env";
 
 export type WorkspacePage = "projects" | "autopilot" | "settings";
 
@@ -27,6 +29,15 @@ function WorkspaceNavigation({ activePage }: { activePage: WorkspacePage }) {
       ))}
     </nav>
   );
+}
+
+function AppVersion() {
+  const { data } = useQuery({
+    queryKey: ["app-version"],
+    queryFn: async () => (await fetch(resolveApiUrl("/api/v1/version"))).json() as Promise<{ version: string }>,
+    staleTime: Infinity,
+  });
+  return data ? <p className="mt-2 mb-0">Versi {data.version}</p> : null;
 }
 
 export function WorkspaceShell({
@@ -59,6 +70,7 @@ export function WorkspaceShell({
               <ThemeToggle align="start" />
             </div>
             Kelola project dan pengaturan produksi Anda.
+            <AppVersion />
           </div>
         </aside>
 

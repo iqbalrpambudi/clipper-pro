@@ -47,7 +47,7 @@ async def test_render_job_thumbnail_resolution(tmp_path, monkeypatch):
 
     fake_thumb = tmp_path / "projects" / "p1" / "scenes" / "thumb_0001_1000.jpg"
     fake_thumb.parent.mkdir(parents=True, exist_ok=True)
-    fake_thumb.touch()
+    fake_thumb.write_bytes(b"jpeg")
 
     resolved = await resolve_or_extract_scene_thumbnail(
         "p1", "thumb_0001_1000.jpg", str(tmp_path), None
