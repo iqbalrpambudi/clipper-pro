@@ -149,7 +149,7 @@ async def update_narration(
             new_segs = split_into_sentence_segments(payload.raw_text)
             old_segs = narration.segments or []
             if len(new_segs) == len(old_segs):
-                for new, old in zip(new_segs, old_segs):
+                for new, old in zip(new_segs, old_segs, strict=True):
                     if old.get("scene_id"):
                         new["scene_id"] = old["scene_id"]
             narration.segments = new_segs

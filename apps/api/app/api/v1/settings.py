@@ -92,7 +92,6 @@ async def save_model_configuration(
     payload: ModelConfigUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    settings = get_settings()
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     if not cfg:

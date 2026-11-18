@@ -380,8 +380,11 @@ def test_split_long_sentence_never_drops_words():
     )
     lines = qc_service._split_long_sentence(text, max_words=20)
     assert len(lines) > 1
-    assert all(len(l.split()) <= 20 for l in lines)
-    norm = lambda s: [w.strip(",.").lower() for w in s.split()]
+    assert all(len(line.split()) <= 20 for line in lines)
+
+    def norm(s: str) -> list[str]:
+        return [w.strip(",.").lower() for w in s.split()]
+
     assert norm(" ".join(lines)) == norm(text)
     # No clause boundary: keep the line whole rather than cutting it
     unbroken = " ".join(["kata"] * 30)

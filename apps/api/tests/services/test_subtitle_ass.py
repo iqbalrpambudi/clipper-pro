@@ -50,7 +50,7 @@ SEGMENTS = [
 
 def test_ass_burst_groups_highlight_and_srt():
     ass = generate_ass_subtitles(SEGMENTS, {"burst_word_count": 2, "highlight_color": "#00FF66"})
-    dialogues = [l for l in ass.splitlines() if l.startswith("Dialogue:")]
+    dialogues = [line for line in ass.splitlines() if line.startswith("Dialogue:")]
     assert len(dialogues) == 3  # one event per spoken word
     assert "RAHASIA" in dialogues[0] and "LUAR" in dialogues[0] and "BIASA" not in dialogues[0]
     assert "\\c&H0066FF00}" in dialogues[0] and "\\fscx110" in dialogues[0]

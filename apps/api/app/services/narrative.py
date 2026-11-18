@@ -309,10 +309,10 @@ def parse_script_lines(text: str) -> List[str]:
     """Numbered lines if the model gave them, else plain sentences (cheap models sometimes write a paragraph)."""
     # The "Inti:" brief only steers the model; it is never spoken.
     text = _BRIEF.sub("", text)
-    numbered = [m.group(1) for m in (_NUMBERED.match(l) for l in text.splitlines()) if m]
+    numbered = [m.group(1) for m in (_NUMBERED.match(line) for line in text.splitlines()) if m]
     raw = numbered or re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
-    lines = [clean_spoken(l) for l in raw]
-    return [l for l in lines if len(l.split()) >= 3]
+    lines = [clean_spoken(line) for line in raw]
+    return [line for line in lines if len(line.split()) >= 3]
 
 
 def segments_from_lines(
@@ -357,7 +357,7 @@ def align_lines_to_shots(lines: List[str], shots: List[Dict[str, Any]]) -> List[
     df = Counter(w for d in docs for w in d)
     idf = {w: math.log((S + 1) / (c + 1)) for w, c in df.items()}
     norms = [sum(idf[w] for w in d) or 1.0 for d in docs]
-    line_words = [_words(l) for l in lines]
+    line_words = [_words(line) for line in lines]
 
     def gain(i: int, j: int) -> float:
         expected = round(i * (S - 1) / max(1, L - 1))
@@ -433,8 +433,8 @@ async def generate_narration_script(
 def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
     """One segment per line when the script is line-based (generated scripts), else per sentence."""
     if "\n" in text.strip():
-        raw = [l for l in text.splitlines() if l.strip()]
-        raw = [(_NUMBERED.match(l).group(1) if _NUMBERED.match(l) else l) for l in raw]
+        raw = [line for line in text.splitlines() if line.strip()]
+        raw = [(_NUMBERED.match(line).group(1) if _NUMBERED.match(line) else line) for line in raw]
     else:
         raw = re.split(r"(?<=[.!?])\s+", text.strip())
-    return segments_from_lines([c for c in (clean_spoken(l) for l in raw) if len(c) >= 3])
+    return segments_from_lines([c for c in (clean_spoken(line) for line in raw) if len(c) >= 3])

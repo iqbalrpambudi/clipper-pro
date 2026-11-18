@@ -695,7 +695,6 @@ async def render_timeline_video(
 
         final_inputs = ["-i", str(concatenated_video)]
         filter_chains = []
-        ass_only_chains = []
 
         # Video filter: add watermark overlay if enabled
         if watermark and watermark.get("enabled"):
@@ -713,10 +712,8 @@ async def render_timeline_video(
             else:
                 ass_filter_str = f"ass='{esc_ass}'"
             filter_chains.append(ass_filter_str)
-            ass_only_chains.append(ass_filter_str)
 
         vf_str = ",".join(filter_chains) if filter_chains else ""
-        ass_only_vf_str = ",".join(ass_only_chains) if ass_only_chains else ""
 
         preset = "ultrafast" if is_preview else "veryfast"
         crf = "28" if is_preview else "21"
