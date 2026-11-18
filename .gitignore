@@ -105,3 +105,5 @@ Thumbs.db
 apps/api/app/web_dist/
 apps/api/dist/
 apps/api/build/
+apps/api/storage/*.db
+apps/web/.vitest/
