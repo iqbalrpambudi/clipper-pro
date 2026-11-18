@@ -14,6 +14,9 @@ from app.services.vision_tagger import VISION_PROMPT
 
 log = logging.getLogger(__name__)
 
+# Gateways that fail a connect lock the model ~30s ("reset after 30s"), so the last wait outlasts it
+CHAT_RETRY_WAITS = (5, 35)
+
 
 class OpenAICompatibleAdapter(BaseLLMAdapter):
     def __init__(
@@ -151,11 +154,16 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         effective_timeout = max(timeout, 480.0) if is_thinking else timeout
         timeout_cfg = httpx.Timeout(effective_timeout, connect=15.0)
         async with httpx.AsyncClient(timeout=timeout_cfg) as client:
-            resp = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=self._get_headers(),
-                json=payload,
-            )
+            for wait in (*CHAT_RETRY_WAITS, None):
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._get_headers(),
+                    json=payload,
+                )
+                if resp.status_code not in (502, 503, 504) or wait is None:
+                    break
+                log.warning("Chat endpoint HTTP %s, retrying in %ss", resp.status_code, wait)
+                await asyncio.sleep(wait)
             if resp.status_code >= 400:
                 err_text = resp.text.strip()
                 try:
