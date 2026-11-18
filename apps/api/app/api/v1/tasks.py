@@ -34,7 +34,7 @@ async def cancel_project_task(
     v_res = await db.execute(
         select(SourceVideo).where(
             SourceVideo.project_id == project_id,
-            SourceVideo.status.in_(["downloading", "processing"])
+            SourceVideo.status.in_(["downloading", "processing"]),
         )
     )
     active_videos = v_res.scalars().all()
@@ -44,10 +44,10 @@ async def cancel_project_task(
 
     # Cancel any active render jobs
     from datetime import datetime
+
     r_res = await db.execute(
         select(RenderJob).where(
-            RenderJob.project_id == project_id,
-            RenderJob.status.in_(["rendering", "queued"])
+            RenderJob.project_id == project_id, RenderJob.status.in_(["rendering", "queued"])
         )
     )
     active_renders = r_res.scalars().all()
@@ -59,8 +59,7 @@ async def cancel_project_task(
     # Cancel any active audio generation and narration
     n_res = await db.execute(
         select(Narration).where(
-            Narration.project_id == project_id,
-            Narration.status == "tts_generating"
+            Narration.project_id == project_id, Narration.status == "tts_generating"
         )
     )
     active_narrations = n_res.scalars().all()
@@ -69,8 +68,7 @@ async def cancel_project_task(
 
     a_res = await db.execute(
         select(AudioTrack).where(
-            AudioTrack.project_id == project_id,
-            AudioTrack.status == "generating"
+            AudioTrack.project_id == project_id, AudioTrack.status == "generating"
         )
     )
     active_audio = a_res.scalars().all()

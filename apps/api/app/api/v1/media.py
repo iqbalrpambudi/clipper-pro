@@ -218,7 +218,11 @@ async def trigger_youtube_download(
 
     initial_title = (payload.title or "").strip()
     if initial_title:
-        initial_filename = initial_title if any(initial_title.lower().endswith(ext) for ext in [".mp4", ".mov", ".mkv", ".webm"]) else f"{initial_title}.mp4"
+        initial_filename = (
+            initial_title
+            if any(initial_title.lower().endswith(ext) for ext in [".mp4", ".mov", ".mkv", ".webm"])
+            else f"{initial_title}.mp4"
+        )
     else:
         initial_filename = "Mendownload dari YouTube..."
 
@@ -281,6 +285,7 @@ async def cancel_video_processing(
         raise HTTPException(status_code=404, detail="Video tidak ditemukan")
 
     from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, video_id=video_id)
 
     video.status = "failed"
@@ -298,7 +303,10 @@ async def cancel_video_processing(
         data={"video_id": video_id},
     )
 
-    return {"status": "cancelled", "message": f"Proses video '{video.filename}' berhasil dibatalkan."}
+    return {
+        "status": "cancelled",
+        "message": f"Proses video '{video.filename}' berhasil dibatalkan.",
+    }
 
 
 @router.patch("/{video_id}", response_model=SourceVideoResponse)
@@ -349,6 +357,7 @@ async def delete_source_video(
 
     # Cancel any active worker process (yt-dlp or scene detection) immediately before deleting
     from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, video_id=video_id)
 
     if video.file_path and Path(video.file_path).exists():
@@ -360,6 +369,7 @@ async def delete_source_video(
     # Clean up scene thumbnail files from disk
     from app.models.project import Scene
     from app.models.timeline import Timeline
+
     res = await db.execute(select(Scene).where(Scene.source_video_id == video_id))
     deleted_scenes = res.scalars().all()
     for sc in deleted_scenes:
@@ -378,6 +388,7 @@ async def delete_source_video(
         import json
 
         from app.core.events import event_bus
+
         cached = event_bus.get_active_task(project_id)
         if cached:
             task_dict = json.loads(cached)
@@ -394,9 +405,7 @@ async def delete_source_video(
     timeline = timeline_res.scalar_one_or_none()
     if timeline and timeline.clips:
         deleted_scene_ids = {sc.id for sc in deleted_scenes}
-        remaining = [
-            c for c in timeline.clips if c.get("scene_id") not in deleted_scene_ids
-        ]
+        remaining = [c for c in timeline.clips if c.get("scene_id") not in deleted_scene_ids]
         if len(remaining) != len(timeline.clips):
             timeline.clips = remaining
             timeline.total_duration = max(

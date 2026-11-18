@@ -40,7 +40,6 @@ class WatermarkSchema(BaseModel):
 ProjectWatermarkUpdate = WatermarkSchema
 
 
-
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -80,6 +79,7 @@ class HeatmapBucketOut(BaseModel):
     start_time: float
     end_time: float
     value: float
+
 
 class HardsubSchema(BaseModel):
     """Burned-in subtitle band of a source video, as fractions of frame height (0 = top)."""
@@ -183,4 +183,6 @@ class ProjectDetailResponse(ProjectResponse):
     timeline: Optional[Dict[str, Any]] = None
     subtitle_style: Optional[Dict[str, Any]] = None
     render_jobs: List[RenderJobResponse] = []
-    bgm_credit: Optional[str] = None  # attribution the BGM license requires in the video description
+    bgm_credit: Optional[str] = (
+        None  # attribution the BGM license requires in the video description
+    )

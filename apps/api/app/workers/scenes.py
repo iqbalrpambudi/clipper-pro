@@ -94,6 +94,7 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
             BATCH_SIZE = 24
             BATCH_CONCURRENCY = 4
             processed_count = 0
+            untagged_count = 0
             batches = [scenes_data[i : i + BATCH_SIZE] for i in range(0, total_scenes, BATCH_SIZE)]
 
             for bi in range(0, len(batches), BATCH_CONCURRENCY):
@@ -108,7 +109,10 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 )
 
                 for batch_slice, batch_analysis in zip(wave, wave_results, strict=False):
-                    for item, (description, tags, embedding, analysis) in zip(batch_slice, batch_analysis, strict=False):
+                    for item, (description, tags, embedding, analysis, ok) in zip(
+                        batch_slice, batch_analysis, strict=False
+                    ):
+                        untagged_count += not ok
                         sc = Scene(
                             project_id=video.project_id,
                             source_video_id=video.id,
@@ -122,7 +126,8 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                             analysis=analysis,
                             shot_info=item.get("shot_info"),
                             embedding=embedding,
-                            status="ready",
+                            # untagged = vision failed; retag picks these up, matching/narration skip them
+                            status="ready" if ok else "untagged",
                         )
                         db.add(sc)
 
@@ -138,7 +143,11 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                     progress=pct,
                     stage="vision_tagging",
                     message=f"Menganalisis visual AI scene {min(processed_count, total_scenes)} dari {total_scenes}...",
-                    data={"video_id": video_id, "current": min(processed_count, total_scenes), "total": total_scenes},
+                    data={
+                        "video_id": video_id,
+                        "current": min(processed_count, total_scenes),
+                        "total": total_scenes,
+                    },
                 )
 
             if await is_cancelled(video.project_id, video_id=video_id):
@@ -155,7 +164,9 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                     message="Memeriksa subtitle bawaan (hardsub) di video...",
                     data={"video_id": video_id},
                 )
-                video.hardsub = await detect_hardsub(adapter, video.file_path, float(video.duration or 0.0))
+                video.hardsub = await detect_hardsub(
+                    adapter, video.file_path, float(video.duration or 0.0)
+                )
 
             video.status = "ready"
             video.progress = 100
@@ -169,11 +180,21 @@ async def detect_scenes_job(ctx: Dict[str, Any], video_id: str) -> None:
                 stage="completed",
                 message=(
                     f"Deteksi scene selesai! {total_scenes} scene visual siap digunakan di Media Pool."
-                    + (" ⚠️ Embedding fallback hash — kualitas matching scene turun." if getattr(adapter, "_embedding_degraded", False) else "")
+                    + (
+                        " ⚠️ Embedding fallback hash — kualitas matching scene turun."
+                        if getattr(adapter, "_embedding_degraded", False)
+                        else ""
+                    )
+                    + (
+                        f" ⚠️ {untagged_count} scene gagal ditag AI Vision — jalankan Tagging Ulang."
+                        if untagged_count
+                        else ""
+                    )
                 ),
                 data={
                     "video_id": video_id,
                     "total_scenes": total_scenes,
+                    "untagged_scenes": untagged_count,
                     "embedding_degraded": bool(getattr(adapter, "_embedding_degraded", False)),
                 },
             )
@@ -251,7 +272,9 @@ async def transcribe_scenes_job(
 
             # Fetch scenes for this video
             s_res = await db.execute(
-                select(Scene).where(Scene.source_video_id == video.id).order_by(Scene.scene_index.asc())
+                select(Scene)
+                .where(Scene.source_video_id == video.id)
+                .order_by(Scene.scene_index.asc())
             )
             scenes = s_res.scalars().all()
             if not scenes:
@@ -313,7 +336,8 @@ async def transcribe_scenes_job(
                     if re_embedded:
                         log.info(
                             "Re-embedded %d scenes with dialog transcript for video %s",
-                            re_embedded, video.id,
+                            re_embedded,
+                            video.id,
                         )
 
                 await db.commit()

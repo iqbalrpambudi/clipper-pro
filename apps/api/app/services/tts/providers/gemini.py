@@ -42,10 +42,16 @@ async def _generate_gemini_tts_once(
         raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
 
     settings = get_settings()
-    key = (api_key or "").strip() or (settings.GEMINI_API_KEY or "").strip() or (settings.AI_API_KEY or "").strip()
+    key = (
+        (api_key or "").strip()
+        or (settings.GEMINI_API_KEY or "").strip()
+        or (settings.AI_API_KEY or "").strip()
+    )
 
     if not key:
-        raise ValueError("Gemini API Key belum dikonfigurasi. Silakan simpan GEMINI_API_KEY pada menu Pengaturan.")
+        raise ValueError(
+            "Gemini API Key belum dikonfigurasi. Silakan simpan GEMINI_API_KEY pada menu Pengaturan."
+        )
 
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
@@ -67,15 +73,7 @@ async def _generate_gemini_tts_once(
         raise ValueError("Teks untuk Gemini TTS tidak boleh kosong.")
 
     payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": clean_text
-                    }
-                ]
-            }
-        ],
+        "contents": [{"parts": [{"text": clean_text}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
@@ -138,7 +136,7 @@ async def _generate_gemini_tts_once(
             )
         elif resp.status_code == 429:
             raise RuntimeError(
-                f"Batas kuota Gemini API terlampaui (HTTP 429: Rate limit/Quota exceeded). Silakan coba beberapa saat lagi."
+                "Batas kuota Gemini API terlampaui (HTTP 429: Rate limit/Quota exceeded). Silakan coba beberapa saat lagi."
             )
         else:
             raise RuntimeError(
@@ -154,7 +152,9 @@ async def _generate_gemini_tts_once(
     candidates = data.get("candidates") or []
     if not candidates:
         prompt_feedback = data.get("promptFeedback") or {}
-        block_reason = prompt_feedback.get("blockReason") or "Tidak ada kandidat respons dari Gemini API"
+        block_reason = (
+            prompt_feedback.get("blockReason") or "Tidak ada kandidat respons dari Gemini API"
+        )
         raise RuntimeError(f"Gemini TTS diblokir atau gagal menghasilkan audio: {block_reason}")
 
     parts = candidates[0].get("content", {}).get("parts", [])
@@ -166,7 +166,9 @@ async def _generate_gemini_tts_once(
 
     if not inline_data or "data" not in inline_data:
         finish_reason = candidates[0].get("finishReason") or "Tidak ada inline audio data"
-        raise RuntimeError(f"Gemini TTS tidak mengembalikan data audio (finishReason: {finish_reason})")
+        raise RuntimeError(
+            f"Gemini TTS tidak mengembalikan data audio (finishReason: {finish_reason})"
+        )
 
     try:
         raw_bytes = base64.b64decode(inline_data["data"])
@@ -179,17 +181,54 @@ async def _generate_gemini_tts_once(
 
     is_wav = raw_bytes.startswith(b"RIFF") or "wav" in mime_type.lower()
     if is_wav:
-        cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
-    elif "pcm" in mime_type.lower() or "l16" in mime_type.lower() or (
-        not raw_bytes.startswith(b"ID3")
-        and not raw_bytes.startswith(b"\xff\xfb")
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            "-",
+            *af_args,
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(out_p),
+        ]
+    elif (
+        "pcm" in mime_type.lower()
+        or "l16" in mime_type.lower()
+        or (not raw_bytes.startswith(b"ID3") and not raw_bytes.startswith(b"\xff\xfb"))
     ):
         cmd = [
-            "ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "-",
-            *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p),
+            "ffmpeg",
+            "-y",
+            "-f",
+            "s16le",
+            "-ar",
+            "24000",
+            "-ac",
+            "1",
+            "-i",
+            "-",
+            *af_args,
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(out_p),
         ]
     else:
-        cmd = ["ffmpeg", "-y", "-i", "-", *af_args, "-c:a", "libmp3lame", "-b:a", "192k", str(out_p)]
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            "-",
+            *af_args,
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            str(out_p),
+        ]
 
     proc_key = f"tts:{project_id}" if project_id else f"tts:{out_p.name}"
     proc = await asyncio.create_subprocess_exec(
@@ -208,7 +247,9 @@ async def _generate_gemini_tts_once(
 
     dur = await get_audio_duration(str(out_p))
     if dur <= 0.1:
-        raise RuntimeError(f"Audio yang dihasilkan Gemini TTS terlalu pendek ({dur:.2f} detik) atau kosong.")
+        raise RuntimeError(
+            f"Audio yang dihasilkan Gemini TTS terlalu pendek ({dur:.2f} detik) atau kosong."
+        )
 
     return dur
 
@@ -235,8 +276,13 @@ async def generate_gemini_tts(
     detected from pitch after the fact. Keeps the cleanest take; retry failures keep the first take.
     """
     kwargs = {
-        "api_key": api_key, "voice": voice, "rate": rate, "pitch": pitch,
-        "model": model, "language": language, "project_id": project_id,
+        "api_key": api_key,
+        "voice": voice,
+        "rate": rate,
+        "pitch": pitch,
+        "model": model,
+        "language": language,
+        "project_id": project_id,
     }
     out_p = Path(output_path)
     dur = await _generate_gemini_tts_once(text, output_path, **kwargs)
@@ -247,7 +293,10 @@ async def generate_gemini_tts(
         attempt += 1
         log.warning(
             "Gemini TTS voice drift on '%s' (%d windows off-voice), regenerating (attempt %d/%d)",
-            voice, drift, attempt, VOICE_DRIFT_MAX_ATTEMPTS,
+            voice,
+            drift,
+            attempt,
+            VOICE_DRIFT_MAX_ATTEMPTS,
         )
         cand = out_p.with_name(f"{out_p.stem}.retry{out_p.suffix}")
         try:
@@ -265,5 +314,9 @@ async def generate_gemini_tts(
             cand.unlink(missing_ok=True)
 
     if drift >= VOICE_DRIFT_MIN_WINDOWS:
-        log.warning("Gemini TTS voice still drifts after %d attempts (%d windows); keeping best take", attempt, drift)
+        log.warning(
+            "Gemini TTS voice still drifts after %d attempts (%d windows); keeping best take",
+            attempt,
+            drift,
+        )
     return dur

@@ -58,7 +58,9 @@ def band_from_frames(frames: Any) -> Optional[Dict[str, Any]]:
     }
 
 
-async def detect_hardsub(adapter: BaseLLMAdapter, video_path: str, duration: float) -> Optional[Dict[str, Any]]:
+async def detect_hardsub(
+    adapter: BaseLLMAdapter, video_path: str, duration: float
+) -> Optional[Dict[str, Any]]:
     """Ask the vision model where burned-in subtitles sit. Fail-open: any problem returns None."""
     if not video_path or duration <= 0:
         return None
@@ -73,10 +75,13 @@ async def detect_hardsub(adapter: BaseLLMAdapter, video_path: str, duration: flo
             if len(paths) < MIN_POSITIVE_FRAMES:
                 return None
             raw = await asyncio.wait_for(
-                adapter.analyze_multimodal(prompt=_PROMPT, image_paths=paths, json_mode=True), timeout=60.0
+                adapter.analyze_multimodal(prompt=_PROMPT, image_paths=paths, json_mode=True),
+                timeout=60.0,
             )
         text = (raw or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```")
-        return band_from_frames(json.loads(text[text.find("{") : text.rfind("}") + 1]).get("frames"))
+        return band_from_frames(
+            json.loads(text[text.find("{") : text.rfind("}") + 1]).get("frames")
+        )
     except Exception as exc:
         log.warning("Hardsub detection skipped (fail-open): %s", exc)
         return None

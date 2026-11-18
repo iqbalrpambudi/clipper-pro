@@ -42,5 +42,8 @@ def track_credit(track: Optional[Path]) -> Optional[str]:
     if not track or "(freetouse.com)" not in track.stem:
         return None
     artist, _, title = track.stem.replace("(freetouse.com)", "").strip().partition(" - ")
-    return f"Music from Free To Use\nSource: https://freetouse.com/music\n{title} by {artist}" if title \
+    return (
+        f"Music from Free To Use\nSource: https://freetouse.com/music\n{title} by {artist}"
+        if title
         else f"Music from Free To Use\nSource: https://freetouse.com/music\n{artist}"
+    )

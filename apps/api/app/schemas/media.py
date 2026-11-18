@@ -20,6 +20,7 @@ class HeatmapBucket(BaseModel):
     end_time: float
     value: float
 
+
 class YTInfoResponse(BaseModel):
     title: str
     duration: float

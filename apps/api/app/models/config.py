@@ -16,6 +16,8 @@ class ModelConfig(Base):
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     chat_model: Mapped[str] = mapped_column(String(100), default="gemini-2.0-flash")
     vision_model: Mapped[str] = mapped_column(String(100), default="gemini-2.0-flash")
+    # Tried per scene when vision_model errors or times out (OpenAI-compatible endpoints only)
+    vision_fallback_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tts_provider: Mapped[str] = mapped_column(String(50), default="gemini-2.5-flash-preview-tts")
     tts_api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -23,4 +25,6 @@ class ModelConfig(Base):
     elevenlabs_model: Mapped[str] = mapped_column(String(100), default="eleven_multilingual_v2")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

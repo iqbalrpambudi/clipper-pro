@@ -29,7 +29,9 @@ async def test_tts_connection(
                     "message": "ElevenLabs API Key belum diisi.",
                 }
             async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.get("https://api.elevenlabs.io/v1/user", headers={"xi-api-key": key})
+                r = await client.get(
+                    "https://api.elevenlabs.io/v1/user", headers={"xi-api-key": key}
+                )
                 latency = int((time.time() - start_time) * 1000)
                 if r.status_code == 200:
                     user_data = r.json()
@@ -64,7 +66,9 @@ async def test_tts_connection(
                 }
             tts_m = (model or "gemini-2.5-flash-preview-tts").strip().removeprefix("models/")
             async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models/{tts_m}?key={key}")
+                r = await client.get(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{tts_m}?key={key}"
+                )
                 latency = int((time.time() - start_time) * 1000)
                 if r.status_code == 200:
                     return {
@@ -81,7 +85,12 @@ async def test_tts_connection(
                         "message": f"Gagal validasi model Gemini TTS: {r.text[:200]}",
                     }
         else:
-            return {"success": False, "provider_status": "Unknown", "latency_ms": 0, "message": f"Provider TTS tidak dikenal: {provider}"}
+            return {
+                "success": False,
+                "provider_status": "Unknown",
+                "latency_ms": 0,
+                "message": f"Provider TTS tidak dikenal: {provider}",
+            }
     except Exception as e:
         latency = int((time.time() - start_time) * 1000)
         return {

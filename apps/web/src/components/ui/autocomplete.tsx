@@ -132,23 +132,20 @@ export function Autocomplete<T = unknown>({
   );
 
   // Default filtering logic using the input value as the search query
-  const defaultFilter = React.useCallback(
-    (item: T, query: string): boolean => {
-      if (!query.trim()) return true;
-      const q = query.toLowerCase().trim();
-      if (typeof item === "string") {
-        return item.toLowerCase().includes(q);
-      }
-      if (typeof item === "object" && item !== null) {
-        const obj = item as Record<string, unknown>;
-        return Object.values(obj).some(
-          (val) => typeof val === "string" && val.toLowerCase().includes(q)
-        );
-      }
-      return false;
-    },
-    []
-  );
+  const defaultFilter = React.useCallback((item: T, query: string): boolean => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase().trim();
+    if (typeof item === "string") {
+      return item.toLowerCase().includes(q);
+    }
+    if (typeof item === "object" && item !== null) {
+      const obj = item as Record<string, unknown>;
+      return Object.values(obj).some(
+        (val) => typeof val === "string" && val.toLowerCase().includes(q)
+      );
+    }
+    return false;
+  }, []);
 
   const activeFilter = filter ?? defaultFilter;
 
@@ -169,10 +166,7 @@ export function Autocomplete<T = unknown>({
   // Close on outside click
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         handleOpenChange(false);
       }
     };
@@ -225,10 +219,7 @@ export function Autocomplete<T = unknown>({
     <AutocompleteContext.Provider
       value={contextValue as unknown as AutocompleteContextValue<unknown>}
     >
-      <div
-        ref={containerRef}
-        className={cn("relative w-full", className)}
-      >
+      <div ref={containerRef} className={cn("relative w-full", className)}>
         {children}
       </div>
     </AutocompleteContext.Provider>
@@ -236,8 +227,10 @@ export function Autocomplete<T = unknown>({
 }
 
 // --- Autocomplete Input ---
-export interface AutocompleteInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+export interface AutocompleteInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange"
+> {
   showTrigger?: boolean;
   showClear?: boolean;
   isLoading?: boolean;
@@ -292,9 +285,7 @@ export const AutocompleteInput = React.forwardRef<HTMLInputElement, Autocomplete
           setOpen(true);
           setHighlightedIndex(0);
         } else if (filteredItems.length > 0) {
-          setHighlightedIndex((prev) =>
-            prev < filteredItems.length - 1 ? prev + 1 : 0
-          );
+          setHighlightedIndex((prev) => (prev < filteredItems.length - 1 ? prev + 1 : 0));
         }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -302,9 +293,7 @@ export const AutocompleteInput = React.forwardRef<HTMLInputElement, Autocomplete
           setOpen(true);
           setHighlightedIndex(filteredItems.length - 1);
         } else if (filteredItems.length > 0) {
-          setHighlightedIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredItems.length - 1
-          );
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredItems.length - 1));
         }
       } else if (e.key === "Enter") {
         if (open && highlightedIndex >= 0 && highlightedIndex < filteredItems.length) {
@@ -443,8 +432,10 @@ export const AutocompletePopup = AutocompleteContent;
 
 // --- Autocomplete List ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface AutocompleteListProps<T = any>
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+export interface AutocompleteListProps<T = any> extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> {
   children?: React.ReactNode | ((item: T, index: number) => React.ReactNode);
 }
 
@@ -494,8 +485,7 @@ export const AutocompleteItem = React.forwardRef<HTMLDivElement, AutocompleteIte
     },
     ref
   ) => {
-    const { value, selectItem, highlightedIndex, filteredItems, getItemValue } =
-      useAutocomplete();
+    const { value, selectItem, highlightedIndex, filteredItems, getItemValue } = useAutocomplete();
 
     const isSelected = value === itemValue;
     const isHighlighted =
@@ -527,9 +517,7 @@ export const AutocompleteItem = React.forwardRef<HTMLDivElement, AutocompleteIte
         )}
         {...props}
       >
-        <div className="flex-1 min-w-0 truncate">
-          {children || label || itemValue}
-        </div>
+        <div className="flex-1 min-w-0 truncate">{children || label || itemValue}</div>
         {showCheck && isSelected && (
           <div className="ml-auto pl-2 flex items-center justify-center shrink-0">
             <Check className="h-4 w-4 text-foreground" />
@@ -579,7 +567,10 @@ export const AutocompleteLabel = React.forwardRef<HTMLDivElement, AutocompleteLa
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("px-2 py-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase", className)}
+      className={cn(
+        "px-2 py-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
+        className
+      )}
       {...props}
     />
   )

@@ -9,7 +9,8 @@ const Y_MIN = Math.floor(H * 0.16);
 const Y_MAX = Math.floor(H * 0.78);
 
 export function subtitleY(style: Pick<SubtitleStyle, "position" | "offset_y">): number {
-  const y = style.position === "center" ? CENTER_BASE + style.offset_y : BOTTOM_BASE - style.offset_y;
+  const y =
+    style.position === "center" ? CENTER_BASE + style.offset_y : BOTTOM_BASE - style.offset_y;
   return Math.max(Y_MIN, Math.min(Y_MAX, y));
 }
 
@@ -53,7 +54,9 @@ export function SubtitleDragHandle({ style, frameHeight, onChange, onDragEnd }: 
       }}
       onPointerMove={(e) => {
         if (!start.current) return;
-        onChange(offsetForY(style.position, start.current.y + (e.clientY - start.current.clientY) / scale));
+        onChange(
+          offsetForY(style.position, start.current.y + (e.clientY - start.current.clientY) / scale)
+        );
       }}
       onPointerUp={() => {
         if (!start.current) return;

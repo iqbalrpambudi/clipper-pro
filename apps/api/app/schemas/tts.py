@@ -102,4 +102,3 @@ class RealignWordsRequest(BaseModel):
     language: Optional[str] = "id"
     model_size: Optional[str] = "base"
     segments: Optional[List[Dict[str, Any]]] = None
-

@@ -25,4 +25,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_column("model_configs", "image_provider")
-

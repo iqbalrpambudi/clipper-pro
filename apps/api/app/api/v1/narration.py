@@ -35,12 +35,16 @@ async def generate_narration(
     if template:
         style, tone = template.system_prompt, template.default_tone or "informatif"
     else:
-        t = next((t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0])
+        t = next(
+            (t for t in DEFAULT_TEMPLATES if t["id"] == payload.template_id), DEFAULT_TEMPLATES[0]
+        )
         style, tone = t["system_prompt"], t["default_tone"]
 
     scenes_res = await db.execute(
         select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
+    all_scenes = scenes_res.scalars().all()
+    # Placeholder descriptions of untagged scenes would only mislead the script writer
     scenes = [
         {
             "id": s.id,
@@ -52,11 +56,13 @@ async def generate_narration(
             "analysis": s.analysis,
             "shot_info": s.shot_info,
         }
-        for s in scenes_res.scalars().all()
+        for s in [s for s in all_scenes if s.status != "untagged"] or all_scenes
     ]
 
     # Source video titles (YouTube downloads keep the title as filename) tell the model what the video is about
-    names_res = await db.execute(select(SourceVideo.filename).where(SourceVideo.project_id == project_id))
+    names_res = await db.execute(
+        select(SourceVideo.filename).where(SourceVideo.project_id == project_id)
+    )
     source_names = list(dict.fromkeys(n.rsplit(".", 1)[0] for n in names_res.scalars().all() if n))
 
     adapter = await get_active_llm_adapter(db)
@@ -143,7 +149,7 @@ async def update_narration(
             new_segs = split_into_sentence_segments(payload.raw_text)
             old_segs = narration.segments or []
             if len(new_segs) == len(old_segs):
-                for new, old in zip(new_segs, old_segs):
+                for new, old in zip(new_segs, old_segs, strict=True):
                     if old.get("scene_id"):
                         new["scene_id"] = old["scene_id"]
             narration.segments = new_segs
@@ -170,11 +176,12 @@ async def update_narration_segments(
 
     narration.segments = payload.segments
     # Keep raw_text synchronized
-    reconstructed = " ".join(seg.get("text", "").strip() for seg in payload.segments if seg.get("text"))
+    reconstructed = " ".join(
+        seg.get("text", "").strip() for seg in payload.segments if seg.get("text")
+    )
     if reconstructed:
         narration.raw_text = reconstructed
 
     await db.commit()
     await db.refresh(narration)
     return NarrationResponse.model_validate(narration)
-

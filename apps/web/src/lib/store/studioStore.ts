@@ -2,13 +2,7 @@ import { create } from "zustand";
 import type { SubtitleStyle } from "@/types";
 
 export type StudioTab =
-  | "media"
-  | "narration"
-  | "tts"
-  | "timeline"
-  | "subtitles"
-  | "render"
-  | "publish";
+  "media" | "narration" | "tts" | "timeline" | "subtitles" | "render" | "publish";
 
 export interface TaskEvent {
   project_id: string;

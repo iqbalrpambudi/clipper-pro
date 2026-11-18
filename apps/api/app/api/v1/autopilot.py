@@ -41,7 +41,9 @@ async def update_autopilot(payload: AutopilotConfigIn, db: AsyncSession = Depend
         setattr(cfg, k, v)
     # Drop fired-today markers of windows that no longer exist
     times = {w["time"] for w in data["production_windows"]}
-    cfg.production_last_runs = {t: d for t, d in (cfg.production_last_runs or {}).items() if t in times}
+    cfg.production_last_runs = {
+        t: d for t, d in (cfg.production_last_runs or {}).items() if t in times
+    }
     await db.commit()
     return await _config_out(db)
 
@@ -61,9 +63,13 @@ async def list_autopilot_runs(limit: int = 50, db: AsyncSession = Depends(get_db
 async def produce_autopilot_now(db: AsyncSession = Depends(get_db)):
     out = await _config_out(db)
     if out.producing:
-        raise HTTPException(status_code=409, detail="Autopilot sedang membuat video, tunggu sampai selesai")
+        raise HTTPException(
+            status_code=409, detail="Autopilot sedang membuat video, tunggu sampai selesai"
+        )
     if out.pool_count >= out.pool_size:
-        raise HTTPException(status_code=400, detail=f"Pool sudah penuh ({out.pool_count}/{out.pool_size})")
+        raise HTTPException(
+            status_code=400, detail=f"Pool sudah penuh ({out.pool_count}/{out.pool_size})"
+        )
     run_background_task(autopilot.produce, 1)
     return {"status": "started"}
 
@@ -74,7 +80,9 @@ async def discard_pool_video(run_id: str, db: AsyncSession = Depends(get_db)):
     if not run:
         raise HTTPException(status_code=404, detail="Video tidak ditemukan")
     if run.status != "ready" or run.stage == "upload":
-        raise HTTPException(status_code=400, detail="Hanya video di pool yang belum diupload yang bisa dibuang")
+        raise HTTPException(
+            status_code=400, detail="Hanya video di pool yang belum diupload yang bisa dibuang"
+        )
     run.status = "discarded"
     await db.commit()
     return run

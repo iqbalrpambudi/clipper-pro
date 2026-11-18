@@ -251,7 +251,7 @@ export function RenderTab({ project }: RenderTabProps) {
               project={projectWithLiveSettings}
               isWatermarkDraggable={Boolean(
                 liveWatermark?.enabled &&
-                  (liveWatermark.position === "custom" || showWatermarkEditor)
+                (liveWatermark.position === "custom" || showWatermarkEditor)
               )}
               onUpdateWatermarkPosition={(pos) => {
                 const base = normalizeWatermarkConfig(liveWatermark || project.watermark);

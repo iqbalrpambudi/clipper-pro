@@ -21,8 +21,15 @@ async def seed_templates(db: AsyncSession):
         t = await db.get(NarrationTemplate, item["id"])
         if not t:
             # category / user_prompt_template are legacy NOT NULL columns, unused now
-            db.add(NarrationTemplate(id=item["id"], is_builtin=True, category="builtin", user_prompt_template="",
-                                     **{f: item[f] for f in _FIELDS}))
+            db.add(
+                NarrationTemplate(
+                    id=item["id"],
+                    is_builtin=True,
+                    category="builtin",
+                    user_prompt_template="",
+                    **{f: item[f] for f in _FIELDS},
+                )
+            )
         elif t.is_builtin:
             for f in _FIELDS:
                 setattr(t, f, item[f])
@@ -37,7 +44,11 @@ async def seed_templates(db: AsyncSession):
 @router.get("", response_model=List[TemplateResponse])
 async def list_templates(db: AsyncSession = Depends(get_db)):
     await seed_templates(db)
-    res = await db.execute(select(NarrationTemplate).order_by((NarrationTemplate.id == "auto").desc(), NarrationTemplate.is_builtin.desc()))
+    res = await db.execute(
+        select(NarrationTemplate).order_by(
+            (NarrationTemplate.id == "auto").desc(), NarrationTemplate.is_builtin.desc()
+        )
+    )
     return res.scalars().all()
 
 
@@ -46,7 +57,10 @@ async def create_custom_template(payload: TemplateCreate, db: AsyncSession = Dep
     if await db.get(NarrationTemplate, payload.id):
         raise HTTPException(status_code=400, detail="Template ID sudah digunakan")
     template = NarrationTemplate(
-        id=payload.id, is_builtin=False, category="custom", user_prompt_template="",
+        id=payload.id,
+        is_builtin=False,
+        category="custom",
+        user_prompt_template="",
         **{f: getattr(payload, f) for f in _FIELDS},
     )
     db.add(template)
@@ -56,13 +70,17 @@ async def create_custom_template(payload: TemplateCreate, db: AsyncSession = Dep
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
-async def update_template(template_id: str, payload: TemplateUpdate, db: AsyncSession = Depends(get_db)):
+async def update_template(
+    template_id: str, payload: TemplateUpdate, db: AsyncSession = Depends(get_db)
+):
     template = await db.get(NarrationTemplate, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template tidak ditemukan")
     if template.is_builtin:
         # builtins are re-synced from code on every list; copy one to customise it
-        raise HTTPException(status_code=400, detail="Template bawaan tidak bisa diubah. Duplikat dulu.")
+        raise HTTPException(
+            status_code=400, detail="Template bawaan tidak bisa diubah. Duplikat dulu."
+        )
     for f in _FIELDS:
         if getattr(payload, f) is not None:
             setattr(template, f, getattr(payload, f))

@@ -74,7 +74,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         )
         narration = n_res.scalars().first()
 
-        sub_res = await db.execute(select(SubtitleStyle).where(SubtitleStyle.project_id == project.id))
+        sub_res = await db.execute(
+            select(SubtitleStyle).where(SubtitleStyle.project_id == project.id)
+        )
         style_dict = style_to_dict(sub_res.scalar_one_or_none())
 
         subtitles_enabled = style_dict.get("enabled", True)
@@ -98,7 +100,9 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
         start_time = loop.time()
         audio_dur = float(getattr(audio_track, "duration", 0) or 0)
         INACTIVITY_TIMEOUT = 600.0  # 10 minutes without any progress update (was 180s)
-        OVERALL_TIMEOUT = max(2400.0, float(audio_dur * 8) if audio_dur else 2400.0)  # 40+ minutes for long 1080p videos
+        OVERALL_TIMEOUT = max(
+            2400.0, float(audio_dur * 8) if audio_dur else 2400.0
+        )  # 40+ minutes for long 1080p videos
 
         async def _progress(pct: int, msg: str):
             nonlocal last_progress_time
@@ -151,10 +155,14 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             t_res = await db.execute(select(Timeline).where(Timeline.project_id == project.id))
             timeline = t_res.scalar_one_or_none()
             if not timeline or not timeline.clips:
-                raise RuntimeError("Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu.")
+                raise RuntimeError(
+                    "Timeline klip kosong. Harap lakukan pencocokan scene terlebih dahulu."
+                )
 
             # Fetch source videos map
-            v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project.id))
+            v_res = await db.execute(
+                select(SourceVideo).where(SourceVideo.project_id == project.id)
+            )
             source_videos = [v for v in v_res.scalars().all() if v.file_path]
             source_videos_map = {v.id: v.file_path for v in source_videos}
             hardsub_map = {v.id: v.hardsub for v in source_videos}
@@ -215,11 +223,16 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
             thumb_path_str: Optional[str] = None
             try:
                 thumb_cmd = [
-                    "ffmpeg", "-y",
-                    "-ss", "00:00:00.500",
-                    "-i", final_mp4,
-                    "-vframes", "1",
-                    "-q:v", "2",
+                    "ffmpeg",
+                    "-y",
+                    "-ss",
+                    "00:00:00.500",
+                    "-i",
+                    final_mp4,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
                     str(thumb_file),
                 ]
                 proc = await asyncio.create_subprocess_exec(
@@ -230,11 +243,16 @@ async def render_video_job(ctx: Dict[str, Any], render_job_id: str) -> None:
                 await asyncio.wait_for(proc.communicate(), timeout=30.0)
                 if not thumb_file.exists() or thumb_file.stat().st_size == 0:
                     fallback_cmd = [
-                        "ffmpeg", "-y",
-                        "-ss", "00:00:00.000",
-                        "-i", final_mp4,
-                        "-vframes", "1",
-                        "-q:v", "2",
+                        "ffmpeg",
+                        "-y",
+                        "-ss",
+                        "00:00:00.000",
+                        "-i",
+                        final_mp4,
+                        "-vframes",
+                        "1",
+                        "-q:v",
+                        "2",
                         str(thumb_file),
                     ]
                     proc_fb = await asyncio.create_subprocess_exec(

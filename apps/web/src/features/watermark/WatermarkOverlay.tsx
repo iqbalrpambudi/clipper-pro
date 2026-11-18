@@ -189,33 +189,33 @@ export function WatermarkOverlay({
       )}
 
       <span
-          style={{
-            fontFamily: `"${watermark.font_family || "Poppins"}", sans-serif`,
-            fontSize: `${scaledFontSize}px`,
-            color: watermark.font_color || "#FFFFFF",
-            opacity: watermark.opacity ?? 0.85,
-            fontWeight: 600,
-            lineHeight: 1.2,
-            letterSpacing: "0.02em",
-            whiteSpace: "nowrap",
-            textShadow: hasShadow ? "0 2px 4px rgba(0,0,0,0.85)" : undefined,
-            WebkitTextStroke: hasShadow
-              ? `${strokeWidth}px ${watermark.shadow_color || "rgba(0,0,0,0.7)"}`
-              : undefined,
-            backgroundColor: hasBackground
-              ? hexToRgba(
-                  watermark.background_color || "#000000",
-                  watermark.background_opacity ?? 0.5
-                )
-              : "transparent",
-            padding: hasBackground
-              ? `${Math.max(2, Math.round(4 * scale))}px ${Math.max(6, Math.round(10 * scale))}px`
-              : "0px",
-            borderRadius: hasBackground ? `${Math.max(3, Math.round(6 * scale))}px` : "0px",
-          }}
-        >
-          {watermark.text}
-        </span>
+        style={{
+          fontFamily: `"${watermark.font_family || "Poppins"}", sans-serif`,
+          fontSize: `${scaledFontSize}px`,
+          color: watermark.font_color || "#FFFFFF",
+          opacity: watermark.opacity ?? 0.85,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          letterSpacing: "0.02em",
+          whiteSpace: "nowrap",
+          textShadow: hasShadow ? "0 2px 4px rgba(0,0,0,0.85)" : undefined,
+          WebkitTextStroke: hasShadow
+            ? `${strokeWidth}px ${watermark.shadow_color || "rgba(0,0,0,0.7)"}`
+            : undefined,
+          backgroundColor: hasBackground
+            ? hexToRgba(
+                watermark.background_color || "#000000",
+                watermark.background_opacity ?? 0.5
+              )
+            : "transparent",
+          padding: hasBackground
+            ? `${Math.max(2, Math.round(4 * scale))}px ${Math.max(6, Math.round(10 * scale))}px`
+            : "0px",
+          borderRadius: hasBackground ? `${Math.max(3, Math.round(6 * scale))}px` : "0px",
+        }}
+      >
+        {watermark.text}
+      </span>
     </div>
   );
 }

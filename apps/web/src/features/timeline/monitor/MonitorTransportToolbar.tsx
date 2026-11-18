@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Repeat,
-  Scissors,
-  RotateCcw,
-  RotateCw,
-} from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Repeat, Scissors, RotateCcw, RotateCw } from "lucide-react";
 import { formatTimecode } from "../timelineFormat";
 import { TimelineClip } from "@/types";
 

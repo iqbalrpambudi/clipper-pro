@@ -1,6 +1,11 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "cliper-pro-api"
+name = "cliper-pro"
 version = "0.1.0"
+description = "Cliper Pro background service, Web UI & system tray"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.115.6",
@@ -15,14 +20,18 @@ dependencies = [
     "opencv-python-headless==4.11.0.86",
     "numpy==2.2.2",
     "faster-whisper==1.1.1",
-    "requests>=2.31.0",
     "av==12.3.0",
     "httpx==0.28.1",
     "yt-dlp[default,curl-cffi]>=2024.0.0",
     "curl-cffi>=0.7.0",
     "cryptography==43.0.3",
     "alembic>=1.14.0",
+    "pystray>=0.19.5",
+    "pillow>=13.0.0",
 ]
+
+[project.scripts]
+cliper-pro = "app.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -62,6 +71,9 @@ known-first-party = ["app"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["app*"]

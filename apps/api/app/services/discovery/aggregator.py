@@ -55,7 +55,9 @@ def _interleave_by_source(
     return merged
 
 
-async def _load_existing_imports(db: AsyncSession) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]]:
+async def _load_existing_imports(
+    db: AsyncSession,
+) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]]:
     """Return `(exact_url_map, normalized_key_map)` of videos already imported into projects."""
     stmt = (
         select(SourceVideo.youtube_url, SourceVideo.project_id, Project.name)
@@ -89,9 +91,7 @@ async def search_candidates(req: VideoSearchRequest, db: AsyncSession) -> VideoS
         active_sources = list(DEFAULT_SOURCES)
 
     exact_map, key_map = await _load_existing_imports(db)
-    excluded_keys: Set[str] = {
-        normalize_video_key(u) for u in (req.exclude_urls or []) if u
-    }
+    excluded_keys: Set[str] = {normalize_video_key(u) for u in (req.exclude_urls or []) if u}
     excluded_urls: Set[str] = {u.strip() for u in (req.exclude_urls or []) if u}
 
     # Fetch more items per source when hide_imported=True so filtering keeps enough fresh candidates

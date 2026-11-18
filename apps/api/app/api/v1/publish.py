@@ -102,10 +102,14 @@ async def save_youtube_credentials(
 async def start_youtube_oauth(request: Request, db: AsyncSession = Depends(get_db)):
     acc = await _get_account(db)
     if not acc or not acc.client_id or not acc.client_secret_encrypted:
-        raise HTTPException(status_code=400, detail="Isi Client ID & Client Secret di Settings dulu")
+        raise HTTPException(
+            status_code=400, detail="Isi Client ID & Client Secret di Settings dulu"
+        )
     state = secrets.token_urlsafe(24)
     _pending_states.add(state)
-    return YouTubeAuthStart(auth_url=yt.build_auth_url(acc.client_id, _redirect_uri(request), state))
+    return YouTubeAuthStart(
+        auth_url=yt.build_auth_url(acc.client_id, _redirect_uri(request), state)
+    )
 
 
 @router.get("/youtube/oauth/callback", name="youtube_oauth_callback", include_in_schema=False)
@@ -123,11 +127,15 @@ async def youtube_oauth_callback(request: Request, db: AsyncSession = Depends(ge
         return _callback_page(False, "Kredensial OAuth belum disimpan.")
     try:
         tokens = await yt.exchange_code(
-            acc.client_id, decrypt_secret(acc.client_secret_encrypted),
-            params.get("code", ""), _redirect_uri(request),
+            acc.client_id,
+            decrypt_secret(acc.client_secret_encrypted),
+            params.get("code", ""),
+            _redirect_uri(request),
         )
         if not tokens.get("refresh_token"):
-            return _callback_page(False, "Google tidak mengirim refresh token. Coba hubungkan ulang.")
+            return _callback_page(
+                False, "Google tidak mengirim refresh token. Coba hubungkan ulang."
+            )
         channel = await yt.get_my_channel(tokens["access_token"])
     except yt.YouTubeError as e:
         return _callback_page(False, str(e))
@@ -180,8 +188,11 @@ async def publish_to_youtube(
     else:
         res = await db.execute(
             select(RenderJob)
-            .where(RenderJob.project_id == project_id, RenderJob.render_type == "final",
-                   RenderJob.status == "completed")
+            .where(
+                RenderJob.project_id == project_id,
+                RenderJob.render_type == "final",
+                RenderJob.status == "completed",
+            )
             .order_by(RenderJob.created_at.desc())
             .limit(1)
         )
@@ -199,7 +210,9 @@ async def publish_to_youtube(
         tags=payload.tags,
         privacy=payload.privacy,
         # SQLite drops tzinfo, so persist naive UTC like the other timestamps
-        publish_at=payload.publish_at.astimezone(timezone.utc).replace(tzinfo=None) if payload.publish_at else None,
+        publish_at=payload.publish_at.astimezone(timezone.utc).replace(tzinfo=None)
+        if payload.publish_at
+        else None,
     )
     db.add(upload)
     await db.commit()
@@ -224,16 +237,25 @@ async def _upload_job(upload_id: str) -> None:
         if upload.publish_at:
             status["publishAt"] = upload.publish_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         metadata = {
-            "snippet": {"title": upload.title, "description": upload.description, "tags": upload.tags,
-                        "categoryId": "27", "defaultLanguage": "id", "defaultAudioLanguage": "id"},
+            "snippet": {
+                "title": upload.title,
+                "description": upload.description,
+                "tags": upload.tags,
+                "categoryId": "27",
+                "defaultLanguage": "id",
+                "defaultAudioLanguage": "id",
+            },
             "status": status,
         }
         try:
             token = await yt.refresh_access_token(
-                acc.client_id, decrypt_secret(acc.client_secret_encrypted),
+                acc.client_id,
+                decrypt_secret(acc.client_secret_encrypted),
                 decrypt_secret(acc.refresh_token_encrypted),
             )
-            upload.video_id = await yt.upload_video(token, Path(job.output_file_path), metadata, on_progress)
+            upload.video_id = await yt.upload_video(
+                token, Path(job.output_file_path), metadata, on_progress
+            )
             upload.status = "uploaded"
             upload.progress = 100
         except Exception as e:

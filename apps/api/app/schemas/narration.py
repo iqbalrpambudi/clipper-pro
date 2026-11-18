@@ -59,7 +59,6 @@ class SegmentsUpdateRequest(BaseModel):
     segments: List[Dict[str, Any]]
 
 
-
 class NarrationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -45,7 +45,9 @@ interface MediaPoolTabProps {
 }
 
 const formatDuration = (sec: number) =>
-  `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, "0")}`;
+  `${Math.floor(sec / 60)}:${Math.floor(sec % 60)
+    .toString()
+    .padStart(2, "0")}`;
 
 export function MediaPoolTab({ project }: MediaPoolTabProps) {
   const { activeTask } = useStudioStore();
@@ -197,7 +199,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-foreground" title={vid.filename}>
+                      <p
+                        className="truncate text-xs font-medium text-foreground"
+                        title={vid.filename}
+                      >
                         {vid.filename}
                       </p>
                       {vid.hardsub?.enabled && (
@@ -373,7 +378,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
                           </span>
                         )}
                         {scene.shot_info?.montage ? (
-                          <span className="rounded bg-black/70 p-0.5 text-amber-300" title="Montage / fast cuts">
+                          <span
+                            className="rounded bg-black/70 p-0.5 text-amber-300"
+                            title="Montage / fast cuts"
+                          >
                             <Zap className="h-3 w-3" />
                           </span>
                         ) : cuts > 0 ? (
@@ -403,7 +411,10 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
 
       <ImportUrlDialog project={project} open={isYTOpen} onOpenChange={setIsYTOpen} />
 
-      <Dialog open={Boolean(videoToDelete)} onOpenChange={(open) => !open && setVideoToDelete(null)}>
+      <Dialog
+        open={Boolean(videoToDelete)}
+        onOpenChange={(open) => !open && setVideoToDelete(null)}
+      >
         <DialogContent appearance="workspace" className="max-w-md">
           <DialogTitle className="text-base">Hapus video?</DialogTitle>
           <DialogDescription>
@@ -411,7 +422,12 @@ export function MediaPoolTab({ project }: MediaPoolTabProps) {
             semua scene-nya akan dihapus permanen.
           </DialogDescription>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setVideoToDelete(null)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setVideoToDelete(null)}
+            >
               Batal
             </Button>
             <Button

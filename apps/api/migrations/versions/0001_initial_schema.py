@@ -5,6 +5,7 @@ Revises:
 Create Date: 2026-10-20 13:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -30,7 +31,9 @@ def upgrade() -> None:
         op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
     embedding_type = sa.JSON() if (is_sqlite or Vector is None) else Vector(768)
-    now_default = sa.text("CURRENT_TIMESTAMP") if is_sqlite else sa.text("(NOW() AT TIME ZONE 'utc')")
+    now_default = (
+        sa.text("CURRENT_TIMESTAMP") if is_sqlite else sa.text("(NOW() AT TIME ZONE 'utc')")
+    )
 
     inspector = sa.inspect(conn)
     existing_tables = set(inspector.get_table_names())
@@ -62,7 +65,13 @@ def upgrade() -> None:
         op.create_table(
             "source_videos",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("origin", sa.String(20), server_default="upload", nullable=False),
             sa.Column("file_path", sa.String(500), nullable=True),
             sa.Column("filename", sa.String(255), nullable=False),
@@ -83,8 +92,20 @@ def upgrade() -> None:
         op.create_table(
             "scenes",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("source_video_id", sa.String(36), sa.ForeignKey("source_videos.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column(
+                "source_video_id",
+                sa.String(36),
+                sa.ForeignKey("source_videos.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("scene_index", sa.Integer(), server_default="0", nullable=False),
             sa.Column("start_time", sa.Float(), server_default="0.0", nullable=False),
             sa.Column("end_time", sa.Float(), server_default="0.0", nullable=False),
@@ -104,7 +125,13 @@ def upgrade() -> None:
         op.create_table(
             "render_jobs",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("render_type", sa.String(20), server_default="final", nullable=False),
             sa.Column("status", sa.String(50), server_default="queued", nullable=False),
             sa.Column("progress", sa.Integer(), server_default="0", nullable=False),
@@ -138,8 +165,16 @@ def upgrade() -> None:
         op.create_table(
             "narrations",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("template_id", sa.String(50), sa.ForeignKey("narration_templates.id"), nullable=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column(
+                "template_id", sa.String(50), sa.ForeignKey("narration_templates.id"), nullable=True
+            ),
             sa.Column("script_text", sa.Text(), nullable=False),
             sa.Column("segments", sa.JSON(), nullable=False),
             sa.Column("language", sa.String(10), server_default="id", nullable=False),
@@ -152,8 +187,20 @@ def upgrade() -> None:
         op.create_table(
             "audio_tracks",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("narration_id", sa.String(36), sa.ForeignKey("narrations.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column(
+                "narration_id",
+                sa.String(36),
+                sa.ForeignKey("narrations.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("file_path", sa.String(500), nullable=False),
             sa.Column("duration", sa.Float(), server_default="0.0", nullable=False),
             sa.Column("voice", sa.String(50), nullable=False),
@@ -171,7 +218,13 @@ def upgrade() -> None:
         op.create_table(
             "timelines",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                unique=True,
+                nullable=False,
+            ),
             sa.Column("clips", sa.JSON(), nullable=False),
             sa.Column("total_duration", sa.Float(), server_default="0.0", nullable=False),
             sa.Column("has_audio", sa.Boolean(), server_default="true", nullable=False),
@@ -185,7 +238,13 @@ def upgrade() -> None:
         op.create_table(
             "subtitle_styles",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                unique=True,
+                nullable=True,
+            ),
             sa.Column("preset_name", sa.String(50), server_default="viral_tiktok", nullable=False),
             sa.Column("enabled", sa.Boolean(), server_default="true", nullable=False),
             sa.Column("description", sa.String(255), nullable=True),
@@ -217,16 +276,35 @@ def upgrade() -> None:
             sa.Column("id", sa.String(36), primary_key=True),
             sa.Column("name", sa.String(100), server_default="default", nullable=False),
             sa.Column("base_url", sa.String(500), nullable=True),
-            sa.Column("chat_model", sa.String(100), server_default="gemini-2.0-flash", nullable=False),
-            sa.Column("vision_model", sa.String(100), server_default="gemini-2.0-flash", nullable=False),
+            sa.Column(
+                "chat_model", sa.String(100), server_default="gemini-2.0-flash", nullable=False
+            ),
+            sa.Column(
+                "vision_model", sa.String(100), server_default="gemini-2.0-flash", nullable=False
+            ),
             sa.Column("api_key_encrypted", sa.Text(), nullable=True),
-            sa.Column("tts_provider", sa.String(50), server_default="gemini-2.5-flash-preview-tts", nullable=False),
+            sa.Column(
+                "tts_provider",
+                sa.String(50),
+                server_default="gemini-2.5-flash-preview-tts",
+                nullable=False,
+            ),
             sa.Column("tts_api_key_encrypted", sa.Text(), nullable=True),
             sa.Column("tts_fallback_enabled", sa.Boolean(), server_default="true", nullable=False),
             sa.Column("elevenlabs_api_key_encrypted", sa.Text(), nullable=True),
-            sa.Column("elevenlabs_model", sa.String(100), server_default="eleven_multilingual_v2", nullable=False),
+            sa.Column(
+                "elevenlabs_model",
+                sa.String(100),
+                server_default="eleven_multilingual_v2",
+                nullable=False,
+            ),
             sa.Column("runware_api_key_encrypted", sa.Text(), nullable=True),
-            sa.Column("runware_tts_model", sa.String(100), server_default="fishaudio:s2.1@pro", nullable=False),
+            sa.Column(
+                "runware_tts_model",
+                sa.String(100),
+                server_default="fishaudio:s2.1@pro",
+                nullable=False,
+            ),
             sa.Column("image_base_url", sa.String(500), nullable=True),
             sa.Column("image_model", sa.String(100), server_default="dall-e-3", nullable=False),
             sa.Column("image_concurrency", sa.Integer(), server_default="2", nullable=False),
@@ -242,8 +320,20 @@ def upgrade() -> None:
         op.create_table(
             "storyboard_items",
             sa.Column("id", sa.String(36), primary_key=True),
-            sa.Column("project_id", sa.String(36), sa.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("narration_id", sa.String(36), sa.ForeignKey("narrations.id", ondelete="SET NULL"), nullable=True, index=True),
+            sa.Column(
+                "project_id",
+                sa.String(36),
+                sa.ForeignKey("projects.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column(
+                "narration_id",
+                sa.String(36),
+                sa.ForeignKey("narrations.id", ondelete="SET NULL"),
+                nullable=True,
+                index=True,
+            ),
             sa.Column("chapter_title", sa.String(255), nullable=True),
             sa.Column("segment_id", sa.String(50), server_default="seg-1", nullable=False),
             sa.Column("order_index", sa.Integer(), server_default="0", nullable=False, index=True),

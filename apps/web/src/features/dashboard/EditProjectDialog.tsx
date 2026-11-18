@@ -109,7 +109,12 @@ export function EditProjectDialog({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" className="h-9 px-4 text-xs rounded-xl font-semibold" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 px-4 text-xs rounded-xl font-semibold"
+              onClick={() => onOpenChange(false)}
+            >
               Batal
             </Button>
             <Button

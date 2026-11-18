@@ -3,7 +3,11 @@ import { api } from "@/lib/api";
 import { SentenceSegment, SubtitleStyle } from "@/types";
 
 /** ASS text for the in-browser preview, built by the backend generator the final render uses. */
-export function useAssPreview(projectId: string, style: SubtitleStyle | null, segments: SentenceSegment[]): string {
+export function useAssPreview(
+  projectId: string,
+  style: SubtitleStyle | null,
+  segments: SentenceSegment[]
+): string {
   const [ass, setAss] = useState("");
 
   useEffect(() => {

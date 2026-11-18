@@ -29,6 +29,7 @@ def upgrade() -> None:
             "preset_type IN ('style', 'character', 'combined')",
         )
 
+
 def downgrade() -> None:
     conn = op.get_bind()
     if conn.dialect.name != "sqlite":

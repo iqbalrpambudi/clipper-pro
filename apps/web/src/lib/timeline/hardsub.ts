@@ -5,8 +5,7 @@ import type { Hardsub } from "@/types";
 export const CROP_MIN_TOP = 0.7;
 
 export type HardsubTreatment =
-  | { kind: "crop"; top: number }
-  | { kind: "blur"; top: number; bottom: number };
+  { kind: "crop"; top: number } | { kind: "blur"; top: number; bottom: number };
 
 /** How the burned-in subtitle band is hidden (same rule as the renderer); null = nothing to hide. */
 export function hardsubTreatment(hs?: Hardsub | null): HardsubTreatment | null {

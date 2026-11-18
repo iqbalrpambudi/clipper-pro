@@ -17,6 +17,7 @@ from app.services.tts.providers.gemini import generate_gemini_tts
 
 log = logging.getLogger(__name__)
 
+
 def clean_narration_for_tts(text: str) -> str:
     """Strip bracket tags and colons/semicolons so TTS never stumbles."""
     if not text or not isinstance(text, str):
@@ -29,7 +30,6 @@ def clean_narration_for_tts(text: str) -> str:
     cleaned = re.sub(r",\s*([.!?])", r"\1", cleaned)
     cleaned = re.sub(r",\s*$", ".", cleaned)
     return " ".join(cleaned.split())
-
 
 
 async def generate_speech_audio(
@@ -70,7 +70,9 @@ async def generate_speech_audio(
         if prov == "elevenlabs":
             try:
                 m_id = (model or "eleven_multilingual_v2").lower().strip()
-                if ("flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id) and "v4" not in m_id:
+                if (
+                    "flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id
+                ) and "v4" not in m_id:
                     eleven_max_chars = 40000
                     chunk_size = 38000
                 else:
@@ -126,7 +128,7 @@ async def generate_speech_audio(
                                 except Exception:
                                     pass
                             raise RuntimeError(
-                                f"Sintesis ElevenLabs terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                                f"Sintesis ElevenLabs terhenti pada bagian {i + 1}/{len(chunks)}: {chunk_err}"
                             ) from chunk_err
                         if i < len(chunks) - 1:
                             await asyncio.sleep(0.3)
@@ -137,19 +139,22 @@ async def generate_speech_audio(
                         Path(p).unlink(missing_ok=True)
             except Exception as e:
                 err_str = str(e).lower()
-                is_char_limit = (
-                    isinstance(e, ElevenLabsCharacterLimitError)
-                    or any(k in err_str for k in [
-                        "character limit", "too_large", "request_too_large",
-                        "max_characters", "maximum text length", "quota_exceeded",
-                        "exceeds the maximum", "characters allowed"
-                    ])
+                is_char_limit = isinstance(e, ElevenLabsCharacterLimitError) or any(
+                    k in err_str
+                    for k in [
+                        "character limit",
+                        "too_large",
+                        "request_too_large",
+                        "max_characters",
+                        "maximum text length",
+                        "quota_exceeded",
+                        "exceeds the maximum",
+                        "characters allowed",
+                    ]
                 )
                 if is_char_limit:
                     log.error("ElevenLabs TTS melebihi batas karakter: %s", e)
-                    raise RuntimeError(
-                        f"ElevenLabs Character Limit Exceeded: {e}"
-                    ) from e
+                    raise RuntimeError(f"ElevenLabs Character Limit Exceeded: {e}") from e
 
                 log.error("ElevenLabs TTS failed: %s", e)
                 raise
@@ -189,7 +194,9 @@ async def generate_speech_audio(
                 try:
                     for i, chunk in enumerate(chunks):
                         if project_id and await is_cancelled(project_id):
-                            raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+                            raise TaskCancelledException(
+                                "Pembuatan suara narasi dibatalkan oleh pengguna."
+                            )
 
                         part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
                         try:
@@ -208,9 +215,11 @@ async def generate_speech_audio(
                         except TaskCancelledException:
                             raise
                         except Exception as chunk_err:
-                            log.error("Gemini TTS chunk %d/%d failed: %s", i + 1, len(chunks), chunk_err)
+                            log.error(
+                                "Gemini TTS chunk %d/%d failed: %s", i + 1, len(chunks), chunk_err
+                            )
                             raise RuntimeError(
-                                f"Sintesis suara GEMINI terhenti pada bagian {i+1}/{len(chunks)}: {chunk_err}"
+                                f"Sintesis suara GEMINI terhenti pada bagian {i + 1}/{len(chunks)}: {chunk_err}"
                             ) from chunk_err
 
                         if i < len(chunks) - 1:

@@ -1,13 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  Film,
-  Video,
-  Edit3,
-  Trash2,
-  ArrowRight,
-  Calendar,
-} from "lucide-react";
+import { Film, Video, Edit3, Trash2, ArrowRight, Calendar } from "lucide-react";
 import { Project } from "@/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter, Button } from "@/components/ui";
 
@@ -47,8 +40,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
               Clip pendek
             </span>
             <span className="workspace-project-format">
-              {project.aspect_ratio || "9:16"} ·{" "}
-              {project.resolution}
+              {project.aspect_ratio || "9:16"} · {project.resolution}
             </span>
 
             {project.language === "en" ? (
@@ -112,14 +104,14 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
 
       <CardFooter className="workspace-project-footer">
         <div className="flex items-center gap-3">
-              <span className="workspace-project-stat">
-                <Video aria-hidden="true" />
-                {project.source_video_count || 0} media
-              </span>
-              <span className="workspace-project-stat">
-                <Film aria-hidden="true" />
-                {project.scene_count || 0} scene
-              </span>
+          <span className="workspace-project-stat">
+            <Video aria-hidden="true" />
+            {project.source_video_count || 0} media
+          </span>
+          <span className="workspace-project-stat">
+            <Film aria-hidden="true" />
+            {project.scene_count || 0} scene
+          </span>
         </div>
 
         <Link to={projectUrl} className="workspace-project-link">

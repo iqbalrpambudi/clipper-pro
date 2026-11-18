@@ -121,7 +121,6 @@ export interface ProjectDetail extends Project {
   render_jobs?: RenderJob[];
 }
 
-
 export interface WatermarkConfig {
   enabled: boolean;
   watermark_type?: "text";
@@ -338,6 +337,7 @@ export interface ModelConfig {
   base_url?: string | null;
   chat_model: string;
   vision_model: string;
+  vision_fallback_model?: string | null;
   api_key_masked?: string | null;
   has_api_key: boolean;
   tts_provider: string;
@@ -348,7 +348,6 @@ export interface ModelConfig {
   elevenlabs_model?: string;
   is_active: boolean;
 }
-
 
 export interface YTFormatOption {
   format_id: string;
@@ -443,7 +442,6 @@ export interface VideoImportRequest {
   language?: string;
 }
 
-
 export interface VideoImportResponse {
   project_id: string;
   project_name: string;
@@ -454,7 +452,6 @@ export interface VideoImportResponse {
 export type JassubInstance = JASSUB;
 
 export * from "./editorConfig";
-
 
 export interface YouTubeAccountStatus {
   configured: boolean;

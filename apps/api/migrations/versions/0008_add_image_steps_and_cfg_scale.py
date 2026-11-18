@@ -30,4 +30,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("model_configs", "image_cfg_scale")
     op.drop_column("model_configs", "image_steps")
-

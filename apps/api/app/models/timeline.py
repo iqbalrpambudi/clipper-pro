@@ -12,7 +12,9 @@ class Timeline(Base):
     __tablename__ = "timelines"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
     # clips: list of objects:
     # {
     #   "id": "clip-1",
@@ -31,7 +33,9 @@ class Timeline(Base):
     has_audio: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     has_subtitles: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     def __init__(self, **kwargs):
         kwargs.setdefault("has_audio", True)
@@ -48,7 +52,9 @@ class SubtitleStyle(Base):
     __tablename__ = "subtitle_styles"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True)
+    project_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True
+    )
     preset_name: Mapped[str] = mapped_column(String(50), default="pop_kuning")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -65,11 +71,17 @@ class SubtitleStyle(Base):
     position: Mapped[str] = mapped_column(String(20), default="bottom")  # top | center | bottom
     offset_y: Mapped[int] = mapped_column(Integer, default=260)
     offset_x: Mapped[int] = mapped_column(Integer, default=0)
-    display_mode: Mapped[str] = mapped_column(String(20), default="burst")  # per_word | full_sentence | burst
+    display_mode: Mapped[str] = mapped_column(
+        String(20), default="burst"
+    )  # per_word | full_sentence | burst
     burst_word_count: Mapped[int] = mapped_column(Integer, default=3)  # 2 or 3
-    highlight_animation: Mapped[str] = mapped_column(String(20), default="scale")  # scale | color | box | none
+    highlight_animation: Mapped[str] = mapped_column(
+        String(20), default="scale"
+    )  # scale | color | box | none
     scale_factor: Mapped[float] = mapped_column(Float, default=1.16)
-    text_case: Mapped[str] = mapped_column(String(20), default="uppercase", server_default="uppercase")  # sentence | uppercase
+    text_case: Mapped[str] = mapped_column(
+        String(20), default="uppercase", server_default="uppercase"
+    )  # sentence | uppercase
     emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

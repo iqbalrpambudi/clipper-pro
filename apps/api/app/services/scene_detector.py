@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import re
@@ -11,6 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import cv2
 from scenedetect import AdaptiveDetector, ContentDetector
 
+from app.services.media_probe import probe
+
 log = logging.getLogger(__name__)
 
 # Executor dedicated untuk deteksi scene agar tidak kelaparan thread asyncio lain
@@ -18,54 +19,17 @@ _DETECT_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 
 async def get_video_metadata(video_path: str) -> Dict[str, Any]:
-    """Inspect video file width, height, duration, and fps using ffprobe."""
-    cmd = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=width,height,r_frame_rate,duration:format=duration",
-        "-of",
-        "json",
-        video_path,
-    ]
-
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"Gagal membaca metadata video: {stderr.decode()}")
-
-    data = json.loads(stdout.decode())
-    streams = data.get("streams") or [{}]
-    stream = streams[0] if streams else {}
-    fmt = data.get("format", {})
-
-    width = int(stream.get("width", 1920))
-    height = int(stream.get("height", 1080))
-
-    duration_str = stream.get("duration") or fmt.get("duration") or "0"
-    duration = float(duration_str)
-
-    # Frame rate e.g. "30/1" or "29.97"
-    fps_str = stream.get("r_frame_rate", "30/1")
-    if "/" in fps_str:
-        num, den = fps_str.split("/")
-        fps = round(float(num) / float(den), 2) if float(den) > 0 else 30.0
-    else:
-        fps = float(fps_str)
+    """Inspect video file width, height, duration, and fps."""
+    try:
+        info = await asyncio.to_thread(probe, video_path)
+    except Exception as e:
+        raise RuntimeError(f"Gagal membaca metadata video: {e}")
 
     return {
-        "width": width,
-        "height": height,
-        "duration": duration,
-        "fps": fps,
+        "width": info["width"] or 1920,
+        "height": info["height"] or 1080,
+        "duration": info["duration"],
+        "fps": round(info["fps"], 2) or 30.0,
     }
 
 
@@ -77,11 +41,16 @@ def extract_frame(video_path: str, timestamp_sec: float, output_path: str) -> bo
     # 1. Primary: FFmpeg CLI (Native support for all codecs: AV1, VP9, HEVC, H.264, ProRes, MKV, WebM)
     cmd = [
         "ffmpeg",
-        "-v", "error",
-        "-ss", str(max(0.0, timestamp_sec)),
-        "-i", str(video_path),
-        "-vframes", "1",
-        "-q:v", "2",
+        "-v",
+        "error",
+        "-ss",
+        str(max(0.0, timestamp_sec)),
+        "-i",
+        str(video_path),
+        "-vframes",
+        "1",
+        "-q:v",
+        "2",
         "-y",
         str(output_path),
     ]
@@ -90,7 +59,9 @@ def extract_frame(video_path: str, timestamp_sec: float, output_path: str) -> bo
         if res.returncode == 0 and out_p.exists() and out_p.stat().st_size > 0:
             return True
     except Exception as e:
-        log.warning("FFmpeg frame extraction failed for %s at %ss: %s", video_path, timestamp_sec, e)
+        log.warning(
+            "FFmpeg frame extraction failed for %s at %ss: %s", video_path, timestamp_sec, e
+        )
 
     # 2. Secondary fallback: OpenCV cv2.VideoCapture
     try:
@@ -108,17 +79,17 @@ def extract_frame(video_path: str, timestamp_sec: float, output_path: str) -> bo
     return False
 
 
-def extract_frames_batch(video_path: str, items: List[Tuple[float, str]], max_workers: int = 6) -> int:
+def extract_frames_batch(
+    video_path: str, items: List[Tuple[float, str]], max_workers: int = 6
+) -> int:
     """Extract multiple frames from a video in parallel."""
     if not items:
         return 0
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(extract_frame, video_path, t, p)
-            for t, p in items
-        ]
+        futures = [executor.submit(extract_frame, video_path, t, p) for t, p in items]
         results = [f.result() for f in futures]
     return sum(1 for r in results if r)
+
 
 def _extract_chunk(video_path: str, windows: List[Tuple[float, float]], out_pattern: str) -> bool:
     """Satu panggilan ffmpeg untuk <=SELECT_CHUNK frame (limit parser select ~150 rentang).
@@ -126,13 +97,19 @@ def _extract_chunk(video_path: str, windows: List[Tuple[float, float]], out_patt
     filters = "+".join(f"between(t,{lo:.4f},{hi:.4f})" for lo, hi in windows)
     cmd = [
         "ffmpeg",
-        "-v", "error",
-        "-i", video_path,
+        "-v",
+        "error",
+        "-i",
+        video_path,
         # Downscale max 640px: cukup untuk thumbnail UI + vision tagging (payload Gemini lebih kecil)
-        "-vf", f"select='{filters}',scale='min(640,iw)':-2",
-        "-vsync", "0",
-        "-frames:v", str(len(windows)),
-        "-q:v", "3",
+        "-vf",
+        f"select='{filters}',scale='min(640,iw)':-2",
+        "-vsync",
+        "0",
+        "-frames:v",
+        str(len(windows)),
+        "-q:v",
+        "3",
         "-y",
         out_pattern,
     ]
@@ -154,14 +131,7 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
 
     # fps video untuk snap frame
     try:
-        probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", video_path],
-            capture_output=True, timeout=30,
-        )
-        rate = probe.stdout.decode().strip()
-        num, den = (rate.split("/") + ["1"])[:2]
-        fps = float(num) / float(den) if float(den) else 30.0
+        fps = probe(video_path)["fps"] or 30.0
     except Exception:
         fps = 30.0
     if fps <= 0:
@@ -192,7 +162,9 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
                 for (fn, _), src in zip(chunk, outs, strict=False):
                     ok_frames[fn] = src
                 continue
-            log.warning("chunk %d: expected %d frames, got %d", ci // SELECT_CHUNK, len(chunk), len(outs))
+            log.warning(
+                "chunk %d: expected %d frames, got %d", ci // SELECT_CHUNK, len(chunk), len(outs)
+            )
         else:
             log.warning("chunk %d: ffmpeg failed", ci // SELECT_CHUNK)
         break  # chunk gagal -> sisa lewat fallback per-frame
@@ -207,6 +179,7 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
         try:
             if fn in renamed:
                 import shutil
+
                 shutil.copyfile(src, target)
             else:
                 if src.name != Path(target).name:
@@ -230,15 +203,22 @@ def extract_frames_single_pass(video_path: str, items: List[Tuple[float, str]]) 
     return n
 
 
-async def detect_silences(video_path: str, min_silence_sec: float = 0.35, noise_db: float = -35.0) -> List[Tuple[float, float]]:
+async def detect_silences(
+    video_path: str, min_silence_sec: float = 0.35, noise_db: float = -35.0
+) -> List[Tuple[float, float]]:
     """Deteksi rentang silence via ffmpeg silencedetect. Return list (start, end)."""
     cmd = [
         "ffmpeg",
-        "-v", "info",
-        "-i", video_path,
+        "-v",
+        "info",
+        "-i",
+        video_path,
         "-vn",
-        "-af", f"silencedetect=noise={noise_db}dB:d={min_silence_sec}",
-        "-f", "null", "-",
+        "-af",
+        f"silencedetect=noise={noise_db}dB:d={min_silence_sec}",
+        "-f",
+        "null",
+        "-",
     ]
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -282,7 +262,11 @@ def _split_at_silences(
         best = None
         for c in candidates:
             if cur + 0.8 <= c <= next_grid + 1.5:
-                best = c if best is None else (best if abs(best - next_grid) <= abs(c - next_grid) else c)
+                best = (
+                    c
+                    if best is None
+                    else (best if abs(best - next_grid) <= abs(c - next_grid) else c)
+                )
         cut = best if best is not None else next_grid
         cuts.append(max(cur + 0.5, min(cut, total_duration - frame - 0.1)))
         cur = cut
@@ -322,10 +306,7 @@ def _sharpness(image_path: str) -> float:
 def pick_sharpest(candidates: List[str], final_path: str) -> str:
     """Pilih gambar paling tajam, pindahkan isinya ke final_path, hapus sisanya.
     Referensi lama (keyframe_paths/thumbnail_path) tetap valid karena path tidak berubah."""
-    valid = [
-        p for p in candidates
-        if Path(p).exists() and Path(p).stat().st_size > 0
-    ]
+    valid = [p for p in candidates if Path(p).exists() and Path(p).stat().st_size > 0]
     if not valid:
         return final_path
     scored = sorted(((_sharpness(p), p) for p in valid), reverse=True)
@@ -355,14 +336,14 @@ def pick_sharpest(candidates: List[str], final_path: str) -> str:
 # cut-nya dicatat di `shot_info` agar matching tidak pernah mengiris melewatinya.
 # ─────────────────────────────────────────────────────────────────────────────
 SHOT_INFO_VERSION = 1
-FLASH_MIN_SEC = 2.5          # shot < ini = flash, tidak boleh tampil sendiri di timeline
-MONTAGE_MIN_SEC = 3.0        # rangkaian flash >= ini jadi scene sendiri (tanpa usable range)
-CUT_HEAD_MARGIN = 0.12       # jarak aman setelah cut (≈ 3-4 frame)
-CUT_TAIL_MARGIN = 0.15       # jarak aman sebelum cut
-SOFT_EDGE_MARGIN = 0.05      # margin batas non-cut (awal/akhir video, titik silence)
+FLASH_MIN_SEC = 2.5  # shot < ini = flash, tidak boleh tampil sendiri di timeline
+MONTAGE_MIN_SEC = 3.0  # rangkaian flash >= ini jadi scene sendiri (tanpa usable range)
+CUT_HEAD_MARGIN = 0.12  # jarak aman setelah cut (≈ 3-4 frame)
+CUT_TAIL_MARGIN = 0.15  # jarak aman sebelum cut
+SOFT_EDGE_MARGIN = 0.05  # margin batas non-cut (awal/akhir video, titik silence)
 MIN_USABLE_RANGE_SEC = 2.0
-DETECT_MIN_SHOT_SEC = 0.25   # min_scene_len detektor (anti double-trigger flash frame)
-CUT_DEDUP_FRAMES = 2         # cut dari detektor berbeda yang berjarak <= N frame = cut yang sama
+DETECT_MIN_SHOT_SEC = 0.25  # min_scene_len detektor (anti double-trigger flash frame)
+CUT_DEDUP_FRAMES = 2  # cut dari detektor berbeda yang berjarak <= N frame = cut yang sama
 
 
 def _build_shot_detectors(fps: float) -> list:
@@ -385,7 +366,9 @@ def _build_shot_detectors(fps: float) -> list:
         # Fade in/out & flash hitam
         from scenedetect.detectors import ThresholdDetector
 
-        detectors.append(ThresholdDetector(threshold=12.0, min_scene_len=min_len, add_final_scene=False))
+        detectors.append(
+            ThresholdDetector(threshold=12.0, min_scene_len=min_len, add_final_scene=False)
+        )
     except Exception as e:  # pragma: no cover
         log.debug("ThresholdDetector unavailable: %s", e)
     return detectors
@@ -396,6 +379,7 @@ def _open_video_safe(video_path: str):
     dengan fallback ke OpenCV bila PyAV tidak tersedia."""
     try:
         import av
+
         av.logging.set_level(av.logging.ERROR)
     except Exception:
         pass
@@ -405,7 +389,11 @@ def _open_video_safe(video_path: str):
     try:
         return open_video(video_path, backend="pyav")
     except Exception as e:
-        log.warning("PySceneDetect open_video(backend='pyav') failed for %s: %s, falling back to default/opencv", video_path, e)
+        log.warning(
+            "PySceneDetect open_video(backend='pyav') failed for %s: %s, falling back to default/opencv",
+            video_path,
+            e,
+        )
         return open_video(video_path)
 
 
@@ -426,10 +414,15 @@ def find_shot_cuts_ffmpeg(
     elif end_sec:
         cmd.extend(["-t", str(end_sec)])
 
-    cmd.extend([
-        "-filter_complex", f"select='gt(scene,{threshold})',metadata=print",
-        "-f", "null", "-",
-    ])
+    cmd.extend(
+        [
+            "-filter_complex",
+            f"select='gt(scene,{threshold})',metadata=print",
+            "-f",
+            "null",
+            "-",
+        ]
+    )
 
     try:
         res = subprocess.run(cmd, capture_output=True, timeout=300)
@@ -503,7 +496,11 @@ def find_shot_cuts(
 
     log.info(
         "Dual-engine shot detection for %s: PySceneDetect=%d cuts, FFmpeg=%d cuts -> Unified=%d cuts (fps=%.2f)",
-        video_path, len(pyscene_cuts), len(ffmpeg_cuts), len(final_cuts), fps,
+        video_path,
+        len(pyscene_cuts),
+        len(ffmpeg_cuts),
+        len(final_cuts),
+        fps,
     )
     return final_cuts, fps
 
@@ -544,7 +541,11 @@ def group_shots_into_scenes(
     non-visual (silence split) sehingga margin lebih kecil.
     """
     frame = 1.0 / fps if fps > 0 else 1.0 / 30.0
-    pts = [0.0] + sorted(b for b in boundaries if frame < b < total_duration - frame) + [total_duration]
+    pts = (
+        [0.0]
+        + sorted(b for b in boundaries if frame < b < total_duration - frame)
+        + [total_duration]
+    )
     shots = [(pts[i], pts[i + 1]) for i in range(len(pts) - 1) if pts[i + 1] > pts[i]]
     if not shots:
         return []
@@ -585,26 +586,31 @@ def group_shots_into_scenes(
             if e - s < FLASH_MIN_SEC:
                 continue
             r = _usable_range(
-                s, e,
+                s,
+                e,
                 head_cut=hard_cuts and s > frame,
                 tail_cut=hard_cuts and e < total_duration - frame,
             )
             if r:
                 ranges.append(r)
         # Anti-bleeding: end_time = frame terakhir scene ini (batas = frame pertama scene berikut)
-        end_time = g_end - frame if g_end < total_duration - frame and g_end - frame > g_start else g_end
-        scenes.append({
-            "start_time": round(g_start, 3),
-            "end_time": round(end_time, 3),
-            "shot_info": {
-                "version": SHOT_INFO_VERSION,
-                "internal_cuts": [round(s, 3) for s, _ in g[1:]] if hard_cuts else [],
-                "usable_ranges": ranges,
-                "usable_duration": round(max((b - a for a, b in ranges), default=0.0), 3),
-                "shot_count": len(g),
-                "montage": not ranges,
-            },
-        })
+        end_time = (
+            g_end - frame if g_end < total_duration - frame and g_end - frame > g_start else g_end
+        )
+        scenes.append(
+            {
+                "start_time": round(g_start, 3),
+                "end_time": round(end_time, 3),
+                "shot_info": {
+                    "version": SHOT_INFO_VERSION,
+                    "internal_cuts": [round(s, 3) for s, _ in g[1:]] if hard_cuts else [],
+                    "usable_ranges": ranges,
+                    "usable_duration": round(max((b - a for a, b in ranges), default=0.0), 3),
+                    "shot_count": len(g),
+                    "montage": not ranges,
+                },
+            }
+        )
     return scenes
 
 
@@ -638,9 +644,12 @@ async def detect_scenes(
         raw_scenes = group_shots_into_scenes(cuts, total_duration, fps, hard_cuts=True)
         log.info(
             "Shot detection: %d cuts -> %d scenes (%d montage) for %s (duration=%.1fs, fps=%.2f)",
-            len(cuts), len(raw_scenes),
+            len(cuts),
+            len(raw_scenes),
             sum(1 for s in raw_scenes if s["shot_info"]["montage"]),
-            video_path, total_duration, fps,
+            video_path,
+            total_duration,
+            fps,
         )
     else:
         # Tidak ada cut visual (atau deteksi gagal): bagi di titik silence audio.
@@ -648,10 +657,13 @@ async def detect_scenes(
         silences = await detect_silences(video_path)
         segments = _split_at_silences(silences, total_duration, fps)
         boundaries = [s for s, _ in segments[1:]]
-        raw_scenes = group_shots_into_scenes(boundaries, total_duration, fps, hard_cuts=cuts is None)
+        raw_scenes = group_shots_into_scenes(
+            boundaries, total_duration, fps, hard_cuts=cuts is None
+        )
         log.info(
             "No visual cuts detected; split into %d segments using %d silence points",
-            len(raw_scenes), len(silences),
+            len(raw_scenes),
+            len(silences),
         )
 
     scenes_data: List[Dict[str, Any]] = []
@@ -672,7 +684,7 @@ async def detect_scenes(
         rep_dur = max(0.0, rep_e - rep_s)
 
         mid_t = rep_s + (rep_dur / 2.0)
-        thumb_filename = f"thumb_{idx:04d}_{int(start_t*1000)}.jpg"
+        thumb_filename = f"thumb_{idx:04d}_{int(start_t * 1000)}.jpg"
         thumb_abs = str(out_p / thumb_filename)
 
         # Kandidat thumbnail: 25% / 50% / 75% durasi — pilih paling tajam (anti motion blur)
@@ -694,20 +706,24 @@ async def detect_scenes(
                 extraction_tasks.append((kf2_t, kf2))
                 keyframe_paths.append(kf2)
 
-        scenes_data.append({
-            "scene_index": idx,
-            "start_time": round(start_t, 3),
-            "end_time": round(end_t, 3),
-            "duration": duration,
-            "thumbnail_path": thumb_abs,
-            "keyframe_paths": keyframe_paths,
-            "shot_info": shot_info,
-            "_thumb_candidates": cands,
-        })
+        scenes_data.append(
+            {
+                "scene_index": idx,
+                "start_time": round(start_t, 3),
+                "end_time": round(end_t, 3),
+                "duration": duration,
+                "thumbnail_path": thumb_abs,
+                "keyframe_paths": keyframe_paths,
+                "shot_info": shot_info,
+                "_thumb_candidates": cands,
+            }
+        )
 
     # Batch extract all thumbnails & keyframes: single-pass ffmpeg (decode sekali)
     if extraction_tasks:
-        await loop.run_in_executor(_DETECT_EXECUTOR, extract_frames_single_pass, video_path, extraction_tasks)
+        await loop.run_in_executor(
+            _DETECT_EXECUTOR, extract_frames_single_pass, video_path, extraction_tasks
+        )
 
     # Pilih thumbnail paling tajam per scene (dipindah ke path thumb_ agar referensi stabil)
     for sc in scenes_data:

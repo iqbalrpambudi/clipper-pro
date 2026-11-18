@@ -111,19 +111,36 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                         resp = await client.post(url, json=payload)
                         if resp.status_code == 429:
                             err_text = resp.text.lower()
-                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
-                                log.warning("Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast for all scenes.")
+                            if (
+                                "quota" in err_text
+                                or "exceeded" in err_text
+                                or "resource_exhausted" in err_text
+                            ):
+                                log.warning(
+                                    "Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast for all scenes."
+                                )
                                 self._quota_exhausted = True
                                 break
                             if attempt < 1:
-                                log.warning("Batch vision model %s hit 429, waiting 2.0s before retry...", model_name)
+                                log.warning(
+                                    "Batch vision model %s hit 429, waiting 2.0s before retry...",
+                                    model_name,
+                                )
                                 await asyncio.sleep(2.0)
                                 continue
                             else:
-                                log.warning("Batch vision model %s hit 429, falling back to next model...", model_name)
+                                log.warning(
+                                    "Batch vision model %s hit 429, falling back to next model...",
+                                    model_name,
+                                )
                                 break
                         if resp.status_code >= 400:
-                            log.warning("Batch vision model %s returned %d: %s", model_name, resp.status_code, resp.text[:100])
+                            log.warning(
+                                "Batch vision model %s returned %d: %s",
+                                model_name,
+                                resp.status_code,
+                                resp.text[:100],
+                            )
                             break
 
                         data = resp.json()
@@ -139,12 +156,16 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                         out = []
                         for idx, sc_id in valid_items:
                             item = parsed_map.get(idx) or {}
-                            out.append({
-                                "scene_id": sc_id,
-                                "description": item.get("description", "Cuplikan video aksi/aktivitas"),
-                                "tags": item.get("tags", ["video", "scene"]),
-                                "analysis": item,
-                            })
+                            out.append(
+                                {
+                                    "scene_id": sc_id,
+                                    "description": item.get(
+                                        "description", "Cuplikan video aksi/aktivitas"
+                                    ),
+                                    "tags": item.get("tags", ["video", "scene"]),
+                                    "analysis": item,
+                                }
+                            )
                         return out
                 except Exception as exc:
                     log.warning("Batch vision attempt failed for %s: %s", model_name, exc)
@@ -186,12 +207,14 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                 b64 = base64.b64encode(f.read()).decode("utf-8")
             ext = p.suffix.lower().replace(".", "")
             mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
-            parts.append({
-                "inlineData": {
-                    "mimeType": mime,
-                    "data": b64,
+            parts.append(
+                {
+                    "inlineData": {
+                        "mimeType": mime,
+                        "data": b64,
+                    }
                 }
-            })
+            )
 
         payload = {
             "contents": [{"parts": parts}],
@@ -215,17 +238,27 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                         resp = await client.post(url, json=payload)
                         if resp.status_code == 429:
                             err_text = resp.text.lower()
-                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
-                                log.warning("Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast to fallback.")
+                            if (
+                                "quota" in err_text
+                                or "exceeded" in err_text
+                                or "resource_exhausted" in err_text
+                            ):
+                                log.warning(
+                                    "Gemini Quota Exceeded (RESOURCE_EXHAUSTED). Failing fast to fallback."
+                                )
                                 self._quota_exhausted = True
                                 return await super().analyze_vision(image_paths, prompt)
                             wait_sec = 2.0 * (attempt + 1)
-                            log.warning("Gemini Vision rate-limited (429), retrying in %.1fs...", wait_sec)
+                            log.warning(
+                                "Gemini Vision rate-limited (429), retrying in %.1fs...", wait_sec
+                            )
                             await asyncio.sleep(wait_sec)
                             continue
 
                         if resp.status_code >= 400:
-                            raise RuntimeError(f"Gemini Vision HTTP {resp.status_code}: {resp.text[:200]}")
+                            raise RuntimeError(
+                                f"Gemini Vision HTTP {resp.status_code}: {resp.text[:200]}"
+                            )
 
                         data = resp.json()
                         candidates = data.get("candidates", [])
@@ -238,7 +271,9 @@ class GeminiAdapter(OpenAICompatibleAdapter):
 
                         parsed = json.loads(raw_text.strip())
                         return {
-                            "description": parsed.get("description", "Aktivitas visual dalam scene"),
+                            "description": parsed.get(
+                                "description", "Aktivitas visual dalam scene"
+                            ),
                             "tags": parsed.get("tags", ["video", "scene"]),
                             "analysis": parsed,  # caller's prompt owns the schema
                         }
@@ -303,7 +338,11 @@ class GeminiAdapter(OpenAICompatibleAdapter):
         Falls back to local semantic hash on quota exhaustion / API failure.
         """
         if not self._quota_exhausted and self.api_key:
-            candidate_models = ["gemini-embedding-001", "gemini-embedding-2-preview", "text-embedding-004"]
+            candidate_models = [
+                "gemini-embedding-001",
+                "gemini-embedding-2-preview",
+                "text-embedding-004",
+            ]
             for em_model in candidate_models:
                 clean_model = em_model.removeprefix("models/")
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:embedContent?key={self.api_key}"
@@ -324,8 +363,14 @@ class GeminiAdapter(OpenAICompatibleAdapter):
                                 return (vec + [0.0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
                         if resp.status_code == 429:
                             err_text = resp.text.lower()
-                            if "quota" in err_text or "exceeded" in err_text or "resource_exhausted" in err_text:
-                                log.warning("Gemini embedding quota exhausted; falling back to hash embeddings (degraded).")
+                            if (
+                                "quota" in err_text
+                                or "exceeded" in err_text
+                                or "resource_exhausted" in err_text
+                            ):
+                                log.warning(
+                                    "Gemini embedding quota exhausted; falling back to hash embeddings (degraded)."
+                                )
                                 self._quota_exhausted = True
                                 break
                 except Exception as e:

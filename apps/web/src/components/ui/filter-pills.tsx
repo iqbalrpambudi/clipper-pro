@@ -24,15 +24,12 @@ interface FilterPillsProps<T extends string = string> {
 
 function FilterPillsInner<T extends string>(
   { items, value, onChange, className }: FilterPillsProps<T>,
-  ref: React.ForwardedRef<HTMLDivElement>,
+  ref: React.ForwardedRef<HTMLDivElement>
 ) {
   return (
     <div
       ref={ref}
-      className={cn(
-        "workspace-filter-pills flex items-center gap-1.5 overflow-x-auto",
-        className,
-      )}
+      className={cn("workspace-filter-pills flex items-center gap-1.5 overflow-x-auto", className)}
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -44,9 +41,7 @@ function FilterPillsInner<T extends string>(
             onClick={() => onChange(item.id)}
             aria-pressed={isActive}
             className={`flex shrink-0 items-center gap-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-              isActive
-                ? "workspace-filter-active"
-                : "text-muted-foreground hover:text-foreground"
+              isActive ? "workspace-filter-active" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -63,8 +58,6 @@ function FilterPillsInner<T extends string>(
   );
 }
 
-export const FilterPills = React.forwardRef(FilterPillsInner) as <
-  T extends string = string,
->(
-  props: FilterPillsProps<T> & { ref?: React.ForwardedRef<HTMLDivElement> },
+export const FilterPills = React.forwardRef(FilterPillsInner) as <T extends string = string>(
+  props: FilterPillsProps<T> & { ref?: React.ForwardedRef<HTMLDivElement> }
 ) => React.ReactElement;

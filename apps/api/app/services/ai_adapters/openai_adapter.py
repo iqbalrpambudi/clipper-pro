@@ -15,7 +15,6 @@ from app.services.vision_tagger import VISION_PROMPT
 log = logging.getLogger(__name__)
 
 
-
 class OpenAICompatibleAdapter(BaseLLMAdapter):
     def __init__(
         self,
@@ -27,8 +26,6 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         gemini_key: Optional[str] = None,
     ):
         raw_url = (base_url or "https://api.openai.com/v1").rstrip("/")
-        # In Docker containers, localhost/127.0.0.1 on the host is reached via host.docker.internal
-        raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
         if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
             raw_url = f"{raw_url}/v1"
         self.base_url = raw_url
@@ -39,6 +36,7 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         self.embedding_model = embedding_model
         self._service_unavailable = False
         self._embedding_degraded = False
+        self.vision_fallback_model = ""  # set by get_active_vision_adapter from ModelConfig
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -166,20 +164,42 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                         err_text = err_json["error"].get("message", err_text)
                 except Exception:
                     pass
-                raise RuntimeError(f"Model endpoint error (HTTP {resp.status_code}): {err_text[:300]}")
+                raise RuntimeError(
+                    f"Model endpoint error (HTTP {resp.status_code}): {err_text[:300]}"
+                )
 
             return self._extract_content_from_response(resp.text)
+
+    async def _vision_fallback(
+        self, image_paths: List[str], prompt: str, failed_model: str
+    ) -> Dict[str, Any]:
+        """Retry once on the configured fallback model; placeholder tags when there is none."""
+        fallback = getattr(self, "vision_fallback_model", "")
+        if fallback and fallback != failed_model:
+            log.info(
+                "Vision model %s failed, retrying scene with fallback %s", failed_model, fallback
+            )
+            primary_disabled = getattr(self, "_service_unavailable", False)
+            try:
+                return await self.analyze_vision(image_paths, prompt, model=fallback)
+            finally:
+                # A fallback outage must not disable the primary model for the rest of the video
+                self._service_unavailable = primary_disabled
+        return {
+            "description": "Cuplikan video aksi/aktivitas",
+            "tags": ["video", "scene", "aktivitas"],
+        }
 
     async def analyze_vision(
         self,
         image_paths: List[str],
         prompt: str,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if getattr(self, "_service_unavailable", False):
-            return {
-                "description": "Cuplikan video aksi/aktivitas",
-                "tags": ["video", "scene", "aktivitas"],
-            }
+        model = model or self.vision_model
+        # The sticky flag disables only the primary model; the fallback may still be served
+        if getattr(self, "_service_unavailable", False) and model == self.vision_model:
+            return await self._vision_fallback(image_paths, prompt, model)
 
         content_parts: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
 
@@ -191,15 +211,18 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
             # Downscale and compress thumbnail image to max 768px using cv2 to dramatically boost speed
             try:
                 import cv2
+
                 img = cv2.imread(str(p))
                 if img is not None:
                     h, w = img.shape[:2]
                     max_dim = 768
                     if max(h, w) > max_dim:
                         scale = max_dim / max(h, w)
-                        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-                    _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
-                    b64 = base64.b64encode(buffer).decode('utf-8')
+                        img = cv2.resize(
+                            img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
+                        )
+                    _, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
+                    b64 = base64.b64encode(buffer).decode("utf-8")
                     mime = "image/jpeg"
                 else:
                     with open(p, "rb") as f:
@@ -212,13 +235,15 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 ext = p.suffix.lower().replace(".", "")
                 mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
 
-            content_parts.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:{mime};base64,{b64}"},
-            })
+            content_parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                }
+            )
 
         payload = {
-            "model": self.vision_model,
+            "model": model,
             "messages": [
                 {
                     "role": "system",
@@ -232,7 +257,8 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         }
 
         try:
-            timeout_cfg = httpx.Timeout(30.0, connect=5.0)
+            # Thinking vision models (e.g. gemini-*-flash-high) take 40-70 s under parallel load
+            timeout_cfg = httpx.Timeout(90.0, connect=5.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 resp = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -241,17 +267,31 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 )
                 if resp.status_code in (401, 403):
                     self._service_unavailable = True
-                    log.error("AI vision authentication error (HTTP %d): %s. Disabling further calls.", resp.status_code, resp.text[:200])
+                    log.error(
+                        "AI vision authentication error (HTTP %d): %s. Disabling further calls.",
+                        resp.status_code,
+                        resp.text[:200],
+                    )
                     raise RuntimeError(f"HTTP {resp.status_code} Auth error")
                 elif resp.status_code == 429:
                     err_lower = resp.text.lower()
-                    if "quota" in err_lower or "insufficient" in err_lower or "exceeded" in err_lower:
+                    if (
+                        "quota" in err_lower
+                        or "insufficient" in err_lower
+                        or "exceeded" in err_lower
+                    ):
                         self._service_unavailable = True
-                        log.error("AI vision quota exceeded: %s. Disabling further calls.", resp.text[:200])
+                        log.error(
+                            "AI vision quota exceeded: %s. Disabling further calls.",
+                            resp.text[:200],
+                        )
                     raise RuntimeError(f"HTTP {resp.status_code} Quota error")
                 elif resp.status_code == 404:
                     self._service_unavailable = True
-                    log.error("AI vision model/endpoint not found (HTTP 404): %s. Disabling further calls.", resp.text[:200])
+                    log.error(
+                        "AI vision model/endpoint not found (HTTP 404): %s. Disabling further calls.",
+                        resp.text[:200],
+                    )
                     raise RuntimeError("HTTP 404 Not Found")
                 elif resp.status_code >= 400:
                     raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
@@ -280,17 +320,18 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 }
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             self._service_unavailable = True
-            log.warning("Could not connect to AI vision gateway at %s (%s). Falling back to default tags.", self.base_url, e)
+            log.warning(
+                "Could not connect to AI vision gateway at %s (%s). Falling back to default tags.",
+                self.base_url,
+                e,
+            )
             return {
                 "description": "Cuplikan video aksi/aktivitas",
                 "tags": ["video", "scene", "aktivitas"],
             }
         except Exception as e:
-            log.warning("Vision analysis failed, using fallback tags: %s", e)
-            return {
-                "description": "Cuplikan video aksi/aktivitas",
-                "tags": ["video", "scene", "aktivitas"],
-            }
+            log.warning("Vision analysis with %s failed: %r", model, e)
+            return await self._vision_fallback(image_paths, prompt, model)
 
     async def analyze_vision_batch(
         self,
@@ -372,15 +413,18 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 continue
             try:
                 import cv2
+
                 img = cv2.imread(str(p))
                 if img is not None:
                     h, w = img.shape[:2]
                     max_dim = 1024
                     if max(h, w) > max_dim:
                         scale = max_dim / max(h, w)
-                        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-                    _, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
-                    b64 = base64.b64encode(buffer).decode('utf-8')
+                        img = cv2.resize(
+                            img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
+                        )
+                    _, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+                    b64 = base64.b64encode(buffer).decode("utf-8")
                     mime = "image/jpeg"
                 else:
                     with open(p, "rb") as f:
@@ -393,10 +437,12 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
                 ext = p.suffix.lower().replace(".", "")
                 mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
 
-            content_parts.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:{mime};base64,{b64}"},
-            })
+            content_parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                }
+            )
 
         messages = []
         if system_prompt:
@@ -443,7 +489,11 @@ class OpenAICompatibleAdapter(BaseLLMAdapter):
         settings = get_settings()
         gemini_key = (
             getattr(self, "gemini_key", None)
-            or (self.api_key if self.api_key and ("AIza" in self.api_key or "AQ." in self.api_key) else "")
+            or (
+                self.api_key
+                if self.api_key and ("AIza" in self.api_key or "AQ." in self.api_key)
+                else ""
+            )
             or settings.GEMINI_API_KEY
             or settings.AI_API_KEY
         )

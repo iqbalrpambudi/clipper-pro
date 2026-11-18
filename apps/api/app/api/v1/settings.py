@@ -1,5 +1,4 @@
 import logging
-import re
 import time
 from typing import Any, Dict
 
@@ -54,7 +53,9 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
             vision_model=settings.AI_VISION_MODEL,
             api_key_encrypted=encrypt_secret(settings.AI_API_KEY) if settings.AI_API_KEY else None,
             tts_provider=settings.TTS_PROVIDER,
-            tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None,
+            tts_api_key_encrypted=encrypt_secret(settings.GEMINI_API_KEY)
+            if settings.GEMINI_API_KEY
+            else None,
         )
         db.add(cfg)
         await db.commit()
@@ -62,8 +63,9 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
-    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-
+    raw_elevenlabs_key = (
+        decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    )
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -71,6 +73,7 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         base_url=cfg.base_url,
         chat_model=cfg.chat_model,
         vision_model=cfg.vision_model,
+        vision_fallback_model=cfg.vision_fallback_model,
         api_key_masked=mask_secret(raw_api_key),
         has_api_key=bool(raw_api_key),
         tts_provider=cfg.tts_provider,
@@ -78,7 +81,8 @@ async def get_model_configuration(db: AsyncSession = Depends(get_db)):
         has_tts_api_key=bool(raw_tts_key),
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
-        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+        or "eleven_multilingual_v2",
         is_active=cfg.is_active,
     )
 
@@ -88,7 +92,6 @@ async def save_model_configuration(
     payload: ModelConfigUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    settings = get_settings()
     res = await db.execute(select(ModelConfig).where(ModelConfig.is_active == True).limit(1))
     cfg = res.scalar_one_or_none()
     if not cfg:
@@ -101,6 +104,8 @@ async def save_model_configuration(
         cfg.chat_model = payload.chat_model
     if payload.vision_model is not None:
         cfg.vision_model = payload.vision_model
+    if payload.vision_fallback_model is not None:
+        cfg.vision_fallback_model = payload.vision_fallback_model.strip() or None
     if payload.api_key is not None and payload.api_key.strip():
         cfg.api_key_encrypted = encrypt_secret(payload.api_key.strip())
     if payload.tts_provider is not None:
@@ -117,8 +122,9 @@ async def save_model_configuration(
 
     raw_api_key = decrypt_secret(cfg.api_key_encrypted) if cfg.api_key_encrypted else ""
     raw_tts_key = decrypt_secret(cfg.tts_api_key_encrypted) if cfg.tts_api_key_encrypted else ""
-    raw_elevenlabs_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
-
+    raw_elevenlabs_key = (
+        decrypt_secret(cfg.elevenlabs_api_key_encrypted) if cfg.elevenlabs_api_key_encrypted else ""
+    )
 
     return ModelConfigResponse(
         id=cfg.id,
@@ -126,6 +132,7 @@ async def save_model_configuration(
         base_url=cfg.base_url,
         chat_model=cfg.chat_model,
         vision_model=cfg.vision_model,
+        vision_fallback_model=cfg.vision_fallback_model,
         api_key_masked=mask_secret(raw_api_key),
         has_api_key=bool(raw_api_key),
         tts_provider=cfg.tts_provider,
@@ -133,7 +140,8 @@ async def save_model_configuration(
         has_tts_api_key=bool(raw_tts_key),
         elevenlabs_api_key_masked=mask_secret(raw_elevenlabs_key),
         has_elevenlabs_api_key=bool(raw_elevenlabs_key),
-        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") or "eleven_multilingual_v2",
+        elevenlabs_model=getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+        or "eleven_multilingual_v2",
         is_active=cfg.is_active,
     )
 
@@ -181,7 +189,7 @@ async def test_model_connection(
             )
 
         # Ping chat model
-        _ = await adapter.generate_chat("Jawab satu kata: OK")
+        _ = await adapter.generate_chat("hi")
         latency = int((time.time() - start_time) * 1000)
 
         return TestConnectionResponse(
@@ -227,7 +235,7 @@ async def test_tts_model_connection(
             if not model:
                 if provider == "elevenlabs":
                     model = getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
-    
+
     res = await test_tts_connection(
         provider=provider,
         api_key=api_key,
@@ -244,6 +252,7 @@ async def test_tts_model_connection(
 
 _MODELS_CACHE: dict = {}
 _MODELS_CACHE_TTL: float = 300.0  # 5 minutes
+
 
 @router.get("/models")
 async def list_available_models(
@@ -267,7 +276,6 @@ async def list_available_models(
         return {"models": ["gemini-2.0-flash", "gemini-1.5-flash", "gpt-4o", "gpt-4o-mini"]}
 
     raw_url = target_url.rstrip("/")
-    raw_url = re.sub(r"^(https?://)(localhost|127\.0\.0\.1)", r"\1host.docker.internal", raw_url)
     if not raw_url.endswith("/v1") and "googleapis.com" not in raw_url:
         raw_url = f"{raw_url}/v1"
 
@@ -287,7 +295,11 @@ async def list_available_models(
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{raw_url}/models", headers=headers)
             if resp.status_code == 200:
-                models = [m["id"] for m in resp.json().get("data", []) if isinstance(m, dict) and "id" in m]
+                models = [
+                    m["id"]
+                    for m in resp.json().get("data", [])
+                    if isinstance(m, dict) and "id" in m
+                ]
                 res_data = {"models": models}
                 _MODELS_CACHE[cache_key] = (now, res_data)
                 return res_data
@@ -297,7 +309,9 @@ async def list_available_models(
     return {"models": []}
 
 
-def _to_defaults_response(cfg: ProjectDefaultsConfig, path_str: str, from_file: bool) -> ProjectDefaultsResponse:
+def _to_defaults_response(
+    cfg: ProjectDefaultsConfig, path_str: str, from_file: bool
+) -> ProjectDefaultsResponse:
     # Every section of the config, so a newly added one (e.g. background_fill) is never dropped.
     return ProjectDefaultsResponse(**cfg.model_dump(), config_path=path_str, from_file=from_file)
 

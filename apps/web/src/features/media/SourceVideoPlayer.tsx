@@ -14,7 +14,9 @@ interface SourceVideoPlayerProps {
 }
 
 const formatTime = (sec: number) =>
-  `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, "0")}`;
+  `${Math.floor(sec / 60)}:${Math.floor(sec % 60)
+    .toString()
+    .padStart(2, "0")}`;
 
 export function SourceVideoPlayer({ isOpen, onClose, video }: SourceVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -52,7 +54,10 @@ export function SourceVideoPlayer({ isOpen, onClose, video }: SourceVideoPlayerP
 
         <div
           className="relative w-full overflow-hidden rounded-lg bg-black"
-          style={{ aspectRatio: video.width && video.height ? `${video.width} / ${video.height}` : "16 / 9" }}
+          style={{
+            aspectRatio:
+              video.width && video.height ? `${video.width} / ${video.height}` : "16 / 9",
+          }}
         >
           <video
             ref={videoRef}
@@ -83,16 +88,22 @@ export function SourceVideoPlayer({ isOpen, onClose, video }: SourceVideoPlayerP
                     : treatment?.kind === "blur"
                       ? "Posisi terlalu tinggi untuk dipotong — kotak kuning akan diblur saat render."
                       : "Batas bawah harus di bawah batas atas."}
-                {saved && ` · ${saved.source === "manual" ? "Diatur manual" : "Terdeteksi otomatis"}`}
+                {saved &&
+                  ` · ${saved.source === "manual" ? "Diatur manual" : "Terdeteksi otomatis"}`}
               </p>
             </div>
-            <Switch checked={hsEnabled} onCheckedChange={setHsEnabled} aria-label="Video ini punya hardsub" />
+            <Switch
+              checked={hsEnabled}
+              onCheckedChange={setHsEnabled}
+              aria-label="Video ini punya hardsub"
+            />
           </div>
           {hsEnabled && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="space-y-1.5 text-[11px] text-muted-foreground">
                 <span className="flex justify-between">
-                  Batas atas <span className="font-mono tabular-nums">{Math.round(hsTop * 100)}%</span>
+                  Batas atas{" "}
+                  <span className="font-mono tabular-nums">{Math.round(hsTop * 100)}%</span>
                 </span>
                 <Slider
                   min={0}
@@ -105,7 +116,8 @@ export function SourceVideoPlayer({ isOpen, onClose, video }: SourceVideoPlayerP
               </label>
               <label className="space-y-1.5 text-[11px] text-muted-foreground">
                 <span className="flex justify-between">
-                  Batas bawah <span className="font-mono tabular-nums">{Math.round(hsBottom * 100)}%</span>
+                  Batas bawah{" "}
+                  <span className="font-mono tabular-nums">{Math.round(hsBottom * 100)}%</span>
                 </span>
                 <Slider
                   min={0.01}
@@ -142,7 +154,9 @@ export function SourceVideoPlayer({ isOpen, onClose, video }: SourceVideoPlayerP
                   <button
                     key={i}
                     type="button"
-                    onClick={() => videoRef.current && (videoRef.current.currentTime = b.start_time)}
+                    onClick={() =>
+                      videoRef.current && (videoRef.current.currentTime = b.start_time)
+                    }
                     className={`flex-1 rounded-t-sm ${isCurrent ? "bg-primary" : "bg-primary/40 hover:bg-primary/70"}`}
                     style={{ height: `${Math.max(4, value * 100)}%` }}
                     title={`${formatTime(b.start_time)} – ${formatTime(b.end_time)}`}

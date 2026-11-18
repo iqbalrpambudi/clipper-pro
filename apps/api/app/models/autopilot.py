@@ -24,7 +24,9 @@ class AutopilotConfig(Base):
     categories: Mapped[List[str]] = mapped_column(
         JSON, default=lambda: ["farming", "craft", "food", "restoration", "factory", "engineering"]
     )
-    slots: Mapped[List[str]] = mapped_column(JSON, default=lambda: ["07:00", "17:00"])  # posting times, local HH:MM
+    slots: Mapped[List[str]] = mapped_column(
+        JSON, default=lambda: ["07:00", "17:00"]
+    )  # posting times, local HH:MM
     utc_offset_minutes: Mapped[int] = mapped_column(Integer, default=420)  # WIB
     pool_size: Mapped[int] = mapped_column(Integer, default=4)
     # [{"time": "12:00", "count": 2}, ...] local times when the producer tops up the pool
@@ -36,7 +38,9 @@ class AutopilotConfig(Base):
     publish_ahead_hours: Mapped[int] = mapped_column(Integer, default=24)
     template_id: Mapped[str] = mapped_column(String(36), default="fakta")
     target_duration: Mapped[int] = mapped_column(Integer, default=50)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class AutopilotRun(Base):
@@ -55,7 +59,9 @@ class AutopilotRun(Base):
     title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[List[str]] = mapped_column(JSON, default=list)
-    slot_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)  # naive UTC, set on publish
+    slot_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, index=True
+    )  # naive UTC, set on publish
     video_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     publish_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -50,8 +50,8 @@ def test_get_scene_usable_range_picks_single_contiguous_shot():
     assert not is_montage
     assert dur >= 2.5
     # Must be completely inside one of the safe ranges:
-    in_range1 = (0.12 <= start and end <= 3.35)
-    in_range2 = (4.12 <= start and end <= 9.85)
+    in_range1 = 0.12 <= start and end <= 3.35
+    in_range2 = 4.12 <= start and end <= 9.85
     assert in_range1 or in_range2
     # Crucially, cut at 3.5 and 4.0 must NOT be inside [start, end]
     assert not (start < 3.5 < end)
@@ -109,7 +109,12 @@ async def test_match_scenes_to_segments_no_flash_scenes():
 
     segments = [
         {"id": "s1", "start_ms": 0, "end_ms": 2500, "text": "Halo teman-teman sekalian."},
-        {"id": "s2", "start_ms": 2500, "end_ms": 5200, "text": "Hari ini kita belajar anti flash cut."},
+        {
+            "id": "s2",
+            "start_ms": 2500,
+            "end_ms": 5200,
+            "text": "Hari ini kita belajar anti flash cut.",
+        },
         {"id": "s3", "start_ms": 5200, "end_ms": 8000, "text": "Hasilnya rapi dan sangat presisi."},
     ]
 
@@ -192,6 +197,7 @@ def test_dual_engine_cut_deduplication():
                 mock_ff.return_value = [1.001, 3.0, 5.02]
 
                 from app.services.scene_detector import find_shot_cuts
+
                 cuts, fps = find_shot_cuts("dummy.mp4")
 
                 assert fps == 30.0
@@ -202,4 +208,3 @@ def test_dual_engine_cut_deduplication():
                 assert any(abs(c - 2.0) <= 0.05 for c in cuts)
                 assert any(abs(c - 3.0) <= 0.05 for c in cuts)
                 assert any(abs(c - 5.0) <= 0.05 for c in cuts)
-

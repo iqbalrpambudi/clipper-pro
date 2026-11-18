@@ -13,7 +13,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.prompts.narrative import DEFAULT_TEMPLATES
 from app.services.ai_adapters.base import BaseLLMAdapter
-from app.services.matching import _calc_visual_satisfaction_boost, _get_scene_usable_range, is_filler_scene
+from app.services.matching import (
+    _calc_visual_satisfaction_boost,
+    _get_scene_usable_range,
+    is_filler_scene,
+)
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +35,7 @@ def line_count_for(duration_sec: int) -> int:
 # 1. Shots
 # ---------------------------------------------------------------------------
 
+
 def _usable(s: Dict[str, Any]) -> float:
     _, _, dur, montage = _get_scene_usable_range(s, SEC_PER_LINE)
     # Capped at one line's length: past that, the most satisfying shot wins, not the longest.
@@ -42,13 +47,13 @@ _RANGE_PROMPT = {
         "Ini daftar scene dari satu video sumber (nomor | waktu | isi).\n{scenes}\n\n"
         "Pilih SATU rentang scene berurutan yang menceritakan satu subjek atau satu proses dari awal sampai hasilnya, "
         "dengan minimal {n} scene. Kalau seluruh video memang satu proses, pilih semuanya. "
-        "Jawab JSON saja: {{\"start\": nomor_awal, \"end\": nomor_akhir, \"topic\": \"subjek dan prosesnya dalam satu kalimat\"}}"
+        'Jawab JSON saja: {{"start": nomor_awal, "end": nomor_akhir, "topic": "subjek dan prosesnya dalam satu kalimat"}}'
     ),
     "en": (
         "This is the scene list of one source video (number | time | content).\n{scenes}\n\n"
         "Pick ONE run of consecutive scenes that tells one subject or one process from start to result, "
         "with at least {n} scenes. If the whole video is one process, pick all of it. "
-        "Answer JSON only: {{\"start\": first_number, \"end\": last_number, \"topic\": \"the subject and its process in one sentence\"}}"
+        'Answer JSON only: {{"start": first_number, "end": last_number, "topic": "the subject and its process in one sentence"}}'
     ),
 }
 
@@ -59,7 +64,10 @@ async def pick_story_range(
     """One story inside the source: a compilation of many subjects gets cut down to its best
     single-subject chapter (one ingredient, one method), a single-process video keeps everything.
     The model only names the range; code checks it has enough usable shots."""
-    content = sorted([s for s in scenes if not is_filler_scene(s)] or scenes, key=lambda s: float(s.get("start_time", 0.0)))
+    content = sorted(
+        [s for s in scenes if not is_filler_scene(s)] or scenes,
+        key=lambda s: float(s.get("start_time", 0.0)),
+    )
     if len(content) <= n:
         return content, ""
     listing = "\n".join(
@@ -69,7 +77,7 @@ async def pick_story_range(
     prompt = _RANGE_PROMPT["en" if language == "en" else "id"].format(scenes=listing, n=n)
     try:
         raw = await adapter.generate_chat(prompt=prompt, json_mode=True)
-        data = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+        data = json.loads(raw[raw.find("{") : raw.rfind("}") + 1])
         a, b = sorted((int(data["start"]), int(data["end"])))
         topic = str(data.get("topic") or "").strip()
     except Exception as exc:
@@ -77,10 +85,12 @@ async def pick_story_range(
         return content, ""
     a, b = max(0, a), min(len(content) - 1, b)
     # Too few usable shots for the line count: widen evenly instead of trusting the model.
-    while sum(1 for s in content[a:b + 1] if _usable(s) >= 2.5) < n and (a > 0 or b < len(content) - 1):
+    while sum(1 for s in content[a : b + 1] if _usable(s) >= 2.5) < n and (
+        a > 0 or b < len(content) - 1
+    ):
         a, b = max(0, a - 1), min(len(content) - 1, b + 1)
     log.info("Story range %d-%d of %d scenes: %s", a, b, len(content), topic)
-    return content[a:b + 1], topic
+    return content[a : b + 1], topic
 
 
 def pick_story_shots(scenes: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]]:
@@ -103,7 +113,9 @@ def pick_story_shots(scenes: List[Dict[str, Any]], n: int) -> List[Dict[str, Any
     hook = max(cands, key=score)
     rest = [s for s in cands if s is not hook]
     m = min(n - 1, len(rest))
-    return [hook] + [max(rest[k * len(rest) // m:(k + 1) * len(rest) // m], key=score) for k in range(m)]
+    return [hook] + [
+        max(rest[k * len(rest) // m : (k + 1) * len(rest) // m], key=score) for k in range(m)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +128,7 @@ _TEXT = {
             "FORMAT: video short explainer tentang SATU proses, sekitar {dur} detik. "
             "Satu narator menceritakan satu cerita utuh: apa yang dikerjakan, untuk apa, bagaimana caranya, dan hasil akhirnya.\n\n"
             "CARA MENULIS:\n"
-            "Baris pertama tulis \"Inti:\" lalu satu kalimat: apa yang dikerjakan di video, tujuannya, dan hasil akhirnya.\n"
+            'Baris pertama tulis "Inti:" lalu satu kalimat: apa yang dikerjakan di video, tujuannya, dan hasil akhirnya.\n'
             "Setelah itu tulis tepat {n} baris bernomor 1. sampai {n}.\n\n"
             "PERAN BARIS (tertulis di ujung tiap gambar):\n"
             "- PEMBUKA: sesuai GAYA, tentang hal paling unik dari judul atau seluruh proses, bukan isi satu gambar. "
@@ -124,7 +136,7 @@ _TEXT = {
             "- APA & KENAPA: sebut nama benda atau kegiatannya dan alasan kenapa ini dilakukan.\n"
             "- TAHAP: tahap yang terjadi di gambar itu + alasannya (agar, supaya, karena, sehingga). "
             "Sambungkan dengan kata seperti setelah itu, lalu, sebelum, sekaligus, bedanya, artinya, tapi jangan di setiap baris.\n"
-            "- TANTANGAN: \"Namun, ...\" masalah atau risiko di tahap gambar itu, lalu cara mereka mengatasinya.\n"
+            '- TANTANGAN: "Namun, ..." masalah atau risiko di tahap gambar itu, lalu cara mereka mengatasinya.\n'
             "- HASIL: hasil dari prosesnya.\n"
             "- PENUTUP: menjawab pembuka. Rangkum caranya dalam satu kalimat (misalnya tiga bagian: A untuk ..., B untuk ..., dan C untuk ...) "
             "atau beri julukan yang mudah diingat.\n\n"
@@ -151,9 +163,9 @@ _TEXT = {
             "2. Ini adalah cara membuat bakso ikan yang kenyal tanpa bahan tambahan.\n"
             "3. Daging ikan lebih dulu dipisahkan dari kulit dan tulangnya agar adonannya halus.\n"
             "4. Setelah itu daging dipukul terus sehingga seratnya rapat dan lengket.\n\n"
-            "Tulis \"Inti:\" lalu {n} baris sekarang:"
+            'Tulis "Inti:" lalu {n} baris sekarang:'
         ),
-        "retry": "Jawaban sebelumnya salah format. Tulis \"Inti:\" lalu tepat {n} baris bernomor, satu kalimat per baris, tanpa teks lain.",
+        "retry": 'Jawaban sebelumnya salah format. Tulis "Inti:" lalu tepat {n} baris bernomor, satu kalimat per baris, tanpa teks lain.',
         "no_topic": "simpulkan dari judul dan daftar gambar",
     },
     "en": {
@@ -161,7 +173,7 @@ _TEXT = {
             "FORMAT: a short explainer video about ONE process, about {dur} seconds. "
             "One narrator tells one complete story: what is being done, why, how, and the final result.\n\n"
             "HOW TO WRITE:\n"
-            "First write \"Core:\" and one sentence: what is done in the video, why, and the final result.\n"
+            'First write "Core:" and one sentence: what is done in the video, why, and the final result.\n'
             "Then write exactly {n} lines numbered 1. to {n}.\n\n"
             "LINE ROLES (written at the end of each shot):\n"
             "- OPENER: in the given STYLE, about the most unusual thing in the title or the whole process, not one shot. "
@@ -169,7 +181,7 @@ _TEXT = {
             "- WHAT & WHY: name the thing or activity and why it is done.\n"
             "- STEP: the step happening in that shot + why (so that, because, which). "
             "Link with words like then, after that, before, at the same time, the difference is, which means, but not on every line.\n"
-            "- CHALLENGE: \"But ...\" a problem or risk at the step in that shot, then how they handle it.\n"
+            '- CHALLENGE: "But ..." a problem or risk at the step in that shot, then how they handle it.\n'
             "- RESULT: what the process produces.\n"
             "- CLOSE: answers the opener. Sum up the method in one sentence (for example three parts: A for ..., B for ..., and C for ...) "
             "or give it a memorable nickname.\n\n"
@@ -195,9 +207,9 @@ _TEXT = {
             "2. This is how chewy fish balls are made without any additives.\n"
             "3. The meat is first separated from the skin and bones so the paste turns smooth.\n"
             "4. After that it is pounded nonstop, packing the fibers tight and sticky.\n\n"
-            "Write \"Core:\" and the {n} lines now:"
+            'Write "Core:" and the {n} lines now:'
         ),
-        "retry": "Your last answer had the wrong format. Write \"Core:\" and then exactly {n} numbered lines, one sentence each, nothing else.",
+        "retry": 'Your last answer had the wrong format. Write "Core:" and then exactly {n} numbered lines, one sentence each, nothing else.',
         "no_topic": "infer it from the title and the shot list",
     },
 }
@@ -243,6 +255,7 @@ def build_script_prompt(
     per_line = target_duration * WORDS_PER_SEC / max(1, n)
     lo, hi = max(5, round(per_line * 0.8)), round(per_line * 1.2)
     roles = _ROLES["en" if language == "en" else "id"]
+
     # Only STEP/RESULT lines get the shot description; showing it on the opener/what/close lines
     # makes models narrate shot 1 on line 3 (every step shifts by two).
     def shot_line(k: int, s: Dict[str, Any]) -> str:
@@ -252,7 +265,9 @@ def build_script_prompt(
 
     shot_lines = "\n".join(shot_line(k, s) for k, s in enumerate(shots, start=1))
     label = "STYLE" if language == "en" else "GAYA"
-    system = f"{label}:\n{style.strip()}\n\n" + t["rules"].format(n=n, lo=lo, hi=hi, tone=tone, dur=target_duration)
+    system = f"{label}:\n{style.strip()}\n\n" + t["rules"].format(
+        n=n, lo=lo, hi=hi, tone=tone, dur=target_duration
+    )
     user = t["user"].format(
         topic=(topic or "").strip() or t["no_topic"],
         title=(source_title or "-").strip(),
@@ -267,8 +282,10 @@ def build_script_prompt(
 # ---------------------------------------------------------------------------
 
 _NUMBERED = re.compile(r"^\s*(?:\*\*)?\d+\s*[.)\]:-]\s*(?:\*\*)?\s*(.+)$")
-_BRIEF = re.compile(r"^\s*(?:\*\*)?(?:inti|core|summary|ringkasan)(?:\*\*)?\s*:.*$", re.IGNORECASE | re.MULTILINE)
-_EMOJI = re.compile("[\U0001F000-\U0001FFFF☀-➿️]")
+_BRIEF = re.compile(
+    r"^\s*(?:\*\*)?(?:inti|core|summary|ringkasan)(?:\*\*)?\s*:.*$", re.IGNORECASE | re.MULTILINE
+)
+_EMOJI = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 
 def clean_spoken(text: str) -> str:
@@ -276,7 +293,12 @@ def clean_spoken(text: str) -> str:
     s = re.sub(r"\[[^\]]*\]|\([^)]*\)", "", text)
     s = _EMOJI.sub("", s)
     s = s.replace("**", "").replace("*", "").strip(" \"'“”")
-    s = re.sub(r"^(?:hook|baris|line|kalimat|gambar|shot|scene)\s*\d*\s*[:\-]\s*", "", s, flags=re.IGNORECASE)
+    s = re.sub(
+        r"^(?:hook|baris|line|kalimat|gambar|shot|scene)\s*\d*\s*[:\-]\s*",
+        "",
+        s,
+        flags=re.IGNORECASE,
+    )
     s = re.sub(r"(\d+):(\d+)", r"\1.\2", s)
     s = re.sub(r"\s*[;:]\s*", ", ", s)
     s = re.sub(r",\s*([.!?])", r"\1", s)
@@ -287,16 +309,24 @@ def parse_script_lines(text: str) -> List[str]:
     """Numbered lines if the model gave them, else plain sentences (cheap models sometimes write a paragraph)."""
     # The "Inti:" brief only steers the model; it is never spoken.
     text = _BRIEF.sub("", text)
-    numbered = [m.group(1) for m in (_NUMBERED.match(l) for l in text.splitlines()) if m]
+    numbered = [m.group(1) for m in (_NUMBERED.match(line) for line in text.splitlines()) if m]
     raw = numbered or re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
-    lines = [clean_spoken(l) for l in raw]
-    return [l for l in lines if len(l.split()) >= 3]
+    lines = [clean_spoken(line) for line in raw]
+    return [line for line in lines if len(line.split()) >= 3]
 
 
-def segments_from_lines(lines: List[str], shots: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+def segments_from_lines(
+    lines: List[str], shots: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
     segs = []
     for i, line in enumerate(lines):
-        seg: Dict[str, Any] = {"id": f"seg-{i + 1}", "text": line, "start_ms": 0, "end_ms": 0, "words": []}
+        seg: Dict[str, Any] = {
+            "id": f"seg-{i + 1}",
+            "text": line,
+            "start_ms": 0,
+            "end_ms": 0,
+            "words": [],
+        }
         if shots and i < len(shots):
             seg["scene_id"] = shots[i]["id"]
         segs.append(seg)
@@ -305,7 +335,9 @@ def segments_from_lines(lines: List[str], shots: Optional[List[Dict[str, Any]]] 
 
 _WORD = re.compile(r"[^\W\d_]{4,}")
 _STAY_PENALTY = 0.05  # two lines on one shot only when the words say so
-_POSITION_PRIOR = 0.1  # weaker than a real word match; decides lines that name nothing (opener, close)
+_POSITION_PRIOR = (
+    0.1  # weaker than a real word match; decides lines that name nothing (opener, close)
+)
 
 
 def _words(text: Optional[str]) -> set:
@@ -325,7 +357,7 @@ def align_lines_to_shots(lines: List[str], shots: List[Dict[str, Any]]) -> List[
     df = Counter(w for d in docs for w in d)
     idf = {w: math.log((S + 1) / (c + 1)) for w, c in df.items()}
     norms = [sum(idf[w] for w in d) or 1.0 for d in docs]
-    line_words = [_words(l) for l in lines]
+    line_words = [_words(line) for line in lines]
 
     def gain(i: int, j: int) -> float:
         expected = round(i * (S - 1) / max(1, L - 1))
@@ -370,13 +402,19 @@ async def generate_narration_script(
     if not shots:
         raise ValueError("Belum ada scene. Analisis video dulu di tab Media.")
 
-    system, user = build_script_prompt(style, tone, topic or story_topic, source_title, shots, target_duration, language)
+    system, user = build_script_prompt(
+        style, tone, topic or story_topic, source_title, shots, target_duration, language
+    )
     lines = parse_script_lines(await adapter.generate_chat(prompt=user, system_prompt=system))
     if len(lines) < max(2, len(shots) // 2):
         retry = _TEXT["en" if language == "en" else "id"]["retry"].format(n=len(shots))
-        lines = parse_script_lines(await adapter.generate_chat(prompt=f"{user}\n\n{retry}", system_prompt=system))
+        lines = parse_script_lines(
+            await adapter.generate_chat(prompt=f"{user}\n\n{retry}", system_prompt=system)
+        )
         if len(lines) < max(2, len(shots) // 2):
-            raise ValueError(f"Model AI tidak mengikuti format ({len(lines)} dari {len(shots)} baris). Coba lagi atau ganti model.")
+            raise ValueError(
+                f"Model AI tidak mengikuti format ({len(lines)} dari {len(shots)} baris). Coba lagi atau ganti model."
+            )
 
     # A model that repeats its hook at the end breaks the loop feel.
     if len(lines) >= 4 and lines[0].lower() == lines[-1].lower():
@@ -391,11 +429,12 @@ async def generate_narration_script(
 # 4. Re-split after a manual edit
 # ---------------------------------------------------------------------------
 
+
 def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
     """One segment per line when the script is line-based (generated scripts), else per sentence."""
     if "\n" in text.strip():
-        raw = [l for l in text.splitlines() if l.strip()]
-        raw = [(_NUMBERED.match(l).group(1) if _NUMBERED.match(l) else l) for l in raw]
+        raw = [line for line in text.splitlines() if line.strip()]
+        raw = [(_NUMBERED.match(line).group(1) if _NUMBERED.match(line) else line) for line in raw]
     else:
         raw = re.split(r"(?<=[.!?])\s+", text.strip())
-    return segments_from_lines([c for c in (clean_spoken(l) for l in raw) if len(c) >= 3])
+    return segments_from_lines([c for c in (clean_spoken(line) for line in raw) if len(c) >= 3])

@@ -1,15 +1,15 @@
 from typing import Any, Dict, List, Tuple
 
-
 FONT_METRIC_COMPENSATION: Dict[str, float] = {
-    "Anton": 1.72,       # OpenType winAsc+Desc/unitsPerEm: 1.733 -> empirically verified ratio 1.72
+    "Anton": 1.72,  # OpenType winAsc+Desc/unitsPerEm: 1.733 -> empirically verified ratio 1.72
     "Bebas Neue": 1.30,  # OpenType winAsc+Desc/unitsPerEm: 1.300 -> empirically verified ratio 1.30
-    "Inter": 1.39,       # OpenType winAsc+Desc/unitsPerEm: 1.430 -> empirically verified ratio 1.39
+    "Inter": 1.39,  # OpenType winAsc+Desc/unitsPerEm: 1.430 -> empirically verified ratio 1.39
     "Montserrat": 1.56,  # OpenType winAsc+Desc/unitsPerEm: 1.562 -> empirically verified ratio 1.56
-    "Oswald": 1.70,      # OpenType winAsc+Desc/unitsPerEm: 1.702 -> empirically verified ratio 1.70
-    "Poppins": 1.77,     # OpenType winAsc+Desc/unitsPerEm: 1.762 -> empirically verified ratio 1.77
-    "Roboto": 1.20,      # OpenType winAsc+Desc/unitsPerEm: 1.200 -> empirically verified ratio 1.20
+    "Oswald": 1.70,  # OpenType winAsc+Desc/unitsPerEm: 1.702 -> empirically verified ratio 1.70
+    "Poppins": 1.77,  # OpenType winAsc+Desc/unitsPerEm: 1.762 -> empirically verified ratio 1.77
+    "Roboto": 1.20,  # OpenType winAsc+Desc/unitsPerEm: 1.200 -> empirically verified ratio 1.20
 }
+
 
 def hex_to_ass_color(hex_str: str, opacity: float = 1.0) -> str:
     """
@@ -69,7 +69,10 @@ STYLE_DEFAULTS: Dict[str, Any] = {
 def style_to_dict(style: Any) -> Dict[str, Any]:
     """SubtitleStyle row, dict or None -> complete style dict."""
     get = style.get if isinstance(style, dict) else (lambda k: getattr(style, k, None))
-    return {k: (default if style is None or get(k) is None else get(k)) for k, default in STYLE_DEFAULTS.items()}
+    return {
+        k: (default if style is None or get(k) is None else get(k))
+        for k, default in STYLE_DEFAULTS.items()
+    }
 
 
 def subtitle_y(style: Dict[str, Any], play_res_y: int = 1920) -> Tuple[int, int]:
@@ -92,7 +95,11 @@ def generate_ass_subtitles(
     style = style_to_dict(style_config)
     font_name = style["font_family"]
     font_comp = next(
-        (v for k, v in FONT_METRIC_COMPENSATION.items() if k.lower() in font_name.lower().replace("bebasneue", "bebas neue")),
+        (
+            v
+            for k, v in FONT_METRIC_COMPENSATION.items()
+            if k.lower() in font_name.lower().replace("bebasneue", "bebas neue")
+        ),
         1.50,
     )
     font_size = max(16, int(round(int(style["font_size"]) * font_comp)))
@@ -129,8 +136,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             group = words[i : i + burst]
             g_end = group[-1]["end_ms"]
             for j, word in enumerate(group):
-                start = min(seg.get("start_ms", word["start_ms"]), word["start_ms"]) if i == j == 0 else word["start_ms"]
-                end = min(group[j + 1]["start_ms"], g_end) if j < len(group) - 1 else max(word["end_ms"], g_end)
+                start = (
+                    min(seg.get("start_ms", word["start_ms"]), word["start_ms"])
+                    if i == j == 0
+                    else word["start_ms"]
+                )
+                end = (
+                    min(group[j + 1]["start_ms"], g_end)
+                    if j < len(group) - 1
+                    else max(word["end_ms"], g_end)
+                )
                 if end <= start:
                     end = start + 200
                 parts = []

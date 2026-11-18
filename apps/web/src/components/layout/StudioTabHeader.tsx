@@ -31,12 +31,7 @@ export function StudioTabHeader({
   const rightContent = actions || children;
 
   return (
-    <div
-      className={
-        className ||
-        "w-full shrink-0 border-b border-border bg-card"
-      }
-    >
+    <div className={className || "w-full shrink-0 border-b border-border bg-card"}>
       <div className="mx-auto flex w-full max-w-[1920px] flex-col justify-between gap-3 px-4 py-3 sm:h-[4.5rem] sm:flex-row sm:items-center sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
           <div
@@ -50,10 +45,7 @@ export function StudioTabHeader({
                 {title}
               </h1>
               {badge && (
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 text-xs font-medium ${badgeColor}`}
-                >
+                <Badge variant="outline" className={`shrink-0 text-xs font-medium ${badgeColor}`}>
                   {badge}
                 </Badge>
               )}
@@ -66,7 +58,9 @@ export function StudioTabHeader({
                 </Badge>
               )}
             </div>
-            <p className="truncate text-xs text-muted-foreground sm:line-clamp-none">{description}</p>
+            <p className="truncate text-xs text-muted-foreground sm:line-clamp-none">
+              {description}
+            </p>
           </div>
         </div>
 

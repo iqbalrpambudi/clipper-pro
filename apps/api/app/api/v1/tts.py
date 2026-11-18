@@ -69,7 +69,9 @@ async def get_elevenlabs_voices(
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key})
+            resp = await client.get(
+                "https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}
+            )
             if resp.status_code != 200:
                 err_text = resp.text
                 if "missing_permissions" in err_text or "voices_read" in err_text:
@@ -81,29 +83,41 @@ async def get_elevenlabs_voices(
                             "dan tempel ke kolom 'Custom Voice ID' di bawah!"
                         ),
                     )
-                raise HTTPException(status_code=resp.status_code, detail=f"ElevenLabs API Error: {err_text}")
+                raise HTTPException(
+                    status_code=resp.status_code, detail=f"ElevenLabs API Error: {err_text}"
+                )
             data = resp.json()
             raw_voices = data.get("voices", [])
             result = []
             for v in raw_voices:
                 labels = v.get("labels") or {}
-                desc_parts = [labels.get("description", ""), labels.get("accent", ""), labels.get("use case", "")]
-                desc = ", ".join(p for p in desc_parts if p) or v.get("category", "ElevenLabs Voice")
-                result.append({
-                    "id": v["voice_id"],
-                    "name": f"{v['name']} (ElevenLabs)",
-                    "provider": "elevenlabs",
-                    "gender": labels.get("gender", "Neutral").capitalize(),
-                    "category": v.get("category", "premade"),
-                    "preview_url": v.get("preview_url"),
-                    "description": desc,
-                    "sample_text": "Halo, ini adalah contoh sampel suara dari akun ElevenLabs Anda.",
-                })
+                desc_parts = [
+                    labels.get("description", ""),
+                    labels.get("accent", ""),
+                    labels.get("use case", ""),
+                ]
+                desc = ", ".join(p for p in desc_parts if p) or v.get(
+                    "category", "ElevenLabs Voice"
+                )
+                result.append(
+                    {
+                        "id": v["voice_id"],
+                        "name": f"{v['name']} (ElevenLabs)",
+                        "provider": "elevenlabs",
+                        "gender": labels.get("gender", "Neutral").capitalize(),
+                        "category": v.get("category", "premade"),
+                        "preview_url": v.get("preview_url"),
+                        "description": desc,
+                        "sample_text": "Halo, ini adalah contoh sampel suara dari akun ElevenLabs Anda.",
+                    }
+                )
             return result
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal mengambil daftar suara ElevenLabs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Gagal mengambil daftar suara ElevenLabs: {str(e)}"
+        )
 
 
 @router.get("/tts/sample")
@@ -122,7 +136,11 @@ async def get_voice_sample(
     settings = get_settings()
     clean_prov = provider.lower().strip()
     if clean_prov == "elevenlabs":
-        tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
+        tts_model = model or (
+            getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+            if cfg
+            else "eleven_multilingual_v2"
+        )
         if cfg and cfg.elevenlabs_api_key_encrypted:
             api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
         if not api_key:
@@ -137,7 +155,9 @@ async def get_voice_sample(
             if not model and cfg.tts_provider and cfg.tts_provider.startswith("gemini-"):
                 tts_model = cfg.tts_provider
         if not api_key:
-            api_key = getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
+            api_key = (
+                getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
+            )
     else:
         raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
@@ -156,7 +176,9 @@ async def get_voice_sample(
             headers={"Cache-Control": "no-cache, must-revalidate"},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memuat sampel suara {voice} ({provider}): {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Gagal memuat sampel suara {voice} ({provider}): {e}"
+        )
 
 
 @router.post("/tts/estimate-cost", response_model=CostEstimateResponse)
@@ -184,15 +206,30 @@ async def trigger_tts_generation(
     if not narration or not narration.raw_text:
         raise HTTPException(status_code=400, detail="Naskah narasi belum dibuat")
 
-    target_lang = (payload.language or getattr(narration, "language", None) or getattr(proj, "language", None) or "id").strip().lower()
+    target_lang = (
+        (
+            payload.language
+            or getattr(narration, "language", None)
+            or getattr(proj, "language", None)
+            or "id"
+        )
+        .strip()
+        .lower()
+    )
 
     defaults, _, _ = load_project_defaults()
     proj_tts = proj.tts_config if isinstance(proj.tts_config, dict) else {}
 
-    provider = (payload.provider or proj_tts.get("provider") or defaults.tts.provider or "gemini").strip().lower()
+    provider = (
+        (payload.provider or proj_tts.get("provider") or defaults.tts.provider or "gemini")
+        .strip()
+        .lower()
+    )
     if payload.voice:
         voice = payload.voice
-    elif proj_tts.get("voice") and (not payload.provider or payload.provider == proj_tts.get("provider")):
+    elif proj_tts.get("voice") and (
+        not payload.provider or payload.provider == proj_tts.get("provider")
+    ):
         voice = str(proj_tts["voice"])
     elif defaults.tts.voice and provider == defaults.tts.provider:
         voice = defaults.tts.voice
@@ -204,7 +241,9 @@ async def trigger_tts_generation(
         raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
     raw_rate = payload.rate if payload.rate is not None else proj_tts.get("rate", defaults.tts.rate)
-    raw_pitch = payload.pitch if payload.pitch is not None else proj_tts.get("pitch", defaults.tts.pitch)
+    raw_pitch = (
+        payload.pitch if payload.pitch is not None else proj_tts.get("pitch", defaults.tts.pitch)
+    )
     parsed_tts = TTSConfigSchema(
         provider=provider,
         voice=voice,
@@ -216,7 +255,10 @@ async def trigger_tts_generation(
     pitch_str = f"{parsed_tts.pitch:+d}Hz"
     model_name = payload.model or (
         parsed_tts.model
-        if (parsed_tts.model and (provider == proj_tts.get("provider") or provider == defaults.tts.provider))
+        if (
+            parsed_tts.model
+            and (provider == proj_tts.get("provider") or provider == defaults.tts.provider)
+        )
         else None
     )
 
@@ -351,6 +393,7 @@ async def realign_narration_words(
 
     # Determine segments to align
     from app.services.narrative import split_into_sentence_segments
+
     target_segments = None
     if payload and payload.segments:
         target_segments = payload.segments
@@ -379,6 +422,7 @@ async def realign_narration_words(
         )
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).exception("Realignment error for project %s: %s", project_id, e)
         raise HTTPException(
             status_code=500,

@@ -4,7 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ASS style headers and fontconfig names are built from these values, so keep them to known-safe shapes.
 _HEX_COLOR = r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
-FontFamily = Literal["Montserrat", "Poppins", "Bebas Neue", "BebasNeue", "Inter", "Anton", "Oswald", "Roboto"]
+FontFamily = Literal[
+    "Montserrat", "Poppins", "Bebas Neue", "BebasNeue", "Inter", "Anton", "Oswald", "Roboto"
+]
 _FONT_FAMILY_CANONICAL = {
     "montserrat": "Montserrat",
     "poppins": "Poppins",

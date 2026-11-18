@@ -50,9 +50,7 @@ export function ThemeToggle({
       ) : (
         <Moon className="h-4 w-4 text-primary transition-transform duration-300 hover:-rotate-12" />
       )}
-      <span className="sr-only">
-        {isDark ? "Beralih ke mode terang" : "Beralih ke mode gelap"}
-      </span>
+      <span className="sr-only">{isDark ? "Beralih ke mode terang" : "Beralih ke mode gelap"}</span>
     </Button>
   );
 }

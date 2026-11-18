@@ -24,7 +24,9 @@ async def get_or_generate_voice_sample(
 
     clean_prov = re.sub(r"[^\w\-]", "", provider.lower())
     clean_voice = re.sub(r"[^\w\-]", "", voice)
-    clean_model = re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs") else ""
+    clean_model = (
+        re.sub(r"[^\w\-]", "", model.lower()) if clean_prov in ("gemini", "elevenlabs") else ""
+    )
     target_lang = (language or ("en" if voice.startswith("en-") else "id")).strip().lower()
     suffix = f"_{clean_model}" if clean_model else ""
     sample_path = cache_dir / f"sample_{clean_prov}{suffix}_{clean_voice}_{target_lang}.mp3"
@@ -34,7 +36,9 @@ async def get_or_generate_voice_sample(
 
     # Find matching sample text
     if target_lang == "en":
-        sample_text = "Welcome! This incredible story will completely change the way you see the world."
+        sample_text = (
+            "Welcome! This incredible story will completely change the way you see the world."
+        )
     else:
         sample_text = "Tahukah kamu, fakta mengejutkan ini bakal bikin kamu tercengang!"
 

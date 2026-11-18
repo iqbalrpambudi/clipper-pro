@@ -7,7 +7,9 @@ log = logging.getLogger("cliper-tasks")
 _running_tasks: Set[asyncio.Task] = set()
 
 
-def run_background_task(coro_fn: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> asyncio.Task:
+def run_background_task(
+    coro_fn: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
+) -> asyncio.Task:
     """Run an async coroutine in the background, keeping a strong reference so it is not garbage-collected."""
     task = asyncio.create_task(coro_fn(*args, **kwargs))
     _running_tasks.add(task)

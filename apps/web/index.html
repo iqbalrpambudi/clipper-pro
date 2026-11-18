@@ -13,7 +13,8 @@
         try {
           var stored = localStorage.getItem("theme");
           var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var resolved = stored === "dark" || (stored !== "light" && prefersDark) ? "dark" : "light";
+          var resolved =
+            stored === "dark" || (stored !== "light" && prefersDark) ? "dark" : "light";
           if (resolved === "dark") {
             document.documentElement.classList.add("dark");
           } else {
@@ -23,7 +24,9 @@
       })();
     </script>
   </head>
-  <body class="min-h-screen bg-background text-foreground antialiased selection:bg-primary/30 font-sans">
+  <body
+    class="min-h-screen bg-background text-foreground antialiased selection:bg-primary/30 font-sans"
+  >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

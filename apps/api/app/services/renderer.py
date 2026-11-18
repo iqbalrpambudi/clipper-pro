@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from app.core.frame_math import frame_to_sec, sec_to_frame, snap_to_frame
+from app.services.bgm import pick_track
 from app.services.cancellation import (
     TaskCancelledException,
     is_cancelled,
     register_process,
     unregister_process,
 )
-from app.services.bgm import pick_track
 from app.services.hardsub import ffmpeg_chain
+from app.services.media_probe import probe
 from app.services.tts import get_audio_duration
 
 log = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ def _escape_filter_path(path: str) -> str:
     # libass/ffmpeg requires colons, backslashes, and single quotes escaped
     escaped = str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return escaped
+
 
 TIME_REGEX = re.compile(r"time=(\d+):(\d+):(\d+\.\d+)")
 
@@ -174,31 +176,19 @@ async def _run_ffmpeg(
     return proc.returncode or 0, stderr
 
 
-async def run_ffmpeg_with_timeout(cmd: List[str], timeout_seconds: float = 30.0) -> tuple[int, str, str]:
+async def run_ffmpeg_with_timeout(
+    cmd: List[str], timeout_seconds: float = 30.0
+) -> tuple[int, str, str]:
     rc, stderr_bytes = await _run_ffmpeg(cmd, timeout=timeout_seconds)
     out_str = stderr_bytes.decode("utf-8", errors="replace")
     return rc, out_str, ""
 
 
 async def _probe_has_audio(file_path: str) -> bool:
-    """Check via ffprobe whether the media file contains at least one audio stream."""
+    """Check whether the media file contains at least one audio stream."""
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffprobe",
-            "-v",
-            "error",
-            "-select_streams",
-            "a:0",
-            "-show_entries",
-            "stream=codec_type",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(file_path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8.0)
-        return b"audio" in (stdout or b"").lower()
+        info = await asyncio.wait_for(asyncio.to_thread(probe, file_path), timeout=8.0)
+        return info["has_audio"]
     except Exception:
         return False
 
@@ -257,7 +247,9 @@ def _build_watermark_filter(
     base_oy = float(watermark.get("offset_y", 30) or 30)
     ox = max(4, int(round(base_ox * scale)))
     oy = max(4, int(round(base_oy * scale)))
-    opacity = float(watermark.get("opacity", 0.85) if watermark.get("opacity") is not None else 0.85)
+    opacity = float(
+        watermark.get("opacity", 0.85) if watermark.get("opacity") is not None else 0.85
+    )
     opacity = max(0.05, min(1.0, opacity))
 
     pos = str(watermark.get("position") or "bottom-right").lower().replace(" ", "-")
@@ -346,7 +338,11 @@ def _build_watermark_filter(
         bg_hex = str(watermark.get("background_color") or "#000000").strip().lstrip("#")
         if len(bg_hex) != 6:
             bg_hex = "000000"
-        bg_opacity = float(watermark.get("background_opacity", 0.5) if watermark.get("background_opacity") is not None else 0.5)
+        bg_opacity = float(
+            watermark.get("background_opacity", 0.5)
+            if watermark.get("background_opacity") is not None
+            else 0.5
+        )
         bg_opacity = max(0.05, min(1.0, bg_opacity))
         borderw = max(4, int(round(8 * scale)))
         filter_opts.append(f"box=1:boxcolor=0x{bg_hex}@{bg_opacity:.2f}:boxborderw={borderw}")
@@ -382,7 +378,9 @@ async def render_timeline_video(
     heartbeat_callback: Optional[Callable[[], Any]] = None,
     project_id: Optional[str] = None,
     job_id: Optional[str] = None,
-    hardsub_map: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,  # source_video_id -> hardsub band
+    hardsub_map: Optional[
+        Dict[str, Optional[Dict[str, Any]]]
+    ] = None,  # source_video_id -> hardsub band
 ) -> str:
     """Render structured timeline into final MP4 video using FFmpeg with instant cancellation support."""
     out_p = Path(output_path)
@@ -401,7 +399,9 @@ async def render_timeline_video(
     bg_mode = (background_fill or {}).get("mode", "blur")
     bg_color = (background_fill or {}).get("color", "black")
     raw_zoom = (background_fill or {}).get("zoom")
-    if raw_zoom is None or (aspect_ratio == "9:16" and bg_mode == "blur" and float(raw_zoom or 1.0) == 1.0):
+    if raw_zoom is None or (
+        aspect_ratio == "9:16" and bg_mode == "blur" and float(raw_zoom or 1.0) == 1.0
+    ):
         # Cinema-Vertical 4:5 / 3:4 Sweet-Spot default zoom (1.45x) for 9:16 vertical videos
         custom_zoom = 1.45 if (aspect_ratio == "9:16" and bg_mode == "blur") else 1.0
     else:
@@ -411,7 +411,11 @@ async def render_timeline_video(
     color_grading = (background_fill or {}).get("color_grading", True) if anti_copyright else False
     enable_source_asmr = bool((background_fill or {}).get("source_asmr", True))
     enable_curiosity_bgm = bool((background_fill or {}).get("curiosity_bgm", True))
-    bgm_track = pick_track((background_fill or {}).get("bgm_mood"), project_id or out_p.stem) if enable_curiosity_bgm else None
+    bgm_track = (
+        pick_track((background_fill or {}).get("bgm_mood"), project_id or out_p.stem)
+        if enable_curiosity_bgm
+        else None
+    )
 
     # Check target audio duration if audio provided
     audio_dur = 0.0
@@ -433,13 +437,17 @@ async def render_timeline_video(
         for idx, clip in enumerate(clips):
             # Check cancellation at each clip boundary
             if await is_cancelled(project_id, job_id=job_id):
-                log.info("Rendering cancelled by user at clip %d/%d (job=%s)", idx, total_clips, job_id)
+                log.info(
+                    "Rendering cancelled by user at clip %d/%d (job=%s)", idx, total_clips, job_id
+                )
                 raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
             vid_id = clip["source_video_id"]
             src_file = source_videos_map.get(vid_id)
             if not src_file or not Path(src_file).exists():
                 log.warning("Source video file %s not found for clip %s", src_file, clip["id"])
-                failed_clips.append({"index": idx, "id": clip.get("id"), "reason": "source file missing"})
+                failed_clips.append(
+                    {"index": idx, "id": clip.get("id"), "reason": "source file missing"}
+                )
                 continue
 
             clip_start = snap_to_frame(float(clip.get("clip_start", 0.0)))
@@ -492,14 +500,20 @@ async def render_timeline_video(
             # shorter than the slot, e.g. last clip extended to the audio), so the chunk fills its slot.
             if abs(actual_read_frames - target_out_frames) > 1:
                 pts_factor = round(target_out_dur / safe_read_duration, 4)
-                speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts={pts_factor}*PTS[v_speed];"
+                speed_prefix = (
+                    f"[0:v]trim=duration={safe_read_duration},setpts={pts_factor}*PTS[v_speed];"
+                )
                 in_label = "[v_speed]"
             else:
-                speed_prefix = f"[0:v]trim=duration={safe_read_duration},setpts=PTS-STARTPTS[v_trim];"
+                speed_prefix = (
+                    f"[0:v]trim=duration={safe_read_duration},setpts=PTS-STARTPTS[v_trim];"
+                )
                 in_label = "[v_trim]"
 
             # Hide the source's burned-in subtitles (crop or blur band) before any layout step
-            src_chain = speed_prefix + ffmpeg_chain((hardsub_map or {}).get(vid_id), in_label, "[v_src]")
+            src_chain = speed_prefix + ffmpeg_chain(
+                (hardsub_map or {}).get(vid_id), in_label, "[v_src]"
+            )
 
             # Calculate scaled foreground dimensions if custom zoom is applied
             fg_w = int(round(w * custom_zoom))
@@ -610,7 +624,11 @@ async def render_timeline_video(
                     raise TaskCancelledException("Rendering video dibatalkan oleh pengguna.")
                 log.error("Clip chunk %d failed: %s", idx, stderr.decode(errors="replace")[-300:])
                 failed_clips.append(
-                    {"index": idx, "id": clip.get("id"), "reason": stderr.decode(errors="replace")[-200:]}
+                    {
+                        "index": idx,
+                        "id": clip.get("id"),
+                        "reason": stderr.decode(errors="replace")[-200:],
+                    }
                 )
                 continue
 
@@ -677,7 +695,6 @@ async def render_timeline_video(
 
         final_inputs = ["-i", str(concatenated_video)]
         filter_chains = []
-        ass_only_chains = []
 
         # Video filter: add watermark overlay if enabled
         if watermark and watermark.get("enabled"):
@@ -695,10 +712,8 @@ async def render_timeline_video(
             else:
                 ass_filter_str = f"ass='{esc_ass}'"
             filter_chains.append(ass_filter_str)
-            ass_only_chains.append(ass_filter_str)
 
         vf_str = ",".join(filter_chains) if filter_chains else ""
-        ass_only_vf_str = ",".join(ass_only_chains) if ass_only_chains else ""
 
         preset = "ultrafast" if is_preview else "veryfast"
         crf = "28" if is_preview else "21"
@@ -730,60 +745,74 @@ async def render_timeline_video(
                 # Music file sits low under the voice; fades hide the loop start and the hard cut at the end
                 f"[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=0.35,"
                 f"afade=t=in:d=1.5,afade=t=out:st={max(audio_dur - 2.0, 0):.2f}:d=2,atrim=duration={bgm_dur:.2f}[bgm]"
-                if bgm_track else
-                f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
+                if bgm_track
+                else f"aevalsrc='0.024*sin(2*PI*110*t)+0.016*sin(2*PI*165*t)*(0.6+0.4*sin(2*PI*1.8*t))':s=44100:c=stereo:d={bgm_dur:.2f},volume={bgm_vol}[bgm]",
                 "[asmr][bgm]amix=inputs=2:duration=first:dropout_transition=0,volume=2.0[bed_raw]",
                 "[bed_raw][vo_sc]sidechaincompress=threshold=0.035:ratio=5:attack=15:release=260:makeup=1.0[bed_ducked]",
                 "[vo_out][bed_ducked]amix=inputs=2:duration=first:dropout_transition=0:weights='1.0 0.85',volume=1.85,alimiter=limit=0.95:attack=5:release=50[a_final]",
             ]
             fc_parts.extend(audio_fc)
 
-            cmd_final.extend([
-                "-filter_complex",
-                ";".join(fc_parts),
-                "-map",
-                v_map,
-                "-map",
-                "[a_final]",
-                "-c:v",
-                "libx264",
-                "-preset",
-                preset,
-                "-crf",
-                crf,
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-shortest",
-                str(out_p),
-            ])
+            cmd_final.extend(
+                [
+                    "-filter_complex",
+                    ";".join(fc_parts),
+                    "-map",
+                    v_map,
+                    "-map",
+                    "[a_final]",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    preset,
+                    "-crf",
+                    crf,
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-shortest",
+                    str(out_p),
+                ]
+            )
         else:
             if has_tts_audio:
                 cmd_final.extend(["-i", str(audio_path)])
-                audio_args = ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                audio_args = [
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-shortest",
+                ]
             else:
                 audio_args = ["-c:a", "copy"]
 
             if vf_str:
                 cmd_final.extend(["-vf", vf_str])
 
-            cmd_final.extend([
-                "-c:v",
-                "libx264",
-                "-preset",
-                preset,
-                "-crf",
-                crf,
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-            ])
+            cmd_final.extend(
+                [
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    preset,
+                    "-crf",
+                    crf,
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                ]
+            )
             cmd_final.extend(audio_args)
             cmd_final.append(str(out_p))
 
@@ -808,7 +837,15 @@ async def render_timeline_video(
             err_primary = stderr_final.decode(errors="replace")
             # If the host FFmpeg binary was compiled without libass or libfreetype (drawtext/ass),
             # preserve the 3-Layer Smart Audio Mix while stripping the unsupported video text filter.
-            if use_3layer_mix and vf_str and ("ass" in err_primary or "drawtext" in err_primary or "filterchain" in err_primary):
+            if (
+                use_3layer_mix
+                and vf_str
+                and (
+                    "ass" in err_primary
+                    or "drawtext" in err_primary
+                    or "filterchain" in err_primary
+                )
+            ):
                 log.warning(
                     "Host FFmpeg lacks ass/drawtext filter; retrying 3-layer audio mix without text filter..."
                 )
@@ -864,21 +901,33 @@ async def render_timeline_video(
             cmd_fallback = ["ffmpeg", "-y", "-i", str(concatenated_video)]
             if has_tts_audio:
                 cmd_fallback.extend(["-i", str(audio_path)])
-                fb_audio_args = ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                fb_audio_args = [
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-shortest",
+                ]
             else:
                 fb_audio_args = ["-c:a", "copy"]
-            cmd_fallback.extend([
-                "-c:v",
-                "libx264",
-                "-preset",
-                preset,
-                "-crf",
-                crf,
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-            ])
+            cmd_fallback.extend(
+                [
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    preset,
+                    "-crf",
+                    crf,
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                ]
+            )
             cmd_fallback.extend(fb_audio_args)
             cmd_fallback.append(str(out_p))
             ret_final, stderr_final = await _run_ffmpeg(

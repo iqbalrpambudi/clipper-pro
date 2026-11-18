@@ -54,7 +54,9 @@ export function sceneSafeBounds(scene: Scene): Bounds {
  * of the same video (mirrors backend matching._run_end). */
 function runEnd(scene: Scene, scenes: SceneMap): number {
   const following = [...scenes.values()]
-    .filter((sc) => sc.source_video_id === scene.source_video_id && sc.start_time >= scene.end_time - 0.05)
+    .filter(
+      (sc) => sc.source_video_id === scene.source_video_id && sc.start_time >= scene.end_time - 0.05
+    )
     .sort((a, b) => a.start_time - b.start_time);
   let prevEnd = scene.end_time;
   let end = sceneSafeBounds(scene).end;
@@ -83,7 +85,17 @@ export function clipBounds(clip: TimelineClip, scenes: SceneMap): Bounds {
  * extra/null keys does not count as a change. */
 export const clipsKey = (clips: TimelineClip[]) =>
   JSON.stringify(
-    clips.map((c) => [c.id, c.scene_id, c.source_video_id, c.timeline_start, c.timeline_end, c.clip_start, c.clip_end, c.speed, c.text ?? null])
+    clips.map((c) => [
+      c.id,
+      c.scene_id,
+      c.source_video_id,
+      c.timeline_start,
+      c.timeline_end,
+      c.clip_start,
+      c.clip_end,
+      c.speed,
+      c.text ?? null,
+    ])
   );
 
 /** Longest timeline duration the clip's source can fill at MIN_SPEED. */

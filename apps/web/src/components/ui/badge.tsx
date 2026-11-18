@@ -12,9 +12,12 @@ const badgeVariants = cva(
         destructive: "border-destructive/30 bg-destructive/10 text-destructive",
         outline: "text-foreground border-border",
         workspace: "border-border bg-muted text-secondary-foreground dark:text-muted-foreground",
-        "workspace-accent": "border-primary/30 bg-accent dark:bg-primary/15 text-accent-foreground dark:text-primary",
-        "workspace-success": "border-emerald-500/30 dark:border-emerald-800/40 bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
-        "workspace-warning": "border-amber-500/30 dark:border-amber-800/40 bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
+        "workspace-accent":
+          "border-primary/30 bg-accent dark:bg-primary/15 text-accent-foreground dark:text-primary",
+        "workspace-success":
+          "border-emerald-500/30 dark:border-emerald-800/40 bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+        "workspace-warning":
+          "border-amber-500/30 dark:border-amber-800/40 bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
       },
     },
     defaultVariants: {

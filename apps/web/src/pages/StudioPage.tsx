@@ -267,7 +267,8 @@ export function StudioPage() {
         <TimelineTab project={project} />
       ) : (
         <>
-          {(activeTab === "media" || !["narration", "tts", "render", "publish"].includes(activeTab)) && (
+          {(activeTab === "media" ||
+            !["narration", "tts", "render", "publish"].includes(activeTab)) && (
             <MediaPoolTab project={project} />
           )}
           {activeTab === "narration" && <NarrationTab project={project} />}

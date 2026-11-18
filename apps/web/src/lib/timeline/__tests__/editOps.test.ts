@@ -182,8 +182,14 @@ describe("editOps", () => {
       ["s2", mkScene("s2", 3, 10)],
     ]);
     const clip: TimelineClip = {
-      id: "c1", scene_id: "s1", source_video_id: "v1",
-      timeline_start: 0, timeline_end: 2.5, clip_start: 0, clip_end: 2.5, speed: 1,
+      id: "c1",
+      scene_id: "s1",
+      source_video_id: "v1",
+      timeline_start: 0,
+      timeline_end: 2.5,
+      clip_start: 0,
+      clip_end: 2.5,
+      speed: 1,
     };
     const [grown] = rollEdge([clip], 0, 6, scenes);
     expect(grown.timeline_end).toBe(6);
@@ -194,8 +200,14 @@ describe("editOps", () => {
   it("never slows a clip below MIN_SPEED", () => {
     const scenes: SceneMap = new Map([["s1", mkScene("s1", 0, 3)]]);
     const clip: TimelineClip = {
-      id: "c1", scene_id: "s1", source_video_id: "v1",
-      timeline_start: 0, timeline_end: 2.5, clip_start: 0, clip_end: 2.5, speed: 1,
+      id: "c1",
+      scene_id: "s1",
+      source_video_id: "v1",
+      timeline_start: 0,
+      timeline_end: 2.5,
+      clip_start: 0,
+      clip_end: 2.5,
+      speed: 1,
     };
     const [grown] = rollEdge([clip], 0, 20, scenes);
     expect(MIN_SPEED).toBe(0.9);
@@ -205,8 +217,14 @@ describe("editOps", () => {
 
   it("clipsKey ignores server-only and null keys", () => {
     const base: TimelineClip = {
-      id: "c1", scene_id: "s1", source_video_id: "v1",
-      timeline_start: 0, timeline_end: 2, clip_start: 0, clip_end: 2, speed: 1,
+      id: "c1",
+      scene_id: "s1",
+      source_video_id: "v1",
+      timeline_start: 0,
+      timeline_end: 2,
+      clip_start: 0,
+      clip_end: 2,
+      speed: 1,
     };
     const echo = { ...base, transition: null, thumbnail_url: "x.jpg", segment_id: null };
     expect(clipsKey([echo])).toBe(clipsKey([base]));
@@ -234,8 +252,14 @@ describe("editOps", () => {
       ["s3", mk("s3", 30, 40, [33])],
     ]);
     const clip: TimelineClip = {
-      id: "c1", scene_id: "s1", source_video_id: "v1",
-      timeline_start: 0, timeline_end: 2, clip_start: 3, clip_end: 5, speed: 1,
+      id: "c1",
+      scene_id: "s1",
+      source_video_id: "v1",
+      timeline_start: 0,
+      timeline_end: 2,
+      clip_start: 3,
+      clip_end: 5,
+      speed: 1,
     };
     expect(sourceCutPoints(clip, scenes)).toEqual([4.2, 8.033]);
   });

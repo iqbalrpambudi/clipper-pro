@@ -50,7 +50,7 @@ SEGMENTS = [
 
 def test_ass_burst_groups_highlight_and_srt():
     ass = generate_ass_subtitles(SEGMENTS, {"burst_word_count": 2, "highlight_color": "#00FF66"})
-    dialogues = [l for l in ass.splitlines() if l.startswith("Dialogue:")]
+    dialogues = [line for line in ass.splitlines() if line.startswith("Dialogue:")]
     assert len(dialogues) == 3  # one event per spoken word
     assert "RAHASIA" in dialogues[0] and "LUAR" in dialogues[0] and "BIASA" not in dialogues[0]
     assert "\\c&H0066FF00}" in dialogues[0] and "\\fscx110" in dialogues[0]
@@ -59,7 +59,9 @@ def test_ass_burst_groups_highlight_and_srt():
     plain = generate_ass_subtitles(SEGMENTS, {"highlight_animation": "none"})
     assert "\\fscx" not in plain
 
-    assert "1\n00:00:00,100 --> 00:00:01,800\nRahasia luar biasa!" in generate_srt_subtitles(SEGMENTS)
+    assert "1\n00:00:00,100 --> 00:00:01,800\nRahasia luar biasa!" in generate_srt_subtitles(
+        SEGMENTS
+    )
 
 
 def test_style_defaults_and_safe_y():
@@ -88,7 +90,9 @@ def test_sequence_anchored_forced_alignment():
         {"word": "bulat", "start_ms": 1350, "end_ms": 1800},
     ]
 
-    aligned = sequence_anchored_forced_alignment(original_words, transcribed_words, total_duration_ms=2000)
+    aligned = sequence_anchored_forced_alignment(
+        original_words, transcribed_words, total_duration_ms=2000
+    )
     assert len(aligned) == 6
     assert aligned[0]["word"] == "Tahukah"
     assert aligned[0]["start_ms"] == 120
@@ -137,7 +141,10 @@ async def test_alignment_empty_segments_safe():
 async def test_render_ass_endpoint_uses_unsaved_style(async_client):
     res = await async_client.post(
         "/api/v1/projects/any/subtitles/render-ass",
-        json={"style": {"highlight_color": "#00FF66", "position": "center", "offset_y": 0}, "segments": SEGMENTS},
+        json={
+            "style": {"highlight_color": "#00FF66", "position": "center", "offset_y": 0},
+            "segments": SEGMENTS,
+        },
     )
     assert res.status_code == 200
     body = res.json()

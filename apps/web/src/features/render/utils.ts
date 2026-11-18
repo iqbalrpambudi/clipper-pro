@@ -20,6 +20,9 @@ export function getSafeProjectFilename(project?: {
   id?: string | null;
 }): string {
   const raw = (project?.name || "video").trim();
-  const cleaned = raw.replace(/[\\/*?:"<>|]/g, "").replace(/\s+/g, " ").trim();
+  const cleaned = raw
+    .replace(/[\\/*?:"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return (cleaned || `video_${project?.id?.slice(0, 8) || "export"}`) + ".mp4";
 }

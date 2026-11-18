@@ -90,4 +90,6 @@ async def publish_project_event(
 
     payload_json = json.dumps(event_payload)
     event_bus.publish(project_id, payload_json, status)
-    log.debug("Published event for project %s: [%s] %s (%d%%)", project_id, task_type, message, progress)
+    log.debug(
+        "Published event for project %s: [%s] %s (%d%%)", project_id, task_type, message, progress
+    )

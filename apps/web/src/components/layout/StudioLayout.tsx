@@ -33,8 +33,7 @@ const StudioQCButton: React.FC<{
 
   if (!projectId) return null;
 
-  const currentGate =
-    activeTab === "tts" || activeTab === "narration" ? "script" : "timeline";
+  const currentGate = activeTab === "tts" || activeTab === "narration" ? "script" : "timeline";
   const latestRun =
     (currentGate === "script" ? latestQC?.script : latestQC?.timeline) ||
     latestQC?.timeline ||
@@ -280,12 +279,11 @@ export function StudioLayout({
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <Icon
-                      className="h-3.5 w-3.5 shrink-0"
-                      aria-hidden="true"
-                    />
+                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden text-xs">{tab.label.replace(/^\d+\.\s*/, "").split(" ")[0]}</span>
+                    <span className="sm:hidden text-xs">
+                      {tab.label.replace(/^\d+\.\s*/, "").split(" ")[0]}
+                    </span>
                     {tab.badge && (
                       <Badge
                         variant={isActive ? "workspace-accent" : "workspace"}

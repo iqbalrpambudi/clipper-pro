@@ -41,8 +41,17 @@ const STAGE_LABEL: Record<string, string> = {
 /** Format a UTC timestamp in the channel's fixed UTC offset (e.g. WIB) instead of the browser's zone. */
 function formatInOffset(iso: string, offsetMinutes: number): string {
   const d = new Date(Date.parse(iso) + offsetMinutes * 60_000);
-  const date = d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  const time = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  const date = d.toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+  const time = d.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
   return `${date}, ${time}`;
 }
 
@@ -180,7 +189,9 @@ export function AutopilotPage() {
   const toggleCategory = (id: string) =>
     update(
       "categories",
-      form.categories.includes(id) ? form.categories.filter((c) => c !== id) : [...form.categories, id]
+      form.categories.includes(id)
+        ? form.categories.filter((c) => c !== id)
+        : [...form.categories, id]
     );
 
   const addSlot = () => {
@@ -217,8 +228,9 @@ export function AutopilotPage() {
           <p className="workspace-page-eyebrow">Channel otomatis</p>
           <h1 className="workspace-page-title">Autopilot YouTube Shorts</h1>
           <p className="workspace-page-description">
-            Produksi mengisi pool video siap tayang di jam yang Anda tentukan. Saat jam posting tiba, video
-            tertua di pool dijadwalkan ke YouTube, jadi channel tetap posting walau produksi sedang macet.
+            Produksi mengisi pool video siap tayang di jam yang Anda tentukan. Saat jam posting
+            tiba, video tertua di pool dijadwalkan ke YouTube, jadi channel tetap posting walau
+            produksi sedang macet.
           </p>
         </header>
 
@@ -264,10 +276,14 @@ export function AutopilotPage() {
               <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Layers className="h-3.5 w-3.5" aria-hidden="true" /> Pool siap tayang
               </dt>
-              <dd className={`mt-1 text-lg font-bold ${poolLow ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+              <dd
+                className={`mt-1 text-lg font-bold ${poolLow ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}
+              >
                 {status.pool_count} / {status.pool_size}
               </dd>
-              {poolLow && <p className="text-xs text-amber-600 dark:text-amber-400">Pool menipis</p>}
+              {poolLow && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">Pool menipis</p>
+              )}
             </div>
             <div className="rounded-lg border border-border p-3">
               <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -278,7 +294,12 @@ export function AutopilotPage() {
                   ? "Sedang membuat video..."
                   : poolFull
                     ? "Pool penuh, produksi dilewati"
-                    : `${nextLocalTime(form.production_windows.map((w) => w.time), offset) ?? "-"} ${tz}`}
+                    : `${
+                        nextLocalTime(
+                          form.production_windows.map((w) => w.time),
+                          offset
+                        ) ?? "-"
+                      } ${tz}`}
               </dd>
             </div>
             <div className="rounded-lg border border-border p-3">
@@ -286,7 +307,9 @@ export function AutopilotPage() {
                 <Clock className="h-3.5 w-3.5" aria-hidden="true" /> Tayang berikutnya
               </dt>
               <dd className="mt-1 text-sm font-semibold text-foreground">
-                {nextScheduled?.slot_at ? `${formatInOffset(nextScheduled.slot_at, offset)} ${tz}` : "Belum ada"}
+                {nextScheduled?.slot_at
+                  ? `${formatInOffset(nextScheduled.slot_at, offset)} ${tz}`
+                  : "Belum ada"}
               </dd>
             </div>
           </dl>
@@ -302,10 +325,19 @@ export function AutopilotPage() {
               variant="workspace-secondary"
               size="workspace-sm"
               onClick={() => produceMutation.mutate()}
-              disabled={status.producing || poolFull || produceMutation.isPending || !status.youtube_connected}
+              disabled={
+                status.producing ||
+                poolFull ||
+                produceMutation.isPending ||
+                !status.youtube_connected
+              }
               title={poolFull ? "Pool sudah penuh" : "Buat 1 video untuk pool sekarang"}
             >
-              {produceMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+              {produceMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
               Buat 1 video sekarang
             </Button>
           }
@@ -315,14 +347,17 @@ export function AutopilotPage() {
           ) : (
             <ol className="divide-y divide-border">
               {pool.map((r) => (
-                <li key={r.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li
+                  key={r.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-foreground">
                       {r.title || r.topic || "Mencari ide..."}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {presets.find((p) => p.id === r.category)?.title ?? r.category ?? "-"} · dibuat{" "}
-                      {formatInOffset(r.created_at, offset)}
+                      {presets.find((p) => p.id === r.category)?.title ?? r.category ?? "-"} ·
+                      dibuat {formatInOffset(r.created_at, offset)}
                     </p>
                     {r.publish_error && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-rose-500">
@@ -335,7 +370,9 @@ export function AutopilotPage() {
                     {r.status === "ready" && r.project_id && r.render_job_id && (
                       <Button asChild variant="workspace-quiet" size="workspace-sm">
                         <a
-                          href={resolveApiUrl(`/api/v1/projects/${r.project_id}/render/download/${r.render_job_id}`)}
+                          href={resolveApiUrl(
+                            `/api/v1/projects/${r.project_id}/render/download/${r.render_job_id}`
+                          )}
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -368,10 +405,15 @@ export function AutopilotPage() {
         </SectionPanel>
 
         {/* Config */}
-        <form onSubmit={handleSave} className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-xs">
+        <form
+          onSubmit={handleSave}
+          className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-xs"
+        >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-semibold text-muted-foreground">Jam posting ({offsetLabel(offset)})</p>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                Jam posting ({offsetLabel(offset)})
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 {form.slots.map((s) => (
                   <span
@@ -381,7 +423,12 @@ export function AutopilotPage() {
                     {s}
                     <button
                       type="button"
-                      onClick={() => update("slots", form.slots.filter((x) => x !== s))}
+                      onClick={() =>
+                        update(
+                          "slots",
+                          form.slots.filter((x) => x !== s)
+                        )
+                      }
                       disabled={form.slots.length === 1}
                       aria-label={`Hapus jam posting ${s}`}
                       className="text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -397,7 +444,12 @@ export function AutopilotPage() {
                   className="w-28"
                   aria-label="Jam posting baru"
                 />
-                <Button type="button" variant="workspace-quiet" size="workspace-sm" onClick={addSlot}>
+                <Button
+                  type="button"
+                  variant="workspace-quiet"
+                  size="workspace-sm"
+                  onClick={addSlot}
+                >
                   <Plus className="h-3.5 w-3.5" />
                   Tambah
                 </Button>
@@ -405,7 +457,9 @@ export function AutopilotPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-semibold text-muted-foreground">Jadwal produksi ({tz})</p>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                Jadwal produksi ({tz})
+              </p>
               <div className="space-y-2">
                 {form.production_windows.map((w, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -429,7 +483,10 @@ export function AutopilotPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        update("production_windows", form.production_windows.filter((_, j) => j !== i))
+                        update(
+                          "production_windows",
+                          form.production_windows.filter((_, j) => j !== i)
+                        )
                       }
                       disabled={form.production_windows.length === 1}
                       aria-label={`Hapus jam produksi ${w.time}`}
@@ -444,7 +501,10 @@ export function AutopilotPage() {
                   variant="workspace-quiet"
                   size="workspace-sm"
                   onClick={() =>
-                    update("production_windows", [...form.production_windows, { time: "09:00", count: 1 }])
+                    update("production_windows", [
+                      ...form.production_windows,
+                      { time: "09:00", count: 1 },
+                    ])
                   }
                   disabled={form.production_windows.length >= 6}
                 >
@@ -457,7 +517,10 @@ export function AutopilotPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="ap-pool" className="mb-1 block text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="ap-pool"
+                className="mb-1 block text-xs font-semibold text-muted-foreground"
+              >
                 Ukuran pool (video)
               </label>
               <Input
@@ -470,7 +533,10 @@ export function AutopilotPage() {
               />
             </div>
             <div>
-              <label htmlFor="ap-ahead" className="mb-1 block text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="ap-ahead"
+                className="mb-1 block text-xs font-semibold text-muted-foreground"
+              >
                 Upload terjadwal maks. (jam sebelum tayang)
               </label>
               <Input
@@ -483,7 +549,10 @@ export function AutopilotPage() {
               />
             </div>
             <div>
-              <label htmlFor="ap-duration" className="mb-1 block text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="ap-duration"
+                className="mb-1 block text-xs font-semibold text-muted-foreground"
+              >
                 Target durasi (detik)
               </label>
               <Input
@@ -498,7 +567,9 @@ export function AutopilotPage() {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">Kategori (bergiliran tiap video)</p>
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+              Kategori (bergiliran tiap video)
+            </p>
             <div className="flex flex-wrap gap-2">
               {presets.map((p) => {
                 const on = form.categories.includes(p.id);
@@ -522,10 +593,18 @@ export function AutopilotPage() {
           </div>
 
           <div>
-            <label htmlFor="ap-niche" className="mb-1 block text-xs font-semibold text-muted-foreground">
+            <label
+              htmlFor="ap-niche"
+              className="mb-1 block text-xs font-semibold text-muted-foreground"
+            >
               Arahan channel untuk AI
             </label>
-            <Textarea id="ap-niche" rows={3} value={form.niche} onChange={(e) => update("niche", e.target.value)} />
+            <Textarea
+              id="ap-niche"
+              rows={3}
+              value={form.niche}
+              onChange={(e) => update("niche", e.target.value)}
+            />
           </div>
 
           <div className="flex justify-end">
@@ -535,27 +614,43 @@ export function AutopilotPage() {
               size="workspace-sm"
               disabled={saveMutation.isPending || form.categories.length === 0}
             >
-              {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {saveMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
               Simpan Pengaturan
             </Button>
           </div>
         </form>
 
         {/* History */}
-        <SectionPanel title="Riwayat" description="Video yang sudah dijadwalkan dan produksi yang gagal">
+        <SectionPanel
+          title="Riwayat"
+          description="Video yang sudah dijadwalkan dan produksi yang gagal"
+        >
           {history.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">Belum ada riwayat.</p>
+            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+              Belum ada riwayat.
+            </p>
           ) : (
             <ul className="divide-y divide-border">
               {history.map((r) => (
-                <li key={r.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li
+                  key={r.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-foreground">{r.title || r.topic || "-"}</p>
+                    <p className="truncate text-xs font-semibold text-foreground">
+                      {r.title || r.topic || "-"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {r.slot_at
                         ? `Tayang ${formatInOffset(r.slot_at, offset)} ${tz}`
                         : `Dicoba ${formatInOffset(r.created_at, offset)} ${tz}`}
-                      {r.category ? ` · ${presets.find((p) => p.id === r.category)?.title ?? r.category}` : ""}
+                      {r.category
+                        ? ` · ${presets.find((p) => p.id === r.category)?.title ?? r.category}`
+                        : ""}
                     </p>
                     {r.status === "failed" && r.error_message && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-rose-500">{r.error_message}</p>
@@ -570,7 +665,11 @@ export function AutopilotPage() {
                     )}
                     {r.video_id && (
                       <Button asChild variant="workspace-quiet" size="workspace-sm">
-                        <a href={`https://studio.youtube.com/video/${r.video_id}/edit`} target="_blank" rel="noreferrer">
+                        <a
+                          href={`https://studio.youtube.com/video/${r.video_id}/edit`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           <ExternalLink className="h-3.5 w-3.5" />
                           Studio
                         </a>

@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 2147483648  # 2GB
     MAX_SOURCE_DURATION_MINS: int = 60
 
-    CORS_ORIGINS: str = "http://localhost:3030,http://127.0.0.1:3030,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080"
-    # Browser-reachable API origin (proxies rewrite Host to e.g. api:8080, which Google cannot redirect to)
-    PUBLIC_API_URL: str = "http://localhost:8080"
+    CORS_ORIGINS: str = "http://localhost:3031,http://127.0.0.1:18080,http://localhost:18080"
+    # Browser-reachable API origin, used for the YouTube OAuth redirect URI
+    PUBLIC_API_URL: str = "http://127.0.0.1:18080"
     ENCRYPTION_KEY: str = "dGhpcy1pcy1hLTMyLWJ5dGUtc2VjcmV0LWtleS1mb3ItZGI="
 
     AI_BASE_URL: str = ""
@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: str = ""
     ELEVENLABS_MODEL: str = "eleven_multilingual_v2"
     CONFIG_JSON_PATH: str = ""
-
+    # Built frontend (apps/web/dist or app/web_dist) to serve at "/"
+    WEB_DIST: str = ""
 
     @property
     def cors_origin_list(self) -> List[str]:

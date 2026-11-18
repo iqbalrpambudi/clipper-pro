@@ -73,6 +73,16 @@ def parse_scene_analysis(raw: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+PLACEHOLDER_DESCRIPTION = "Cuplikan video aksi/aktivitas"
+
+
+def is_real_vision_result(r: Optional[Dict[str, Any]]) -> bool:
+    """Adapters swallow errors and hand back placeholder tags; only a parsed analysis counts as tagged."""
+    return bool(
+        r and r.get("analysis") and r.get("description") not in (None, "", PLACEHOLDER_DESCRIPTION)
+    )
+
+
 def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
     return {
         "characters": [],
@@ -97,6 +107,7 @@ def build_scene_embedding_text(
         parts.append(f'Dialog: "{transcript.strip()}"')
     return " ".join(parts)
 
+
 async def analyze_scene(
     adapter: BaseLLMAdapter,
     keyframe_paths: List[str],
@@ -118,8 +129,9 @@ async def analyze_scene(
 async def analyze_scenes_batch(
     adapter: BaseLLMAdapter,
     items: List[Dict[str, Any]],
-) -> List[Tuple[str, List[str], List[float], Dict[str, Any]]]:
-    """Analyze a batch of scenes using adapter's batch vision if available, with concurrent embedding."""
+) -> List[Tuple[str, List[str], List[float], Dict[str, Any], bool]]:
+    """Analyze a batch of scenes using adapter's batch vision if available, with concurrent embedding.
+    The last tuple item is False when vision failed and the scene only has placeholder tags."""
     if not items:
         return []
 
@@ -130,7 +142,7 @@ async def analyze_scenes_batch(
         try:
             batch_results = await adapter.analyze_vision_batch(batch_items)
             for r in batch_results:
-                if "scene_id" in r:
+                if "scene_id" in r and is_real_vision_result(r):
                     results_map[str(r["scene_id"])] = r
         except Exception as exc:
             log.warning("analyze_vision_batch error: %s", exc)
@@ -138,6 +150,7 @@ async def analyze_scenes_batch(
     # Scene yang tidak tercakup batch: fallback ke analyze_vision tunggal, secara paralel
     missing = [item for item in items if str(item["scene_index"]) not in results_map]
     if missing:
+
         async def _single(item: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
             try:
                 kfs = item.get("keyframe_paths", [item["thumbnail_path"]])
@@ -148,13 +161,14 @@ async def analyze_scenes_batch(
 
         singles = await asyncio.gather(*[_single(m) for m in missing])
         for sc_id, res in singles:
-            if res:
+            if is_real_vision_result(res):
                 results_map[sc_id] = res
 
     descriptions: List[str] = []
     tags_list: List[List[str]] = []
     texts_to_embed: List[str] = []
     analyses: List[Dict[str, Any]] = []
+    tagged: List[bool] = []
 
     for item in items:
         sc_id = str(item["scene_index"])
@@ -170,10 +184,9 @@ async def analyze_scenes_batch(
 
         descriptions.append(desc)
         tags_list.append(tags)
-        texts_to_embed.append(
-            build_scene_embedding_text(desc, tags, item.get("transcript"))
-        )
+        texts_to_embed.append(build_scene_embedding_text(desc, tags, item.get("transcript")))
         analyses.append(analysis)
+        tagged.append(bool(r))
 
     try:
         embedding_tasks = [adapter.generate_embedding(txt) for txt in texts_to_embed]
@@ -183,7 +196,8 @@ async def analyze_scenes_batch(
         adapter._embedding_degraded = True
         embeddings = [hash_embedding(txt) for txt in texts_to_embed]
 
-    return list(zip(descriptions, tags_list, embeddings, analyses, strict=False))
+    return list(zip(descriptions, tags_list, embeddings, analyses, tagged, strict=False))
+
 
 def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) -> str:
     """Rule-based relationship scene sekarang vs scene sebelumnya dari overlap entitas."""
@@ -200,7 +214,9 @@ def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) ->
     cur_loc = (cur.get("location") or "").lower()
 
     same_chars = bool(prev_chars & cur_chars) if (prev_chars and cur_chars) else None
-    same_loc = bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    same_loc = (
+        bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    )
 
     if same_chars and same_loc:
         return "lanjutan adegan yang sama"

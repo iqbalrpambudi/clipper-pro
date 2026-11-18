@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ScenePreviewModal } from "@/features/media/ScenePreviewModal";
 import { TimelineMonitor } from "./TimelineMonitor";
 import { TimelineTracks } from "./TimelineTracks";
@@ -17,6 +17,7 @@ export function TimelineTab({ project }: TimelineTabProps) {
     () => Object.fromEntries((project.source_videos ?? []).map((v) => [v.id, v.hardsub])),
     [project.source_videos]
   );
+  const [isAutoMatchConfirmOpen, setIsAutoMatchConfirmOpen] = useState(false);
   const {
     clips,
     setClips,
@@ -118,13 +119,10 @@ export function TimelineTab({ project }: TimelineTabProps) {
         matchElapsed={matchElapsed}
         onOpenClearModal={() => setIsClearConfirmOpen(true)}
         onAutoMatch={() => {
-          // Auto-match replaces every clip and the server reload clears undo
-          if (
-            clips.length &&
-            !window.confirm("Auto-Match akan mengganti semua klip di timeline. Lanjutkan?")
-          )
-            return;
-          autoMatchMutation.mutate();
+          // Auto-match replaces every clip and the server reload clears undo.
+          // In-app modal, not window.confirm: the desktop webview has no confirm() and returns false.
+          if (clips.length) setIsAutoMatchConfirmOpen(true);
+          else autoMatchMutation.mutate();
         }}
         onRender={async () => {
           // Render reads the saved timeline, so wait for the save (error toast comes from the mutation)
@@ -286,6 +284,19 @@ export function TimelineTab({ project }: TimelineTabProps) {
         onClose={() => setIsClearConfirmOpen(false)}
         onConfirm={() => clearTimelineMutation.mutate()}
         isPending={clearTimelineMutation.isPending}
+      />
+
+      <ClearTimelineModal
+        isOpen={isAutoMatchConfirmOpen}
+        onClose={() => setIsAutoMatchConfirmOpen(false)}
+        onConfirm={() => {
+          setIsAutoMatchConfirmOpen(false);
+          autoMatchMutation.mutate();
+        }}
+        isPending={autoMatchMutation.isPending}
+        title="Ganti semua klip dengan Auto-Match?"
+        description="Auto-Match akan mengganti semua klip di timeline dan riwayat Undo ikut terhapus."
+        confirmLabel="Auto-Match"
       />
     </div>
   );

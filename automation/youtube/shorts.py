@@ -7,7 +7,7 @@
 The YouTube channel must be connected once in cliper-pro: Settings -> Publish YouTube.
 
   uv run shorts.py make --query "..." --topic "..." --bgm calm   # build one short, prints JSON
-  (--bgm = folder name in storage/bgm, royalty-free tracks, e.g. freetouse.com)
+  (--bgm = folder name in the app data bgm/ dir, royalty-free tracks, e.g. freetouse.com)
   uv run shorts.py upload --project <id> --title ... --description ... --tags a,b --publish-at 2026-11-16T07:00:00+07:00
 """
 
@@ -21,7 +21,7 @@ from pathlib import Path
 import httpx
 
 HERE = Path(__file__).parent
-API = "http://localhost:8080/api/v1"
+API = "http://127.0.0.1:18080/api/v1"  # Cliper Pro service (must be running)
 LOG = HERE / "log.jsonl"
 
 http = httpx.Client(base_url=API, timeout=600)
