@@ -10,6 +10,7 @@
 - **🔊 Text-to-Speech** — Sintesis suara narasi menggunakan Gemini TTS atau ElevenLabs
 - **📊 Smart Timeline** — Auto-match scene visual ke segmen narasi audio
 - **💬 Subtitle Karaoke** — Subtitle ASS presisi dengan highlight per-kata
+- **🎵 BGM** — Library musik latar per mood, otomatis dicampur saat render
 - **🎥 Render & Export** — Render video final 9:16 vertikal via FFmpeg
 - **🤖 Autopilot** — Pipeline terjadwal sampai publish ke YouTube Shorts
 
@@ -64,7 +65,7 @@ make install-tool   # install CLI `cliper-pro` secara global via uv tool
 | `cliper-pro service uninstall` | Nonaktifkan auto-start saat login |
 | `cliper-pro doctor` | Cek kesiapan Python, `ffmpeg`, `yt-dlp`, dan Web UI bundle |
 
-Konfigurasi AI model, TTS, dan YouTube dilakukan melalui Web UI di halaman **Settings**.
+Konfigurasi AI model, TTS, dan YouTube dilakukan melalui Web UI di halaman **Settings**. Versi aplikasi yang berjalan tampil di footer sidebar Web UI dan lewat `GET /api/v1/version`.
 
 ## 📂 Data
 
@@ -92,11 +93,22 @@ Export production juga bisa dijalankan langsung via CLI dari repo:
 
 ```bash
 cliper-pro export                     # export versi saat ini ke ./dist/
-cliper-pro export --version 0.2.0     # bump versi + export ke ./dist/
+cliper-pro export --version 1.1.0     # bump versi + export ke ./dist/
 cliper-pro export --install           # export + langsung install lokal
 ```
 
-Push tag `v*` (mis. `git tag v0.2.0 && git push --tags`) akan memicu GitHub Actions untuk membangun dan mempublikasikan aset `./dist/*` ke GitHub Releases agar langsung bisa diinstall via `curl`.
+### Versioning & Rilis Otomatis
+
+Versi mengikuti [Semantic Versioning](https://semver.org) dan dihitung otomatis dari [Conventional Commits](https://www.conventionalcommits.org) sejak tag `v*` terakhir (`scripts/next-version.sh`):
+
+| Commit | Kenaikan |
+|--------|----------|
+| `feat!:` atau footer `BREAKING CHANGE` | major (`1.0.0` → `2.0.0`) |
+| `feat:` | minor (`1.0.0` → `1.1.0`) |
+| `fix:` / `perf:` | patch (`1.0.0` → `1.0.1`) |
+| `chore:`, `docs:`, `style:`, `refactor:`, `test:` | tidak ada rilis |
+
+Setiap push ke `main` menjalankan GitHub Actions ([release.yml](.github/workflows/release.yml)): menghitung versi, build, lalu membuat tag `vX.Y.Z` dan GitHub Release berisi `./dist/*` agar langsung bisa diinstall via `curl`. Push tag `v*` manual atau `workflow_dispatch` dengan input `version` tetap didukung. Alur branch dan rilis lengkap ada di [CLAUDE.md](CLAUDE.md).
 
 ## 🛠️ Tech Stack
 
