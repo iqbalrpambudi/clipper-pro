@@ -1,5 +1,6 @@
 from typing import List, Optional
 from urllib.parse import urlparse
+
 from pydantic import BaseModel, field_validator
 
 
@@ -14,12 +15,19 @@ class YTFormatOption(BaseModel):
     label: str
 
 
+class HeatmapBucket(BaseModel):
+    start_time: float
+    end_time: float
+    value: float
+
+
 class YTInfoResponse(BaseModel):
     title: str
     duration: float
     duration_str: str
     thumbnail: Optional[str] = None
     formats: List[YTFormatOption] = []
+    heatmap: Optional[List[HeatmapBucket]] = None
 
 
 class YTDownloadRequest(BaseModel):
@@ -27,6 +35,8 @@ class YTDownloadRequest(BaseModel):
     format_id: Optional[str] = None
     selected_resolution: Optional[str] = None
     title: Optional[str] = None
+    start_sec: Optional[float] = None  # trim window for long sources
+    end_sec: Optional[float] = None
 
     @field_validator("url")
     @classmethod

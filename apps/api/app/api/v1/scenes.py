@@ -1,29 +1,37 @@
-from pydantic import BaseModel
 import asyncio
-import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
+from app.core.events import publish_project_event
 from app.core.storage import storage
 from app.models.project import Scene, SourceVideo
 from app.models.timeline import Timeline
 from app.schemas.project import SceneResponse
 from app.services.ai_adapters.factory import get_active_vision_adapter
-from app.services.vision_tagger import analyze_scene, parse_scene_analysis
+from app.services.vision_tagger import (
+    PLACEHOLDER_DESCRIPTION,
+    analyze_scene,
+    build_scene_embedding_text,
+    is_real_vision_result,
+    parse_scene_analysis,
+)
 from app.workers.tasks import detect_scenes_job
-from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["scenes"])
-
 
 
 @router.get("", response_model=List[SceneResponse])
 async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db)):
     v_res = await db.execute(
-        select(SourceVideo).where(SourceVideo.project_id == project_id).order_by(SourceVideo.created_at.asc())
+        select(SourceVideo)
+        .where(SourceVideo.project_id == project_id)
+        .order_by(SourceVideo.created_at.asc())
     )
     source_videos = v_res.scalars().all()
     video_url_map = {v.id: storage.to_relative_url(v.file_path) for v in source_videos}
@@ -59,6 +67,7 @@ async def list_project_scenes(project_id: str, db: AsyncSession = Depends(get_db
             description=s.description,
             tags=s.tags or [],
             transcript=s.transcript,
+            shot_info=s.shot_info,
             status=s.status,
             created_at=s.created_at,
         )
@@ -83,7 +92,9 @@ async def transcribe_project_scenes(
     res = await db.execute(select(Scene).where(Scene.project_id == project_id))
     scenes = res.scalars().all()
     if not scenes:
-        raise HTTPException(status_code=400, detail="Belum ada scene di project ini untuk ditranskripsikan")
+        raise HTTPException(
+            status_code=400, detail="Belum ada scene di project ini untuk ditranskripsikan"
+        )
 
     asyncio.create_task(
         transcribe_scenes_job(
@@ -93,8 +104,10 @@ async def transcribe_project_scenes(
             language=payload.language,
         )
     )
-    return {"message": "Transkripsi dialog audio dijadwalkan di background", "total_scenes": len(scenes)}
-
+    return {
+        "message": "Transkripsi dialog audio dijadwalkan di background",
+        "total_scenes": len(scenes),
+    }
 
 
 @router.post("/re-detect/{video_id}")
@@ -127,22 +140,24 @@ async def retag_project_scenes(
     - force: re-analyzes all scenes from scratch.
     """
     res = await db.execute(
-        select(Scene)
-        .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
     all_scenes = res.scalars().all()
     if not all_scenes:
-        raise HTTPException(status_code=400, detail="Belum ada scene di project ini untuk di-tagging ulang")
+        raise HTTPException(
+            status_code=400, detail="Belum ada scene di project ini untuk di-tagging ulang"
+        )
 
     adapter = await get_active_vision_adapter(db)
     vision_model_name = getattr(adapter, "vision_model", "AI Vision")
 
     if payload.mode == "quick":
         scenes_to_process = [
-            s for s in all_scenes
-            if not s.description
-            or s.description == "Cuplikan video aksi/aktivitas"
+            s
+            for s in all_scenes
+            if s.status == "untagged"
+            or not s.description
+            or s.description == PLACEHOLDER_DESCRIPTION
             or s.tags == ["video", "scene", "aktivitas"]
         ]
         if not scenes_to_process:
@@ -158,10 +173,11 @@ async def retag_project_scenes(
 
     batch_size = max(2, min(payload.batch_size, 8))
     processed_count = 0
+    last_error = ""
 
     # Process in batches of 5-8 thumbnails per request
     for i in range(0, len(scenes_to_process), batch_size):
-        batch = scenes_to_process[i:i + batch_size]
+        batch = scenes_to_process[i : i + batch_size]
         batch_items = []
         for s in batch:
             p = Path(s.thumbnail_path) if s.thumbnail_path else None
@@ -173,29 +189,46 @@ async def retag_project_scenes(
         if not batch_items:
             continue
 
-        if hasattr(adapter, "analyze_vision_batch"):
-            batch_results = await adapter.analyze_vision_batch(batch_items)
-            results_by_id = {r["scene_id"]: r for r in batch_results}
-            for s in batch:
-                res_item = results_by_id.get(s.id)
-                if res_item:
-                    s.description = res_item["description"]
-                    s.tags = res_item["tags"]
-                    if res_item.get("analysis"):
-                        s.analysis = parse_scene_analysis(res_item["analysis"])
-                    text_emb = f"{s.description}. Kata kunci: {", ".join(s.tags)}"
-                    s.embedding = await adapter.generate_embedding(text_emb)
-                    processed_count += 1
-        else:
-            for s_id, p_str in batch_items:
-                s = next((sc for sc in batch if sc.id == s_id), None)
-                if s:
-                    desc, tags, emb, analysis = await analyze_scene(adapter, [p_str])
-                    s.description = desc
-                    s.tags = tags
-                    s.embedding = emb
-                    s.analysis = analysis
-                    processed_count += 1
+        # One failed batch must not abort the rest; the caller gets the last error (e.g. quota)
+        try:
+            if hasattr(adapter, "analyze_vision_batch"):
+                batch_results = await adapter.analyze_vision_batch(batch_items)
+                results_by_id = {r["scene_id"]: r for r in batch_results}
+                for s in batch:
+                    res_item = results_by_id.get(s.id)
+                    if is_real_vision_result(res_item):
+                        s.description = res_item["description"]
+                        s.tags = res_item["tags"]
+                        if res_item.get("analysis"):
+                            s.analysis = parse_scene_analysis(res_item["analysis"])
+                        s.embedding = await adapter.generate_embedding(
+                            build_scene_embedding_text(s.description, s.tags, s.transcript)
+                        )
+                        s.status = "ready"
+                        processed_count += 1
+            else:
+                for s_id, p_str in batch_items:
+                    s = next((sc for sc in batch if sc.id == s_id), None)
+                    if s:
+                        desc, tags, emb, analysis = await analyze_scene(
+                            adapter, [p_str], s.transcript
+                        )
+                        if desc == PLACEHOLDER_DESCRIPTION:
+                            continue
+                        s.description = desc
+                        s.tags = tags
+                        s.embedding = emb
+                        s.analysis = analysis
+                        s.status = "ready"
+                        processed_count += 1
+        except Exception as e:
+            last_error = str(e)
+
+    # Adapters fail soft (placeholder tags), so their sticky flags are the only trace of quota / outage
+    if not last_error and getattr(adapter, "_quota_exhausted", False):
+        last_error = "AI Vision quota exhausted (RESOURCE_EXHAUSTED)"
+    elif not last_error and getattr(adapter, "_service_unavailable", False):
+        last_error = "AI Vision tidak tersedia (auth/quota/koneksi gagal)"
 
         await db.commit()
 
@@ -246,6 +279,8 @@ async def retag_project_scenes(
         "total": len(all_scenes),
         "model": vision_model_name,
         "mode": payload.mode,
+        "failed": len(scenes_to_process) - processed_count,
+        "error": last_error,
     }
 
 
@@ -256,9 +291,7 @@ async def repair_project_thumbnails(
 ):
     """Scan and regenerate any missing or 0-byte thumbnail files for project scenes."""
     res = await db.execute(
-        select(Scene)
-        .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
     scenes = res.scalars().all()
     if not scenes:
@@ -294,5 +327,3 @@ async def repair_project_thumbnails(
         "repaired": repaired_count,
         "total": len(scenes),
     }
-
-

@@ -1,16 +1,46 @@
+import logging
+from pathlib import Path
 from typing import AsyncGenerator
+
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text
+
 from app.core.config import get_settings
 
+logger = logging.getLogger("cliper-pro.db")
 settings = get_settings()
+
+# Prepare SQLite directory if file-based database
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+connect_args = {}
+if is_sqlite:
+    connect_args["check_same_thread"] = False
+    # If using relative path like sqlite+aiosqlite:///storage/cliper.db
+    db_path_str = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace(
+        "sqlite:///", ""
+    )
+    if db_path_str and not db_path_str.startswith(":memory:"):
+        db_file = Path(db_path_str)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_pre_ping=True,
+    connect_args=connect_args,
 )
+
+if is_sqlite:
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=60000")
+        cursor.close()
+
 
 SessionLocal = async_sessionmaker(
     bind=engine,
@@ -33,52 +63,43 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    async with engine.begin() as conn:
-        # Ensure pgvector extension is enabled
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        await conn.run_sync(Base.metadata.create_all)
-        # Ensure new schema columns exist
-        await conn.execute(text("ALTER TABLE scenes ADD COLUMN IF NOT EXISTS transcript TEXT;"))
-        await conn.execute(text("ALTER TABLE subtitle_styles ADD COLUMN IF NOT EXISTS description VARCHAR(255);"))
-        await conn.execute(text("ALTER TABLE subtitle_styles ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT TRUE;"))
-        await conn.execute(text("ALTER TABLE source_videos ALTER COLUMN selected_resolution TYPE VARCHAR(255);"))
-        await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_audio BOOLEAN DEFAULT TRUE;"))
-        await conn.execute(text("ALTER TABLE timelines ADD COLUMN IF NOT EXISTS has_subtitles BOOLEAN DEFAULT TRUE;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS watermark JSON DEFAULT NULL;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type VARCHAR(50) DEFAULT 'short_video';"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS youtube_metadata JSON DEFAULT '{}'::json;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS characters JSON DEFAULT '[]'::json;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS locations JSON DEFAULT '[]'::json;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS world_setting JSON DEFAULT '{}'::json;"))
-        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'id';"))
-        await conn.execute(text("ALTER TABLE narrations ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'id';"))
-        await conn.execute(text("ALTER TABLE render_jobs ADD COLUMN IF NOT EXISTS thumbnail_path VARCHAR(500);"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_base_url VARCHAR(500);"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_model VARCHAR(100) DEFAULT 'dall-e-3';"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_api_key_encrypted TEXT;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_system_prompt TEXT;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS image_concurrency INTEGER DEFAULT 2;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS tts_fallback_enabled BOOLEAN DEFAULT TRUE;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS elevenlabs_api_key_encrypted TEXT;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS elevenlabs_model VARCHAR(100) DEFAULT 'eleven_multilingual_v2';"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_api_key_encrypted TEXT;"))
-        await conn.execute(text("ALTER TABLE model_configs ADD COLUMN IF NOT EXISTS runware_tts_model VARCHAR(100) DEFAULT 'fishaudio:s2.1@pro';"))
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS image_presets (
-                id VARCHAR(50) PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                description TEXT,
-                category VARCHAR(50) DEFAULT 'custom',
-                master_prompt TEXT NOT NULL,
-                negative_prompt TEXT,
-                reference_image_url VARCHAR(500),
-                preview_image_url VARCHAR(500),
-                user_text_input TEXT,
-                style_attributes JSON DEFAULT '{}'::json,
-                is_builtin BOOLEAN DEFAULT FALSE,
-                is_active BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc'),
-                updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc')
-            );
-        """))
+    """Initialize DB: create all tables on startup and ensure incremental columns exist."""
+    from sqlalchemy import inspect, text
 
+    import app.models  # noqa: F401
+
+    def _ensure_incremental_columns(sync_conn) -> None:
+        inspector = inspect(sync_conn)
+        table_names = set(inspector.get_table_names())
+        if "projects" in table_names:
+            proj_cols = {c["name"] for c in inspector.get_columns("projects")}
+            if "tts_config" not in proj_cols:
+                sync_conn.execute(text("ALTER TABLE projects ADD COLUMN tts_config JSON"))
+            if "qc_config" not in proj_cols:
+                sync_conn.execute(text("ALTER TABLE projects ADD COLUMN qc_config JSON"))
+        if "source_videos" in table_names:
+            sv_cols = {c["name"] for c in inspector.get_columns("source_videos")}
+            for col in ("trim_start", "trim_end"):
+                if col not in sv_cols:
+                    sync_conn.execute(text(f"ALTER TABLE source_videos ADD COLUMN {col} FLOAT"))
+            if "hardsub" not in sv_cols:
+                sync_conn.execute(text("ALTER TABLE source_videos ADD COLUMN hardsub JSON"))
+        if "subtitle_styles" in table_names:
+            sub_cols = {c["name"] for c in inspector.get_columns("subtitle_styles")}
+            if "text_case" not in sub_cols:
+                sync_conn.execute(
+                    text(
+                        "ALTER TABLE subtitle_styles ADD COLUMN text_case VARCHAR(20) DEFAULT 'uppercase'"
+                    )
+                )
+        if "model_configs" in table_names:
+            mc_cols = {c["name"] for c in inspector.get_columns("model_configs")}
+            if "vision_fallback_model" not in mc_cols:
+                sync_conn.execute(
+                    text("ALTER TABLE model_configs ADD COLUMN vision_fallback_model VARCHAR(100)")
+                )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_incremental_columns)
+    logger.info("Database initialized successfully.")

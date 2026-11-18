@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
 from app.core.storage import storage
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project, Scene, SourceVideo
-from app.models.narration import Narration, AudioTrack
 from app.models.timeline import Timeline
-from app.schemas.timeline import TimelineUpdateRequest, TimelineResponse
+from app.schemas.timeline import TimelineResponse, TimelineUpdateRequest
 from app.services.ai_adapters.factory import get_active_llm_adapter
 from app.services.matching import match_scenes_to_segments
 
@@ -31,13 +32,16 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
 
     # Fetch all candidate scenes from project media pool
     s_res = await db.execute(
-        select(Scene)
-        .where(Scene.project_id == project_id)
-        .order_by(Scene.start_time.asc())
+        select(Scene).where(Scene.project_id == project_id).order_by(Scene.start_time.asc())
     )
     scenes = s_res.scalars().all()
     if not scenes:
         raise HTTPException(status_code=400, detail="Belum ada scene terdeteksi di Media Pool")
+
+    # Fetch source videos for heatmap data & URL mapping
+    v_res = await db.execute(select(SourceVideo).where(SourceVideo.project_id == project_id))
+    all_source_videos = v_res.scalars().all()
+    heatmap_map = {v.id: v.heatmap_data for v in all_source_videos if v.heatmap_data}
 
     scenes_data = [
         {
@@ -49,7 +53,12 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
             "thumbnail_url": storage.to_relative_url(s.thumbnail_path),
             "description": s.description,
             "tags": s.tags,
+            "analysis": s.analysis,
+            "heatmap_data": heatmap_map.get(s.source_video_id),
+            "transcript": s.transcript,
+            "shot_info": s.shot_info,
             "embedding": s.embedding,
+            "status": s.status,
         }
         for s in scenes
     ]
@@ -103,7 +112,9 @@ async def auto_match_timeline(project_id: str, db: AsyncSession = Depends(get_db
     for c in timeline.clips:
         c_copy = dict(c)
         c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
-        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(
+            c.get("source_video_id")
+        )
         res_clips.append(c_copy)
 
     return TimelineResponse(
@@ -134,7 +145,9 @@ async def get_timeline(project_id: str, db: AsyncSession = Depends(get_db)):
     for c in timeline.clips or []:
         c_copy = dict(c)
         c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
-        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(
+            c.get("source_video_id")
+        )
         res_clips.append(c_copy)
 
     return TimelineResponse(
@@ -161,7 +174,9 @@ async def update_timeline(
 
     raw_clips = [c.model_dump() for c in payload.clips]
     timeline.clips = raw_clips
-    timeline.total_duration = payload.total_duration or max([c["timeline_end"] for c in raw_clips], default=0.0)
+    timeline.total_duration = payload.total_duration or max(
+        [c["timeline_end"] for c in raw_clips], default=0.0
+    )
 
     if payload.has_audio is not None:
         timeline.has_audio = payload.has_audio
@@ -184,7 +199,9 @@ async def update_timeline(
         if not c_copy.get("thumbnail_url"):
             c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
         if not c_copy.get("video_url"):
-            c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+            c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(
+                c.get("source_video_id")
+            )
         res_clips.append(c_copy)
 
     return TimelineResponse(
@@ -280,7 +297,9 @@ async def readd_narration_to_timeline(
     for c in timeline.clips or []:
         c_copy = dict(c)
         c_copy["thumbnail_url"] = scenes_map.get(c.get("scene_id"))
-        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(c.get("source_video_id"))
+        c_copy["video_url"] = scenes_video_map.get(c.get("scene_id")) or video_url_map.get(
+            c.get("source_video_id")
+        )
         res_clips.append(c_copy)
 
     return TimelineResponse(

@@ -1,0 +1,63 @@
+name: Release Cliper Pro
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (tanpa prefix v, mis. 0.2.0)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # butuh riwayat commit + tag untuk hitung versi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd apps/api && uv sync --extra dev
+          cd ../web && npm ci
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VER="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            VER=$(bash scripts/next-version.sh)
+          fi
+          echo "version=${VER#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Export production artifacts
+        if: steps.ver.outputs.version != ''
+        run: bash scripts/release.sh --version "${{ steps.ver.outputs.version }}"
+
+      - name: Publish GitHub Release
+        if: steps.ver.outputs.version != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          files: dist/*
+          generate_release_notes: true

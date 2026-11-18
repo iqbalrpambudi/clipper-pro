@@ -1,51 +1,37 @@
-import asyncio
 import uuid
 from pathlib import Path
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import delete, select
-from arq import create_pool
-from app.core.db import get_db
-from app.core.redis import get_redis_settings
-from app.core.storage import storage
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import get_settings
+from app.core.db import get_db
+from app.core.events import publish_project_event
+from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.project import Project, SourceVideo
-from app.schemas.project import SourceVideoResponse
 from app.schemas.media import (
-    YTInfoResponse,
     YTDownloadRequest,
-    YTUpdateResponse,
+    YTInfoResponse,
 )
+from app.schemas.project import SourceVideoResponse, SourceVideoUpdate
+from app.services.scene_detector import get_video_metadata
 from app.services.ytdlp import (
     get_video_info,
-    get_ytdlp_version,
-    update_ytdlp,
 )
-from app.services.scene_detector import get_video_metadata
 from app.workers.tasks import detect_scenes_job, download_youtube_job
-from app.core.events import publish_project_event
 
 router = APIRouter(prefix="/projects/{project_id}/media", tags=["media"])
 
-_background_tasks: set = set()
 
 async def enqueue_task(job_name: str, *args, **kwargs):
-    """Enqueue job into arq redis queue or run via asyncio background task."""
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job(job_name, *args, **kwargs)
-        await pool.close()
-    except Exception:
-        # Fallback to local asyncio task (keep a strong ref so it is not GC'd mid-run)
-        task = None
-        if job_name == "detect_scenes_job":
-            task = asyncio.create_task(detect_scenes_job({}, *args))
-        elif job_name == "download_youtube_job":
-            task = asyncio.create_task(download_youtube_job({}, *args))
-        if task is not None:
-            _background_tasks.add(task)
-            task.add_done_callback(_background_tasks.discard)
+    """Run job via in-process background task."""
+    if job_name == "detect_scenes_job":
+        run_background_task(detect_scenes_job, {}, *args)
+    elif job_name == "download_youtube_job":
+        run_background_task(download_youtube_job, {}, *args)
 
 
 @router.get("", response_model=List[SourceVideoResponse])
@@ -68,6 +54,8 @@ async def list_media(project_id: str, db: AsyncSession = Depends(get_db)):
             status=v.status,
             progress=v.progress,
             error_message=v.error_message,
+            heatmap_data=v.heatmap_data,
+            hardsub=v.hardsub,
             created_at=v.created_at,
         )
         for v in videos
@@ -180,6 +168,8 @@ async def upload_media_files(
             status=v.status,
             progress=v.progress,
             error_message=v.error_message,
+            heatmap_data=v.heatmap_data,
+            hardsub=v.hardsub,
             created_at=v.created_at,
         )
         for v in created_videos
@@ -201,7 +191,10 @@ async def fetch_youtube_info(
         # Validation duration check
         settings = get_settings()
         max_sec = settings.MAX_SOURCE_DURATION_MINS * 60
-        if info.duration > max_sec:
+        effective = info.duration
+        if payload.start_sec is not None or payload.end_sec is not None:
+            effective = (payload.end_sec or info.duration) - (payload.start_sec or 0)
+        if effective > max_sec:
             raise HTTPException(
                 status_code=400,
                 detail=f"Durasi video ({info.duration_str}) melebihi batas maksimal {settings.MAX_SOURCE_DURATION_MINS} menit",
@@ -225,7 +218,11 @@ async def trigger_youtube_download(
 
     initial_title = (payload.title or "").strip()
     if initial_title:
-        initial_filename = initial_title if any(initial_title.lower().endswith(ext) for ext in [".mp4", ".mov", ".mkv", ".webm"]) else f"{initial_title}.mp4"
+        initial_filename = (
+            initial_title
+            if any(initial_title.lower().endswith(ext) for ext in [".mp4", ".mov", ".mkv", ".webm"])
+            else f"{initial_title}.mp4"
+        )
     else:
         initial_filename = "Mendownload dari YouTube..."
 
@@ -235,6 +232,8 @@ async def trigger_youtube_download(
         filename=initial_filename,
         youtube_url=payload.url,
         selected_resolution=payload.format_id,
+        trim_start=payload.start_sec,
+        trim_end=payload.end_sec,
         status="downloading",
         progress=5,
     )
@@ -269,6 +268,7 @@ async def trigger_youtube_download(
         status=video.status,
         progress=video.progress,
         error_message=None,
+        heatmap_data=None,
         created_at=video.created_at,
     )
 
@@ -285,6 +285,7 @@ async def cancel_video_processing(
         raise HTTPException(status_code=404, detail="Video tidak ditemukan")
 
     from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, video_id=video_id)
 
     video.status = "failed"
@@ -302,7 +303,46 @@ async def cancel_video_processing(
         data={"video_id": video_id},
     )
 
-    return {"status": "cancelled", "message": f"Proses video '{video.filename}' berhasil dibatalkan."}
+    return {
+        "status": "cancelled",
+        "message": f"Proses video '{video.filename}' berhasil dibatalkan.",
+    }
+
+
+@router.patch("/{video_id}", response_model=SourceVideoResponse)
+async def update_source_video(
+    project_id: str,
+    video_id: str,
+    payload: SourceVideoUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    video = await db.get(SourceVideo, video_id)
+    if not video or video.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Video tidak ditemukan")
+
+    # A user edit is final: scene re-detection never overwrites a manual band
+    video.hardsub = {**payload.hardsub.model_dump(), "source": "manual"}
+    await db.commit()
+    await db.refresh(video)
+    return SourceVideoResponse(
+        id=video.id,
+        project_id=video.project_id,
+        origin=video.origin,
+        file_url=storage.to_relative_url(video.file_path),
+        filename=video.filename,
+        youtube_url=video.youtube_url,
+        selected_resolution=video.selected_resolution,
+        duration=video.duration,
+        width=video.width,
+        height=video.height,
+        fps=video.fps,
+        status=video.status,
+        progress=video.progress,
+        error_message=video.error_message,
+        heatmap_data=video.heatmap_data,
+        hardsub=video.hardsub,
+        created_at=video.created_at,
+    )
 
 
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -317,6 +357,7 @@ async def delete_source_video(
 
     # Cancel any active worker process (yt-dlp or scene detection) immediately before deleting
     from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, video_id=video_id)
 
     if video.file_path and Path(video.file_path).exists():
@@ -328,6 +369,7 @@ async def delete_source_video(
     # Clean up scene thumbnail files from disk
     from app.models.project import Scene
     from app.models.timeline import Timeline
+
     res = await db.execute(select(Scene).where(Scene.source_video_id == video_id))
     deleted_scenes = res.scalars().all()
     for sc in deleted_scenes:
@@ -341,17 +383,17 @@ async def delete_source_video(
                 except Exception:
                     pass
 
-    # Clear cached task in Redis if it belongs to this video
+    # Clear cached task in event_bus if it belongs to this video
     try:
-        from app.core.redis import get_redis_client
         import json
-        redis_client = get_redis_client()
-        cache_key = f"project:{project_id}:active_task"
-        cached = await redis_client.get(cache_key)
+
+        from app.core.events import event_bus
+
+        cached = event_bus.get_active_task(project_id)
         if cached:
             task_dict = json.loads(cached)
             if task_dict.get("data", {}).get("video_id") == video_id:
-                await redis_client.delete(cache_key)
+                event_bus._active_tasks.pop(project_id, None)
     except Exception:
         pass
 
@@ -363,9 +405,7 @@ async def delete_source_video(
     timeline = timeline_res.scalar_one_or_none()
     if timeline and timeline.clips:
         deleted_scene_ids = {sc.id for sc in deleted_scenes}
-        remaining = [
-            c for c in timeline.clips if c.get("scene_id") not in deleted_scene_ids
-        ]
+        remaining = [c for c in timeline.clips if c.get("scene_id") not in deleted_scene_ids]
         if len(remaining) != len(timeline.clips):
             timeline.clips = remaining
             timeline.total_duration = max(

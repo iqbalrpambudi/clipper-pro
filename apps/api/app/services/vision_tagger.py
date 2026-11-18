@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from app.services.ai_adapters.base import BaseLLMAdapter, hash_embedding
 
 log = logging.getLogger(__name__)
@@ -9,21 +10,26 @@ log = logging.getLogger(__name__)
 # (diinject dari DB karena akurat), relationship dihitung rule-based.
 VISION_PROMPT = (
     "Analisis frame video ini secara terstruktur dalam Bahasa Indonesia. Berikan:\n"
-    "- description: ringkasan visual 2 kalimat; sebutkan warna dominan, gerakan kamera/subjek, "
-    "dan mood adegan (tegang/hangat/melankolis dll) supaya mudah dicocokkan dengan narasi\n"
+    "- description: ringkasan visual 2 kalimat; sebutkan aksi fisik utama, detail proses/tekstur, gerakan kamera/subjek, "
+    "dan mood adegan supaya mudah dicocokkan dengan narasi\n"
     "- characters: daftar orang/karakter/hewan yang terlihat (nama/deskripsi singkat, kosongkan jika tidak ada)\n"
-    "- action: aksi/aktivitas utama yang sedang terjadi (frasa singkat)\n"
+    "- action: aksi/aktivitas fisik utama yang sedang terjadi (frasa singkat)\n"
     "- location: tempat/latar scene\n"
-    "- objects: objek penting yang terlihat\n"
-    "- state: suasana/keadaan (emosi, waktu, cuaca, kondisi)\n"
+    "- objects: objek/mesin/alat penting yang terlihat\n"
+    "- state: suasana/keadaan (emosi, waktu, suhu/kondisi fisik)\n"
+    "- visual_satisfaction: angka 0.0-1.0 seberapa satisfying/dinamis visual ini untuk YouTube Shorts "
+    "(0.85-1.0 = aksi presisi tinggi, percikan, pemotongan, transformasi jelas, close-up detail mekanis; "
+    "0.5-0.8 = proses kerja aktif; 0.1-0.3 = gambar statis kosong, talking-head membosankan, atau blur; "
+    "0.0 = logo, intro, outro, end screen, ajakan subscribe, kartu judul/teks)\n"
+    "- focal_point: posisi objek utama di layar ('center', 'left', atau 'right')\n"
     "- confidence: angka 0.0-1.0 seberapa yakin analisis ini akurat\n"
-    "- tags: 5-8 kata kunci relevan, termasuk warna dominan, gerakan, dan mood\n"
-    'Contoh format JSON: {"description": "Pria berbaju hitam menyeduh kopi di meja bar kayu. '
-    'Cahaya kuning hangat dari lampu gantung, kamera statis, suasana santai.", '
-    '"characters": ["pria berbaju hitam"], "action": "menyeduh kopi", '
-    '"location": "kafe", "objects": ["cangkir", "mesin espresso"], '
-    '"state": "siang, santai", "confidence": 0.85, '
-    '"tags": ["kopi", "barista", "kafe", "kuning hangat", "kamera statis", "santai"]}'
+    "- tags: 5-8 kata kunci relevan, termasuk aksi fisik, alat, dan mood\n"
+    'Contoh format JSON: {"description": "Mesin laser presisi memotong pelat baja tebal dengan percikan api terang. '
+    'Kamera fokus dekat pada garis potong yang rapi dan berkilau.", '
+    '"characters": [], "action": "memotong pelat baja dengan laser", '
+    '"location": "bengkel pabrik", "objects": ["mesin CNC laser", "pelat baja"], '
+    '"state": "intens, presisi tinggi", "visual_satisfaction": 0.92, "focal_point": "center", "confidence": 0.9, '
+    '"tags": ["laser", "baja", "percikan api", "presisi", "satisfying", "pabrik"]}'
 )
 
 
@@ -45,14 +51,36 @@ def parse_scene_analysis(raw: Dict[str, Any]) -> Dict[str, Any]:
         confidence = 0.5
     confidence = max(0.0, min(1.0, confidence))
 
+    try:
+        visual_satisfaction = float(raw.get("visual_satisfaction", 0.65))
+    except (TypeError, ValueError):
+        visual_satisfaction = 0.65
+    visual_satisfaction = max(0.0, min(1.0, visual_satisfaction))
+
+    focal_point = str(raw.get("focal_point") or "center").strip().lower()
+    if focal_point not in ("center", "left", "right"):
+        focal_point = "center"
+
     return {
         "characters": _str_list(raw.get("characters")),
         "action": str(raw.get("action") or "").strip(),
         "location": str(raw.get("location") or "").strip(),
         "objects": _str_list(raw.get("objects")),
         "state": str(raw.get("state") or "").strip(),
+        "visual_satisfaction": round(visual_satisfaction, 2),
+        "focal_point": focal_point,
         "confidence": round(confidence, 2),
     }
+
+
+PLACEHOLDER_DESCRIPTION = "Cuplikan video aksi/aktivitas"
+
+
+def is_real_vision_result(r: Optional[Dict[str, Any]]) -> bool:
+    """Adapters swallow errors and hand back placeholder tags; only a parsed analysis counts as tagged."""
+    return bool(
+        r and r.get("analysis") and r.get("description") not in (None, "", PLACEHOLDER_DESCRIPTION)
+    )
 
 
 def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
@@ -62,6 +90,8 @@ def _fallback_analysis(description: str, tags: List[str]) -> Dict[str, Any]:
         "location": "",
         "objects": list(tags or []),
         "state": "",
+        "visual_satisfaction": 0.6,
+        "focal_point": "center",
         "confidence": 0.3,
     }
 
@@ -76,6 +106,7 @@ def build_scene_embedding_text(
     if transcript and transcript.strip():
         parts.append(f'Dialog: "{transcript.strip()}"')
     return " ".join(parts)
+
 
 async def analyze_scene(
     adapter: BaseLLMAdapter,
@@ -98,8 +129,9 @@ async def analyze_scene(
 async def analyze_scenes_batch(
     adapter: BaseLLMAdapter,
     items: List[Dict[str, Any]],
-) -> List[Tuple[str, List[str], List[float], Dict[str, Any]]]:
-    """Analyze a batch of scenes using adapter's batch vision if available, with concurrent embedding."""
+) -> List[Tuple[str, List[str], List[float], Dict[str, Any], bool]]:
+    """Analyze a batch of scenes using adapter's batch vision if available, with concurrent embedding.
+    The last tuple item is False when vision failed and the scene only has placeholder tags."""
     if not items:
         return []
 
@@ -110,7 +142,7 @@ async def analyze_scenes_batch(
         try:
             batch_results = await adapter.analyze_vision_batch(batch_items)
             for r in batch_results:
-                if "scene_id" in r:
+                if "scene_id" in r and is_real_vision_result(r):
                     results_map[str(r["scene_id"])] = r
         except Exception as exc:
             log.warning("analyze_vision_batch error: %s", exc)
@@ -118,6 +150,7 @@ async def analyze_scenes_batch(
     # Scene yang tidak tercakup batch: fallback ke analyze_vision tunggal, secara paralel
     missing = [item for item in items if str(item["scene_index"]) not in results_map]
     if missing:
+
         async def _single(item: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
             try:
                 kfs = item.get("keyframe_paths", [item["thumbnail_path"]])
@@ -128,13 +161,14 @@ async def analyze_scenes_batch(
 
         singles = await asyncio.gather(*[_single(m) for m in missing])
         for sc_id, res in singles:
-            if res:
+            if is_real_vision_result(res):
                 results_map[sc_id] = res
 
     descriptions: List[str] = []
     tags_list: List[List[str]] = []
     texts_to_embed: List[str] = []
     analyses: List[Dict[str, Any]] = []
+    tagged: List[bool] = []
 
     for item in items:
         sc_id = str(item["scene_index"])
@@ -150,10 +184,9 @@ async def analyze_scenes_batch(
 
         descriptions.append(desc)
         tags_list.append(tags)
-        texts_to_embed.append(
-            build_scene_embedding_text(desc, tags, item.get("transcript"))
-        )
+        texts_to_embed.append(build_scene_embedding_text(desc, tags, item.get("transcript")))
         analyses.append(analysis)
+        tagged.append(bool(r))
 
     try:
         embedding_tasks = [adapter.generate_embedding(txt) for txt in texts_to_embed]
@@ -163,7 +196,8 @@ async def analyze_scenes_batch(
         adapter._embedding_degraded = True
         embeddings = [hash_embedding(txt) for txt in texts_to_embed]
 
-    return list(zip(descriptions, tags_list, embeddings, analyses))
+    return list(zip(descriptions, tags_list, embeddings, analyses, tagged, strict=False))
+
 
 def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) -> str:
     """Rule-based relationship scene sekarang vs scene sebelumnya dari overlap entitas."""
@@ -180,7 +214,9 @@ def compute_relationship(prev: Optional[Dict[str, Any]], cur: Dict[str, Any]) ->
     cur_loc = (cur.get("location") or "").lower()
 
     same_chars = bool(prev_chars & cur_chars) if (prev_chars and cur_chars) else None
-    same_loc = bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    same_loc = (
+        bool(prev_loc and cur_loc and prev_loc == cur_loc) if (prev_loc and cur_loc) else None
+    )
 
     if same_chars and same_loc:
         return "lanjutan adegan yang sama"

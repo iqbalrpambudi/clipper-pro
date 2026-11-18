@@ -1,0 +1,292 @@
+import asyncio
+import logging
+import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from app.services.cancellation import TaskCancelledException, is_cancelled
+from app.services.tts.audio_utils import (
+    _concat_mp3s,
+    _generate_silence_mp3,
+    _group_segments_by_chapter,
+    _split_text_for_tts,
+)
+from app.services.tts.exceptions import ElevenLabsCharacterLimitError
+from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
+from app.services.tts.providers.gemini import generate_gemini_tts
+
+log = logging.getLogger(__name__)
+
+
+def clean_narration_for_tts(text: str) -> str:
+    """Strip bracket tags and colons/semicolons so TTS never stumbles."""
+    if not text or not isinstance(text, str):
+        return ""
+    cleaned = re.sub(r"\[.*?\]", "", text)
+    cleaned = re.sub(r"(\d+):(\d+)", r"\1.\2", cleaned)
+    cleaned = re.sub(r"\s*;\s*", ", ", cleaned)
+    cleaned = re.sub(r"\s*:\s*", ", ", cleaned)
+    cleaned = re.sub(r",(\s*,)+", ",", cleaned)
+    cleaned = re.sub(r",\s*([.!?])", r"\1", cleaned)
+    cleaned = re.sub(r",\s*$", ".", cleaned)
+    return " ".join(cleaned.split())
+
+
+async def generate_speech_audio(
+    text: str,
+    output_path: str,
+    provider: str = "gemini",
+    voice: str = "Puck",
+    rate: str = "+0%",
+    pitch: str = "+0Hz",
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    segments: Optional[List[Dict[str, Any]]] = None,
+    language: Optional[str] = "id",
+    project_id: Optional[str] = None,
+) -> float:
+    """Entrypoint for TTS audio generation.
+
+    Supports Gemini and ElevenLabs.
+    - ElevenLabs: Industry benchmark for zero tone drift. Handles single-pass generation up to 40,000 chars.
+    - Gemini TTS: High-fidelity multimodal audio. Single-pass extended up to 2,200 chars (~2.5 mins) to prevent intonation drift.
+
+    Provider errors propagate to the caller so the user sees the failure; there is
+    no automatic fallback to another provider.
+    """
+    clean_text = (text or "").strip()
+    if not clean_text:
+        raise ValueError("Teks narasi tidak boleh kosong.")
+
+    clean_text = clean_narration_for_tts(clean_text)
+    prov = provider.lower().strip()
+    target_lang = (language or "id").strip().lower()
+
+    async def _synthesize_block(block_text: str, block_output_path: str) -> float:
+        if project_id and await is_cancelled(project_id):
+            raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
+        # 1. ELEVENLABS TTS
+        if prov == "elevenlabs":
+            try:
+                m_id = (model or "eleven_multilingual_v2").lower().strip()
+                if (
+                    "flash_v2_5" in m_id or "turbo_v2_5" in m_id or "flash" in m_id
+                ) and "v4" not in m_id:
+                    eleven_max_chars = 40000
+                    chunk_size = 38000
+                else:
+                    eleven_max_chars = 10000
+                    chunk_size = 9500
+
+                if len(block_text) <= eleven_max_chars:
+                    return await generate_elevenlabs_tts(
+                        block_text,
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        model=model or "eleven_multilingual_v2",
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                chunks = _split_text_for_tts(block_text, max_chars=chunk_size)
+                if len(chunks) == 1:
+                    return await generate_elevenlabs_tts(
+                        chunks[0],
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        model=model or "eleven_multilingual_v2",
+                        rate=rate,
+                        pitch=pitch,
+                        language=target_lang,
+                    )
+
+                out_p = Path(block_output_path)
+                parts: List[str] = []
+                try:
+                    for i, chunk in enumerate(chunks):
+                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                        try:
+                            await generate_elevenlabs_tts(
+                                chunk,
+                                part_path,
+                                api_key=api_key,
+                                voice=voice,
+                                model=model or "eleven_multilingual_v2",
+                                rate=rate,
+                                pitch=pitch,
+                                language=target_lang,
+                            )
+                            parts.append(part_path)
+                        except Exception as chunk_err:
+                            if parts:
+                                try:
+                                    await _concat_mp3s(parts, block_output_path)
+                                except Exception:
+                                    pass
+                            raise RuntimeError(
+                                f"Sintesis ElevenLabs terhenti pada bagian {i + 1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+                        if i < len(chunks) - 1:
+                            await asyncio.sleep(0.3)
+
+                    return await _concat_mp3s(parts, block_output_path)
+                finally:
+                    for p in parts:
+                        Path(p).unlink(missing_ok=True)
+            except Exception as e:
+                err_str = str(e).lower()
+                is_char_limit = isinstance(e, ElevenLabsCharacterLimitError) or any(
+                    k in err_str
+                    for k in [
+                        "character limit",
+                        "too_large",
+                        "request_too_large",
+                        "max_characters",
+                        "maximum text length",
+                        "quota_exceeded",
+                        "exceeds the maximum",
+                        "characters allowed",
+                    ]
+                )
+                if is_char_limit:
+                    log.error("ElevenLabs TTS melebihi batas karakter: %s", e)
+                    raise RuntimeError(f"ElevenLabs Character Limit Exceeded: {e}") from e
+
+                log.error("ElevenLabs TTS failed: %s", e)
+                raise
+
+        # 3. GEMINI TTS
+        elif prov == "gemini":
+            try:
+                if len(block_text) <= 2200:
+                    return await generate_gemini_tts(
+                        block_text,
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        model=model,
+                        language=target_lang,
+                        project_id=project_id,
+                    )
+
+                chunks = _split_text_for_tts(block_text, max_chars=750)
+                if len(chunks) == 1:
+                    return await generate_gemini_tts(
+                        chunks[0],
+                        block_output_path,
+                        api_key=api_key,
+                        voice=voice,
+                        rate=rate,
+                        pitch=pitch,
+                        model=model,
+                        language=target_lang,
+                        project_id=project_id,
+                    )
+
+                out_p = Path(block_output_path)
+                parts = []
+                try:
+                    for i, chunk in enumerate(chunks):
+                        if project_id and await is_cancelled(project_id):
+                            raise TaskCancelledException(
+                                "Pembuatan suara narasi dibatalkan oleh pengguna."
+                            )
+
+                        part_path = str(out_p.with_name(f"{out_p.stem}.part{i:03d}.mp3"))
+                        try:
+                            await generate_gemini_tts(
+                                chunk,
+                                part_path,
+                                api_key=api_key,
+                                voice=voice,
+                                rate=rate,
+                                pitch=pitch,
+                                model=model,
+                                language=target_lang,
+                                project_id=project_id,
+                            )
+                            parts.append(part_path)
+                        except TaskCancelledException:
+                            raise
+                        except Exception as chunk_err:
+                            log.error(
+                                "Gemini TTS chunk %d/%d failed: %s", i + 1, len(chunks), chunk_err
+                            )
+                            raise RuntimeError(
+                                f"Sintesis suara GEMINI terhenti pada bagian {i + 1}/{len(chunks)}: {chunk_err}"
+                            ) from chunk_err
+
+                        if i < len(chunks) - 1:
+                            await asyncio.sleep(0.3)
+
+                    return await _concat_mp3s(parts, block_output_path)
+                finally:
+                    for p in parts:
+                        Path(p).unlink(missing_ok=True)
+            except TaskCancelledException:
+                raise
+            except Exception as e:
+                log.error("Gemini TTS failed: %s", e)
+                raise
+
+        else:
+            raise ValueError(f"TTS provider tidak dikenal: {prov}")
+
+    # Multi-chapter YouTube breathing pause (~1.2s silence between distinct chapters)
+    raw_chapter_blocks = _group_segments_by_chapter(segments)
+    cleaned_chapter_blocks = [
+        clean_narration_for_tts(blk).strip()
+        for blk in raw_chapter_blocks
+        if clean_narration_for_tts(blk).strip()
+    ]
+    joined_len = sum(len(b) for b in cleaned_chapter_blocks)
+    if (
+        len(cleaned_chapter_blocks) >= 2
+        and len(clean_text) > 0
+        and abs(joined_len - len(clean_text)) <= max(120, int(len(clean_text) * 0.2))
+    ):
+        out_p = Path(output_path)
+        chapter_files: List[str] = []
+        silence_file = str(out_p.with_name(f"{out_p.stem}.chap_silence.mp3"))
+        try:
+            for c_idx, c_block in enumerate(cleaned_chapter_blocks):
+                if project_id and await is_cancelled(project_id):
+                    raise TaskCancelledException("Pembuatan suara narasi dibatalkan oleh pengguna.")
+
+                c_path = str(out_p.with_name(f"{out_p.stem}.chap{c_idx:03d}.mp3"))
+                try:
+                    await _synthesize_block(c_block, c_path)
+                    chapter_files.append(c_path)
+                except TaskCancelledException:
+                    raise
+                except Exception as chap_err:
+                    raise RuntimeError(
+                        f"Sintesis TTS terhenti pada Babak {c_idx + 1}/{len(cleaned_chapter_blocks)}: {chap_err}"
+                    ) from chap_err
+                if c_idx < len(cleaned_chapter_blocks) - 1:
+                    await asyncio.sleep(0.3)
+
+            await _generate_silence_mp3(
+                silence_file,
+                duration_sec=1.2,
+                reference_mp3_path=chapter_files[0] if chapter_files else None,
+            )
+            interleaved_parts: List[str] = []
+            for idx, cf in enumerate(chapter_files):
+                interleaved_parts.append(cf)
+                if idx < len(chapter_files) - 1:
+                    interleaved_parts.append(silence_file)
+
+            return await _concat_mp3s(interleaved_parts, output_path)
+        finally:
+            for cf in chapter_files:
+                Path(cf).unlink(missing_ok=True)
+            Path(silence_file).unlink(missing_ok=True)
+
+    return await _synthesize_block(clean_text, output_path)

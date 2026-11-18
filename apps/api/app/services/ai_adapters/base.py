@@ -2,7 +2,7 @@ import hashlib
 import math
 import re
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 EMBEDDING_DIM = 768
 

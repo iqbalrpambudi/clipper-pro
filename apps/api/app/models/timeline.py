@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, Float, Integer, ForeignKey, DateTime, JSON, Boolean
+
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.db import Base
 
 
@@ -10,7 +12,9 @@ class Timeline(Base):
     __tablename__ = "timelines"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
     # clips: list of objects:
     # {
     #   "id": "clip-1",
@@ -29,7 +33,9 @@ class Timeline(Base):
     has_audio: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     has_subtitles: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     def __init__(self, **kwargs):
         kwargs.setdefault("has_audio", True)
@@ -46,28 +52,37 @@ class SubtitleStyle(Base):
     __tablename__ = "subtitle_styles"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True)
-    preset_name: Mapped[str] = mapped_column(String(50), default="viral_tiktok")  # viral_tiktok | hormozi_punch | minimalist | custom
+    project_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=True
+    )
+    preset_name: Mapped[str] = mapped_column(String(50), default="pop_kuning")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False)
     font_family: Mapped[str] = mapped_column(String(100), default="Poppins")
-    font_size: Mapped[int] = mapped_column(Integer, default=52)
+    font_size: Mapped[int] = mapped_column(Integer, default=58)
     font_weight: Mapped[str] = mapped_column(String(20), default="Bold")
     primary_color: Mapped[str] = mapped_column(String(20), default="#FFFFFF")
     highlight_color: Mapped[str] = mapped_column(String(20), default="#FFE600")
     outline_color: Mapped[str] = mapped_column(String(20), default="#000000")
-    outline_width: Mapped[int] = mapped_column(Integer, default=4)
+    outline_width: Mapped[int] = mapped_column(Integer, default=5)
     box_color: Mapped[str] = mapped_column(String(20), default="#000000")
     box_opacity: Mapped[float] = mapped_column(Float, default=0.0)  # 0 to 1
     position: Mapped[str] = mapped_column(String(20), default="bottom")  # top | center | bottom
-    offset_y: Mapped[int] = mapped_column(Integer, default=0)
+    offset_y: Mapped[int] = mapped_column(Integer, default=260)
     offset_x: Mapped[int] = mapped_column(Integer, default=0)
-    display_mode: Mapped[str] = mapped_column(String(20), default="per_word")  # per_word | full_sentence | burst
-    burst_word_count: Mapped[int] = mapped_column(Integer, default=2)  # 2 or 3
-    highlight_animation: Mapped[str] = mapped_column(String(20), default="color")  # scale | color | box | none
-    scale_factor: Mapped[float] = mapped_column(Float, default=1.0)
-    emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    display_mode: Mapped[str] = mapped_column(
+        String(20), default="burst"
+    )  # per_word | full_sentence | burst
+    burst_word_count: Mapped[int] = mapped_column(Integer, default=3)  # 2 or 3
+    highlight_animation: Mapped[str] = mapped_column(
+        String(20), default="scale"
+    )  # scale | color | box | none
+    scale_factor: Mapped[float] = mapped_column(Float, default=1.16)
+    text_case: Mapped[str] = mapped_column(
+        String(20), default="uppercase", server_default="uppercase"
+    )  # sentence | uppercase
+    emoji_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

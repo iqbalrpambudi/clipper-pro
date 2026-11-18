@@ -1,20 +1,21 @@
-import asyncio
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from datetime import datetime
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 from sqlalchemy import select
-from arq import create_pool
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
-from app.core.redis import get_redis_settings
 from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.project import Project, RenderJob
 from app.schemas.project import RenderJobResponse
-from app.workers.tasks import render_video_job
 from app.services.cancellation import clear_cancellation, kill_all_matching_processes
+from app.workers.tasks import render_video_job
 
 router = APIRouter(prefix="/projects/{project_id}/render", tags=["render"])
 
@@ -24,12 +25,7 @@ class FinalRenderRequest(BaseModel):
 
 
 async def enqueue_render_task(job_id: str):
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job("render_video_job", job_id)
-        await pool.close()
-    except Exception:
-        asyncio.create_task(render_video_job({}, job_id))
+    run_background_task(render_video_job, {}, job_id)
 
 
 @router.post("", response_model=RenderJobResponse)
@@ -166,10 +162,16 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
     has_updated = False
     for j in jobs:
         if j.status in ("rendering", "queued") and j.created_at:
-            created_at_dt = j.created_at.replace(tzinfo=None) if getattr(j.created_at, "tzinfo", None) else j.created_at
+            created_at_dt = (
+                j.created_at.replace(tzinfo=None)
+                if getattr(j.created_at, "tzinfo", None)
+                else j.created_at
+            )
             if (now - created_at_dt).total_seconds() > 900:
                 j.status = "failed"
-                j.error_message = "Rendering terhenti otomatis karena melebihi batas waktu (timeout)."
+                j.error_message = (
+                    "Rendering terhenti otomatis karena melebihi batas waktu (timeout)."
+                )
                 j.completed_at = now
                 has_updated = True
     if has_updated:
@@ -182,7 +184,9 @@ async def list_render_jobs(project_id: str, db: AsyncSession = Depends(get_db)):
             status=j.status,
             progress=j.progress,
             output_url=storage.to_relative_url(j.output_file_path),
-            thumbnail_url=storage.resolve_render_job_thumbnail_url(j.thumbnail_path, j.output_file_path),
+            thumbnail_url=storage.resolve_render_job_thumbnail_url(
+                j.thumbnail_path, j.output_file_path
+            ),
             file_size_bytes=storage.get_file_size(j.output_file_path),
             log_output=j.log_output,
             error_message=j.error_message,
@@ -223,9 +227,7 @@ async def clear_render_jobs(
     project_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    res = await db.execute(
-        select(RenderJob).where(RenderJob.project_id == project_id)
-    )
+    res = await db.execute(select(RenderJob).where(RenderJob.project_id == project_id))
     jobs = res.scalars().all()
     if not jobs:
         return {
@@ -264,9 +266,18 @@ async def download_rendered_video(
     if not job.output_file_path or not Path(job.output_file_path).exists():
         raise HTTPException(status_code=404, detail="File video hasil render belum tersedia")
 
+    project = await db.get(Project, project_id)
+    raw_name = (project.name if project and project.name else f"video_{project_id[:8]}").strip()
+    safe_name = re.sub(r'[\\/*?:"<>|]', "", raw_name)
+    safe_name = re.sub(r"\s+", " ", safe_name).strip()
+    if not safe_name:
+        safe_name = f"video_{project_id[:8]}"
+
+    filename = f"{safe_name}.mp4"
+
     return FileResponse(
         path=job.output_file_path,
-        filename=f"cliper_short_{job.id[:8]}.mp4",
+        filename=filename,
         media_type="video/mp4",
     )
 
@@ -282,8 +293,9 @@ async def cancel_render_job(
     if not job or job.project_id != project_id:
         raise HTTPException(status_code=404, detail="Render job tidak ditemukan")
 
-    from app.services.cancellation import request_cancellation
     from app.core.events import publish_project_event
+    from app.services.cancellation import request_cancellation
+
     await request_cancellation(project_id, job_id=job_id)
 
     job.status = "failed"
@@ -303,4 +315,3 @@ async def cancel_render_job(
     )
 
     return {"status": "cancelled", "message": "Rendering video berhasil dibatalkan."}
-

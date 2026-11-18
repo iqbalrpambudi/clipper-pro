@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import String, Text, Float, Integer, ForeignKey, DateTime, JSON
+
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from pgvector.sqlalchemy import Vector
+
 from app.core.db import Base
 
 
@@ -13,61 +14,110 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, processing, ready, rendering, completed, failed
-    project_type: Mapped[str] = mapped_column(String(50), default="short_video")  # short_video | long_storyboard
+    status: Mapped[str] = mapped_column(
+        String(50), default="draft"
+    )  # draft, processing, ready, rendering, completed, failed
+    project_type: Mapped[str] = mapped_column(String(50), default="short_video")
     aspect_ratio: Mapped[str] = mapped_column(String(20), default="9:16")  # 9:16, 1:1, 16:9
     resolution: Mapped[str] = mapped_column(String(20), default="1080p")  # 1080p, 720p
-    background_fill: Mapped[dict] = mapped_column(JSON, default=lambda: {"mode": "blur", "color": "#000000"})
+    background_fill: Mapped[dict] = mapped_column(
+        JSON,
+        default=lambda: {
+            "mode": "blur",
+            "color": "#000000",
+            "zoom": 1.45,
+            "source_asmr": True,
+            "curiosity_bgm": True,
+        },
+    )
     watermark: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    tts_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    qc_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
     youtube_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     characters: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     locations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     world_setting: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
     language: Mapped[str] = mapped_column(String(10), default="id")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
-    source_videos: Mapped[List["SourceVideo"]] = relationship("SourceVideo", back_populates="project", cascade="all, delete-orphan")
-    scenes: Mapped[List["Scene"]] = relationship("Scene", back_populates="project", cascade="all, delete-orphan")
-    narrations: Mapped[List["Narration"]] = relationship("Narration", back_populates="project", cascade="all, delete-orphan")
-    audio_tracks: Mapped[List["AudioTrack"]] = relationship("AudioTrack", back_populates="project", cascade="all, delete-orphan")
-    timeline: Mapped[Optional["Timeline"]] = relationship("Timeline", back_populates="project", uselist=False, cascade="all, delete-orphan")
-    subtitle_style: Mapped[Optional["SubtitleStyle"]] = relationship("SubtitleStyle", back_populates="project", uselist=False, cascade="all, delete-orphan")
-    render_jobs: Mapped[List["RenderJob"]] = relationship("RenderJob", back_populates="project", cascade="all, delete-orphan")
-    storyboard_items: Mapped[List["StoryboardItem"]] = relationship("StoryboardItem", back_populates="project", cascade="all, delete-orphan", order_by="StoryboardItem.order_index")
+    source_videos: Mapped[List["SourceVideo"]] = relationship(
+        "SourceVideo", back_populates="project", cascade="all, delete-orphan"
+    )
+    scenes: Mapped[List["Scene"]] = relationship(
+        "Scene", back_populates="project", cascade="all, delete-orphan"
+    )
+    narrations: Mapped[List["Narration"]] = relationship(
+        "Narration", back_populates="project", cascade="all, delete-orphan"
+    )
+    audio_tracks: Mapped[List["AudioTrack"]] = relationship(
+        "AudioTrack", back_populates="project", cascade="all, delete-orphan"
+    )
+    timeline: Mapped[Optional["Timeline"]] = relationship(
+        "Timeline", back_populates="project", uselist=False, cascade="all, delete-orphan"
+    )
+    subtitle_style: Mapped[Optional["SubtitleStyle"]] = relationship(
+        "SubtitleStyle", back_populates="project", uselist=False, cascade="all, delete-orphan"
+    )
+    render_jobs: Mapped[List["RenderJob"]] = relationship(
+        "RenderJob", back_populates="project", cascade="all, delete-orphan"
+    )
+    qc_runs: Mapped[List["QCRun"]] = relationship(
+        "QCRun", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class SourceVideo(Base):
     __tablename__ = "source_videos"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     origin: Mapped[str] = mapped_column(String(20), default="upload")  # upload | ytdlp
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     youtube_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     selected_resolution: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    trim_start: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    trim_end: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     duration: Mapped[float] = mapped_column(Float, default=0.0)
     width: Mapped[int] = mapped_column(Integer, default=0)
     height: Mapped[int] = mapped_column(Integer, default=0)
     fps: Mapped[float] = mapped_column(Float, default=0.0)
-    status: Mapped[str] = mapped_column(String(50), default="pending")  # pending, downloading, processing, ready, failed
+    status: Mapped[str] = mapped_column(
+        String(50), default="pending"
+    )  # pending, downloading, processing, ready, failed
     progress: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    heatmap_data: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )  # YouTube "most replayed" [{start_time, end_time, value}]
+    hardsub: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )  # burned-in subtitle band, see services/hardsub.py
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="source_videos")
-    scenes: Mapped[List["Scene"]] = relationship("Scene", back_populates="source_video", cascade="all, delete-orphan")
+    scenes: Mapped[List["Scene"]] = relationship(
+        "Scene", back_populates="source_video", cascade="all, delete-orphan"
+    )
 
 
 class Scene(Base):
     __tablename__ = "scenes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_video_id: Mapped[str] = mapped_column(String(36), ForeignKey("source_videos.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_video_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("source_videos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     scene_index: Mapped[int] = mapped_column(Integer, default=0)
     start_time: Mapped[float] = mapped_column(Float, default=0.0)
     end_time: Mapped[float] = mapped_column(Float, default=0.0)
@@ -75,10 +125,17 @@ class Scene(Base):
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[list] = mapped_column(JSON, default=list)
-    analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # structured: characters, action, location, objects, state, confidence
+    analysis: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )  # structured: characters, action, location, objects, state, confidence
+    shot_info: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )  # shot-precise: internal_cuts, usable_ranges, usable_duration, montage
     transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    embedding: Mapped[Optional[list]] = mapped_column(Vector(768), nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="detected")  # detected, analyzing, ready, failed
+    embedding: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50), default="detected"
+    )  # detected, analyzing, ready, failed
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -90,9 +147,13 @@ class RenderJob(Base):
     __tablename__ = "render_jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    project_id: Mapped[str] = mapped_column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     render_type: Mapped[str] = mapped_column(String(20), default="final")  # final | preview
-    status: Mapped[str] = mapped_column(String(50), default="queued")  # queued, rendering, completed, failed
+    status: Mapped[str] = mapped_column(
+        String(50), default="queued"
+    )  # queued, rendering, completed, failed
     progress: Mapped[int] = mapped_column(Integer, default=0)
     output_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

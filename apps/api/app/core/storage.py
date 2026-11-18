@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 from typing import Optional
+
 from app.core.config import get_settings
 
 
@@ -36,11 +37,6 @@ class StorageManager:
 
     def get_renders_dir(self, project_id: str) -> Path:
         p = self.get_project_dir(project_id) / "renders"
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-
-    def get_storyboard_dir(self, project_id: str) -> Path:
-        p = self.get_project_dir(project_id) / "storyboard"
         p.mkdir(parents=True, exist_ok=True)
         return p
 
@@ -92,13 +88,19 @@ class StorageManager:
                     return self.to_relative_url(thumb_p)
                 try:
                     import subprocess
+
                     subprocess.run(
                         [
-                            "ffmpeg", "-y",
-                            "-ss", "00:00:00.500",
-                            "-i", str(out_p),
-                            "-vframes", "1",
-                            "-q:v", "2",
+                            "ffmpeg",
+                            "-y",
+                            "-ss",
+                            "00:00:00.500",
+                            "-i",
+                            str(out_p),
+                            "-vframes",
+                            "1",
+                            "-q:v",
+                            "2",
                             str(thumb_p),
                         ],
                         capture_output=True,
@@ -182,4 +184,3 @@ class StorageManager:
 
 
 storage = StorageManager()
-

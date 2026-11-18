@@ -1,0 +1,226 @@
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  overflow-x: hidden;
+  scrollbar-color: rgb(210 205 191 / 0.5) transparent;
+}
+
+.workspace-theme {
+  min-height: 100vh;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  color-scheme: light;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.dark .workspace-theme,
+.workspace-theme.dark,
+.dark.workspace-theme {
+  color-scheme: dark;
+}
+
+.workspace-portal-surface {
+  color-scheme: light;
+}
+
+.dark .workspace-portal-surface,
+.dark.workspace-portal-surface {
+  color-scheme: dark;
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+}
+
+.workspace-theme :is(input, textarea, select, button) {
+  color-scheme: light;
+}
+
+.dark .workspace-theme :is(input, textarea, select, button),
+.dark:is(input, textarea, select, button) {
+  color-scheme: dark;
+}
+
+.workspace-theme label[class] {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dark .workspace-theme label[class] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.workspace-theme
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ),
+    textarea,
+    select
+  ) {
+  border-color: hsl(var(--input));
+  border-radius: 0.75rem;
+  background-color: hsl(var(--control-background));
+  color: hsl(var(--foreground));
+}
+
+.workspace-theme
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ),
+    select
+  ) {
+  min-height: 2.25rem;
+}
+
+.workspace-theme
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ),
+    textarea,
+    select
+  ):focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.45);
+  outline-offset: 1px;
+}
+
+/* Minimal overlay scrollbars — thin, transparent by default, visible on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: rgb(210 205 191 / 0.5) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: rgb(210 205 191 / 0.55);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: rgb(184 178 162 / 0.8);
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.dark *:hover::-webkit-scrollbar-thumb {
+  background: rgb(95 90 82 / 0.55);
+}
+
+.dark *:hover::-webkit-scrollbar-thumb:hover {
+  background: rgb(130 125 115 / 0.8);
+}
+
+.dark,
+.dark body {
+  scrollbar-color: rgb(95 90 82 / 0.5) transparent;
+}
+
+/* Glass panels — warm-tinted for light & dark mode */
+.glass-panel {
+  background: rgba(251, 250, 247, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(38, 37, 31, 0.08);
+}
+
+.glass-panel-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(241, 238, 230, 0.95);
+  border-color: rgba(196, 91, 58, 0.3);
+  box-shadow: 0 8px 30px rgba(49, 41, 30, 0.1);
+}
+
+.glass-button {
+  background: rgba(196, 91, 58, 0.08);
+  border: 1px solid rgba(196, 91, 58, 0.22);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: rgba(196, 91, 58, 0.15);
+  border-color: rgba(196, 91, 58, 0.4);
+  transform: translateY(-1px);
+}
+
+.dark .glass-panel {
+  background: rgba(38, 36, 33, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-panel-hover:hover {
+  background: rgba(49, 46, 41, 0.95);
+  border-color: rgba(217, 119, 87, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.dark .glass-button {
+  background: rgba(217, 119, 87, 0.12);
+  border: 1px solid rgba(217, 119, 87, 0.3);
+}
+
+.dark .glass-button:hover {
+  background: rgba(217, 119, 87, 0.22);
+  border-color: rgba(217, 119, 87, 0.5);
+}
+
+/* Karaoke Glow animations */
+.glow-accent {
+  box-shadow: 0 0 20px rgba(255, 230, 0, 0.25);
+}
+
+.glow-brand {
+  box-shadow: 0 0 18px rgba(196, 91, 58, 0.25);
+}
+
+.dark .glow-brand {
+  box-shadow: 0 0 18px rgba(217, 119, 87, 0.35);
+}
+
+/* Range input accent color */
+input[type="range"] {
+  accent-color: #c45b3a;
+}
+
+.dark input[type="range"] {
+  accent-color: #d97757;
+}
+
+.dark select,
+.dark option {
+  background-color: hsl(var(--control-background));
+  color: hsl(var(--foreground));
+}

@@ -1,5 +1,6 @@
-from typing import List, Optional, Any, Dict
-from pydantic import BaseModel, ConfigDict
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WordTimestamp(BaseModel):
@@ -22,12 +23,8 @@ class TemplateResponse(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    category: str
-    sub_category: Optional[str] = None
     system_prompt: str
-    user_prompt_template: str
     default_tone: str
-    default_voice: str
     is_builtin: bool
 
 
@@ -35,32 +32,21 @@ class TemplateCreate(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    category: Optional[str] = None  # film | viral | fakta | edukasi | custom
-    sub_category: Optional[str] = None
     system_prompt: str
-    user_prompt_template: str
     default_tone: str = "santai"
-    default_voice: str = "Puck"
 
 
 class TemplateUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    category: Optional[str] = None
-    sub_category: Optional[str] = None
     system_prompt: Optional[str] = None
-    user_prompt_template: Optional[str] = None
     default_tone: Optional[str] = None
-    default_voice: Optional[str] = None
 
 
 class NarrationGenerateRequest(BaseModel):
-    template_id: str = "fakta_unik"
+    template_id: str = "auto"
     topic: Optional[str] = None
-    tone: str = "santai"  # santai, tegang, dramatis, formal, kocak, berwibawa, mencekam, hangat
-    target_duration: int = 60  # seconds
-    custom_prompt: Optional[str] = None
-    language: Optional[str] = "id"  # id | en
+    target_duration: int = Field(55, ge=15, le=180)
 
 
 class NarrationUpdateRequest(BaseModel):
@@ -71,7 +57,6 @@ class NarrationUpdateRequest(BaseModel):
 
 class SegmentsUpdateRequest(BaseModel):
     segments: List[Dict[str, Any]]
-
 
 
 class NarrationResponse(BaseModel):

@@ -1,4 +1,5 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -24,6 +25,9 @@ class TimelineUpdateRequest(BaseModel):
     total_duration: Optional[float] = None
     has_audio: Optional[bool] = None
     has_subtitles: Optional[bool] = None
+
+
+TimelineSaveRequest = TimelineUpdateRequest
 
 
 class TimelineResponse(BaseModel):

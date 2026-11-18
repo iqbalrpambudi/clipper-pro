@@ -2,10 +2,17 @@ import asyncio
 import json
 import logging
 import re
-import shutil
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any, List
+from typing import Any, Callable, Dict, List, Optional
+
 from app.schemas.media import YTFormatOption, YTInfoResponse
+from app.services.cancellation import (
+    TaskCancelledException,
+    clear_cancellation,
+    is_cancelled,
+    register_process,
+    unregister_process,
+)
 
 log = logging.getLogger(__name__)
 
@@ -54,10 +61,10 @@ async def get_video_info(url: str) -> YTInfoResponse:
     if proc.returncode != 0:
         err_msg = stderr.decode().strip()
         log.error("yt-dlp failed: %s", err_msg)
-        raise RuntimeError(f"Gagal mengambil info video YouTube: {err_msg[:200]}")
+        raise RuntimeError(f"Gagal mengambil info video: {err_msg[:200]}")
 
     data = json.loads(stdout.decode())
-    title = data.get("title", "YouTube Video")
+    title = data.get("title", "Source Video")
     duration = float(data.get("duration", 0.0))
     thumbnail = data.get("thumbnail")
 
@@ -87,7 +94,9 @@ async def get_video_info(url: str) -> YTInfoResponse:
             # Prefer mp4 container or higher filesize
             if ext == "mp4" and existing[1].get("ext") != "mp4":
                 tier_map[tier_name] = (sort_order, f, filesize_mb)
-            elif ext == existing[1].get("ext") and (filesize or 0) > (existing[1].get("filesize") or existing[1].get("filesize_approx") or 0):
+            elif ext == existing[1].get("ext") and (filesize or 0) > (
+                existing[1].get("filesize") or existing[1].get("filesize_approx") or 0
+            ):
                 tier_map[tier_name] = (sort_order, f, filesize_mb)
 
     sorted_tiers = sorted(tier_map.items(), key=lambda x: x[1][0], reverse=True)
@@ -118,22 +127,30 @@ async def get_video_info(url: str) -> YTInfoResponse:
             )
         )
 
+    # Extract YouTube "most replayed" heatmap if available
+    raw_heatmap = data.get("heatmap")
+    heatmap = None
+    if raw_heatmap and isinstance(raw_heatmap, list):
+        from app.schemas.media import HeatmapBucket
+
+        heatmap = [
+            HeatmapBucket(
+                start_time=b["start_time"],
+                end_time=b["end_time"],
+                value=b["value"],
+            )
+            for b in raw_heatmap
+            if isinstance(b, dict) and "start_time" in b
+        ] or None
+
     return YTInfoResponse(
         title=title,
         duration=duration,
         duration_str=_format_duration(duration),
         thumbnail=thumbnail,
         formats=sorted_formats,
+        heatmap=heatmap,
     )
-
-
-from app.services.cancellation import (
-    register_process,
-    unregister_process,
-    is_cancelled,
-    clear_cancellation,
-    TaskCancelledException,
-)
 
 
 async def download_video(
@@ -143,8 +160,11 @@ async def download_video(
     progress_callback: Optional[Callable[[int], Any]] = None,
     project_id: Optional[str] = None,
     video_id: Optional[str] = None,
+    start_sec: Optional[float] = None,
+    end_sec: Optional[float] = None,
 ) -> str:
-    """Download video with yt-dlp, track stdout progress, and support instant cancellation."""
+    """Download video with yt-dlp, track stdout progress, and support instant cancellation.
+    start_sec/end_sec download only that section (long sources)."""
     out_p = Path(output_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
@@ -168,8 +188,12 @@ async def download_video(
         "mp4",
         "-o",
         str(out_p),
-        url,
     ]
+    if start_sec is not None or end_sec is not None:
+        a = int(start_sec or 0)
+        b = f"{int(end_sec)}" if end_sec else "inf"
+        cmd += ["--download-sections", f"*{a}-{b}", "--force-keyframes-at-cuts"]
+    cmd.append(url)
 
     proc_key = f"video:{video_id}" if video_id else f"download:{out_p.stem}"
     log.info("Running download cmd: %s (key=%s)", " ".join(cmd), proc_key)

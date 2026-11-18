@@ -1,12 +1,14 @@
 import logging
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import get_db
-from app.models.project import Project, SourceVideo, RenderJob
-from app.models.narration import AudioTrack
 from app.core.events import publish_project_event
+from app.models.narration import AudioTrack, Narration
+from app.models.project import Project, RenderJob, SourceVideo
 from app.services.cancellation import request_cancellation
 
 log = logging.getLogger("cliper-tasks-api")
@@ -32,7 +34,7 @@ async def cancel_project_task(
     v_res = await db.execute(
         select(SourceVideo).where(
             SourceVideo.project_id == project_id,
-            SourceVideo.status.in_(["downloading", "processing"])
+            SourceVideo.status.in_(["downloading", "processing"]),
         )
     )
     active_videos = v_res.scalars().all()
@@ -42,10 +44,10 @@ async def cancel_project_task(
 
     # Cancel any active render jobs
     from datetime import datetime
+
     r_res = await db.execute(
         select(RenderJob).where(
-            RenderJob.project_id == project_id,
-            RenderJob.status.in_(["rendering", "queued"])
+            RenderJob.project_id == project_id, RenderJob.status.in_(["rendering", "queued"])
         )
     )
     active_renders = r_res.scalars().all()
@@ -54,11 +56,19 @@ async def cancel_project_task(
         r.error_message = "Rendering dibatalkan oleh pengguna"
         r.completed_at = datetime.utcnow()
 
-    # Cancel any active audio generation
+    # Cancel any active audio generation and narration
+    n_res = await db.execute(
+        select(Narration).where(
+            Narration.project_id == project_id, Narration.status == "tts_generating"
+        )
+    )
+    active_narrations = n_res.scalars().all()
+    for n in active_narrations:
+        n.status = "failed"
+
     a_res = await db.execute(
         select(AudioTrack).where(
-            AudioTrack.project_id == project_id,
-            AudioTrack.status == "generating"
+            AudioTrack.project_id == project_id, AudioTrack.status == "generating"
         )
     )
     active_audio = a_res.scalars().all()
@@ -67,7 +77,16 @@ async def cancel_project_task(
 
     await db.commit()
 
-    # 3. Publish instant cancellation SSE event to notify web clients
+    # 3. Publish instant cancellation SSE events to notify web clients
+    await publish_project_event(
+        project_id,
+        task_type="tts_align",
+        status="error",
+        progress=0,
+        stage="cancelled",
+        message="Pembuatan audio narasi dan alignment dibatalkan oleh pengguna.",
+        error="Dibatalkan",
+    )
     await publish_project_event(
         project_id,
         task_type="youtube_download",
@@ -85,5 +104,5 @@ async def cancel_project_task(
         "message": "Proses background worker berhasil dibatalkan dan diinterupsi.",
         "cancelled_videos": len(active_videos),
         "cancelled_renders": len(active_renders),
-        "cancelled_audio": len(active_audio),
+        "cancelled_audio": len(active_audio) + len(active_narrations),
     }

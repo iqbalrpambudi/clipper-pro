@@ -3,8 +3,7 @@ import difflib
 import logging
 import os
 import re
-from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ def get_whisper_model(model_size: str = "base", force_reload: bool = False):
     if force_reload or model_size not in _whisper_models or _whisper_models[model_size] is None:
         try:
             from faster_whisper import WhisperModel
+
             threads = min(4, max(1, os.cpu_count() or 2))
             _whisper_models[model_size] = WhisperModel(
                 model_size,
@@ -68,21 +68,25 @@ def _align_fallback(
         w_cur = cur_ms
         for w in words_raw:
             w_end = w_cur + word_dur_ms
-            word_items.append({
-                "word": w,
-                "start_ms": w_cur,
-                "end_ms": w_end,
-            })
+            word_items.append(
+                {
+                    "word": w,
+                    "start_ms": w_cur,
+                    "end_ms": w_end,
+                }
+            )
             w_cur = w_end
 
         res_seg = dict(seg)
-        res_seg.update({
-            "id": seg.get("id", f"seg-{s_idx+1}"),
-            "text": seg_text,
-            "start_ms": cur_ms,
-            "end_ms": seg_end_ms,
-            "words": word_items,
-        })
+        res_seg.update(
+            {
+                "id": seg.get("id", f"seg-{s_idx + 1}"),
+                "text": seg_text,
+                "start_ms": cur_ms,
+                "end_ms": seg_end_ms,
+                "words": word_items,
+            }
+        )
         aligned.append(res_seg)
         cur_ms = seg_end_ms
 
@@ -108,14 +112,16 @@ def sequence_anchored_forced_alignment(
         seg_text = seg.get("text", "")
         words = seg_text.split()
         for w_idx, w in enumerate(words):
-            flat_targets.append({
-                "seg_idx": s_idx,
-                "word_idx": w_idx,
-                "word": w,
-                "norm": _norm_token(w),
-                "start_ms": 0,
-                "end_ms": 0,
-            })
+            flat_targets.append(
+                {
+                    "seg_idx": s_idx,
+                    "word_idx": w_idx,
+                    "word": w,
+                    "norm": _norm_token(w),
+                    "start_ms": 0,
+                    "end_ms": 0,
+                }
+            )
 
     if not flat_targets:
         return target_segments
@@ -195,8 +201,7 @@ def sequence_anchored_forced_alignment(
     for s_idx, seg in enumerate(target_segments):
         s_words = [t for t in flat_targets if t["seg_idx"] == s_idx]
         word_items = [
-            {"word": w["word"], "start_ms": w["start_ms"], "end_ms": w["end_ms"]}
-            for w in s_words
+            {"word": w["word"], "start_ms": w["start_ms"], "end_ms": w["end_ms"]} for w in s_words
         ]
         s_start = word_items[0]["start_ms"] if word_items else 0
         s_end = word_items[-1]["end_ms"] if word_items else 0
@@ -207,13 +212,15 @@ def sequence_anchored_forced_alignment(
             s_start = 0
 
         res_seg = dict(seg)
-        res_seg.update({
-            "id": seg.get("id", f"seg-{s_idx+1}"),
-            "text": seg.get("text", ""),
-            "start_ms": s_start,
-            "end_ms": s_end,
-            "words": word_items,
-        })
+        res_seg.update(
+            {
+                "id": seg.get("id", f"seg-{s_idx + 1}"),
+                "text": seg.get("text", ""),
+                "start_ms": s_start,
+                "end_ms": s_end,
+                "words": word_items,
+            }
+        )
         result_segments.append(res_seg)
 
     return result_segments
@@ -275,11 +282,13 @@ async def align_audio_with_text(
                     for w in seg.words:
                         clean_w = w.word.strip()
                         if clean_w:
-                            extracted_words.append({
-                                "word": clean_w,
-                                "start_ms": int(w.start * 1000),
-                                "end_ms": int(w.end * 1000),
-                            })
+                            extracted_words.append(
+                                {
+                                    "word": clean_w,
+                                    "start_ms": int(w.start * 1000),
+                                    "end_ms": int(w.end * 1000),
+                                }
+                            )
             return extracted_words
         except Exception as e:
             log.exception("Whisper alignment failed for %s: %s", audio_path, e)

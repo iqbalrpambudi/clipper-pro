@@ -1,10 +1,8 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
@@ -47,21 +45,21 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         surface: {
-          DEFAULT: "#181818",
-          hover: "#262626",
-          card: "#1C1C1C",
-          secondary: "#121212",
-          border: "#2E2E2E",
+          DEFAULT: "hsl(var(--surface))",
+          hover: "hsl(var(--surface-hover))",
+          card: "hsl(var(--surface-card))",
+          secondary: "hsl(var(--surface-secondary))",
+          border: "hsl(var(--surface-border))",
         },
         brand: {
-          50: "#ECFDF5",
-          100: "#D1FAE5",
-          200: "#A7F3D0",
-          300: "#6EE7B7",
-          400: "#34D399",
-          500: "#3ECF8E",
-          600: "#059669",
-          700: "#047857",
+          50: "#FEF2EE",
+          100: "#FCE0D6",
+          200: "#F9BDAB",
+          300: "#F49477",
+          400: "#E06B42",
+          500: "#C45B3A",
+          600: "#A94B2F",
+          700: "#8B3D26",
         },
       },
       borderRadius: {
@@ -101,7 +99,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 };
 
 export default config;

@@ -1,46 +1,61 @@
-COMPOSE := docker compose -f infrastructure/docker/docker-compose.yml --env-file .env
-WEB_PORT ?= $(shell sed -n 's/^WEB_PORT=//p' .env 2>/dev/null | tail -1)
-API_PORT ?= $(shell sed -n 's/^API_PORT=//p' .env 2>/dev/null | tail -1)
+API := apps/api
+WEB := apps/web
 
-.PHONY: up down restart logs rebuild test sh-api sh-web sh-worker clean
+.PHONY: install build-web package release export install-tool dev start stop test lint lint-web lint-api format format-web format-api
 
-up: .env
-	$(COMPOSE) up -d
-	@echo "===================================================="
-	@echo "Cliper Pro is starting up!"
-	@echo "Web UI:   http://localhost:$(or $(WEB_PORT),3030)"
-	@echo "API Docs: http://localhost:$(or $(API_PORT),8080)/docs"
-	@echo "===================================================="
+# First-time setup: API venv, web deps, and bundled frontend
+install:
+	cd $(API) && uv sync --extra dev
+	cd $(WEB) && npm install
+	$(MAKE) build-web
 
-down:
-	$(COMPOSE) down
+# Build React frontend and stage it inside the Python package
+build-web:
+	cd $(WEB) && npm run build
+	rm -rf $(API)/app/web_dist
+	cp -R $(WEB)/dist $(API)/app/web_dist
 
-restart:
-	$(COMPOSE) restart
+# Build distributable Python wheel/tarball (includes web_dist and tray assets)
+package: build-web
+	cd $(API) && uv build
 
-logs:
-	$(COMPOSE) logs -f --tail=100
+# Full production export pipeline -> ./dist/ (wheel, tarball, install.sh, SHA256SUMS)
+release export:
+	bash scripts/release.sh
 
-rebuild:
-	$(COMPOSE) build
-	$(COMPOSE) up -d
+# Install `cliper-pro` CLI globally via uv tool
+install-tool: build-web
+	uv tool install --force ./$(API)
+
+# Dev mode: API (127.0.0.1:18080, auto-reload) + Vite (localhost:3031)
+dev:
+	@trap 'kill 0' EXIT; \
+	(cd $(API) && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 18080 --reload) & \
+	(cd $(WEB) && npm run dev) & \
+	wait
+
+start: build-web
+	cd $(API) && .venv/bin/cliper-pro start
+
+stop:
+	cd $(API) && .venv/bin/cliper-pro stop
 
 test:
-	$(COMPOSE) exec api pytest -q
-	$(COMPOSE) exec web npm run typecheck
+	cd $(API) && .venv/bin/python -m pytest -q
+	cd $(WEB) && npm run typecheck
 
-sh-api:
-	$(COMPOSE) exec api bash
+lint-web:
+	cd $(WEB) && npm run typecheck && npm run lint
 
-sh-web:
-	$(COMPOSE) exec web sh
+lint-api:
+	cd $(API) && .venv/bin/ruff check .
 
-sh-worker:
-	$(COMPOSE) exec worker bash
+lint: lint-web lint-api
 
-clean:
-	$(COMPOSE) down -v
+format-web:
+	cd $(WEB) && npm run format
 
-.env:
-	cp .env.example .env
-	@echo "Created .env from .env.example"
+format-api:
+	cd $(API) && .venv/bin/ruff format . && .venv/bin/ruff check --fix .
+
+format: format-web format-api

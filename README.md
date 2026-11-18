@@ -1,139 +1,120 @@
 # Cliper Pro — AI Short Video Maker
 
-> Otomatisasi pembuatan short video viral (TikTok / Reels / Shorts) dari video mentah menggunakan AI scene detection, template narasi LLM, Gemini TTS, subtitle karaoke ASS, dan render FFmpeg.
+> Otomatisasi pembuatan short video viral (TikTok / Reels / Shorts) dari video mentah menggunakan AI scene detection, template narasi LLM, Gemini TTS, subtitle karaoke ASS, dan render FFmpeg. Berjalan sebagai **background service** dengan **Web UI** dan **ikon system tray** (`pystray`).
 
 ## ✨ Fitur Utama
 
 - **📹 Media Pool** — Upload video lokal atau download dari YouTube via yt-dlp
 - **🎬 AI Scene Detection** — Deteksi otomatis pergantian scene menggunakan PySceneDetect + Vision AI tagging
-- **📝 AI Narration** — Generate naskah narasi Bahasa Indonesia via LLM (Gemini, OpenAI, Claude, dll.)
-- **🔊 Text-to-Speech** — Sintesis suara narasi menggunakan Gemini TTS atau Edge-TTS
+- **📝 AI Narration** — Generate naskah narasi Bahasa Indonesia via LLM (Gemini, OpenAI-compatible, LLM lokal)
+- **🔊 Text-to-Speech** — Sintesis suara narasi menggunakan Gemini TTS atau ElevenLabs
 - **📊 Smart Timeline** — Auto-match scene visual ke segmen narasi audio
-- **💬 Subtitle Karaoke** — Subtitle ASS presisi dengan highlight per-kata (gaya Hormozi & TikTok viral)
-- **🎥 Render & Export** — Render video final 9:16 vertikal dengan background blur/solid via FFmpeg
+- **💬 Subtitle Karaoke** — Subtitle ASS presisi dengan highlight per-kata
+- **🎵 BGM** — Library musik latar per mood, otomatis dicampur saat render
+- **🎥 Render & Export** — Render video final 9:16 vertikal via FFmpeg
+- **🤖 Autopilot** — Pipeline terjadwal sampai publish ke YouTube Shorts
 
 ## 🏗️ Arsitektur
 
 ```
 cliper-pro/
 ├── apps/
-│   ├── api/          # FastAPI Backend (Python 3.12)
-│   │   ├── app/
-│   │   │   ├── api/v1/       # REST API Routes
-│   │   │   ├── core/         # Config, DB, Redis, Storage, Security
-│   │   │   ├── models/       # SQLAlchemy ORM Models
-│   │   │   ├── schemas/      # Pydantic Request/Response Schemas
-│   │   │   ├── services/     # Business Logic (Scene Detect, TTS, Renderer, etc.)
-│   │   │   └── workers/      # ARQ Background Tasks
-│   │   ├── alembic/          # Database Migrations
-│   │   └── tests/
-│   └── web/          # Next.js 15 Frontend (React 19 + TypeScript)
-│       ├── app/              # App Router Pages
-│       ├── components/       # UI Components (Media, Narration, TTS, Timeline, Subtitles, Render)
-│       ├── hooks/            # React Query Hooks
-│       ├── lib/              # API Client, Zustand Store, ASS Generator
-│       └── types/            # TypeScript Interfaces
-├── infrastructure/
-│   └── docker/       # Docker Compose Configuration
-├── storage/          # Media Storage (git-ignored)
-├── Makefile          # Development Commands
-└── .env.example      # Environment Variables Template
+│   ├── api/          # Package `cliper-pro`: FastAPI backend, CLI service, pystray system tray, & bundled Web UI
+│   └── web/          # React 19 + Vite frontend
+├── automation/       # Script channel YouTube (memanggil API service)
+└── Makefile
 ```
+
+Saat service dijalankan (`cliper-pro start`), API FastAPI menyala di background pada `http://127.0.0.1:18080` sekaligus menyajikan Web UI, dan ikon system tray muncul di menu bar untuk membuka UI di browser, melihat status/log, start/stop service, dan mengaktifkan *Start at Login*. Untuk server/headless tanpa GUI, gunakan `--headless`.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (dengan Docker Compose v2)
-- API Key untuk Gemini / OpenAI (opsional jika menggunakan 9Router)
+- Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 22+
+- `ffmpeg` (`brew install ffmpeg` di macOS, atau `sudo apt install ffmpeg` di Linux)
 
-### 1. Clone & Setup
-
-```bash
-git clone <repository-url> cliper-pro
-cd cliper-pro
-```
-
-### 2. Start Semua Services
+### Instalasi via `curl` (Production)
 
 ```bash
-make up
+curl -fsSL https://github.com/iqbalrpambudi/clipper-pro/releases/latest/download/install.sh | sh
 ```
 
-Perintah ini akan:
-- Membuat `.env` dari `.env.example` jika belum ada
-- Build dan start semua Docker containers (API, Web, Worker, PostgreSQL, Redis)
-- Menampilkan URL akses
+Script [install.sh](install.sh) otomatis memasang `uv` (jika belum ada), Python 3.12, dan package `cliper-pro` beserta Web UI & tray icon.
 
-### 3. Akses Aplikasi
+### Instalasi dari Source Repo
 
-| Service | URL |
-|---------|-----|
-| **Web UI** | http://localhost:3030 |
-| **API Docs** | http://localhost:8080/docs |
-| **API Health** | http://localhost:8080/healthz |
+```bash
+make install        # install deps API & web + build frontend bundle
+make install-tool   # install CLI `cliper-pro` secara global via uv tool
+```
 
-### 4. Konfigurasi AI Model
-
-Buka **Web UI → Model Settings** untuk mengonfigurasi:
-- API Base URL & API Key (Gemini, OpenAI, atau 9Router)
-- Chat Model (untuk narasi) & Vision Model (untuk tagging scene)
-- TTS Provider (Gemini TTS atau Edge-TTS)
-
-## 📋 Makefile Commands
+### Perintah CLI `cliper-pro`
 
 | Command | Deskripsi |
 |---------|-----------|
-| `make up` | Start semua services |
-| `make down` | Stop semua services |
-| `make restart` | Restart semua services |
-| `make logs` | Lihat logs real-time |
-| `make rebuild` | Rebuild dan restart |
-| `make migrate` | Jalankan database migration |
-| `make revision m="pesan"` | Buat migration baru |
-| `make test` | Jalankan tests |
-| `make sh-api` | Shell ke container API |
-| `make sh-web` | Shell ke container Web |
-| `make sh-worker` | Shell ke container Worker |
-| `make clean` | Stop dan hapus semua data (volumes) |
+| `cliper-pro start` | Jalankan service di background + ikon system tray |
+| `cliper-pro start --headless` | Jalankan service di background tanpa tray (mode server) |
+| `cliper-pro start --open` | Jalankan service lalu buka Web UI di browser |
+| `cliper-pro stop` | Hentikan service & tray |
+| `cliper-pro restart` | Restart service |
+| `cliper-pro status` | Cek status service, PID, path data, & dependensi |
+| `cliper-pro open` | Buka Web UI (`http://127.0.0.1:18080`) di browser |
+| `cliper-pro logs -f` | Pantau log service secara live |
+| `cliper-pro service install` | Aktifkan auto-start saat login (`launchd` / `systemd --user`) |
+| `cliper-pro service uninstall` | Nonaktifkan auto-start saat login |
+| `cliper-pro doctor` | Cek kesiapan Python, `ffmpeg`, `yt-dlp`, dan Web UI bundle |
 
-## ⚙️ Environment Variables
+Konfigurasi AI model, TTS, dan YouTube dilakukan melalui Web UI di halaman **Settings**. Versi aplikasi yang berjalan tampil di footer sidebar Web UI dan lewat `GET /api/v1/version`.
 
-Salin `.env.example` ke `.env` dan sesuaikan:
+## 📂 Data
 
-| Variable | Default | Deskripsi |
-|----------|---------|-----------|
-| `WEB_PORT` | `3030` | Port Web UI |
-| `API_PORT` | `8080` | Port API |
-| `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection string |
-| `REDIS_URL` | `redis://redis:6379/0` | Redis connection string |
-| `STORAGE_PATH` | `/app/storage` | Path penyimpanan media |
-| `MAX_UPLOAD_SIZE` | `2147483648` (2GB) | Batas ukuran upload |
-| `AI_BASE_URL` | - | Base URL endpoint LLM (OpenAI-compatible) |
-| `AI_API_KEY` | - | API Key untuk LLM |
-| `AI_CHAT_MODEL` | `gemini-2.0-flash` | Model untuk narasi |
-| `AI_VISION_MODEL` | `gemini-2.0-flash` | Model untuk vision tagging |
-| `TTS_PROVIDER` | `gemini` | Provider TTS (`gemini` atau `edge`) |
-| `ENCRYPTION_KEY` | - | Fernet key untuk enkripsi API keys di DB |
+Secara default semua data service disimpan di `~/.cliper-pro/` (bisa diubah lewat env `CLIPER_DATA_DIR`):
+
+| Path | Isi |
+|------|-----|
+| `cliper.db` | Database SQLite |
+| `projects/` | Media proyek |
+| `bgm/<mood>/*.mp3` | Library BGM (menu tray → **Open Data Folder**). Nama folder = mood yang bisa dipilih |
+| `hf/` | Cache model Whisper (diunduh saat pertama dipakai) |
+| `encryption.key` | Key enkripsi API key di DB. Jangan dihapus: tanpa key ini semua secret tidak bisa dibuka |
+| `api.log` / `tray.log` | Log API dan tray |
+
+## 🛠️ Development & Export Production
+
+```bash
+make dev     # API (127.0.0.1:18080 --reload) + Vite (localhost:3031)
+make test    # Pytest API + typecheck web
+make lint    # Ruff + ESLint + TypeScript check
+make release # Export bundle production ke ./dist/ (wheel, tarball, install.sh, SHA256SUMS)
+```
+
+Export production juga bisa dijalankan langsung via CLI dari repo:
+
+```bash
+cliper-pro export                     # export versi saat ini ke ./dist/
+cliper-pro export --version 1.1.0     # bump versi + export ke ./dist/
+cliper-pro export --install           # export + langsung install lokal
+```
+
+### Versioning & Rilis Otomatis
+
+Versi mengikuti [Semantic Versioning](https://semver.org) dan dihitung otomatis dari [Conventional Commits](https://www.conventionalcommits.org) sejak tag `v*` terakhir (`scripts/next-version.sh`):
+
+| Commit | Kenaikan |
+|--------|----------|
+| `feat!:` atau footer `BREAKING CHANGE` | major (`1.0.0` → `2.0.0`) |
+| `feat:` | minor (`1.0.0` → `1.1.0`) |
+| `fix:` / `perf:` | patch (`1.0.0` → `1.0.1`) |
+| `chore:`, `docs:`, `style:`, `refactor:`, `test:` | tidak ada rilis |
+
+Setiap push ke `main` menjalankan GitHub Actions ([release.yml](.github/workflows/release.yml)): menghitung versi, build, lalu membuat tag `vX.Y.Z` dan GitHub Release berisi `./dist/*` agar langsung bisa diinstall via `curl`. Push tag `v*` manual atau `workflow_dispatch` dengan input `version` tetap didukung. Alur branch dan rilis lengkap ada di [CLAUDE.md](CLAUDE.md).
 
 ## 🛠️ Tech Stack
 
-**Backend:**
-- Python 3.12, FastAPI, SQLAlchemy 2.0 (async), PostgreSQL + pgvector
-- ARQ (async Redis queue) untuk background workers
-- PySceneDetect, FFmpeg, yt-dlp, faster-whisper
-- Fernet encryption untuk sensitive data
-
-**Frontend:**
-- Next.js 15 (App Router), React 19, TypeScript
-- TailwindCSS 3, Zustand, React Query (TanStack Query)
-- JASSUB untuk subtitle rendering
-- Lucide Icons
-
-**Infrastructure:**
-- Docker Compose (multi-service orchestration)
-- Redis 7 (task queue + pub/sub SSE events)
-- PostgreSQL 16 (pgvector)
+- **Service & Tray:** Python 3.12, Uvicorn, `pystray`, `Pillow`
+- **Backend:** FastAPI, SQLAlchemy 2.0 (async) + SQLite, PySceneDetect, FFmpeg, yt-dlp, faster-whisper
+- **Frontend:** React 19, Vite, TypeScript, TailwindCSS 3, Zustand, TanStack Query, JASSUB
 
 ## 📄 License
 

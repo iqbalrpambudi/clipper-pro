@@ -1,873 +1,440 @@
-import re
+"""Script writing: code picks the shots, the LLM writes one spoken line per shot.
+
+Keeping the model's job to "write N numbered lines, line k is about shot k" makes cheap
+models reliable. The scene <-> sentence link is then checked against what each line actually
+says (align_lines_to_shots), so a model that adds, merges or skips a line cannot shift the visuals."""
+
+import json
 import logging
-import uuid
-from typing import List, Dict, Any, Optional
+import math
+import re
+from collections import Counter
+from typing import Any, Dict, List, Optional, Tuple
+
+from app.prompts.narrative import DEFAULT_TEMPLATES
 from app.services.ai_adapters.base import BaseLLMAdapter
+from app.services.matching import (
+    _calc_visual_satisfaction_boost,
+    _get_scene_usable_range,
+    is_filler_scene,
+)
 
 log = logging.getLogger(__name__)
 
-def build_master_scriptwriting_directive(
-    topic: str = "",
-    tone: str = "santai",
-    target_duration: int = 60,
-    word_count: int = 132,
-    language: str = "id",
-) -> str:
-    """Master instruction injected into EVERY preset's system prompt (builtin + custom) at
-    generation time. Enforces elite video retention standards with strict duration,
-    word-count budget, and tone adherence at the system level so the LLM never loses context.
-    Automatically adapts its framework between short-form (vertical video) and YouTube long-form,
-    as well as between Indonesian and English languages.
-    """
-    clean_topic = (topic or "").strip() or ("Matching video visual content" if language == "en" else "Sesuai materi visual video")
-    clean_tone = (tone or "").strip() or ("casual" if language == "en" else "santai")
-    min_words = int(word_count * 0.85)
-    max_words = int(word_count * 1.15)
+__all__ = ["DEFAULT_TEMPLATES"]
 
-    if language == "en":
-        if target_duration >= 180:
-            duration_desc = f"{target_duration // 60} mins" if target_duration % 60 == 0 else f"{target_duration // 60}m {target_duration % 60}s"
-            return (
-                "\n\n=== GOLD STANDARD FOR LONG-FORM YOUTUBE SCRIPTWRITING (MANDATORY) ===\n"
-                "You are a world-class professional scriptwriter and master storyteller for long-form YouTube videos (16:9 landscape format, in-depth explainers, documentaries, and recaps).\n"
-                "Write an immersive, high-retention narration script in natural, modern American/international English that is informative, deeply engaging, and optimized for TTS voiceover delivery.\n"
-                "\n"
-                "🎯 PRIMARY PROJECT PARAMETERS (HIGHEST PRIORITY - STRICT COMPLIANCE REQUIRED):\n"
-                f"• Topic: {clean_topic}\n"
-                f"• Tone & Delivery: {clean_tone}\n"
-                f"• Target Voice Duration: {target_duration} seconds (~{duration_desc})\n"
-                f"• Strict Word Count Budget: ~{word_count} words (STRICT CORRIDOR: {min_words} - {max_words} words)\n"
-                "• Language: ENGLISH ONLY (Write 100% of the narration in fluent, captivating English. Never write in Indonesian).\n"
-                "\n"
-                "1. STRICT DURATION & WORD BUDGET COMPLIANCE (CRITICAL CONSTRAINT):\n"
-                f"   - The target duration is {target_duration} seconds. Total script length MUST NOT EXCEED {max_words} words!\n"
-                f"   - Develop a comprehensive, rich narrative within the word count corridor ({min_words} - {max_words} words).\n"
-                "\n"
-                "2. LONG-FORM DRAMATURGIC STORYTELLING STRUCTURE:\n"
-                "   - Cold Open & Atmospheric Hook: Open immediately with high stakes, an intriguing anomaly, or an urgent paradox without clichés.\n"
-                "   - Multi-Layered Exploration (World-building & Chronology): Establish context, historical background, and atmospheric details that build tension progressively.\n"
-                "   - Rational Analysis & Insight: Integrate scientific principles, logical deductions, or deeper explanations so the video is educational and substantive.\n"
-                "   - Climax & Thoughtful Reflection: Conclude with a memorable realization or a thought-provoking open question that drives organic discussion in comments.\n"
-                "\n"
-                "3. NATURAL SENTENCE CADENCE (3–6 SECONDS SWEET SPOT PER SEGMENT):\n"
-                "   - Ideal sentence length is 8 to 15 words (~3.5 to 6 seconds spoken duration).\n"
-                "   - AVOID microscopic fragments (1-3 words) that disrupt visual pacing.\n"
-                "   - AVOID run-on sentences (>22 words) lacking punctuation that sound breathless in TTS.\n"
-                "\n"
-                "4. SEAMLESS FLOW & TRANSITIONS (ANTI-STACCATO FLOW):\n"
-                "   - AVOID log-style inventory statements. Use natural conversational bridge phrases.\n"
-                "   - NEVER use technical editor jargon: 'scene', 'shot', 'clip', 'timestamp', 'on screen we see', 'the camera shows'.\n"
-                "\n"
-                "5. NATURAL CONVERSATIONAL ENGLISH & ANTI-AI CLICHÉS:\n"
-                "   - Use authentic spoken English with personality, confidence, and punch.\n"
-                "   - AVOID cheesy AI clichés: 'little did they know', 'it turns out', 'shockingly enough', 'in a world where'.\n"
-                f"   - Maintain the vocal color and tone '{clean_tone}' consistently throughout.\n"
-                "\n"
-                "6. CLEAN TTS-READY OUTPUT:\n"
-                "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
-                "   - DO NOT include conversational AI greetings like 'Sure! Here is the script:'.\n"
-                "   - DO NOT include stage directions/SFX in brackets like [Dramatic Music] or (Laughs).\n"
-                "   - DO NOT include scene labels or headings like 'ACT 1:', 'HOOK:', 'CONCLUSION:'."
-            )
-
-        return (
-            "\n\n=== GOLD STANDARD FOR SHORT-FORM VIDEO SCRIPTWRITING (MANDATORY) ===\n"
-            "You are an elite scriptwriter for viral vertical video platforms (TikTok, Instagram Reels, YouTube Shorts).\n"
-            "Write a high-retention narration script in natural, modern American/international English that captivates viewers from the very first second.\n"
-            "\n"
-            "🎯 PRIMARY PROJECT PARAMETERS (HIGHEST PRIORITY - STRICT COMPLIANCE REQUIRED):\n"
-            f"• Topic: {clean_topic}\n"
-            f"• Tone & Delivery: {clean_tone}\n"
-            f"• Target Voice Duration: {target_duration} seconds\n"
-            f"• Strict Word Count Budget: ~{word_count} words (STRICT CORRIDOR: {min_words} - {max_words} words)\n"
-            "• Language: ENGLISH ONLY (Write 100% of the narration in fluent, punchy English. Never write in Indonesian).\n"
-            "\n"
-            "1. STRICT DURATION & WORD BUDGET COMPLIANCE (CRITICAL CONSTRAINT):\n"
-            f"   - Target video duration is ONLY {target_duration} seconds. Script length MUST NOT EXCEED {max_words} words!\n"
-            "   - Focus strictly on the 2 to 4 most impactful moments and make every word count.\n"
-            "\n"
-            "2. KILLER SCROLL-STOPPING HOOK (Seconds 0-3):\n"
-            "   - The opening line MUST instantly stop the scroll by triggering intense curiosity, emotion, or tension (max 10-12 words).\n"
-            "   - FORBIDDEN boring clichés: 'Hey guys', 'In today's video', 'Did you know that', 'Have you ever wondered'. Jump right into the action!\n"
-            "\n"
-            "3. SEAMLESS FLOW & DYNAMIC RHYTHM:\n"
-            "   - AVOID staccato bullet-point style. Use natural verbal bridges connecting each beat.\n"
-            "   - NEVER use editor jargon: 'scene', 'clip', 'timestamp', 'on screen'. Tell the story as it unfolds in real time.\n"
-            "\n"
-            "4. NATURAL SPOKEN ENGLISH & NO AI ROBOTICS:\n"
-            "   - Use crisp, vibrant modern spoken English.\n"
-            "   - AVOID AI clichés: 'it turns out', 'little did they know', 'needless to say'.\n"
-            f"   - Maintain consistent '{clean_tone}' vocal personality from start to finish.\n"
-            "\n"
-            "5. MEMORABLE PAYOFF & ENGAGEMENT LOOP:\n"
-            "   - End with a strong payoff, surprising revelation, or reflective question that naturally sparks comments.\n"
-            "\n"
-            "6. CLEAN TTS-READY OUTPUT:\n"
-            "   - Return ONLY the final spoken script text ready for TTS voiceover.\n"
-            "   - NO greetings, NO stage directions in brackets, NO headings like 'HOOK:' or 'SCENE 1:'."
-        )
-
-    if target_duration >= 180:
-        duration_desc = f"{target_duration // 60} menit" if target_duration % 60 == 0 else f"{target_duration // 60}m {target_duration % 60}s"
-        return (
-            "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PANJANG YOUTUBE (WAJIB DIIKUTI) ===\n"
-            "Anda adalah master storyteller dan script writer profesional kelas dunia untuk video panjang YouTube (format landscape 16:9, explainer/dokumenter/recap mendalam).\n"
-            "Tuliskan naskah narasi yang MEMIKAT RETENSI TINGGI, KAYA INFORMASI, MEMILIKI KEDALAMAN ALUR, dan SANGAT NYAMAN DIBACAKAN oleh voiceover (TTS).\n"
-            "\n"
-            "🎯 PARAMETER UTAMA PROYEK INI (PRIORITAS TERTINGGI, WAJIB PATUH KETAT):\n"
-            f"• Topik Narasi: {clean_topic}\n"
-            f"• Nada Bicara & Intonasi: {clean_tone}\n"
-            f"• Target Durasi Suara: {target_duration} detik (~{duration_desc})\n"
-            f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
-            "• Bahasa: BAHASA INDONESIA LENGKAP (Tulis seluruh narasi dalam Bahasa Indonesia lisan yang lancar dan memikat).\n"
-            "\n"
-            "1. KEPATUHAN KETAT TARGET DURASI & ANGGARAN KATA (CRITICAL CONSTRAINT):\n"
-            f"   - Target durasi video adalah {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
-            f"   - Kembangkan alur cerita yang komprehensif, kaya konteks, dan berbobot sesuai koridor kata ({min_words} - {max_words} kata).\n"
-            "\n"
-            "2. STRUKTUR DRAMATURGI STORYTELLING PANJANG YOUTUBE:\n"
-            "   - Cold Open & Atmospheric Hook: Langsung buka cerita dengan situasi mencekam, misteri anomali, atau fakta pemantik rasa penasaran tanpa basa-basi klise.\n"
-            "   - Eksplorasi Berlapis (World-building & Kronologi): Paparkan latar geografis, riwayat masa lalu, kesaksian, dan detail atmosferik yang membangun ketegangan secara bertahap.\n"
-            "   - Sudut Pandang Logis & Analisis Rasional: Selipkan penjelasan ilmiah, hukum alam, geologis, atau sains di balik misteri agar video berbobot dan edukatif, bukan horor murahan.\n"
-            "   - Climax & Refleksi Akhir: Tutup dengan konklusi yang membekas, paradoks etis, atau pertanyaan reflektif yang memicu penonton berdiskusi secara organik di kolom komentar.\n"
-            "\n"
-            "3. RITME KALIMAT SEGMEN ALAMI (SWEETSPOT 3–6 DETIK PER SEGMEN VISUAL):\n"
-            "   - Rata-rata panjang ideal setiap kalimat adalah 8 hingga 14 kata (~3.5 hingga 6 detik durasi bicara TTS).\n"
-            "   - HINDARI kalimat mikroskopis (1-3 kata) yang membuat transisi visual terputus-putus atau gambar berpindah terlalu cepat.\n"
-            "   - HINDARI kalimat majemuk beranak yang terlalu panjang (>20 kata) tanpa tanda baca yang membuat napas narator tersengal.\n"
-            "   - Setiap kalimat harus menjadi unit pikiran yang tuntas, utuh, dan mudah dibayangkan visualnya.\n"
-            "\n"
-            "4. ALUR MENGALIR, JEMBATAN TRANSISI & ANTI-STACCATO (CRITICAL FLOW):\n"
-            "   - HINDARI GAYA CATATAN LOG: DILARANG membuat rentetan kalimat pendek datar tanpa subjek atau jembatan jelas.\n"
-            "   - WAJIB gunakan frasa jembatan transisi alami antar kalimat dan antar babak.\n"
-            "   - JAGA KRONOLOGI & KAUSALITAS LOGIS: Pastikan alur peristiwa runtut dan saling terhubung sebab-akibat.\n"
-            "   - DILARANG menyebut istilah teknis editor: 'scene', 'shot', 'klip', 'timestamp', 'di layar terlihat', 'kamera menunjukkan'.\n"
-            "\n"
-            "5. BAHASA LISAN NATURAL & ANTI-ROBOTIK AI:\n"
-            "   - Gunakan Bahasa Indonesia percakapan modern yang lugas, percaya diri, dan berjiwa (bukan bahasa buku kaku atau terjemahan mesin).\n"
-            "   - HINDARI pengulangan kata klise AI: 'ternyata', 'siapa sangka', 'namun tak disangka', 'yang paling menarik adalah'.\n"
-            f"   - Pertahankan warna vokal dan intonasi '{clean_tone}' secara konsisten dari awal hingga akhir.\n"
-            "\n"
-            "6. OUTPUT STERIL & SIAP TTS:\n"
-            "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
-            "   - DILARANG menyertakan salam pembuka/penutup AI seperti 'Tentu, ini naskahnya:'.\n"
-            "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Misterius] atau (Tertawa).\n"
-            "   - DILARANG menyertakan label babak atau heading seperti 'BABAK 1:', 'HOOK:', 'PENUTUP:'."
-        )
-
-    return (
-        "\n\n=== STANDAR EMAS SCRIPTWRITING KONTEN VIDEO PENDEK (WAJIB DIIKUTI) ===\n"
-        "Anda adalah script writer profesional kelas atas untuk platform video vertikal (TikTok, Instagram Reels, YouTube Shorts).\n"
-        "Tuliskan naskah narasi yang MEMIKAT RETENSI TINGGI dari detik pertama sampai detik terakhir.\n"
-        "\n"
-        "🎯 PARAMETER UTAMA PROYEK INI (PRIORITAS TERTINGGI, WAJIB PATUH KETAT):\n"
-        f"• Topik Narasi: {clean_topic}\n"
-        f"• Nada Bicara & Intonasi: {clean_tone}\n"
-        f"• Target Durasi Suara: {target_duration} detik\n"
-        f"• Batas Panjang Kata: ~{word_count} kata (KORIDOR KETAT: {min_words} - {max_words} kata)\n"
-        "• Bahasa: BAHASA INDONESIA LENGKAP (Tulis seluruh narasi dalam Bahasa Indonesia percakapan yang hidup dan punchy).\n"
-        "\n"
-        "1. KEPATUHAN KETAT TARGET DURASI & PANJANG KATA (CRITICAL CONSTRAINT):\n"
-        f"   - Target durasi video HANYA {target_duration} detik. Total panjang naskah DILARANG MELEBIHI {max_words} kata!\n"
-        "   - JANGAN menceritakan seluruh adegan atau seluruh tahapan jika materi video panjang. "
-        "Fokus HANYA pada 2 sampai 4 momen/tahapan paling berdampak dan padatkan kalimatnya.\n"
-        "   - Kualitas retensi ditentukan oleh kepadatan cerita yang pas dengan durasi, bukan banyaknya kata.\n"
-        "\n"
-        "2. KONSISTENSI TONE & INTONASI:\n"
-        f"   - Pertahankan gaya bicara, intonasi, dan warna vokal '{clean_tone}' secara konsisten dari kalimat pembuka hingga kalimat terakhir.\n"
-        "\n"
-        "3. HOOK MEMATIKAN (Detik 0-3):\n"
-        "   - Kalimat pertama HARUS langsung menghentikan scroll dengan menyengat rasa penasaran, emosi, atau tensi (maksimal 10-12 kata).\n"
-        "   - DILARANG menggunakan kata pembuka klise basi: 'Halo semuanya', 'Di video kali ini', 'Tahukah kamu bahwa', "
-        "'Pernahkah kamu', 'Kali ini kita akan membahas', 'Di video ini terlihat'. Langsung masuk ke inti!\n"
-        "\n"
-        "4. ALUR MENGALIR, JEMBATAN TRANSISI & ANTI-STACCATO (CRITICAL FLOW):\n"
-        "   - HINDARI GAYA CATATAN LOG / INVENTARIS: DILARANG membuat rentetan kalimat pendek terpotong-potong tanpa subjek atau jembatan jelas "
-        "(contoh buruk: 'Lalu api menyala. Besi dipotong. Hasilnya jalan.'). Ini membuat narasi terasa kaku dan patah-patah saat dibacakan TTS.\n"
-        "   - WAJIB gunakan frasa jembatan transisi alami antar kalimat dan antar tahapan "
-        "(contoh baik: 'Setelah rangka beres, barulah sasis dirakit...', 'Tantangan terberatnya justru di sistem kelistrikan...', 'Semua kerja keras terbayar saat kendaraan ini melaju...').\n"
-        "   - RITME KALIMAT SEGMEN: Usahakan tiap kalimat bernyawa dan berbobot 8-14 kata (~3.5-5 detik) agar sinkron dengan pergantian scene visual.\n"
-        "   - JAGA KRONOLOGI & KAUSALITAS LOGIS: Pastikan urutan aksi runtut secara fisik (bahan disiapkan dan diukur dulu, dipotong, baru dilas; bukan membalik urutan sebab-akibat).\n"
-        "   - THE REVEAL & CLIMAX: Tampilkan momen pembuktian/hasil akhir dengan kalimat deskriptif yang memuaskan dan bernyawa, bukan sekadar kalimat singkat datar.\n"
-        "   - Jadikan materi video sebagai tulang punggung cerita yang mengalir utuh dan berkesinambungan.\n"
-        "   - DILARANG menyebut istilah teknis editor: 'scene', 'shot', 'klip', 'timestamp', 'di layar terlihat', 'kamera menunjukkan'. "
-        "Ceritakan apa yang SEDANG TERJADI secara hidup, bukan mendeskripsikan file video.\n"
-        "\n"
-        "5. BAHASA LISAN NATURAL & ANTI-ROBOTIK AI:\n"
-        "   - Gunakan Bahasa Indonesia percakapan modern yang lugas, percaya diri, dan berjiwa (bukan bahasa buku kaku atau terjemahan mesin).\n"
-        "   - HINDARI pengulangan kata klise AI: 'ternyata', 'siapa sangka', 'namun tak disangka', 'yang paling menarik adalah'.\n"
-        "   - Variasikan ritme: kombinasikan kalimat pendek menghentak untuk tensi dengan kalimat mengalir untuk penjelasan.\n"
-        "\n"
-        "6. PENUTUP MEMBEKAS & ENGAGEMENT LOOP:\n"
-        "   - Akhiri naskah dengan kesimpulan bermakna, payoff memuaskan, atau pertanyaan reflektif yang memancing audiens berkomentar secara organik.\n"
-        "   - HINDARI ajakan murah: 'jangan lupa like, comment, subscribe'.\n"
-        "\n"
-        "7. OUTPUT STERIL & SIAP TTS:\n"
-        "   - HANYA kembalikan teks naskah narasi final yang siap dibacakan oleh voiceover (TTS).\n"
-        "   - DILARANG menyertakan kalimat sapaan AI seperti 'Tentu, ini naskahnya:'.\n"
-        "   - DILARANG menyertakan arahan panggung/SFX dalam kurung seperti [Musik Tegang] atau (Tertawa).\n"
-        "   - DILARANG menyertakan label struktur seperti 'HOOK:', 'ISI:', 'LANGKAH 1:', 'PENUTUP:'."
-    )
+WORDS_PER_SEC = 2.5  # reference explainer channel speaks 2.4-2.65 words/s
+SEC_PER_LINE = 4.5  # one picked shot per spoken line; matching may add a second cut inside a line
 
 
-# Static default for backward compatibility
-MASTER_SCRIPTWRITING_DIRECTIVE = build_master_scriptwriting_directive()
+def line_count_for(duration_sec: int) -> int:
+    return max(4, round(duration_sec / SEC_PER_LINE))
 
-# Backward-compatibility alias map for legacy templates to prevent breakage in older projects
-LEGACY_TEMPLATE_ALIASES = {
-    "alur_film": "recap_cinematic",
-    "alur_film_absurd": "story_parodi",
-    "alur_film_heist": "recap_cinematic",
-    "alur_film_dramatis": "recap_cinematic",
-    "alur_film_misteri": "recap_cinematic",
-    "alur_film_horor": "recap_cinematic",
-    "alur_film_perjalanan": "recap_cinematic",
-    "alur_film_plot_twist": "recap_cinematic",
-    "alur_film_epik": "recap_cinematic",
-    "konten_viral": "recap_cinematic",
-    "viral_pov": "pov_imersif",
-    "viral_proses": "showcase_proses",
-    "fakta_mitos": "fakta_unik",
-    "edukasi_singkat": "edukasi_tutorial",
-    "edukasi_otopsi": "opini_komentar",
+
+# ---------------------------------------------------------------------------
+# 1. Shots
+# ---------------------------------------------------------------------------
+
+
+def _usable(s: Dict[str, Any]) -> float:
+    _, _, dur, montage = _get_scene_usable_range(s, SEC_PER_LINE)
+    # Capped at one line's length: past that, the most satisfying shot wins, not the longest.
+    return 0.0 if montage else min(dur, SEC_PER_LINE)
+
+
+_RANGE_PROMPT = {
+    "id": (
+        "Ini daftar scene dari satu video sumber (nomor | waktu | isi).\n{scenes}\n\n"
+        "Pilih SATU rentang scene berurutan yang menceritakan satu subjek atau satu proses dari awal sampai hasilnya, "
+        "dengan minimal {n} scene. Kalau seluruh video memang satu proses, pilih semuanya. "
+        'Jawab JSON saja: {{"start": nomor_awal, "end": nomor_akhir, "topic": "subjek dan prosesnya dalam satu kalimat"}}'
+    ),
+    "en": (
+        "This is the scene list of one source video (number | time | content).\n{scenes}\n\n"
+        "Pick ONE run of consecutive scenes that tells one subject or one process from start to result, "
+        "with at least {n} scenes. If the whole video is one process, pick all of it. "
+        'Answer JSON only: {{"start": first_number, "end": last_number, "topic": "the subject and its process in one sentence"}}'
+    ),
 }
 
-DEFAULT_TEMPLATES = [
-    # =========================================================================
-    # 1. PILAR RECAP & STORYTELLING
-    # =========================================================================
-    {
-        "id": "recap_cinematic",
-        "name": "Alur Cerita & Sinematik Recap",
-        "description": "Naskah recap film, serial, anime, atau kisah nyata dengan tensi bertingkat, pacing cepat, dan resolusi memuaskan.",
-        "category": "recap",
-        "sub_category": "Recap Cerita",
-        "system_prompt": (
-            "Anda adalah narator alur cerita film (movie recap) dan storytelling sinematik profesional spesialis video pendek TikTok, Reels, dan YouTube Shorts dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook (Detik 0-3): Paparkan situasi genting, premis ekstrem, atau bahaya seketika yang dihadapi karakter utama (maksimal 10-12 kata).\n"
-            "2. Konflik & Eskalasi: Ceritakan peristiwa berdasarkan rintangan krusial dan aksi nyata yang tampak di video — bukan sinopsis datar.\n"
-            "3. Pilihan Kata Sinematik: Gunakan kata kerja aktif dan penggambaran visual yang tajam (misal: 'terjepit', 'tanpa ragu', 'situasi berubah kacau', 'taruhannya nyawa').\n"
-            "4. Payoff / Ending: Tuntaskan hasil akhir konflik dengan memuaskan, ditutup pertanyaan dilematis ('Kalau kamu di posisi dia, apa yang bakal kamu lakukan?').\n"
-            "\n"
-            "ANTI-AI & GAYA BAHASA:\n"
-            "- Bahasa lisan mengalir, dinamis, dan tidak monoton.\n"
-            "- Jangan mulai dengan 'Di awal film', 'Kisah ini menceritakan', atau 'Film ini berkisah tentang'.\n"
-            "- Variasikan ritme kalimat: kalimat pendek saat tensi memuncak, kalimat sedang saat membangun ketegangan."
+
+async def pick_story_range(
+    adapter: BaseLLMAdapter, scenes: List[Dict[str, Any]], n: int, language: str = "id"
+) -> Tuple[List[Dict[str, Any]], str]:
+    """One story inside the source: a compilation of many subjects gets cut down to its best
+    single-subject chapter (one ingredient, one method), a single-process video keeps everything.
+    The model only names the range; code checks it has enough usable shots."""
+    content = sorted(
+        [s for s in scenes if not is_filler_scene(s)] or scenes,
+        key=lambda s: float(s.get("start_time", 0.0)),
+    )
+    if len(content) <= n:
+        return content, ""
+    listing = "\n".join(
+        f"{i} | {_fmt_ts(float(s.get('start_time', 0.0)))} | {(s.get('description') or '').strip()[:90]}"
+        for i, s in enumerate(content)
+    )
+    prompt = _RANGE_PROMPT["en" if language == "en" else "id"].format(scenes=listing, n=n)
+    try:
+        raw = await adapter.generate_chat(prompt=prompt, json_mode=True)
+        data = json.loads(raw[raw.find("{") : raw.rfind("}") + 1])
+        a, b = sorted((int(data["start"]), int(data["end"])))
+        topic = str(data.get("topic") or "").strip()
+    except Exception as exc:
+        log.warning("Story range pick failed (%s); using the whole video", exc)
+        return content, ""
+    a, b = max(0, a), min(len(content) - 1, b)
+    # Too few usable shots for the line count: widen evenly instead of trusting the model.
+    while sum(1 for s in content[a : b + 1] if _usable(s) >= 2.5) < n and (
+        a > 0 or b < len(content) - 1
+    ):
+        a, b = max(0, a - 1), min(len(content) - 1, b + 1)
+    log.info("Story range %d-%d of %d scenes: %s", a, b, len(content), topic)
+    return content[a : b + 1], topic
+
+
+def pick_story_shots(scenes: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]]:
+    """Shot 1 is the most satisfying shot of the whole video (the hook shows the payoff first);
+    the other n-1 are spread over the video (start -> end of the process), best shot per slice."""
+    content = [s for s in scenes if not is_filler_scene(s)] or scenes
+    ordered = sorted(content, key=lambda s: float(s.get("start_time", 0.0)))
+    usable = _usable
+
+    cands = [s for s in ordered if usable(s) >= 2.5]
+    if len(cands) < n:
+        cands = [s for s in ordered if usable(s) > 0] or ordered
+    n = min(n, len(cands))
+    if n == 0:
+        return []
+
+    def score(s: Dict[str, Any]) -> float:
+        return usable(s) * _calc_visual_satisfaction_boost(s)
+
+    hook = max(cands, key=score)
+    rest = [s for s in cands if s is not hook]
+    m = min(n - 1, len(rest))
+    return [hook] + [
+        max(rest[k * len(rest) // m : (k + 1) * len(rest) // m], key=score) for k in range(m)
+    ]
+
+
+# ---------------------------------------------------------------------------
+# 2. Prompt
+# ---------------------------------------------------------------------------
+
+_TEXT = {
+    "id": {
+        "rules": (
+            "FORMAT: video short explainer tentang SATU proses, sekitar {dur} detik. "
+            "Satu narator menceritakan satu cerita utuh: apa yang dikerjakan, untuk apa, bagaimana caranya, dan hasil akhirnya.\n\n"
+            "CARA MENULIS:\n"
+            'Baris pertama tulis "Inti:" lalu satu kalimat: apa yang dikerjakan di video, tujuannya, dan hasil akhirnya.\n'
+            "Setelah itu tulis tepat {n} baris bernomor 1. sampai {n}.\n\n"
+            "PERAN BARIS (tertulis di ujung tiap gambar):\n"
+            "- PEMBUKA: sesuai GAYA, tentang hal paling unik dari judul atau seluruh proses, bukan isi satu gambar. "
+            "Satu pertanyaan atau pernyataan yang membuat penasaran.\n"
+            "- APA & KENAPA: sebut nama benda atau kegiatannya dan alasan kenapa ini dilakukan.\n"
+            "- TAHAP: tahap yang terjadi di gambar itu + alasannya (agar, supaya, karena, sehingga). "
+            "Sambungkan dengan kata seperti setelah itu, lalu, sebelum, sekaligus, bedanya, artinya, tapi jangan di setiap baris.\n"
+            '- TANTANGAN: "Namun, ..." masalah atau risiko di tahap gambar itu, lalu cara mereka mengatasinya.\n'
+            "- HASIL: hasil dari prosesnya.\n"
+            "- PENUTUP: menjawab pembuka. Rangkum caranya dalam satu kalimat (misalnya tiga bagian: A untuk ..., B untuk ..., dan C untuk ...) "
+            "atau beri julukan yang mudah diingat.\n\n"
+            "ATURAN:\n"
+            "1. Baris ke-k diucapkan saat GAMBAR ke-k tampil dan menjalankan PERAN gambar ke-k. "
+            "Tepat {n} baris: jangan menambah, menggabung, atau menggeser baris. "
+            "Ceritakan sebagai lanjutan cerita, jangan mendeskripsikan gambarnya (cuaca, warna, sudut kamera seperti 'dari udara').\n"
+            "2. Satu baris = satu kalimat, {lo}-{hi} kata.\n"
+            "3. Bahasa Indonesia lisan yang rapi dan konsisten, sudut pandang orang ketiga (mereka, petani, pekerja). Nada {tone}. "
+            "Jangan campur slang (gak, nggak, bikin, bener-bener).\n"
+            "4. Jelaskan, jangan memuji: tiap baris menjawab bagaimana alat atau langkah itu bekerja dan kenapa. "
+            "Hindari kata lebay (monster, gila, mustahil, canggih, dalam sekejap, tanpa sisa).\n"
+            "5. Sebut nama bahan dan alat seperti di daftar gambar. Alasan boleh dari pengetahuan umum yang pasti benar, tapi jangan mengarang angka pasti (ton, kilogram, detik, menit), tempat, atau nama orang.\n"
+            "6. Hanya kata yang diucapkan narator: tanpa judul, tanda kurung, emoji, ajakan subscribe, pertanyaan ke penonton (menurut kalian...), "
+            "atau kata 'scene', 'kamera', 'gambar', 'video ini', 'di layar'."
         ),
-        "user_prompt_template": (
-            "Judul / Premis Cerita: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah alur cerita sinematik yang seru dan mengalir memikat:"
+        "user": (
+            "Topik: {topic}\n"
+            "Judul video sumber: {title}\n\n"
+            "DAFTAR GAMBAR (gambar 1 = pembuka paling menarik, sisanya urut waktu dari awal sampai akhir proses):\n{shots}\n\n"
+            "Contoh bentuk jawaban saja (topik lain, jangan disalin):\n"
+            "Inti: pekerja memukul daging ikan berulang kali supaya menjadi bakso kenyal untuk dijual.\n"
+            "1. Kenapa daging ikan ini dipukul berkali-kali sebelum dimasak?\n"
+            "2. Ini adalah cara membuat bakso ikan yang kenyal tanpa bahan tambahan.\n"
+            "3. Daging ikan lebih dulu dipisahkan dari kulit dan tulangnya agar adonannya halus.\n"
+            "4. Setelah itu daging dipukul terus sehingga seratnya rapat dan lengket.\n\n"
+            'Tulis "Inti:" lalu {n} baris sekarang:'
         ),
-        "default_tone": "dramatis",
-        "default_voice": "Charon",
-        "is_builtin": True,
+        "retry": 'Jawaban sebelumnya salah format. Tulis "Inti:" lalu tepat {n} baris bernomor, satu kalimat per baris, tanpa teks lain.',
+        "no_topic": "simpulkan dari judul dan daftar gambar",
     },
-    {
-        "id": "story_parodi",
-        "name": "Parodi Komedi & Meme Absurd",
-        "description": "Naskah gaya meme recap lokal dengan penamaan tokoh kocak, logika ngaco yang lempeng, dan ending anti-klimaks.",
-        "category": "recap",
-        "sub_category": "Komedi & Parodi",
-        "system_prompt": (
-            "Anda adalah narator alur video parodi komedi absurd dan meme recap lokal ala kreator viral Indonesia di TikTok dan YouTube Shorts.\n"
-            "\n"
-            "STRUKTUR & GAYA HUMOR:\n"
-            "1. Tokoh Lokal Nyeleneh: Berikan nama lokal kocak pada karakter di video (contoh: Mas Joko, King Supri, Pak RT, Mas Slamet).\n"
-            "2. Hook Detik 0-3: Langsung sebut nama tokoh lokal dan keanehan visual/nasib sial yang dialaminya sejak kalimat pertama.\n"
-            "3. Logika Ngaco & Deadpan Humor: Ceritakan adegan di layar dengan pseudoscience konyol atau tafsiran harafiah yang terdengar serius padahal ngawur.\n"
-            "4. Repetisi & Figuran: Berikan reaksi kocak pada orang lewat/figuran di video, serta ritme repetisi aksi cepat bila visual mendukung.\n"
-            "5. Ending Anti-Klimaks: Akhiri dengan tokoh utama yang lelah atau memilih jalan santai tidak nyambung ('...dan akhirnya Mas Joko memilih pulang buat nyeduh kopi sachet. Mantap').\n"
-            "\n"
-            "OUTPUT:\n"
-            "- Tetap dalam Bahasa Indonesia santai dan lempeng, tanpa tertawa sendiri di naskah."
+    "en": {
+        "rules": (
+            "FORMAT: a short explainer video about ONE process, about {dur} seconds. "
+            "One narrator tells one complete story: what is being done, why, how, and the final result.\n\n"
+            "HOW TO WRITE:\n"
+            'First write "Core:" and one sentence: what is done in the video, why, and the final result.\n'
+            "Then write exactly {n} lines numbered 1. to {n}.\n\n"
+            "LINE ROLES (written at the end of each shot):\n"
+            "- OPENER: in the given STYLE, about the most unusual thing in the title or the whole process, not one shot. "
+            "One question or statement that makes people curious.\n"
+            "- WHAT & WHY: name the thing or activity and why it is done.\n"
+            "- STEP: the step happening in that shot + why (so that, because, which). "
+            "Link with words like then, after that, before, at the same time, the difference is, which means, but not on every line.\n"
+            '- CHALLENGE: "But ..." a problem or risk at the step in that shot, then how they handle it.\n'
+            "- RESULT: what the process produces.\n"
+            "- CLOSE: answers the opener. Sum up the method in one sentence (for example three parts: A for ..., B for ..., and C for ...) "
+            "or give it a memorable nickname.\n\n"
+            "RULES:\n"
+            "1. Line k is spoken while SHOT k is on screen and does the ROLE of shot k. "
+            "Exactly {n} lines: never add, merge, or shift a line. "
+            "Tell it as the next part of the story; do not describe the picture (weather, colors, camera angle like 'from above').\n"
+            "2. One line = one sentence, {lo}-{hi} words.\n"
+            "3. Natural, consistent spoken English, third person (they, the farmers, the workers). {tone} tone.\n"
+            "4. Explain, do not hype: each line says how the tool or step works and why. "
+            "Avoid hype words (monster, insane, impossible, high-tech, in seconds, nothing left).\n"
+            "5. Name ingredients and tools as the shot list does. Reasons may come from general knowledge that is surely true, but do not invent exact numbers (tons, kilograms, seconds, minutes), places, or names.\n"
+            "6. Only words the narrator says: no titles, brackets, emoji, subscribe calls, questions to the viewer (what do you think...), "
+            "or words like 'scene', 'camera', 'shot', 'this video', 'on screen'."
         ),
-        "user_prompt_template": (
-            "Konsep / Tokoh Parodi: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah parodi komedi absurd yang super kocak dan menghibur:"
+        "user": (
+            "Topic: {topic}\n"
+            "Source video title: {title}\n\n"
+            "SHOT LIST (shot 1 = the most striking opener, the rest in time order from start to end of the process):\n{shots}\n\n"
+            "Answer shape example only (other topic, do not copy):\n"
+            "Core: workers pound fish meat over and over so it becomes chewy fish balls to sell.\n"
+            "1. Why is this fish meat pounded over and over before cooking?\n"
+            "2. This is how chewy fish balls are made without any additives.\n"
+            "3. The meat is first separated from the skin and bones so the paste turns smooth.\n"
+            "4. After that it is pounded nonstop, packing the fibers tight and sticky.\n\n"
+            'Write "Core:" and the {n} lines now:'
         ),
-        "default_tone": "kocak",
-        "default_voice": "Puck",
-        "is_builtin": True,
+        "retry": 'Your last answer had the wrong format. Write "Core:" and then exactly {n} numbered lines, one sentence each, nothing else.',
+        "no_topic": "infer it from the title and the shot list",
     },
-
-    # =========================================================================
-    # 2. PILAR FAKTA & TRIVIA
-    # =========================================================================
-    {
-        "id": "fakta_unik",
-        "name": "Fakta Mengguncang & Misteri Unik",
-        "description": "Naskah trivia dan misteri viral dengan hook pemecah logika, 2-3 fakta mencengangkan, dan alasan mendalam di baliknya.",
-        "category": "fakta",
-        "sub_category": "Trivia & Misteri",
-        "system_prompt": (
-            "Anda adalah narator spesialis konten Fakta Unik, Sains Populer, dan Misteri Viral di media sosial dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook Detik 0-3: Pernyataan paradoks atau fakta tak masuk akal yang mematahkan pemahaman umum audiens (maksimal 10 kata).\n"
-            "2. Pengungkapan Berlapis: Sajikan 2 sampai 3 poin fakta mencengangkan yang saling terhubung secara alami (DILARANG memberi label 'Fakta 1', 'Fakta 2').\n"
-            "3. Eksplanasi Mendalam: Jelaskan *mengapa* hal itu bisa terjadi, bukan sekadar menyebutkan data mentah.\n"
-            "4. Pertanyaan Reflektif: Tutup dengan pertanyaan yang membuat penonton berpikir ulang atau berbagi pengalaman di komentar.\n"
-            "\n"
-            "AKURASI & GAYA:\n"
-            "- Narasi harus selaras dengan visual video yang disediakan.\n"
-            "- Hindari klaim mutlak yang mengada-ada tanpa dasar."
-        ),
-        "user_prompt_template": (
-            "Topik Fakta: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah fakta unik yang mencengangkan dan memicu rasa penasaran tinggi:"
-        ),
-        "default_tone": "santai",
-        "default_voice": "Puck",
-        "is_builtin": True,
-    },
-    {
-        "id": "fakta_ranking",
-        "name": "Top List & Ranking Hitung Mundur",
-        "description": "Naskah kurasi hitung mundur dari peringkat terbawah ke puncak (#1) dengan tensi meningkat dan anti-spoiler.",
-        "category": "fakta",
-        "sub_category": "Ranking & Top List",
-        "system_prompt": (
-            "Anda adalah host konten ranking dan top list viral di TikTok dan YouTube Shorts dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook Detik 0-3: Nyatakan taruhan ranking dengan tegas tanpa spoiler nomor satu ('Ini 3 hal paling berbahaya di dunia, dan nomor satu bukan apa yang kamu kira').\n"
-            "2. Format Hitung Mundur: Mulai dari posisi terbawah berurutan menuju posisi puncak (#3 atau #5 ke #1).\n"
-            "3. Poin Padat Per Item: Berikan 1 fakta tajam dan mengejutkan untuk setiap item, sinkron dengan footage scene video.\n"
-            "4. Suspense Menjelang #1: Berikan jeda dramatis pendek sebelum mengungkap juara utamanya.\n"
-            "5. Penutup Diskusi: Ajak penonton berdebat di kolom komentar ('Setuju nggak kalau dia ada di posisi satu?').\n"
-            "\n"
-            "ANTI-AI:\n"
-            "- Jangan gunakan pola pembuka yang sama di setiap item (variasikan transisi antar ranking)."
-        ),
-        "user_prompt_template": (
-            "Topik Ranking: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah ranking hitung mundur yang seru dan menegangkan:"
-        ),
-        "default_tone": "santai",
-        "default_voice": "Puck",
-        "is_builtin": True,
-    },
-
-    # =========================================================================
-    # 3. PILAR EDUKASI & INSIGHT
-    # =========================================================================
-    {
-        "id": "edukasi_tutorial",
-        "name": "Tips & Tutorial Langkah Praktis",
-        "description": "Naskah tips actionable (Problem-Agitate-Solution) dengan langkah konkret yang memicu audiens menekan tombol Save/Bookmark.",
-        "category": "edukasi",
-        "sub_category": "How-To & Tips",
-        "system_prompt": (
-            "Anda adalah edukator dan mentor digital praktis dalam Bahasa Indonesia spesialis video edukasi bernilai tinggi.\n"
-            "\n"
-            "STRUKTUR NARASI (PROBLEM - AGITATE - SOLUTION):\n"
-            "1. Hook Frustrasi (Detik 0-3): Sebutkan langsung rasa sakit, kesalahan fatal, atau frustrasi umum yang dihadapi audiens.\n"
-            "2. Kenapa Masalah Ini Terjadi: Singgung singkat akar masalahnya agar audiens merasa dipahami.\n"
-            "3. 2-3 Langkah Actionable: Sajikan langkah taktis yang langsung bisa diterapkan hari ini juga (ringkas, padat, tanpa teori bertele-tele).\n"
-            "4. Bukti / Relevansi Visual: Hubungkan tips dengan aksi atau objek yang terlihat pada materi video.\n"
-            "5. CTA Bernilai Simpan: Akhiri dengan ajakan menyimpan video untuk referensi praktik nanti ('Save video ini biar nggak bingung pas mau coba').\n"
-            "\n"
-            "GAYA BAHASA:\n"
-            "- Percaya diri, lugas, bersahabat, dan tidak menggurui."
-        ),
-        "user_prompt_template": (
-            "Topik / Masalah: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah tips praktis yang bernilai tinggi dan mudah dipraktikkan:"
-        ),
-        "default_tone": "formal",
-        "default_voice": "Aoede",
-        "is_builtin": True,
-    },
-    {
-        "id": "edukasi_explainer",
-        "name": "Explainer Analogi & Deep Dive",
-        "description": "Naskah penjelas konsep rumit atau teknologi kompleks menggunakan satu analogi sederhana yang memicu momen 'Aha!'.",
-        "category": "edukasi",
-        "sub_category": "Explainer & Analogi",
-        "system_prompt": (
-            "Anda adalah master explainer yang ahli menyederhanakan konsep rumit (sains, teknologi, ekonomi, fenomena) dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook Pertanyaan Penasaran (Detik 0-3): Pertanyaan menggugah tentang hal yang sering ditemui tapi jarang dipahami mekanismenya.\n"
-            "2. Satu Analogi Kunci: Gunakan satu perumpamaan dari kehidupan sehari-hari yang konsisten dari awal hingga akhir.\n"
-            "3. Translasi ke Mekanisme Asli: Jembatani analogi tersebut ke cara kerja atau fakta sebenarnya yang tampak di video.\n"
-            "4. Momen 'Aha!': Kalimat ringkas yang membuat penonton langsung paham inti permasalahan dalam satu kali dengar.\n"
-            "5. Penutup Apresiasi Pengetahuan: Ajak penonton membagikan pemahaman baru ini ke teman mereka."
-        ),
-        "user_prompt_template": (
-            "Konsep / Fenomena yang Dijelaskan: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah explainer analogi yang jernih dan mudah dipahami siapa saja:"
-        ),
-        "default_tone": "formal",
-        "default_voice": "Aoede",
-        "is_builtin": True,
-    },
-
-    # =========================================================================
-    # 4. PILAR SHOWCASE & PROSES
-    # =========================================================================
-    {
-        "id": "showcase_proses",
-        "name": "Proses Kreatif & Satisfying Craft",
-        "description": "Naskah menemani perjalanan pembuatan karya, seni, kerajinan, atau masak dari bahan mentah hingga transformasi memuaskan.",
-        "category": "showcase",
-        "sub_category": "Proses & Karya",
-        "system_prompt": (
-            "Anda adalah narator konten proses kreatif (satisfying, craftsmanship, seni, DIY, kuliner) dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook Kontras Mentah (Detik 0-3): Tunjukkan kontras antara bahan mentah biasa dengan potensi hasil akhirnya ('Bongkahan kayu lapuk ini bakal disulap jadi karya bernilai puluhan juta').\n"
-            "2. Alur Proses Mengalir: Hubungkan tahapan pengerjaan dengan kalimat jembatan alami yang logis dan runtut (bukan rentetan kalimat kaku atau daftar log). Ceritakan proses dari persiapan bahan, pemotongan, hingga perakitan secara berkesinambungan.\n"
-            "3. Titik Kritis / Momen Rawan Gagal: Soroti satu fase yang paling membutuhkan ketelitian tinggi atau rawan gagal bila salah langkah.\n"
-            "4. The Big Reveal: Tunjukkan hasil akhir karya yang berfungsi sempurna dengan kepuasan visual dan emosional yang memuaskan rasa penasaran penonton (jangan hanya kalimat pendek datar).\n"
-            "5. Apresiasi Dedikasi: Ajak penonton mengapresiasi waktu dan ketekunan yang dicurahkan sang kreator."
-        ),
-        "user_prompt_template": (
-            "Karya / Proses yang Dibuat: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual tahapan proses materi video:\n{scene_context}\n\n"
-            "Tuliskan naskah proses kreatif yang mengalir memuaskan dan penuh apresiasi:"
-        ),
-        "default_tone": "santai",
-        "default_voice": "Puck",
-        "is_builtin": True,
-    },
-    {
-        "id": "showcase_review",
-        "name": "Review & Highlight Produk / Tempat",
-        "description": "Naskah ulasan jujur untuk produk, gadget, kuliner, atau tempat wisata dengan impresi awal, keunggulan nyata, dan vonis akhir.",
-        "category": "showcase",
-        "sub_category": "Review & Showcase",
-        "system_prompt": (
-            "Anda adalah reviewer konten independen yang jujur, tajam, dan informatif di platform video pendek dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook First Impression (Detik 0-3): Impresi awal yang kuat atau klaim rasa penasaran ('Akhirnya nyobain kafe hidden gem yang lagi viral, beneran enak atau cuma menang view?').\n"
-            "2. Pengalaman Penggunaan / Rasa: Ulas fitur atau sensasi utama yang selaras dengan footage yang sedang ditampilkan di video.\n"
-            "3. Nilai Tambah & Catatan Kritis: Sebutkan poin paling unggul serta satu catatan kecil agar ulasan terasa objektif dan dapat dipercaya.\n"
-            "4. Vonis Akhir (Worth It atau Skip?): Berikan kesimpulan rekomendasi yang tegas sesuai target harga/kebutuhan penonton.\n"
-            "5. Penutup Interaktif: Tanya apakah penonton sudah pernah mencoba hal ini atau tertarik mencobanya."
-        ),
-        "user_prompt_template": (
-            "Produk / Tempat yang Di-review: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah review objektif yang tajam, informatif, dan menarik:"
-        ),
-        "default_tone": "santai",
-        "default_voice": "Puck",
-        "is_builtin": True,
-    },
-
-    # =========================================================================
-    # 5. PILAR OPINI & POV
-    # =========================================================================
-    {
-        "id": "pov_imersif",
-        "name": "POV Imersif (Sudut Pandang 'Kamu')",
-        "description": "Naskah emosional sudut pandang orang kedua ('kamu') yang menempatkan penonton langsung ke dalam situasi karakter.",
-        "category": "opini",
-        "sub_category": "POV Pengalaman",
-        "system_prompt": (
-            "Anda adalah kreator konten POV (Point of View) imersif dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Sudut Pandang Orang Kedua: Tulis SELURUH naskah menggunakan kata 'kamu' secara konsisten seolah penonton mengalami peristiwanya sendiri.\n"
-            "2. Hook Detik 0-3: Langsung lemparkan penonton ke tengah situasi ('Kamu baru saja terbangun, tapi ruangan ini bukan kamarmu').\n"
-            "3. Rangsangan Sensorik: Deskripsikan apa yang kamu dengar, lihat, dan rasakan selaras dengan cuplikan visual di video.\n"
-            "4. Eskalasi Emosi: Bangun tensi perasaan (bisa tegang, haru, panik, atau takjub) setahap demi setahap.\n"
-            "5. Payoff Menggantung: Berikan kalimat akhir yang membekas atau twist yang membuat penonton ingin menonton ulang dari detik pertama."
-        ),
-        "user_prompt_template": (
-            "Situasi / Konteks POV: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah POV imersif yang membuat penonton merasakan peristiwanya langsung:"
-        ),
-        "default_tone": "dramatis",
-        "default_voice": "Charon",
-        "is_builtin": True,
-    },
-    {
-        "id": "opini_komentar",
-        "name": "Opini Kritis & Bedah Isu (Hot Take)",
-        "description": "Naskah analisis isu aktual atau fenomena viral dengan argumen berani dan sudut pandang tajam pemantik diskusi hangat.",
-        "category": "opini",
-        "sub_category": "Opini & Reaksi",
-        "system_prompt": (
-            "Anda adalah komentator dan analis isu viral yang berpikiran kritis dan berani menyampaikan sudut pandang tajam dalam Bahasa Indonesia.\n"
-            "\n"
-            "STRUKTUR NARASI:\n"
-            "1. Hook Tesis Berani (Detik 0-3): Nyatakan pendapat kontras atau sudut pandang berbeda terhadap peristiwa yang sedang viral di video (maksimal 12 kata).\n"
-            "2. Analisis Kasus / Kejadian: Bedah momen penting yang terlihat di footage video dengan argumen logis dan bukti nyata.\n"
-            "3. Mengapa Opini Umum Keliru: Tunjukkan blind-spot atau hal yang luput diperhatikan kebanyakan orang.\n"
-            "4. Dampak & Esensi Sebenarnya: Tarik pelajaran lebih besar tentang apa yang sebenarnya sedang terjadi di balik fenomena ini.\n"
-            "5. Pemantik Debat Kolom Komentar: Lemparkan pertanyaan terbuka yang menguji pandangan audiens ('Kamu sepakat sama tindakan ini, atau justru sebaliknya?').\n"
-            "\n"
-            "GAYA BAHASA:\n"
-            "- Kritis, bernas, berbobot, dan santun tanpa menyerang individu secara personal."
-        ),
-        "user_prompt_template": (
-            "Isu / Kejadian yang Dibedah: {topic}\n"
-            "Tone: {tone}\n"
-            "Target Durasi: {target_duration} detik (sekitar {word_count} kata)\n"
-            "Konteks visual materi video yang tersedia:\n{scene_context}\n\n"
-            "Tuliskan naskah opini kritis yang tajam, logis, dan mengundang diskusi luas:"
-        ),
-        "default_tone": "berwibawa",
-        "default_voice": "Charon",
-        "is_builtin": True,
-    },
-]
+}
 
 
-def split_into_sentence_segments(text: str, balance: bool = True) -> List[Dict[str, Any]]:
-    """Split script into clean, balanced sentence segments (~3-6s per segment sweetspot).
-    Prevents hyper-fragmented 1-second cuts (< 3 words) and overly long 10-second visual freezes (> 22 words).
-    """
-    cleaned = re.sub(r"\[.*?\]", "", text).strip()
-    # Split by Indonesian sentence terminators (. ! ? or newline)
-    raw_sentences = [s.strip() for s in re.split(r"(?<=[.!?\n])\s+", cleaned) if s.strip()]
+_ROLES = {
+    "id": ("PEMBUKA", "APA & KENAPA", "TAHAP", "HASIL", "PENUTUP", "TANTANGAN"),
+    "en": ("OPENER", "WHAT & WHY", "STEP", "RESULT", "CLOSE", "CHALLENGE"),
+}
 
-    if not balance:
-        return [
-            {"id": f"seg-{i+1}", "text": s, "start_ms": 0, "end_ms": 0, "words": []}
-            for i, s in enumerate(raw_sentences)
-            if len(s) >= 3
-        ]
 
-    # Pass 1: split excessively long sentences (> 22 words) by natural clauses / conjunctions
-    clause_delims = r"(?<=[,;:\—\-])\s+|(?<=\s)(?:namun|tetapi|sedangkan|sehingga|sementara|padahal|karena|saat)\s+"
-    balanced = []
-    for s in raw_sentences:
-        words = s.split()
-        if len(words) > 22:
-            clauses = [c.strip() for c in re.split(clause_delims, s, flags=re.IGNORECASE) if c.strip()]
-            if len(clauses) >= 2:
-                cur_chunk = []
-                for c in clauses:
-                    c_words = c.split()
-                    if cur_chunk and (len(" ".join(cur_chunk).split()) + len(c_words) > 16):
-                        balanced.append(" ".join(cur_chunk))
-                        cur_chunk = [c]
-                    else:
-                        cur_chunk.append(c)
-                if cur_chunk:
-                    balanced.append(" ".join(cur_chunk))
-            else:
-                balanced.append(s)
-        else:
-            balanced.append(s)
-
-    # Pass 2: merge ultra-short fragments (<= 3 words) into neighbor if combined <= 16 words
-    merged = []
-    idx = 0
-    while idx < len(balanced):
-        cur = balanced[idx]
-        cur_w = len(cur.split())
-        if cur_w <= 3 and idx + 1 < len(balanced):
-            nxt = balanced[idx + 1]
-            nxt_w = len(nxt.split())
-            if cur_w + nxt_w <= 16:
-                merged.append(f"{cur} {nxt}")
-                idx += 2
-                continue
-        if cur_w <= 3 and merged and len(merged[-1].split()) + cur_w <= 16:
-            merged[-1] = f"{merged[-1]} {cur}"
-            idx += 1
-            continue
-
-        merged.append(cur)
-        idx += 1
-
-    segments = []
-    for idx, s in enumerate(merged, start=1):
-        clean_s = s.strip()
-        if len(clean_s) >= 3:
-            segments.append({
-                "id": f"seg-{idx}",
-                "text": clean_s,
-                "start_ms": 0,
-                "end_ms": 0,
-                "words": [],
-            })
-    return segments
+def _role(k: int, n: int, roles: Tuple[str, ...]) -> str:
+    """Story beat for line k of n: opener, what & why, steps (one challenge ~60% in), result, close."""
+    if k == 1:
+        return roles[0]
+    if k == n:
+        return roles[4]
+    if k == 2:
+        return roles[1]
+    if k == n - 1:
+        return roles[3]
+    # A fixed challenge line; asking for a twist "somewhere" made models insert an extra line and shift every shot after it.
+    if n >= 7 and k == round(n * 0.6):
+        return roles[5]
+    return roles[2]
 
 
 def _fmt_ts(sec: float) -> str:
     return f"{int(sec // 60):02d}:{int(sec % 60):02d}"
 
 
-def build_full_context_lines(scenes_summary: List[Dict[str, Any]]) -> List[str]:
-    """Compact per-scene lines covering the ENTIRE video, chronological, dialog included."""
-    lines = []
-    for sc in scenes_summary:
-        desc = (sc.get("description") or "").strip()
-        tags = ", ".join(sc.get("tags") or [])
-        ts = _fmt_ts(sc.get("start_time", 0.0))
-        parts = [f"[{ts}] {desc}"]
-        if tags:
-            parts.append(f"({tags})")
-        tr = (sc.get("transcript") or "").strip()
-        if tr:
-            parts.append(f'Dialog: "{tr[:400]}"')
-        lines.append(" | ".join(parts))
-    return lines
+def build_script_prompt(
+    style: str,
+    tone: str,
+    topic: str,
+    source_title: str,
+    shots: List[Dict[str, Any]],
+    target_duration: int,
+    language: str = "id",
+) -> Tuple[str, str]:
+    t = _TEXT["en" if language == "en" else "id"]
+    n = len(shots)
+    per_line = target_duration * WORDS_PER_SEC / max(1, n)
+    lo, hi = max(5, round(per_line * 0.8)), round(per_line * 1.2)
+    roles = _ROLES["en" if language == "en" else "id"]
+
+    # Only STEP/RESULT lines get the shot description; showing it on the opener/what/close lines
+    # makes models narrate shot 1 on line 3 (every step shifts by two).
+    def shot_line(k: int, s: Dict[str, Any]) -> str:
+        role = _role(k, n, roles)
+        desc = (s.get("description") or "").strip()[:160] if role in roles[2:4] + roles[5:] else "-"
+        return f"{k}. [{_fmt_ts(float(s.get('start_time', 0.0)))}] {desc} -> {role}"
+
+    shot_lines = "\n".join(shot_line(k, s) for k, s in enumerate(shots, start=1))
+    label = "STYLE" if language == "en" else "GAYA"
+    system = f"{label}:\n{style.strip()}\n\n" + t["rules"].format(
+        n=n, lo=lo, hi=hi, tone=tone, dur=target_duration
+    )
+    user = t["user"].format(
+        topic=(topic or "").strip() or t["no_topic"],
+        title=(source_title or "-").strip(),
+        shots=shot_lines,
+        n=n,
+    )
+    return system, user
 
 
-def _even_sample(items: List[Any], max_items: int) -> List[Any]:
-    """Evenly-spaced sample preserving order (always includes first and last)."""
-    n = len(items)
-    if n <= max_items:
-        return list(items)
-    idxs = sorted({int(round(k * (n - 1) / (max_items - 1))) for k in range(max_items)})
-    return [items[i] for i in idxs]
+# ---------------------------------------------------------------------------
+# 3. Parse
+# ---------------------------------------------------------------------------
+
+_NUMBERED = re.compile(r"^\s*(?:\*\*)?\d+\s*[.)\]:-]\s*(?:\*\*)?\s*(.+)$")
+_BRIEF = re.compile(
+    r"^\s*(?:\*\*)?(?:inti|core|summary|ringkasan)(?:\*\*)?\s*:.*$", re.IGNORECASE | re.MULTILINE
+)
+_EMOJI = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
 
-# Adaptive Pass 1 Summarization prompts tailored to content pillars
-CATEGORY_SUMMARY_PROMPTS = {
-    "recap": (
-        "Anda adalah analis naratif sinematik. Tugas Anda: membedah alur cerita dan dramaturgi dari log video berurutan.\n"
-        "\n"
-        "FORMAT OUTPUT WAJIB:\n"
-        "PREMIS & KARAKTER: <siapa tokohnya dan situasi awal di video, 1-2 kalimat>\n"
-        "KONFLIK & ESKALASI: <kronologi peristiwa krisis, rintangan, atau aksi dari awal ke akhir>\n"
-        "MOMEN PUNCAK / KLIMAKS: <adegan paling menegangkan atau titik balik terbesar dengan timestamp>\n"
-        "RESOLUSI: <bagaimana cerita berakhir atau nasib akhir karakter, 1-2 kalimat>\n"
-        "\n"
-        "ATURAN: Pahami materi video sebagai satu kesatuan cerita yang utuh. Dialog adalah sumber utama alur."
-    ),
-    "fakta": (
-        "Anda adalah peneliti fakta dan trivia sains populer. Tugas Anda: menemukan informasi paling unik dan mencengangkan dari log video.\n"
-        "\n"
-        "FORMAT OUTPUT WAJIB:\n"
-        "SUBJEK / FENOMENA: <objek atau topik utama video, 1-2 kalimat>\n"
-        "POIN FAKTA & ANOMALI: <3-5 fakta unik, kejanggalan, atau data mengejutkan yang terlihat/terdengar>\n"
-        "PENJELASAN MEKANISME: <mengapa hal tersebut terjadi atau apa makna penemuan tersebut>\n"
-        "KESIMPULAN: <pelajaran atau pesan penting dari fakta ini, 1-2 kalimat>\n"
-        "\n"
-        "ATURAN: Utamakan akurasi fakta dari dialog dan visual. Hindari mendeskripsikan klip satu per satu."
-    ),
-    "edukasi": (
-        "Anda adalah kurator materi edukasi praktis. Tugas Anda: mengekstrak masalah dan solusi actionable dari log video.\n"
-        "\n"
-        "FORMAT OUTPUT WAJIB:\n"
-        "MASALAH / SKILL: <apa masalah yang dipecahkan atau skill yang diajarkan di video, 1-2 kalimat>\n"
-        "LANGKAH SOLUSI: <tahapan metode atau tips praktis urut kronologis>\n"
-        "INSIGHT PENTING: <hal krusial atau kesalahan umum yang perlu dihindari>\n"
-        "HASIL AKHIR: <solusi final atau kondisi yang dicapai setelah mengikuti langkah>\n"
-        "\n"
-        "ATURAN: Fokus pada kejelasan langkah praktis yang bisa diterapkan audiens."
-    ),
-    "showcase": (
-        "Anda adalah kurator visual dan reviewer produk/proses. Tugas Anda: membedah objek karya dan tahapan transformasi dari log video.\n"
-        "\n"
-        "FORMAT OUTPUT WAJIB:\n"
-        "OBJEK / PRODUK: <karya, produk, makanan, tempat, atau hasil seni apa yang ditampilkan, 1-2 kalimat>\n"
-        "TAHAPAN PROSES / FITUR: <alur pembuatan dari bahan mentah atau fitur-fitur utama yang dipamerkan>\n"
-        "MOMEN IMPRESIF: <detail paling estetik, rintangan tersulit, atau keunggulan visual paling menonjol>\n"
-        "HASIL AKHIR / IMPRESI: <penampakan jadi dan kepuasan/manfaat yang dirasakan>\n"
-        "\n"
-        "ATURAN: Sinkronkan urutan tahapan dengan rekaman visual."
-    ),
-    "opini": (
-        "Anda adalah analis isu sosial dan pengamat konten. Tugas Anda: membedah dinamika peristiwa dan tensi emosional dari log video.\n"
-        "\n"
-        "FORMAT OUTPUT WAJIB:\n"
-        "ISU / PERISTIWA UTAMA: <kejadian atau topik perdebatan apa yang diangkat, 1-2 kalimat>\n"
-        "DINAMIKA PERISTIWA: <kronologi kejadian dan reaksi orang-orang yang terlibat>\n"
-        "TITIK KONTROVERSI / DILEMA: <bagian mana yang paling memicu pertanyaan moral atau perdebatan emosional>\n"
-        "KESIMPULAN AKHIR: <posisi situasi terakhir di akhir video>\n"
-        "\n"
-        "ATURAN: Tangkap nuansa emosional dan sudut pandang yang memancing perdebatan."
-    ),
-}
+def clean_spoken(text: str) -> str:
+    """Strip what TTS must not read: brackets, emoji, markdown, labels, colons/semicolons."""
+    s = re.sub(r"\[[^\]]*\]|\([^)]*\)", "", text)
+    s = _EMOJI.sub("", s)
+    s = s.replace("**", "").replace("*", "").strip(" \"'“”")
+    s = re.sub(
+        r"^(?:hook|baris|line|kalimat|gambar|shot|scene)\s*\d*\s*[:\-]\s*",
+        "",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(r"(\d+):(\d+)", r"\1.\2", s)
+    s = re.sub(r"\s*[;:]\s*", ", ", s)
+    s = re.sub(r",\s*([.!?])", r"\1", s)
+    return re.sub(r"\s+([.,!?])", r"\1", " ".join(s.split()))
 
-DEFAULT_SUMMARY_SYSTEM_PROMPT = (
-    "Anda adalah analis konten video. Tugas Anda: memahami KESELURUHAN isi video dari log scene "
-    "berurutan (deskripsi visual + dialog), lalu menghasilkan ringkasan terstruktur dalam Bahasa Indonesia.\n"
-    "\n"
-    "FORMAT OUTPUT WAJIB:\n"
-    "TOPIK UTAMA: <video ini tentang apa, 1-2 kalimat>\n"
-    "ALUR: <kronologi peristiwa/tahapan dari AWAL sampai AKHIR video, 5-10 poin urut waktu>\n"
-    "MOMEN KUNCI: <3-5 bagian paling menarik/bernilai, sertakan timestamp>\n"
-    "AKHIR: <bagaimana video berakhir / hasil akhir, 1-2 kalimat>\n"
-    "\n"
-    "ATURAN:\n"
-    "- Rangkum video sebagai SATU KESATUAN cerita/proses — JANGAN mendeskripsikan scene satu per satu.\n"
-    "- Dialog adalah sumber utama pemahaman; deskripsi visual sebagai pelengkap.\n"
-    "- Output hanya ringkasan terstruktur, tanpa penjelasan tambahan."
+
+def parse_script_lines(text: str) -> List[str]:
+    """Numbered lines if the model gave them, else plain sentences (cheap models sometimes write a paragraph)."""
+    # The "Inti:" brief only steers the model; it is never spoken.
+    text = _BRIEF.sub("", text)
+    numbered = [m.group(1) for m in (_NUMBERED.match(line) for line in text.splitlines()) if m]
+    raw = numbered or re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
+    lines = [clean_spoken(line) for line in raw]
+    return [line for line in lines if len(line.split()) >= 3]
+
+
+def segments_from_lines(
+    lines: List[str], shots: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
+    segs = []
+    for i, line in enumerate(lines):
+        seg: Dict[str, Any] = {
+            "id": f"seg-{i + 1}",
+            "text": line,
+            "start_ms": 0,
+            "end_ms": 0,
+            "words": [],
+        }
+        if shots and i < len(shots):
+            seg["scene_id"] = shots[i]["id"]
+        segs.append(seg)
+    return segs
+
+
+_WORD = re.compile(r"[^\W\d_]{4,}")
+_STAY_PENALTY = 0.05  # two lines on one shot only when the words say so
+_POSITION_PRIOR = (
+    0.1  # weaker than a real word match; decides lines that name nothing (opener, close)
 )
 
 
-async def summarize_video_content(
-    adapter: BaseLLMAdapter,
-    scenes_summary: List[Dict[str, Any]],
-    category: Optional[str] = None,
-) -> str:
-    """LLM pass 1: holistic understanding tailored to the script's content category."""
-    context = "\n".join(build_full_context_lines(scenes_summary))
-    system_prompt = CATEGORY_SUMMARY_PROMPTS.get(
-        (category or "").lower(),
-        DEFAULT_SUMMARY_SYSTEM_PROMPT,
-    )
-    prompt = (
-        f"Log scene video (berurutan, mencakup SELURUH video, {len(scenes_summary)} scene):\n\n"
-        f"{context}\n\n"
-        "Hasilkan ringkasan terstruktur dari keseluruhan isi video:"
-    )
-    return await adapter.generate_chat(prompt=prompt, system_prompt=system_prompt)
+def _words(text: Optional[str]) -> set:
+    return {w.lower() for w in _WORD.findall(text or "")}
 
 
-def build_narration_context(
-    summary: str,
-    scenes_summary: List[Dict[str, Any]],
-    category: Optional[str] = None,
-) -> str:
-    """Context for script pass: category-aware summary + evenly-sampled visual timeline."""
-    total_sec = 0.0
-    if scenes_summary:
-        last = scenes_summary[-1]
-        total_sec = (last.get("start_time", 0.0) or 0.0) + (last.get("duration", 0.0) or 0.0)
-    sample = _even_sample(scenes_summary, 24) if scenes_summary else []
-    timeline = "\n".join(
-        f"- [{_fmt_ts(s.get('start_time', 0.0))}] {(s.get('description') or '').strip()}"
-        for s in sample
-    )
-    return (
-        "RINGKASAN KESELURUHAN ISI VIDEO:\n"
-        f"{summary}\n\n"
-        f"LINIMASA VISUAL (sampel merata {len(sample)} dari {len(scenes_summary)} scene, "
-        f"durasi total ~{int(total_sec)} detik):\n"
-        f"{timeline}\n\n"
-        "PENTING: Gunakan ringkasan isi video di atas sebagai tulang punggung narasi cerita yang mengalir utuh. "
-        "Jangan mendeskripsikan scene satu per satu; ceritakan peristiwanya secara hidup sesuai kategori naskah yang dipilih."
-    )
+def align_lines_to_shots(lines: List[str], shots: List[Dict[str, Any]]) -> List[int]:
+    """Shot index for every line, from what the line talks about rather than its position.
+
+    Monotonic DP (story order): line 1 stays on the hook shot, a line may share the previous
+    shot (merged/extra line) or skip shots (dropped line). Words shared with a shot description
+    count by rarity across the shot list, so 'kubis' or 'pisau' weigh more than 'mesin'."""
+    L, S = len(lines), len(shots)
+    if not L or not S:
+        return []
+    docs = [_words(s.get("description")) for s in shots]
+    df = Counter(w for d in docs for w in d)
+    idf = {w: math.log((S + 1) / (c + 1)) for w, c in df.items()}
+    norms = [sum(idf[w] for w in d) or 1.0 for d in docs]
+    line_words = [_words(line) for line in lines]
+
+    def gain(i: int, j: int) -> float:
+        expected = round(i * (S - 1) / max(1, L - 1))
+        shared = sum(idf[w] for w in line_words[i] & docs[j]) / norms[j]
+        return shared + (_POSITION_PRIOR if j == expected else 0.0)
+
+    neg = float("-inf")
+    best = [[neg] * S for _ in range(L)]
+    back = [[0] * S for _ in range(L)]
+    best[0][0] = gain(0, 0)
+    for i in range(1, L):
+        run, arg = neg, 0
+        for j in range(S):
+            stay = best[i - 1][j] - _STAY_PENALTY
+            prev, prev_j = (run, arg) if run >= stay else (stay, j)
+            if prev > neg:
+                best[i][j], back[i][j] = prev + gain(i, j), prev_j
+            if best[i - 1][j] > run:
+                run, arg = best[i - 1][j], j
+    j = max(range(S), key=lambda k: best[L - 1][k])
+    out = [0] * L
+    for i in range(L - 1, -1, -1):
+        out[i] = j
+        j = back[i][j]
+    return out
 
 
 async def generate_narration_script(
     adapter: BaseLLMAdapter,
-    system_prompt: str,
-    user_prompt_template: str,
+    style: str,
+    tone: str,
     topic: str,
-    tone: str = "santai",
-    target_duration: int = 60,
-    scenes_summary: Optional[List[Dict[str, Any]]] = None,
-    custom_prompt: Optional[str] = None,
-    category: Optional[str] = None,
+    source_title: str,
+    scenes: List[Dict[str, Any]],
+    target_duration: int = 55,
     language: str = "id",
-) -> str:
-    """Generate narrative script from LLM using chosen template and adaptive scene context."""
-    # Approximate words per second dynamically adjusted by tone
-    pace_multipliers = {
-        "tegang": 2.4,
-        "kocak": 2.4,
-        "santai": 2.2,
-        "dramatis": 2.2,
-        "hangat": 2.1,
-        "formal": 2.1,
-        "berwibawa": 2.0,
-        "mencekam": 2.0,
-    }
-    pace = pace_multipliers.get(tone.lower(), 2.2)
-    word_count = int(target_duration * pace)
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Returns (raw_text with one line per shot, segments with scene_id)."""
+    n = line_count_for(target_duration)
+    story_scenes, story_topic = await pick_story_range(adapter, scenes, n, language)
+    shots = pick_story_shots(story_scenes, n)
+    if not shots:
+        raise ValueError("Belum ada scene. Analisis video dulu di tab Media.")
 
-    # Two-pass generation:
-    # Pass 1 — LLM memahami KESELURUHAN video secara adaptif sesuai pilar konten naskah.
-    # Pass 2 — Tulis naskah dari ringkasan level-cerita dengan Standard Emas Scriptwriting.
-    if scenes_summary:
-        try:
-            summary = await summarize_video_content(adapter, scenes_summary, category=category)
-            scene_context_str = build_narration_context(summary, scenes_summary, category=category)
-        except Exception as e:
-            log.warning("Adaptive summary failed (%s), falling back to compact scene log", e)
-            scene_context_str = "\n".join(build_full_context_lines(_even_sample(scenes_summary, 40)))
-    else:
-        scene_context_str = "No specific scene metadata available." if language == "en" else "Tidak ada metadata scene spesifik."
-
-    clean_topic = topic or ("Interesting facts about this video" if language == "en" else "Fakta menarik seputar video ini")
-    min_words = int(word_count * 0.85)
-    max_words = int(word_count * 1.15)
-
-    if custom_prompt:
-        context_label = "Visual video context:" if language == "en" else "Konteks visual video:"
-        user_prompt = f"{custom_prompt}\n\n{context_label}\n{scene_context_str}"
-    else:
-        user_prompt = user_prompt_template.format(
-            topic=clean_topic,
-            tone=tone,
-            target_duration=target_duration,
-            word_count=word_count,
-            scene_context=scene_context_str,
-        )
-
-    # Dual-Anchoring: Tegaskan kembali batas durasi, bahasa, intonasi & alur mengalir di akhir user prompt
-    # agar recency bias LLM memperkuat instruksi sistem.
-    if language == "en":
-        user_prompt += (
-            f"\n\n--- CRITICAL DURATION, TONE & LANGUAGE INSTRUCTION (MANDATORY) ---\n"
-            f"• Language: ENGLISH ONLY (Write 100% of the narration in fluent, captivating American/international English. Do NOT write in Indonesian).\n"
-            f"• Topic: {clean_topic}\n"
-            f"• Tone / Delivery: {tone}\n"
-            f"• Target Duration: {target_duration}s (STRICT CORRIDOR: {min_words} - {max_words} words, target ~{word_count} words).\n"
-            f"• Narrative Flow: Must flow naturally with connective phrases; NO robotic staccato sentences or AI clichés.\n"
-            f"Write ONLY the final spoken English narration script ready for TTS voiceover:"
-        )
-    else:
-        user_prompt += (
-            f"\n\n--- PENGINGAT KETAT DURASI, INTONASI & ALUR NARASI (WAJIB DIPATUHI) ---\n"
-            f"• Bahasa: BAHASA INDONESIA (Tulis seluruh narasi dalam Bahasa Indonesia lisan yang lancar dan memikat).\n"
-            f"• Topik: {clean_topic}\n"
-            f"• Intonasi / Nada Bicara: {tone}\n"
-            f"• Target Durasi: {target_duration} detik (KORIDOR KETAT: {min_words} - {max_words} kata, target ~{word_count} kata).\n"
-            f"• Alur Bicara: Wajib mengalir alami dengan kalimat penghubung/jembatan antar tahapan; DILARANG kalimat patah-patah/staccato.\n"
-            f"Tulis HANYA naskah narasi final yang padat, mengalir hidup, dan langsung siap dibacakan oleh voiceover (TTS):"
-        )
-
-    master_directive = build_master_scriptwriting_directive(
-        topic=clean_topic,
-        tone=tone,
-        target_duration=target_duration,
-        word_count=word_count,
-        language=language,
+    system, user = build_script_prompt(
+        style, tone, topic or story_topic, source_title, shots, target_duration, language
     )
+    lines = parse_script_lines(await adapter.generate_chat(prompt=user, system_prompt=system))
+    if len(lines) < max(2, len(shots) // 2):
+        retry = _TEXT["en" if language == "en" else "id"]["retry"].format(n=len(shots))
+        lines = parse_script_lines(
+            await adapter.generate_chat(prompt=f"{user}\n\n{retry}", system_prompt=system)
+        )
+        if len(lines) < max(2, len(shots) // 2):
+            raise ValueError(
+                f"Model AI tidak mengikuti format ({len(lines)} dari {len(shots)} baris). Coba lagi atau ganti model."
+            )
 
-    raw_response = await adapter.generate_chat(
-        prompt=user_prompt,
-        system_prompt=system_prompt + master_directive,
-    )
+    # A model that repeats its hook at the end breaks the loop feel.
+    if len(lines) >= 4 and lines[0].lower() == lines[-1].lower():
+        lines = lines[:-1]
+    picks = align_lines_to_shots(lines, shots)
+    if picks != list(range(len(lines))):
+        log.info("Script lines re-aligned to shots by content: %s", picks)
+    return "\n".join(lines), segments_from_lines(lines, [shots[j] for j in picks])
 
-    # Clean any accidental conversational prefixes like "Tentu! Ini naskahnya:" or "Sure! Here is the script:"
-    clean_lines = []
-    for line in raw_response.split("\n"):
-        line_s = line.strip()
-        if not line_s:
-            continue
-        if re.match(r"^(tentu|ini dia|berikut|halo|oke|sure|here is|here's|certainly|welcome|alright)[^.!?:;]*[:\-]", line_s, re.IGNORECASE):
-            continue
-        clean_lines.append(line_s)
 
-    return " ".join(clean_lines)
+# ---------------------------------------------------------------------------
+# 4. Re-split after a manual edit
+# ---------------------------------------------------------------------------
+
+
+def split_into_sentence_segments(text: str) -> List[Dict[str, Any]]:
+    """One segment per line when the script is line-based (generated scripts), else per sentence."""
+    if "\n" in text.strip():
+        raw = [line for line in text.splitlines() if line.strip()]
+        raw = [(_NUMBERED.match(line).group(1) if _NUMBERED.match(line) else line) for line in raw]
+    else:
+        raw = re.split(r"(?<=[.!?])\s+", text.strip())
+    return segments_from_lines([c for c in (clean_spoken(line) for line in raw) if len(c) >= 3])

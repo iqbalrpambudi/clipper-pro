@@ -1,16 +1,16 @@
 import asyncio
 import logging
 import os
-import subprocess
 import tempfile
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
+
 
 def get_transcribe_model(model_size: str = "base"):
     """Reuse the single shared Whisper model (services.alignment) to avoid double RAM."""
     from app.services.alignment import get_whisper_model
+
     return get_whisper_model(model_size)
 
 
@@ -19,11 +19,15 @@ async def extract_audio_track(video_path: str, output_wav_path: str) -> bool:
     cmd = [
         "ffmpeg",
         "-y",
-        "-i", video_path,
+        "-i",
+        video_path,
         "-vn",
-        "-acodec", "pcm_s16le",
-        "-ar", "16000",
-        "-ac", "1",
+        "-acodec",
+        "pcm_s16le",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
         output_wav_path,
     ]
     try:
@@ -34,7 +38,9 @@ async def extract_audio_track(video_path: str, output_wav_path: str) -> bool:
         )
         _, stderr = await proc.communicate()
         if proc.returncode != 0:
-            log.warning("ffmpeg audio extraction warning: %s", stderr.decode("utf-8", errors="ignore")[:300])
+            log.warning(
+                "ffmpeg audio extraction warning: %s", stderr.decode("utf-8", errors="ignore")[:300]
+            )
             return False
         return os.path.exists(output_wav_path) and os.path.getsize(output_wav_path) > 0
     except Exception as e:
@@ -58,18 +64,20 @@ def _transcribe_audio_file(
             language=language if language and language != "auto" else None,
             beam_size=5,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
+            vad_parameters={"min_silence_duration_ms": 500},
         )
 
         results = []
         for seg in segments:
             text = seg.text.strip()
             if text:
-                results.append({
-                    "start": float(seg.start),
-                    "end": float(seg.end),
-                    "text": text,
-                })
+                results.append(
+                    {
+                        "start": float(seg.start),
+                        "end": float(seg.end),
+                        "text": text,
+                    }
+                )
         return results
     except Exception as e:
         log.error("Transcription error on %s: %s", audio_path, e)

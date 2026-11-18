@@ -1,34 +1,43 @@
 from pathlib import Path
 from typing import List, Optional
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from arq import create_pool
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
 from app.core.db import get_db
-from app.core.redis import get_redis_settings
-from app.core.storage import storage
+from app.core.events import publish_project_event
 from app.core.security import decrypt_secret
+from app.core.storage import storage
+from app.core.tasks import run_background_task
 from app.models.config import ModelConfig
+from app.models.narration import AudioTrack, Narration
 from app.models.project import Project
-from app.models.narration import Narration, AudioTrack
+from app.schemas.narration import NarrationResponse
 from app.schemas.tts import (
-    VoiceInfo,
+    AudioTrackResponse,
     CostEstimateRequest,
     CostEstimateResponse,
-    TTSGenerateRequest,
-    AudioTrackResponse,
     RealignWordsRequest,
+    TTSConfigSchema,
+    TTSGenerateRequest,
+    VoiceInfo,
 )
-from app.schemas.narration import NarrationResponse
-import httpx
-from app.core.config import get_settings
-from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.services.alignment import align_audio_with_text
-from app.core.events import publish_project_event
+from app.services.bgm import available_moods
+from app.services.project_defaults import load_project_defaults
+from app.services.tts import AVAILABLE_VOICES, estimate_tts_cost, get_or_generate_voice_sample
 from app.workers.tasks import generate_tts_and_align_job
 
 router = APIRouter(tags=["tts"])
+
+
+@router.get("/tts/bgm/moods", response_model=List[str])
+async def list_bgm_moods():
+    return available_moods()
 
 
 @router.get("/tts/voices", response_model=List[VoiceInfo])
@@ -60,7 +69,9 @@ async def get_elevenlabs_voices(
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key})
+            resp = await client.get(
+                "https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}
+            )
             if resp.status_code != 200:
                 err_text = resp.text
                 if "missing_permissions" in err_text or "voices_read" in err_text:
@@ -72,29 +83,41 @@ async def get_elevenlabs_voices(
                             "dan tempel ke kolom 'Custom Voice ID' di bawah!"
                         ),
                     )
-                raise HTTPException(status_code=resp.status_code, detail=f"ElevenLabs API Error: {err_text}")
+                raise HTTPException(
+                    status_code=resp.status_code, detail=f"ElevenLabs API Error: {err_text}"
+                )
             data = resp.json()
             raw_voices = data.get("voices", [])
             result = []
             for v in raw_voices:
                 labels = v.get("labels") or {}
-                desc_parts = [labels.get("description", ""), labels.get("accent", ""), labels.get("use case", "")]
-                desc = ", ".join(p for p in desc_parts if p) or v.get("category", "ElevenLabs Voice")
-                result.append({
-                    "id": v["voice_id"],
-                    "name": f"{v['name']} (ElevenLabs)",
-                    "provider": "elevenlabs",
-                    "gender": labels.get("gender", "Neutral").capitalize(),
-                    "category": v.get("category", "premade"),
-                    "preview_url": v.get("preview_url"),
-                    "description": desc,
-                    "sample_text": "Halo, ini adalah contoh sampel suara dari akun ElevenLabs Anda.",
-                })
+                desc_parts = [
+                    labels.get("description", ""),
+                    labels.get("accent", ""),
+                    labels.get("use case", ""),
+                ]
+                desc = ", ".join(p for p in desc_parts if p) or v.get(
+                    "category", "ElevenLabs Voice"
+                )
+                result.append(
+                    {
+                        "id": v["voice_id"],
+                        "name": f"{v['name']} (ElevenLabs)",
+                        "provider": "elevenlabs",
+                        "gender": labels.get("gender", "Neutral").capitalize(),
+                        "category": v.get("category", "premade"),
+                        "preview_url": v.get("preview_url"),
+                        "description": desc,
+                        "sample_text": "Halo, ini adalah contoh sampel suara dari akun ElevenLabs Anda.",
+                    }
+                )
             return result
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal mengambil daftar suara ElevenLabs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Gagal mengambil daftar suara ElevenLabs: {str(e)}"
+        )
 
 
 @router.get("/tts/sample")
@@ -113,20 +136,15 @@ async def get_voice_sample(
     settings = get_settings()
     clean_prov = provider.lower().strip()
     if clean_prov == "elevenlabs":
-        tts_model = model or (getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2") if cfg else "eleven_multilingual_v2")
+        tts_model = model or (
+            getattr(cfg, "elevenlabs_model", "eleven_multilingual_v2")
+            if cfg
+            else "eleven_multilingual_v2"
+        )
         if cfg and cfg.elevenlabs_api_key_encrypted:
             api_key = decrypt_secret(cfg.elevenlabs_api_key_encrypted)
         if not api_key:
             api_key = getattr(settings, "ELEVENLABS_API_KEY", "") or ""
-    elif clean_prov == "runware":
-        tts_model = model or (getattr(cfg, "runware_tts_model", "fishaudio:s2.1@pro") if cfg else "fishaudio:s2.1@pro")
-        if cfg:
-            if getattr(cfg, "runware_api_key_encrypted", None):
-                api_key = decrypt_secret(cfg.runware_api_key_encrypted)
-            elif cfg.image_api_key_encrypted:
-                api_key = decrypt_secret(cfg.image_api_key_encrypted)
-        if not api_key:
-            api_key = getattr(settings, "IMAGE_API_KEY", "") or ""
     elif clean_prov == "gemini":
         tts_model = model or "gemini-2.5-flash-preview-tts"
         if cfg:
@@ -137,9 +155,11 @@ async def get_voice_sample(
             if not model and cfg.tts_provider and cfg.tts_provider.startswith("gemini-"):
                 tts_model = cfg.tts_provider
         if not api_key:
-            api_key = getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
+            api_key = (
+                getattr(settings, "GEMINI_API_KEY", "") or getattr(settings, "AI_API_KEY", "") or ""
+            )
     else:
-        tts_model = model or "edge"
+        raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
     try:
         sample_path = await get_or_generate_voice_sample(
@@ -156,7 +176,9 @@ async def get_voice_sample(
             headers={"Cache-Control": "no-cache, must-revalidate"},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memuat sampel suara {voice} ({provider}): {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Gagal memuat sampel suara {voice} ({provider}): {e}"
+        )
 
 
 @router.post("/tts/estimate-cost", response_model=CostEstimateResponse)
@@ -184,23 +206,64 @@ async def trigger_tts_generation(
     if not narration or not narration.raw_text:
         raise HTTPException(status_code=400, detail="Naskah narasi belum dibuat")
 
-    target_lang = (payload.language or getattr(narration, "language", None) or getattr(proj, "language", None) or "id").strip().lower()
+    target_lang = (
+        (
+            payload.language
+            or getattr(narration, "language", None)
+            or getattr(proj, "language", None)
+            or "id"
+        )
+        .strip()
+        .lower()
+    )
 
-    provider = payload.provider or "gemini"
+    defaults, _, _ = load_project_defaults()
+    proj_tts = proj.tts_config if isinstance(proj.tts_config, dict) else {}
+
+    provider = (
+        (payload.provider or proj_tts.get("provider") or defaults.tts.provider or "gemini")
+        .strip()
+        .lower()
+    )
     if payload.voice:
         voice = payload.voice
+    elif proj_tts.get("voice") and (
+        not payload.provider or payload.provider == proj_tts.get("provider")
+    ):
+        voice = str(proj_tts["voice"])
+    elif defaults.tts.voice and provider == defaults.tts.provider:
+        voice = defaults.tts.voice
     elif provider == "gemini":
         voice = "Puck"
     elif provider == "elevenlabs":
         voice = "Adam"
-    elif provider == "runware":
-        voice = "fishaudio:s2.1@pro"
     else:
-        voice = "en-US-JennyNeural" if target_lang == "en" else "id-ID-GadisNeural"
+        raise HTTPException(status_code=400, detail=f"Provider TTS tidak dikenal: {provider}")
 
-    # If edge provider is selected for English narration but an ID voice was left, auto-switch to English voice
-    if provider == "edge" and target_lang == "en" and voice.startswith("id-"):
-        voice = "en-US-JennyNeural"
+    raw_rate = payload.rate if payload.rate is not None else proj_tts.get("rate", defaults.tts.rate)
+    raw_pitch = (
+        payload.pitch if payload.pitch is not None else proj_tts.get("pitch", defaults.tts.pitch)
+    )
+    parsed_tts = TTSConfigSchema(
+        provider=provider,
+        voice=voice,
+        rate=raw_rate,
+        pitch=raw_pitch,
+        model=payload.model or proj_tts.get("model") or defaults.tts.model,
+    )
+    rate_str = f"{parsed_tts.rate:+d}%"
+    pitch_str = f"{parsed_tts.pitch:+d}Hz"
+    model_name = payload.model or (
+        parsed_tts.model
+        if (
+            parsed_tts.model
+            and (provider == proj_tts.get("provider") or provider == defaults.tts.provider)
+        )
+        else None
+    )
+
+    # Remember chosen TTS settings on the project for future config export
+    proj.tts_config = parsed_tts.model_dump()
 
     # Estimate cost
     cost_est = estimate_tts_cost(narration.raw_text, provider)
@@ -210,8 +273,8 @@ async def trigger_tts_generation(
         narration_id=narration.id,
         provider=provider,
         voice=voice,
-        rate=payload.rate,
-        pitch=payload.pitch,
+        rate=rate_str,
+        pitch=pitch_str,
         estimated_cost=cost_est.estimated_cost_usd,
         status="generating",
     )
@@ -219,37 +282,19 @@ async def trigger_tts_generation(
     await db.commit()
     await db.refresh(track)
 
-    # Queue background job or fallback asyncio task
-    try:
-        pool = await create_pool(get_redis_settings())
-        await pool.enqueue_job(
-            "generate_tts_and_align_job",
-            project_id,
-            narration.id,
-            voice,
-            provider,
-            payload.rate,
-            payload.pitch,
-            payload.model,
-            payload.fallback_enabled,
-            target_lang,
-        )
-        await pool.close()
-    except Exception:
-        asyncio.create_task(
-            generate_tts_and_align_job(
-                {},
-                project_id,
-                narration.id,
-                voice,
-                provider,
-                payload.rate,
-                payload.pitch,
-                payload.model,
-                payload.fallback_enabled,
-                target_lang,
-            )
-        )
+    # Run background job via in-process async task
+    run_background_task(
+        generate_tts_and_align_job,
+        {},
+        project_id,
+        narration.id,
+        voice,
+        provider,
+        rate_str,
+        pitch_str,
+        model_name,
+        target_lang,
+    )
 
     return AudioTrackResponse(
         id=track.id,
@@ -348,6 +393,7 @@ async def realign_narration_words(
 
     # Determine segments to align
     from app.services.narrative import split_into_sentence_segments
+
     target_segments = None
     if payload and payload.segments:
         target_segments = payload.segments
@@ -376,6 +422,7 @@ async def realign_narration_words(
         )
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).exception("Realignment error for project %s: %s", project_id, e)
         raise HTTPException(
             status_code=500,
