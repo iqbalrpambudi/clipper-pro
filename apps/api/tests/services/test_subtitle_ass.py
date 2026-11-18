@@ -54,7 +54,7 @@ def test_ass_burst_groups_highlight_and_srt():
     assert len(dialogues) == 3  # one event per spoken word
     assert "RAHASIA" in dialogues[0] and "LUAR" in dialogues[0] and "BIASA" not in dialogues[0]
     assert "\\c&H0066FF00}" in dialogues[0] and "\\fscx110" in dialogues[0]
-    assert "Style: KaraokeDefault,Montserrat,90," in ass
+    assert "Style: KaraokeDefault,Poppins,103," in ass
 
     plain = generate_ass_subtitles(SEGMENTS, {"highlight_animation": "none"})
     assert "\\fscx" not in plain
@@ -74,14 +74,7 @@ def test_style_defaults_and_safe_y():
 
 
 def test_sequence_anchored_forced_alignment():
-    original_words = [
-        {"word": "Tahukah", "start_ms": 0, "end_ms": 0},
-        {"word": "kamu", "start_ms": 0, "end_ms": 0},
-        {"word": "bahwa", "start_ms": 0, "end_ms": 0},
-        {"word": "bumi", "start_ms": 0, "end_ms": 0},
-        {"word": "itu", "start_ms": 0, "end_ms": 0},
-        {"word": "bulat?", "start_ms": 0, "end_ms": 0},
-    ]
+    segments = [{"id": "seg-1", "text": "Tahukah kamu bahwa bumi itu bulat?"}]
 
     transcribed_words = [
         {"word": "Tahukah", "start_ms": 120, "end_ms": 450},
@@ -91,8 +84,8 @@ def test_sequence_anchored_forced_alignment():
     ]
 
     aligned = sequence_anchored_forced_alignment(
-        original_words, transcribed_words, total_duration_ms=2000
-    )
+        segments, transcribed_words, total_audio_duration_sec=2.0
+    )[0]["words"]
     assert len(aligned) == 6
     assert aligned[0]["word"] == "Tahukah"
     assert aligned[0]["start_ms"] == 120
@@ -112,10 +105,7 @@ def test_sequence_anchored_forced_alignment():
 
 
 def test_sequence_anchored_forced_alignment_with_offset():
-    original_words = [
-        {"word": "fakta", "start_ms": 0, "end_ms": 0},
-        {"word": "kedua", "start_ms": 0, "end_ms": 0},
-    ]
+    segments = [{"id": "seg-1", "text": "fakta kedua"}]
 
     transcribed_words = [
         {"word": "fakta", "start_ms": 100, "end_ms": 300},
@@ -123,8 +113,8 @@ def test_sequence_anchored_forced_alignment_with_offset():
     ]
 
     aligned = sequence_anchored_forced_alignment(
-        original_words, transcribed_words, total_duration_ms=1000, segment_offset_ms=5000
-    )
+        segments, transcribed_words, total_audio_duration_sec=1.0, offset_ms=5000
+    )[0]["words"]
     assert aligned[0]["start_ms"] == 5100
     assert aligned[0]["end_ms"] == 5300
     assert aligned[1]["start_ms"] == 5350
@@ -133,7 +123,7 @@ def test_sequence_anchored_forced_alignment_with_offset():
 
 @pytest.mark.asyncio
 async def test_alignment_empty_segments_safe():
-    res = sequence_anchored_forced_alignment([], [], total_duration_ms=1000)
+    res = sequence_anchored_forced_alignment([], [], total_audio_duration_sec=1.0)
     assert res == []
 
 

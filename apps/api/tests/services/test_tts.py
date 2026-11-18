@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.core.config import get_settings
 from app.schemas.tts import TTSGenerateRequest
 from app.services.tts import (
     AVAILABLE_VOICES,
@@ -11,6 +12,7 @@ from app.services.tts import (
     generate_speech_audio,
 )
 from app.services.tts.audio_utils import _split_text_for_tts
+from app.services.tts.exceptions import ElevenLabsCharacterLimitError
 from app.services.tts.providers.elevenlabs import generate_elevenlabs_tts
 
 
@@ -129,38 +131,49 @@ def test_tts_cost_estimates_all_providers():
     assert el_est.estimated_cost_usd > gemini_est.estimated_cost_usd
 
 
+def _elevenlabs_error_response(status_code: int, message: str):
+    resp = AsyncMock()
+    resp.status_code = status_code
+    resp.text = message
+    resp.json = lambda: {"detail": {"message": message, "status": "too_large"}}
+    return resp
+
+
 @pytest.mark.asyncio
-async def test_elevenlabs_tts_missing_key_throws_error():
-    with pytest.raises(ValueError, match="ELEVENLABS_API_KEY"):
+async def test_elevenlabs_tts_missing_key_throws_error(monkeypatch):
+    monkeypatch.setattr(get_settings(), "ELEVENLABS_API_KEY", "")
+    with pytest.raises(RuntimeError, match="ElevenLabs API Key belum dikonfigurasi"):
         await generate_elevenlabs_tts(
             text="Halo", voice="Adam", output_path="/tmp/el.mp3", api_key=""
         )
 
 
 @pytest.mark.asyncio
-async def test_elevenlabs_model_specific_character_limits(monkeypatch):
-    long_text = "A" * 15000
-    with pytest.raises(ValueError, match="melebihi batas maksimal"):
-        await generate_elevenlabs_tts(
-            text=long_text,
-            voice="Adam",
-            output_path="/tmp/el_lim.mp3",
-            api_key="mock",
-            model="eleven_multilingual_v2",
-        )
+async def test_elevenlabs_character_limit_error_is_typed(tmp_path):
+    resp = _elevenlabs_error_response(422, "Text exceeds the maximum character limit")
+    with patch("httpx.AsyncClient.post", return_value=resp):
+        with pytest.raises(ElevenLabsCharacterLimitError):
+            await generate_elevenlabs_tts(
+                text="A" * 15000,
+                voice="Adam",
+                output_path=str(tmp_path / "el_lim.mp3"),
+                api_key="mock",
+                model="eleven_multilingual_v2",
+            )
 
 
 @pytest.mark.asyncio
-async def test_elevenlabs_character_limit_blocks_fallback(monkeypatch):
-    long_text = "A" * 15000
-    with pytest.raises(ValueError, match="melebihi batas maksimal"):
-        await generate_speech_audio(
-            text=long_text,
-            voice="Adam",
-            output_path="/tmp/el_fb.mp3",
-            provider="elevenlabs",
-            api_key="mock",
-        )
+async def test_elevenlabs_character_limit_blocks_fallback(tmp_path):
+    resp = _elevenlabs_error_response(422, "Text exceeds the maximum character limit")
+    with patch("httpx.AsyncClient.post", return_value=resp):
+        with pytest.raises(RuntimeError, match="Character Limit Exceeded"):
+            await generate_speech_audio(
+                text="A" * 15000,
+                voice="Adam",
+                output_path=str(tmp_path / "el_fb.mp3"),
+                provider="elevenlabs",
+                api_key="mock",
+            )
 
 
 @pytest.mark.asyncio

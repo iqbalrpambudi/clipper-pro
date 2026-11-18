@@ -31,33 +31,21 @@ def test_hash_embedding_deterministic_unit_norm():
 
 
 def test_timeline_schemas_has_audio_and_subtitles():
-    data = {
-        "tracks": [
-            {"id": "t-1", "type": "video", "clips": []},
-            {"id": "t-2", "type": "audio", "clips": []},
-            {"id": "t-3", "type": "subtitle", "clips": []},
-        ],
-        "zoom": 1.0,
-        "playhead_position": 0.0,
-    }
-    req = TimelineSaveRequest(**data)
-    assert len(req.tracks) == 3
+    req = TimelineSaveRequest(clips=[], has_audio=True, has_subtitles=False)
+    assert req.clips == []
+    assert req.has_audio is True
+    assert req.has_subtitles is False
 
 
 def test_timeline_model_defaults():
     tl = Timeline(project_id="proj-123")
-    assert tl.tracks == []
-    assert tl.zoom == 1.0
-    assert tl.playhead_position == 0.0
+    assert tl.clips == []
+    assert tl.total_duration == 0.0
 
 
 @pytest.mark.asyncio
 async def test_project_watermark_update():
-    up = ProjectWatermarkUpdate(
-        watermark_enabled=True,
-        watermark_position="bottom_left",
-        watermark_opacity=0.9,
-    )
-    assert up.watermark_enabled is True
-    assert up.watermark_position == "bottom_left"
-    assert up.watermark_opacity == 0.9
+    up = ProjectWatermarkUpdate(enabled=True, position="bottom-left", opacity=0.9)
+    assert up.enabled is True
+    assert up.position == "bottom-left"
+    assert up.opacity == 0.9
