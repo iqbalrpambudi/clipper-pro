@@ -1,5 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -52,10 +54,15 @@ async def lifespan(app: FastAPI):
     log.info("Cliper Pro API is shutting down...")
 
 
+try:
+    APP_VERSION = pkg_version("cliper-pro")
+except PackageNotFoundError:  # running from source without install
+    APP_VERSION = "dev"
+
 app = FastAPI(
     title="Cliper Pro API",
     description="Auto Short Video Maker API with AI (Vision, LLM, TTS, Karaoke Subtitles & FFmpeg Render)",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -92,6 +99,11 @@ app.mount("/storage", StaticFiles(directory=str(storage_dir), html=False), name=
 app.include_router(api_router)
 
 
+@app.get("/api/v1/version", tags=["health"])
+async def get_version():
+    return {"version": APP_VERSION}
+
+
 @app.get("/healthz", tags=["health"])
 async def healthz():
     db_ok = False
@@ -107,7 +119,7 @@ async def healthz():
         content={
             "status": "ok" if db_ok else "degraded",
             "app": "cliper-pro-api",
-            "version": "1.0.0",
+            "version": APP_VERSION,
             "db": db_ok,
             "mode": "standalone",
         },
