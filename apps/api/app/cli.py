@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -217,6 +218,35 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if all_ok else 1
 
 
+def _find_repo_root() -> Optional[Path]:
+    for base in (Path.cwd(), Path(__file__).resolve().parent):
+        for candidate in (base, *base.parents):
+            if (candidate / "scripts" / "release.sh").is_file():
+                return candidate
+    return None
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    repo = _find_repo_root()
+    if not repo:
+        print(
+            "Error: `cliper-pro export` harus dijalankan dari source repository (scripts/release.sh tidak ditemukan).",
+            file=sys.stderr,
+        )
+        return 1
+
+    cmd = ["bash", str(repo / "scripts" / "release.sh")]
+    if args.version:
+        cmd.extend(["--version", args.version])
+    if args.skip_checks:
+        cmd.append("--skip-checks")
+    if args.install:
+        cmd.append("--install")
+    if args.tag:
+        cmd.append("--tag")
+    return subprocess.run(cmd, cwd=str(repo)).returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cliper-pro",
@@ -276,6 +306,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doc = sub.add_parser("doctor", help="Check system dependencies and paths")
     p_doc.set_defaults(func=_cmd_doctor)
+
+    p_exp = sub.add_parser("export", help="Export production bundle to ./dist/ (source repo only)")
+    p_exp.add_argument("--version", help="Set/bump release version (e.g. 0.2.0)")
+    p_exp.add_argument("--skip-checks", action="store_true", help="Skip lint & test checks")
+    p_exp.add_argument("--install", action="store_true", help="Install exported wheel locally")
+    p_exp.add_argument("--tag", action="store_true", help="Create git tag v<VERSION>")
+    p_exp.set_defaults(func=_cmd_export)
 
     return parser
 

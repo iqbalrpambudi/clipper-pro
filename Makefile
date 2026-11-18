@@ -1,7 +1,7 @@
 API := apps/api
 WEB := apps/web
 
-.PHONY: install build-web package install-tool dev start stop test lint lint-web lint-api format format-web format-api
+.PHONY: install build-web package release export install-tool dev start stop test lint lint-web lint-api format format-web format-api
 
 # First-time setup: API venv, web deps, and bundled frontend
 install:
@@ -18,6 +18,10 @@ build-web:
 # Build distributable Python wheel/tarball (includes web_dist and tray assets)
 package: build-web
 	cd $(API) && uv build
+
+# Full production export pipeline -> ./dist/ (wheel, tarball, install.sh, SHA256SUMS)
+release export:
+	bash scripts/release.sh
 
 # Install `cliper-pro` CLI globally via uv tool
 install-tool: build-web

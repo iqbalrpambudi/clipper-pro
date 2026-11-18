@@ -1,0 +1,51 @@
+name: Release Cliper Pro
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (tanpa prefix v, mis. 0.2.0)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd apps/api && uv sync --extra dev
+          cd ../web && npm ci
+
+      - name: Export production artifacts
+        run: |
+          TAG_VER="${{ github.event.inputs.version || github.ref_name }}"
+          TAG_VER="${TAG_VER#v}"
+          if [ -n "$TAG_VER" ] && [ "$TAG_VER" != "main" ]; then
+            bash scripts/release.sh --version "$TAG_VER"
+          else
+            bash scripts/release.sh
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

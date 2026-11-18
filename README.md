@@ -33,19 +33,19 @@ Saat service dijalankan (`cliper-pro start`), API FastAPI menyala di background 
 - Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 22+
 - `ffmpeg` (`brew install ffmpeg` di macOS, atau `sudo apt install ffmpeg` di Linux)
 
-### Instalasi sebagai Package & Jalankan Service
+### Instalasi via `curl` (Production)
+
+```bash
+curl -fsSL https://github.com/iqbalrpambudi/clipper-pro/releases/latest/download/install.sh | sh
+```
+
+Script [install.sh](install.sh) otomatis memasang `uv` (jika belum ada), Python 3.12, dan package `cliper-pro` beserta Web UI & tray icon.
+
+### Instalasi dari Source Repo
 
 ```bash
 make install        # install deps API & web + build frontend bundle
 make install-tool   # install CLI `cliper-pro` secara global via uv tool
-```
-
-Atau install langsung lewat `uv` / `pipx` setelah `make build-web`:
-
-```bash
-uv tool install ./apps/api
-# atau
-pipx install ./apps/api
 ```
 
 ### Perintah CLI `cliper-pro`
@@ -79,14 +79,24 @@ Secara default semua data service disimpan di `~/.cliper-pro/` (bisa diubah lewa
 | `encryption.key` | Key enkripsi API key di DB. Jangan dihapus: tanpa key ini semua secret tidak bisa dibuka |
 | `api.log` / `tray.log` | Log API dan tray |
 
-## 🛠️ Development
+## 🛠️ Development & Export Production
 
 ```bash
 make dev     # API (127.0.0.1:18080 --reload) + Vite (localhost:3031)
 make test    # Pytest API + typecheck web
 make lint    # Ruff + ESLint + TypeScript check
-make package # Build wheel/tarball di apps/api/dist/
+make release # Export bundle production ke ./dist/ (wheel, tarball, install.sh, SHA256SUMS)
 ```
+
+Export production juga bisa dijalankan langsung via CLI dari repo:
+
+```bash
+cliper-pro export                     # export versi saat ini ke ./dist/
+cliper-pro export --version 0.2.0     # bump versi + export ke ./dist/
+cliper-pro export --install           # export + langsung install lokal
+```
+
+Push tag `v*` (mis. `git tag v0.2.0 && git push --tags`) akan memicu GitHub Actions untuk membangun dan mempublikasikan aset `./dist/*` ke GitHub Releases agar langsung bisa diinstall via `curl`.
 
 ## 🛠️ Tech Stack
 

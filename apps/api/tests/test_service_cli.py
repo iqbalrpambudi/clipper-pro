@@ -63,4 +63,10 @@ def test_cli_parser_subcommands():
     svc_args = parser.parse_args(["service", "install"])
     assert svc_args.command == "service"
     assert svc_args.action == "install"
+
+    exp_args = parser.parse_args(["export", "--version", "0.2.0", "--skip-checks", "--install"])
+    assert exp_args.command == "export"
+    assert exp_args.version == "0.2.0"
+    assert exp_args.skip_checks is True
+    assert exp_args.install is True
     assert os.path.basename(str(get_data_dir()))  # sanity check
