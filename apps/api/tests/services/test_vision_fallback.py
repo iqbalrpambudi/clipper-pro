@@ -74,3 +74,21 @@ async def test_no_fallback_configured_keeps_placeholder(monkeypatch, frame):
     calls = _gateway(monkeypatch, {"primary": 503})
     res = await _adapter("").analyze_vision([frame], "p")
     assert calls == ["primary"] and "analysis" not in res
+
+
+@pytest.mark.asyncio
+async def test_chat_retries_gateway_5xx(monkeypatch):
+    statuses = iter([503, 502, 200])
+
+    async def post(self, url, **kw):
+        status = next(statuses)
+        body = {"choices": [{"message": {"content": "ok"}}]} if status == 200 else {"error": "x"}
+        return httpx.Response(status, json=body, request=httpx.Request("POST", url))
+
+    async def no_sleep(_):
+        pass
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", post)
+    monkeypatch.setattr("app.services.ai_adapters.openai_adapter.asyncio.sleep", no_sleep)
+    res = await OpenAICompatibleAdapter(base_url="http://gw/v1", api_key="k").generate_chat("p")
+    assert res == "ok"
